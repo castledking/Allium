@@ -456,6 +456,91 @@ class TravelServiceTest {
         assertEquals(0, service.limit(player), "failed reloads keep the last valid settings rather than falling back to one home");
     }
 
+    @Test
+    void theBedIsListedLastPlainWhenSetAndStruckThroughWhenMissing() throws Exception {
+        when(repository.homes(player.getUniqueId())).thenReturn(Map.of("base", destination, "cave", destination));
+        when(messages.resolve(Messages.HOME_BED_ENTRY)).thenReturn("&dbed");
+        when(messages.resolve(Messages.HOME_BED_MISSING_ENTRY)).thenReturn("&7&mbed");
+        enable();
+
+        service.list(player, false);
+        verify(messages).send(player, Messages.HOME_LIST, "{warps}", "base, cave", "{homes}", "base, cave");
+
+        grants.get(player).add(TravelService.PERMISSION_BED);
+        service.list(player, false);
+        verify(messages).send(player, Messages.HOME_LIST, "{warps}", "base, cave, &7&mbed", "{homes}", "base, cave, &7&mbed");
+
+        when(player.getBedSpawnLocation()).thenReturn(new Location(world, 5, 70, 5));
+        service.list(player, false);
+        verify(messages).send(player, Messages.HOME_LIST, "{warps}", "base, cave, &dbed", "{homes}", "base, cave, &dbed");
+        assertTrue(service.completeHomes(player, "b").containsAll(List.of("base", "bed")));
+    }
+
+    @Test
+    void homeBedAndPlainHomeWithoutHomesGoToTheBedAndBedIsNotAHomeName() throws Exception {
+        grants.get(player).add(TravelService.PERMISSION_BED);
+        enable();
+
+        service.use(player, "bed", false);
+        verify(messages).send(player, Messages.HOME_BED_MISSING);
+        verifyNoInteractions(teleports);
+
+        Location bed = new Location(world, 5, 70, 5);
+        when(player.getBedSpawnLocation()).thenReturn(bed);
+        service.use(player, "BED", false);
+        service.use(player, "home", false);
+        ArgumentCaptor<Supplier<Location>> where = ArgumentCaptor.forClass((Class) Supplier.class);
+        ArgumentCaptor<BooleanSupplier> policy = ArgumentCaptor.forClass(BooleanSupplier.class);
+        verify(teleports, times(2)).teleport(eq(player), where.capture(), eq("home"), policy.capture());
+        assertEquals(bed, where.getValue().get());
+        assertTrue(policy.getValue().getAsBoolean());
+        grants.get(player).remove(TravelService.PERMISSION_BED);
+        assertFalse(policy.getValue().getAsBoolean(), "losing allium.home.bed before landing cancels");
+        verify(repository, never()).home(any(UUID.class), eq("bed"));
+
+        service.set(player, "bed", false, false);
+        verify(messages).send(player, Messages.HOME_BED_RESERVED);
+        verify(repository, never()).createHome(any(UUID.class), eq("bed"), any(SavedLocation.class), anyInt());
+    }
+
+    @Test
+    void staffReachAnotherPlayersHomesThroughTheNameIndexOnlyWithTheOthersNodes() throws Exception {
+        UUID owner = UUID.randomUUID();
+        var names = mock(codes.castled.allium.naming.PlayerNameService.class);
+        when(plugin.getPlayerNames()).thenReturn(names);
+        when(names.resolve("Owner")).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(
+                Optional.of(new codes.castled.allium.naming.NameCache.Entry(owner, "Owner", 0L))));
+        when(names.resolve("Nobody")).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(Optional.empty()));
+        when(repository.homes(owner)).thenReturn(Map.of("base", destination, "farm", destination));
+        when(repository.home(owner, "base")).thenReturn(Optional.of(new StoredDestination("base", destination, 3)));
+        enable();
+
+        service.useOther(player, "Owner", "base");
+        service.listOther(player, "Owner");
+        verify(messages, times(2)).send(player, Messages.NO_PERMISSION);
+        verifyNoInteractions(names);
+
+        grants.get(player).addAll(List.of(TravelService.PERMISSION_HOME_OTHERS, TravelService.PERMISSION_HOMES_OTHERS));
+        service.listOther(player, "Owner");
+        drain();
+        verify(messages).send(player, Messages.HOME_LIST_OTHER, "{player}", "Owner", "{homes}", "base, farm");
+
+        service.useOther(player, "Owner", "base");
+        drain();
+        ArgumentCaptor<Supplier<Location>> where = ArgumentCaptor.forClass((Class) Supplier.class);
+        verify(teleports).teleport(eq(player), where.capture(), eq("home"), any());
+        assertEquals(100, where.getValue().get().getX());
+
+        service.useOther(player, "Owner", "missing");
+        drain();
+        verify(messages).send(player, Messages.HOME_NOT_FOUND_OTHER, "{player}", "Owner", "{name}", "missing");
+        service.listOther(player, "Nobody");
+        drain();
+        verify(messages).send(player, Messages.PLAYER_NOT_FOUND, "{player}", "Nobody");
+        service.listOther(player, "bad name!");
+        verify(names, never()).resolve("bad name!");
+    }
+
     private static Map<String, StoredDestination> warpRows(Map<String, SavedLocation> locations) {
         Map<String, StoredDestination> result = new HashMap<>();
         locations.forEach((name, location) -> result.put(name, new StoredDestination(name, location, 1)));

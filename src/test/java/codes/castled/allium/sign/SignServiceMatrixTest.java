@@ -138,4 +138,75 @@ class SignServiceMatrixTest {
         var commandOff=new Fixture(type,true);when(commandOff.policy.isDisabled(commandOff.command())).thenReturn(true);commandOff.service.using(commandOff.click());commandOff.drain();commandOff.noAction();
         var moduleOff=new Fixture(type,true);moduleOff.config.set("modules."+moduleOff.module(),false);moduleOff.service.using(moduleOff.click());moduleOff.drain();moduleOff.noAction();
     }
+    @org.junit.jupiter.api.Test void pricedKitSignStoresPriceOverrideAndRoutesToClaimFromSign(){
+        var f=new Fixture(SignIdentity.Type.KIT,false);
+        var kitsModule=(KitsModule)f.plugin.getModuleManager().getModule("kits");
+        var kitService=mock(codes.castled.allium.kit.KitService.class);
+        when(kitsModule.kits()).thenReturn(kitService);
+        when(kitService.definitions()).thenReturn(Map.of("starter",
+                new codes.castled.allium.kit.KitDefinition("starter",true,0,false,"100.00",List.of("diamond 1"),"starter.yml")));
+        var edit=f.edit();
+        edit.setLine(1,"starter");
+        edit.setLine(2,"$400");
+        f.service.changing(edit);
+        f.drain();
+        assertEquals("§1[Kit]",edit.getLine(0));
+        assertEquals("$400",edit.getLine(2));
+        var stored=SignIdentity.decode(f.data.values().iterator().next()).orElseThrow();
+        assertTrue(stored.priceOverride());
+        assertEquals(40_000,stored.price().minor());
+        f.service.using(f.click());
+        f.drain();
+        verify(kitService).claimFromSign(f.player,"starter",new codes.castled.allium.economy.Money(40_000));
+    }
+    @org.junit.jupiter.api.Test void unsafeSignPricesRefusesDiscountedKitByDefaultAndAllowsWhenEnabled(){
+        var f=new Fixture(SignIdentity.Type.KIT,false);
+        var kitsModule=(KitsModule)f.plugin.getModuleManager().getModule("kits");
+        var kitService=mock(codes.castled.allium.kit.KitService.class);
+        when(kitsModule.kits()).thenReturn(kitService);
+        when(kitService.definitions()).thenReturn(Map.of("vip",
+                new codes.castled.allium.kit.KitDefinition("vip",true,0,false,"500.00",List.of("diamond 1"),"vip.yml")));
+        var blocked=f.edit();
+        blocked.setLine(1,"vip");
+        blocked.setLine(2,"$250");
+        f.service.changing(blocked);
+        f.drain();
+        assertEquals("§c[Kit]",blocked.getLine(0));
+        assertEquals("§c<price>",blocked.getLine(2));
+        assertTrue(f.data.isEmpty());
+        verify(f.plugin.getMessageManager()).send(eq(f.player),eq(codes.castled.allium.message.Messages.SIGN_UNSAFE_PRICE),
+                eq("{price}"),eq("$250"),eq("{cost}"),eq("$500"));
+
+        f.config.set("unsafe-sign-prices",true);
+        var allowedService=new SignService(f.plugin);
+        var allowed=f.edit();
+        allowed.setLine(1,"vip");
+        allowed.setLine(2,"$0");
+        allowedService.changing(allowed);
+        f.drain();
+        assertEquals("§1[Kit]",allowed.getLine(0));
+        var stored=SignIdentity.decode(f.data.values().iterator().next()).orElseThrow();
+        assertTrue(stored.priceOverride());
+        assertEquals(0,stored.price().minor());
+    }
+    @org.junit.jupiter.api.Test void pricedPublicWarpAndHealSignsAcceptShorthandAndRouteThroughPaidSignService(){
+        var f=new Fixture(SignIdentity.Type.WARP,false);
+        var paidSigns=mock(PaidSignService.class);
+        var service=new SignService(f.plugin,null,paidSigns);
+        var edit=f.edit();
+        edit.setLine(1,"market");
+        edit.setLine(2,"public");
+        edit.setLine(3,"$1k");
+        service.changing(edit);
+        f.drain();
+        assertEquals("§1[Warp]",edit.getLine(0));
+        assertEquals("$1,000",edit.getLine(3));
+        var stored=SignIdentity.decode(f.data.values().iterator().next()).orElseThrow();
+        assertTrue(stored.publicWarp());
+        assertEquals(100_000,stored.price().minor());
+        when(f.travel.canUseSign(f.player,"market",true)).thenReturn(true);
+        service.using(f.click());
+        f.drain();
+        verify(paidSigns).start(eq(f.player),eq(stored),any(Runnable.class));
+    }
 }

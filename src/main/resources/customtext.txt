@@ -1,0 +1,42 @@
+## Allium custom text. Lines starting with ## are comments and are never shown.
+##
+## /customtext shows the lines before the first section; /customtext <section> [page] shows a
+## section. A line "#vote,voting" starts the section "vote", also reachable as "voting". Sections
+## longer than 9 lines get pages with clickable arrows. The file is read again whenever it
+## changes, so edits show without a reload. Players need allium.customtext (everyone by default).
+##
+## To make a section its own command, add an alias to the server's commands.yml:
+##   aliases:
+##     vote:
+##     - customtext vote $1-
+##
+## Formatting: &-colour codes, &#RRGGBB hex colours, <gradient:#ff0000:#0000ff>...</gradient>
+## and <rainbow>...</rainbow>, as in Allium's messages. Placeholders: {player}, {displayname},
+## {world}, {online}, {max} and {server}, plus PlaceholderAPI's %placeholders% when it is installed.
+##
+## Click and hover events, as the Essentials fork's text files take them:
+##   <click:run_command:/spawn>text</click>            runs a command
+##   <click:suggest_command:/msg >text</click>         puts text in the chat box
+##   <click:open_url:https://example.com>text</click>  opens a link (http and https only)
+##   <click:copy_to_clipboard:some text>text</click>   copies text
+##   <hover:show_text:'&aShown on hover\n&7Second line'>text</hover>
+## Values may be quoted with ' or ", and tags can be nested. A whole line of vanilla JSON text,
+## as /tellraw takes it, is sent as it is:
+##   {"text":"Click me","color":"gold","clickEvent":{"action":"run_command","value":"/spawn"}}
+&6&lWelcome to {server}, {player}!
+&7There are &f{online}&7 of &f{max}&7 players online.
+
+&7Try <click:run_command:/customtext rules><hover:show_text:'&eClick to read the rules'>&e&n/customtext rules</hover></click>&7 or <click:run_command:/customtext vote><hover:show_text:'&eClick to see where to vote'>&e&n/customtext vote</hover></click>&7.
+
+#rules
+&6&lServer rules
+&f1. &7Be kind to other players.
+&f2. &7No griefing or stealing.
+&f3. &7No cheats or unfair mods.
+&7Questions? <click:suggest_command:/msg ><hover:show_text:'&eClick to message a staff member'>&e&nAsk a staff member</hover></click>&7.
+
+#vote,voting
+&6&lVote for {server}
+&7Voting helps the server grow. Thank you!
+&7- <click:open_url:https://example.com/vote><hover:show_text:'&eOpens example.com/vote'>&b&nVote on example.com</hover></click>
+{"text":"- Click here to copy the server address","color":"gray","clickEvent":{"action":"copy_to_clipboard","value":"play.example.com"},"hoverEvent":{"action":"show_text","contents":"play.example.com"}}

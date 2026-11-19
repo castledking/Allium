@@ -1,5 +1,29 @@
 # Staff tooling live gate
 
+## November 18 follow-up (r10): usage cards, homes, item text, /xp, /customtext
+
+**PASS on targeted runs only, not the full gate:** the new `usage-items-homes` case ran with
+`--only` on Spigot 1.20.1 (`usage-spigot-2`, 16 checks) and Paper 26.3 (`usage-paper-1`, 16 checks),
+and the cases whose expected text changed (`gamemode-permissions`, `scale`, `tp-position`,
+`whois-alts`, `paid-repair`) ran on Spigot (`changed-spigot-1`, 33 checks) and Paper
+(`changed-paper-1`, 40 checks). SQLite, Allium.jar
+`7f8fcd97194ca6fbc8531d75a1ee18b656d84b0e952aa9133c8f3a18c49820ea`. After `/lore copy` and
+`/lore paste` were added, `usage-items-homes` ran again on jar
+`bed0c33c755a32531a8fc281067d275536b0dec714ca5fd75f7e930b5d673f19`: 17/17 on Spigot
+(`usage-spigot-copy-1`) and Paper (`usage-paper-copy-1`); the changed cases were not re-run on it. No exceptions or SEVERE lines
+in any server log. `./gradlew check`: 1032 unit tests (680 plugin, 348 core, 4 API), 0 failures.
+The other 17 staff cases did not run on this jar.
+
+| Case | What ran |
+| --- | --- |
+| usage-items-homes | `/nick` with no arguments shows the command card: `Usage(s):` and clickable, suggest-command lines with gold arguments, the `<player>` forms hidden without `allium.nick.others`; `/core hide group` lists only the group forms; `Gamemode set to Survival.` and `Repaired Diamond Sword.`; `/rename &aCool Sword` and `/lore add`/`insert`/`remove`/`rename clear` (checked on the item), `/lore copy` and `/lore paste` onto a second item; `/xp reset`, `give 5L` (level 5), `take 10`, own `/xp`, refusal without `allium.xp.give`; `/whois` one field per line; `/homes` strikes `bed` through until a bed is set, `/bed` without one, `sethome bed` refused, `/home bed` lands at the respawn point; `/homes PlayerBot` and `/home PlayerBot:base` for staff, refused for players; `/customtext` click tags become click events and a JSON line arrives with its copy-to-clipboard event |
+| gamemode-permissions, paid-repair (updated) | `permission to use Creative mode`, `Repaired Diamond Sword for $1.25` |
+
+Not covered: the help card shown by `/help <command>` (unit only), deleting another player's home
+(not supported), and the live gates outside this one whose usage strings changed
+(`moderation` `/mute`, `discipline` `/notes`, `parity` `/nick`): their expected text was
+updated but they were not re-run.
+
 ## November 18 follow-up (r9)
 
 **PASS: 311 live checks, 0 failures, 22 cases on each lane.** Spigot 1.20.1 (`spigot-r9-full`,

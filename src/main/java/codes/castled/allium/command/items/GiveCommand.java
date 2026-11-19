@@ -15,7 +15,6 @@ import codes.castled.allium.item.spec.GiveSpec;
 import codes.castled.allium.item.spec.ItemReference;
 import codes.castled.allium.item.spec.ItemSpecException;
 import codes.castled.allium.item.spec.ItemSpecParser;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.entity.Entity;
@@ -157,12 +156,7 @@ public final class GiveCommand implements SpecCommandHandler {
     }
 
     private static String displayName(ItemStack item) {
-        var meta = item.getItemMeta();
-        if (meta != null && meta.hasDisplayName()) {
-            String name = ChatColor.stripColor(meta.getDisplayName()).replaceAll("[\\p{Cntrl}]", " ").trim();
-            if (!name.isEmpty()) return name;
-        }
-        return UtilitySupport.formatMaterialName(item.getType());
+        return UtilitySupport.itemName(item);
     }
 
     private void report(CommandSender sender, Player target, String targetName, String item, OverflowPolicy policy,

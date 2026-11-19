@@ -25,6 +25,8 @@ public final class VaultEconomyProvider implements Economy {
     }
     private UUID resolve(String name){
         if(name==null||!name.matches("[A-Za-z0-9_]{1,16}"))return null;
+        TaxSettings tax=engine.settings().tax();
+        if(name.equalsIgnoreCase(tax.accountName()))return tax.accountUuid();
         return names.apply(name); // Local authoritative name storage only; never OfflinePlayer(String).
     }
     private Balance read(UUID id){
@@ -58,8 +60,11 @@ public final class VaultEconomyProvider implements Economy {
     }
     private boolean open(UUID id){
         if(id==null||!enabled.getAsBoolean())return false;
-        UUID operation=UUID.nameUUIDFromBytes(("Allium-OPEN:"+id).getBytes(java.nio.charset.StandardCharsets.US_ASCII));
-        Mutation result=mutate.apply(engine.request(operation,"OPEN",id.toString(),EconomyRequest.Kind.OPEN,"SYSTEM",id,null,engine.settings().starting()));
+        boolean systemTax=id.equals(engine.settings().tax().accountUuid());
+        EconomyRequest.Kind kind=systemTax?EconomyRequest.Kind.OPEN_SYSTEM:EconomyRequest.Kind.OPEN;
+        Money grant=systemTax?new Money(0):engine.settings().starting();
+        UUID operation=UUID.nameUUIDFromBytes(("Allium-"+kind+":"+id).getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        Mutation result=mutate.apply(engine.request(operation,kind.name(),id.toString(),kind,"SYSTEM",id,null,grant));
         if(result instanceof Unknown unknown)throw new EconomyUnavailableException("OUTCOME_UNKNOWN:"+unknown.operationId());
         if(result instanceof Unavailable unavailable)throw new EconomyUnavailableException(unavailable.diagnostic());
         return result instanceof Committed;

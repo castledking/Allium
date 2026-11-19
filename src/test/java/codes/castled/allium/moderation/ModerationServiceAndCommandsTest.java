@@ -450,7 +450,9 @@ class ModerationServiceAndCommandsTest {
             muteCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.MUTE, vanishedStaff.player, "mute",
                     new String[]{"ModNorm", badToken, "spam"}));
             assertFalse(moderation.isMuted(normalPlayer.uuid), "bad token should not mute: " + badToken);
-            assertTrue(vanishedStaff.messages.stream().anyMatch(m -> m.contains("Usage:") && m.contains("/mute <player> [duration] [reason]")),
+            // The usage card: one line per form, each split into components.
+            String card = String.join("", vanishedStaff.messages);
+            assertTrue(card.contains("Usage(s):") && card.contains("/mute <player> <duration> [reason]"),
                     "expected usage for bad token " + badToken + ", got " + vanishedStaff.messages);
         }
 

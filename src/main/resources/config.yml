@@ -79,6 +79,17 @@ economy:
   minimum-pay-amount: '0.01'
   offline-pay-enabled: true
   pay-excludes-ignore-list: true
+  # Automatic transaction tax deposited into a dedicated economy account (GPExpansion-style layout).
+  # Holders of allium.tax.exempt (default: false) skip automatic taxes.
+  tax:
+    enabled: true
+    percent: '5'
+    account-name: 'Tax'
+    round-mode: nearest # nearest, floor, ceil
+    minimum-tax: '0.00'
+    apply-to:
+      pay: true
+      cheques: false
 
 # Staple tools. Each works with its built-in item and with Nexo, CraftEngine or Oraxen items;
 # an item's appearance never changes the tool's behavior.
@@ -95,8 +106,8 @@ sounds:
     # Pitch of a message sound whose lang entry sets none (0.5 to 2.0).
     pitch: 1.0
   messages:
-    # Private-message notification volume for players who never set their own with /mfx
-    # (0 to 1; 0 mutes notifications by default). It multiplies the message sound's own volume,
+    # Message sound volume for players who never set their own with /mfx (0 to 1; 0 mutes message
+    # sounds by default). It multiplies each message sound's own volume (or sounds.defaults.volume),
     # so a player at 0.5 hears a sound authored at 0.8 at 0.4.
     fallback-volume: 1.0
     # Whether a player's message sound volume (/mfx) also scales the sound they hear when they send
@@ -388,6 +399,8 @@ enabledSigns:
   #- mail
   #- info
 sign-use-per-second: 4
+# When true, admins may place priced kit/command signs costing less than the configured kit/command price.
+unsafe-sign-prices: false
 
 # Static safe public chat; formatting does not require Vault. Optional peers supply decorations.
 enable-chat-formatting: true

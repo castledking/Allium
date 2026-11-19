@@ -755,7 +755,7 @@ def authorization(lane):
     require(sql(lane,'SELECT COUNT(*) FROM allium_bans')==[['0']],lane.name+': default /ipban refusal writes no ban')
     command(staff,'tempban DiscNorm 5x malformed','Usage: /tempban')
     command(staff,'jail DiscNorm missing','Jail missing was not found')
-    command(staff,'notes DiscNorm add','Usage: /notes')
+    command(staff,'notes DiscNorm add','/notes <player> add <note>')
 
 
 def history(lane):

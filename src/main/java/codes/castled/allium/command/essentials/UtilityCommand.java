@@ -122,7 +122,7 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
             damage.setDamage(0);
             if(!replacement.setItemMeta(damage))continue;
             repaired.put(i,replacement);
-            names.add(item.getType().name().toLowerCase(Locale.ROOT).replace('_',' '));
+            names.add(UtilitySupport.itemName(item));
         }
         if(repaired.isEmpty()){
             UtilitySupport.send(plugin,player,all?Messages.UTILITY_REPAIR_NONE:Messages.REPAIR_HOLD_DAMAGED);

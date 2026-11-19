@@ -143,7 +143,7 @@ class UtilityCommandTest {
         verify(inventory).setItem(1,repairedB);
         verify(metaB, never()).setDamage(anyInt());
         verify(p).sendMessage(argThat((String msg) ->
-                msg.contains("Repaired") && msg.contains("diamond pickaxe, netherite sword")));
+                msg.contains("Repaired") && msg.contains("Diamond Pickaxe, Netherite Sword")));
     }
 
     @Test

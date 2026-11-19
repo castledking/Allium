@@ -299,6 +299,30 @@ public final class MailService implements Listener {
         });
     }
 
+    /** Sends an automated server notice mail to {@code recipientUuid} (bypasses cost, ignore and rate limits). */
+    public void sendSystemText(UUID recipientUuid, String senderName, String body) {
+        if (closed || recipientUuid == null || body == null || body.isBlank()) return;
+        MailLimits rules = limits.get();
+        String trimmed = body.length() > rules.bodyMaxLength() ? body.substring(0, rules.bodyMaxLength()) : body;
+        String from = senderName == null || senderName.isBlank() ? "Server" : senderName;
+        long now = System.currentTimeMillis();
+        MailRecord mail = MailRecord.text(UUID.randomUUID(), recipientUuid, null, from, trimmed,
+                serverId, now, rules.expiresAt(now));
+        try {
+            io.execute(() -> {
+                try {
+                    if (repository.send(mail, rules, true) == MailRepository.SendResult.SAVED) {
+                        onServer(() -> notifyNew(recipientUuid, from, MailKind.TEXT));
+                    }
+                } catch (SQLException e) {
+                    plugin.logger().warning("System mail to " + recipientUuid + " could not be stored: " + e.getMessage());
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException full) {
+            plugin.logger().warning("Mail queue is full; system notice to " + recipientUuid + " was not queued.");
+        }
+    }
+
     // -- Gifts -------------------------------------------------------------------------------------
 
     /** Gifts {@code amount} (all, when below 1) of the held stack to {@code typedName}. */

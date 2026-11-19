@@ -44,11 +44,11 @@ public final class EnchantmentAdapter {
         if (level < 1 || level > MAX_LEVEL) {
             throw new ItemBuildException("enchantment level must be 1-" + MAX_LEVEL);
         }
-        String id=enchantment.getKey().toString(),item=stack.getType().name().toLowerCase(Locale.ROOT);String notice=null;
+        String id=codes.castled.allium.command.essentials.UtilitySupport.enchantName(enchantment.getKey()),item=codes.castled.allium.command.essentials.UtilitySupport.formatMaterialName(stack.getType());String notice=null;
         if(!allowUnsafe){
             if(!(meta instanceof EnchantmentStorageMeta)&&!enchantment.canEnchantItem(stack))throw new ItemBuildException("@enchant|unsafe-enchant|"+id+"|"+item+"||");
             var existing=meta instanceof EnchantmentStorageMeta book?book.getStoredEnchants():meta.getEnchants();
-            for(var other:existing.keySet())if(!other.equals(enchantment)&&(other.conflictsWith(enchantment)||enchantment.conflictsWith(other)))throw new ItemBuildException("@enchant|conflicting-enchants|"+id+"|"+item+"|"+other.getKey()+"|");
+            for(var other:existing.keySet())if(!other.equals(enchantment)&&(other.conflictsWith(enchantment)||enchantment.conflictsWith(other)))throw new ItemBuildException("@enchant|conflicting-enchants|"+id+"|"+item+"|"+codes.castled.allium.command.essentials.UtilitySupport.enchantName(other.getKey())+"|");
             if(level>enchantment.getMaxLevel()){level=enchantment.getMaxLevel();notice="@enchant|unsafe-level|"+id+"|"+item+"||"+level;}
         }
         if(meta instanceof EnchantmentStorageMeta book)book.addStoredEnchant(enchantment,level,allowUnsafe);else meta.addEnchant(enchantment,level,allowUnsafe);

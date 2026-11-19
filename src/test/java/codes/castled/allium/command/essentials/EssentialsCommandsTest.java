@@ -97,7 +97,7 @@ class EssentialsCommandsTest {
         verify(other, times(2)).setHealth(20.0);
 
         heal.onCommand(console, command, "heal", new String[0]);
-        verify(console).sendMessage(contains("/heal <player>"));
+        verify(console).sendMessage(org.mockito.ArgumentMatchers.<String>argThat(m -> org.bukkit.ChatColor.stripColor(m).contains("/heal <player>")));
     }
 
     @Test
@@ -118,7 +118,7 @@ class EssentialsCommandsTest {
         verify(other, times(2)).setFoodLevel(20);
 
         feed.onCommand(console, command, "feed", new String[0]);
-        verify(console).sendMessage(contains("/feed <player>"));
+        verify(console).sendMessage(org.mockito.ArgumentMatchers.<String>argThat(m -> org.bukkit.ChatColor.stripColor(m).contains("/feed <player>")));
     }
 
     @Test
@@ -140,7 +140,7 @@ class EssentialsCommandsTest {
         verify(other, times(2)).setAllowFlight(true);
 
         fly.onCommand(console, command, "fly", new String[0]);
-        verify(console).sendMessage(contains("/fly <player>"));
+        verify(console).sendMessage(org.mockito.ArgumentMatchers.<String>argThat(m -> org.bukkit.ChatColor.stripColor(m).contains("/fly <player>")));
     }
 
     @Test
@@ -161,7 +161,7 @@ class EssentialsCommandsTest {
         verify(other, times(2)).setInvulnerable(true);
 
         god.onCommand(console, command, "god", new String[0]);
-        verify(console).sendMessage(contains("/god <player>"));
+        verify(console).sendMessage(org.mockito.ArgumentMatchers.<String>argThat(m -> org.bukkit.ChatColor.stripColor(m).contains("/god <player>")));
     }
 
     @Test
@@ -186,7 +186,7 @@ class EssentialsCommandsTest {
         verify(other).setGameMode(GameMode.ADVENTURE);
 
         gm.onCommand(console, command, "gamemode", new String[]{"survival"});
-        verify(console).sendMessage(contains("/gamemode <mode> <player>"));
+        verify(console).sendMessage(org.mockito.ArgumentMatchers.<String>argThat(m -> org.bukkit.ChatColor.stripColor(m).contains("/gamemode <mode> <player>")));
     }
 
     @Test

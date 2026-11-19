@@ -2,6 +2,7 @@ package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.module.EconomyModule;
 import codes.castled.allium.module.KitsModule;
 import codes.castled.allium.module.MailModule;
 import codes.castled.allium.naming.PlayerNameVisibility;
@@ -32,7 +33,10 @@ public final class UtilitySupport {
         return (plugin.getModuleManager().getModule("kits") instanceof KitsModule kits
                 && kits.isEnabled() && kits.kits() != null && kits.kits().busy(target))
                 || (plugin.getModuleManager().getModule("mail") instanceof MailModule mail
-                && mail.isEnabled() && mail.mail() != null && mail.mail().busy(target));
+                && mail.isEnabled() && mail.mail() != null && mail.mail().busy(target))
+                || (plugin.getModuleManager().getModule("economy") instanceof EconomyModule economy
+                && economy.isEnabled() && economy.runtime() != null && economy.runtime().cheques() != null
+                && economy.runtime().cheques().busy(target));
     }
 
     public static boolean guardInventoryNotBusy(PluginStart plugin, CommandSender sender, Player target) {
@@ -105,12 +109,19 @@ public final class UtilitySupport {
     }
 
     public static String formatMaterialName(Material material) {
-        if (material == null) {
-            return "Unknown";
+        return material == null ? "Unknown" : titleCase(material.name());
+    }
+
+    /**
+     * {@code DIAMOND_SWORD}, {@code diamond_sword} and {@code survival} become {@code Diamond Sword}
+     * and {@code Survival}: the one capitalisation every player-facing item, mode and entity name uses.
+     */
+    public static String titleCase(String name) {
+        if (name == null || name.isBlank()) {
+            return "";
         }
-        String[] parts = material.name().split("_");
         StringBuilder sb = new StringBuilder();
-        for (String part : parts) {
+        for (String part : name.trim().split("[_\\s]+")) {
             if (part.isEmpty()) {
                 continue;
             }
@@ -123,6 +134,29 @@ public final class UtilitySupport {
             }
         }
         return sb.toString();
+    }
+
+    /** {@code minecraft:fire_aspect} is shown as {@code Fire Aspect}. */
+    public static String enchantName(@Nullable org.bukkit.NamespacedKey key) {
+        return key == null ? "Unknown" : titleCase(key.getKey());
+    }
+
+    /**
+     * How messages name an item, as {@code /give} does: its custom name without colours, else the
+     * title-cased material ({@code Diamond Sword}).
+     */
+    public static String itemName(@Nullable ItemStack item) {
+        if (item == null) {
+            return "Unknown";
+        }
+        org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            String name = org.bukkit.ChatColor.stripColor(meta.getDisplayName()).replaceAll("[\\p{Cntrl}]", " ").trim();
+            if (!name.isEmpty()) {
+                return name;
+            }
+        }
+        return formatMaterialName(item.getType());
     }
 
     public static String describeItem(PluginStart plugin, @Nullable ItemStack stack) {

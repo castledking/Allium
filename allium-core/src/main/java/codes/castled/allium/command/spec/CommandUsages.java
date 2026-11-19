@@ -1,0 +1,298 @@
+package codes.castled.allium.command.spec;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * The usage lines shown on a command's usage card ({@code /help <command>}, or when a command is
+ * typed with missing or wrong arguments). A command family listed here gets one line per form,
+ * each with what it does; any other family falls back to its subcommand usages, then to the usage
+ * string the command reported. Syntax is written after the label, so the card can show the label
+ * the player actually typed ({@code /gm <mode>} for {@code /gm}).
+ */
+public final class CommandUsages {
+
+    private CommandUsages() {
+    }
+
+    private static CommandUsage u(String syntax, String description) {
+        return CommandUsage.of(syntax, description);
+    }
+
+    private static CommandUsage u(String syntax, String description, String permission) {
+        return CommandUsage.of(syntax, description, permission);
+    }
+
+    private static Map.Entry<String, List<CommandUsage>> e(String command, CommandUsage... usages) {
+        return Map.entry(command, List.of(usages));
+    }
+
+    private static final String HIDE = "allium.hide.admin";
+
+    private static final Map<String, List<CommandUsage>> USAGES = Map.ofEntries(
+            e("heal", u("", "Heals you"), u("<player>", "Heals another player", "allium.heal.others")),
+            e("feed", u("", "Fills your hunger"), u("<player>", "Fills another player's hunger", "allium.feed.others")),
+            e("fly", u("", "Toggles your flight"), u("<player>", "Toggles another player's flight", "allium.fly.others")),
+            e("god", u("", "Toggles your god mode"), u("<player>", "Toggles another player's god mode", "allium.god.others")),
+            e("toggleslowfall", u("", "Toggles slow falling when you lose flight"),
+                    u("<on|off>", "Turns slow falling on flight loss on or off"),
+                    u("status", "Shows whether it is on")),
+            e("gamemode", u("<mode>", "Changes your gamemode"),
+                    u("<mode> <player>", "Changes another player's gamemode", "allium.gamemode.others")),
+            e("give", u("<player> <item> [amount]", "Gives a player an item"),
+                    u("<player> <item,item...> [amount]", "Gives several items at once"),
+                    u("<player> <item> [amount] [key:value...]", "Gives an item with a name, lore, enchantments or other properties"),
+                    u("<player> <item> [amount] --overflow=<drop|refuse|partial>", "Chooses what happens when the inventory is full")),
+            e("i", u("<item> [amount]", "Gives you an item"),
+                    u("<item,item...> [amount]", "Gives you several items at once"),
+                    u("<item> [amount] [key:value...]", "Gives you an item with a name, lore, enchantments or other properties")),
+            e("allium", u("version", "Shows the Allium version"),
+                    u("reload", "Reloads the configuration and language files", "allium.reload"),
+                    u("import lang [apply]", "Imports messages from the pre-recode lang file (a dry run unless apply)", "allium.import"),
+                    u("import legacy [apply <run>]", "Imports homes, warps and logout positions from legacy Allium", "allium.import"),
+                    u("adopt-window <duration>", "Adopts pre-recode privileged tools on first use for a while", "allium.adoptwindow"),
+                    u("adopt-window off", "Closes the adoption window", "allium.adoptwindow"),
+                    u("hide status", "Shows command hiding status and groups", HIDE),
+                    u("hide reload", "Reloads hide.yml", HIDE),
+                    u("hide enabled <true|false>", "Turns command hiding on or off", HIDE),
+                    u("hide resolve <player> <command>", "Shows which permission decides a player's access to a command", HIDE),
+                    u("hide fix <command> <permission>", "Overrides the permission used for a command", HIDE),
+                    u("hide unfix <command>", "Removes a permission override", HIDE),
+                    u("hide group <name> create <whitelist|blacklist>", "Creates a hide group", HIDE),
+                    u("hide group <name> whitelist <true|false>", "Switches a group between whitelist and blacklist", HIDE),
+                    u("hide group <name> inherit <commands|tabcompletes> <groups>", "Inherits rules from other groups", HIDE),
+                    u("hide group <name> add [-c|-t|-tc] <rules>", "Adds command and tab-complete rules", HIDE),
+                    u("hide group <name> remove [-c|-t|-tc] <rules>", "Removes command and tab-complete rules", HIDE),
+                    u("hide group <name> check [-c|-t|-tc] <rules>", "Tests rules against a group", HIDE)),
+            e("help", u("", "Shows the commands you can use"),
+                    u("<page>", "Shows a page of the help menu"),
+                    u("<command>", "Shows help for one command"),
+                    u("<search> [page]", "Searches commands by name and description"),
+                    u("<plugin> [page]", "Lists one plugin's commands", "allium.help.plugins")),
+            e("msg", u("<player> <message>", "Sends a private message")),
+            e("reply", u("<message>", "Replies to the last player who messaged you")),
+            e("ignore", u("", "Lists the players you ignore"), u("<player>", "Ignores a player's private messages")),
+            e("unignore", u("<player>", "Stops ignoring a player")),
+            e("msgtoggle", u("", "Toggles receiving private messages"),
+                    u("<on|off>", "Turns receiving private messages on or off"),
+                    u("<on|off> <player>", "Turns another player's private messages on or off", "allium.msgtoggle.others")),
+            e("messagesounds", u("", "Shows your private-message sound volume"),
+                    u("volume <0-1>", "Sets your private-message sound volume"),
+                    u("toggle", "Turns private-message sounds on or off"),
+                    u("reset", "Goes back to the server's default volume")),
+            e("socialspy", u("", "Toggles social spy"), u("<on|off>", "Turns social spy on or off")),
+            e("kit", u("", "Lists the kits you can claim"), u("<name>", "Claims a kit"),
+                    u("<name> <player>", "Gives a kit to another player", "allium.kit.others")),
+            e("createkit", u("<name>", "Creates a kit from your inventory"),
+                    u("<name> <cooldown>", "Creates a kit with a cooldown, e.g. 1d"),
+                    u("<name> <cooldown> once", "Creates a kit each player can claim only once")),
+            e("vanish", u("", "Toggles vanish"), u("<on|off>", "Turns vanish on or off"),
+                    u("<on|off> <player>", "Turns vanish on or off for another player", "allium.vanish.others")),
+            e("mute", u("<player> [reason]", "Mutes a player until they are unmuted"),
+                    u("<player> <duration> [reason]", "Mutes a player for a set time, e.g. 30m, 2h or 7d")),
+            e("freeze", u("<player>", "Freezes or unfreezes a player"),
+                    u("<player> <on|off> [reason]", "Freezes or unfreezes a player, with a reason")),
+            e("warn", u("<player> [reason]", "Warns a player and records it"),
+                    u("<player> history", "Shows a player's warnings")),
+            e("notes", u("<player>", "Reads the staff notes on a player"),
+                    u("<player> add <note>", "Adds a staff note")),
+            e("enderchest", u("", "Opens your ender chest"),
+                    u("<player>", "Inspects another player's ender chest", "allium.enderchest.others")),
+            e("nick", u("<nickname>", "Changes your nickname to the given text"),
+                    u("off", "Removes your nickname"),
+                    u("<player> <nickname>", "Changes the specified player's nickname to the given text", "allium.nick.others"),
+                    u("<player> off", "Removes the given player's nickname", "allium.nick.others")),
+            e("channel", u("", "Lists the channels you can read"),
+                    u("join <channel> [read|write]", "Joins a channel to read it, or to write to it"),
+                    u("leave <channel>", "Leaves a channel")),
+            e("delmsg", u("<id>", "Deletes one chat message for everyone"),
+                    u("<player> <amount>", "Deletes a player's last messages (1-200)")),
+            e("paytoggle", u("", "Toggles incoming payments"), u("<on|off>", "Allows or refuses incoming payments"),
+                    u("<on|off> <player>", "Allows or refuses another player's incoming payments", "allium.paytoggle.others")),
+            e("sethome", u("", "Sets your default home here"), u("<name>", "Sets a named home here"),
+                    u("<name> confirm", "Moves an existing home here")),
+            e("home", u("", "Teleports you to your default home"), u("<name>", "Teleports you to one of your homes"),
+                    u("bed", "Teleports you to your bed", "allium.home.bed"),
+                    u("<player>:<home>", "Teleports you to another player's home", "allium.home.others")),
+            e("delhome", u("", "Deletes your default home"), u("<name>", "Deletes one of your homes")),
+            e("homes", u("", "Lists your homes"), u("<player>", "Lists another player's homes", "allium.homes.others")),
+            e("bed", u("", "Teleports you to your bed")),
+            e("setwarp", u("<name>", "Creates a warp here"), u("<name> confirm", "Moves an existing warp here")),
+            e("tpaccept", u("", "Accepts your latest teleport request"), u("<player>", "Accepts a player's teleport request")),
+            e("tpdeny", u("", "Denies your latest teleport request"), u("<player>", "Denies a player's teleport request")),
+            e("tptoggle", u("", "Toggles teleport requests to you"), u("<on|off>", "Allows or blocks teleport requests to you"),
+                    u("<on|off> <player>", "Allows or blocks teleport requests to another player", "allium.tptoggle.others")),
+            e("tp", u("<player>", "Teleports you to a player"),
+                    u("<player> <target>", "Teleports a player to another player", "allium.tp.others"),
+                    u("<x> <y> <z> [yaw] [pitch] [world]", "Teleports you to coordinates", "allium.tp.position")),
+            e("there", u("", "Teleports you to the block you are looking at"),
+                    u("<players|selectors...>", "Sends players or selected entities there")),
+            e("tphere", u("<player>", "Teleports a player to you"),
+                    u("<players|selectors...>", "Teleports several players or selected entities to you")),
+            e("repair", u("", "Repairs the item in your hand"),
+                    u("all", "Repairs every damaged item in your inventory", "allium.repair.all")),
+            e("speed", u("<0-10|reset>", "Sets your walk or fly speed, whichever you are using"),
+                    u("<walk|fly> <0-10|reset>", "Sets your walk or fly speed"),
+                    u("<walk|fly> <0-10|reset> <player>", "Sets another player's walk or fly speed", "allium.speed.others")),
+            e("scale", u("<0-16>", "Sets your size"), u("<0-16> <player>", "Sets another player's size", "allium.scale.others")),
+            e("ping", u("", "Shows your ping"), u("<player>", "Shows another player's ping", "allium.ping.others")),
+            e("ext", u("", "Puts out the fire on you"), u("<player>", "Puts out the fire on another player", "allium.ext.others")),
+            e("nv", u("", "Toggles night vision"), u("<on|off>", "Turns night vision on or off"),
+                    u("<on|off> <player>", "Turns night vision on or off for another player", "allium.nv.others")),
+            e("more", u("", "Fills the stack in your hand"), u("<amount>", "Sets the size of the stack in your hand"),
+                    u("<amount> <player>", "Sets the size of another player's held stack", "allium.more.others")),
+            e("skull", u("", "Gives you your own head"), u("<owner>", "Gives you a player's head"),
+                    u("<owner> <player>", "Gives another player a head", "allium.skull.others")),
+            e("itemdb", u("", "Inspects the item in your hand"),
+                    u("<player>", "Inspects another player's held item", "allium.itemdb.others")),
+            e("time", u("", "Shows the time"),
+                    u("set <time> [world|*]", "Sets the time, e.g. day, night or 6000", "allium.time.set"),
+                    u("add <ticks> [world|*]", "Moves the time forward", "allium.time.add"),
+                    u("pause [world|*]", "Pauses or resumes the time", "allium.time.pause")),
+            e("day", u("", "Sets your world to day"), u("<world|*>", "Sets a world (or every world) to day")),
+            e("night", u("", "Sets your world to night"), u("<world|*>", "Sets a world (or every world) to night")),
+            e("enchant", u("<enchantment> <level>", "Enchants the item in your hand"),
+                    u("<enchantment> 0", "Removes an enchantment from the item in your hand"),
+                    u("<enchantment> <level> <player>", "Enchants another player's held item", "allium.enchant.others")),
+            e("near", u("", "Lists the players near you"), u("<radius>", "Lists the players within a radius")),
+            e("afk", u("", "Toggles your AFK status"), u("<message>", "Goes AFK with a message")),
+            e("restore", u("", "Browses your inventory snapshots"),
+                    u("<player>", "Browses another player's inventory snapshots", "allium.restore.others")),
+            e("rename", u("<name>", "Renames the item in your hand; colors and gradients work"),
+                    u("clear", "Removes the custom name from the item in your hand")),
+            e("lore", u("add <text>", "Adds a line to the lore of the item in your hand"),
+                    u("set <line> <text>", "Replaces a lore line"),
+                    u("insert <line> <text>", "Inserts a lore line before another"),
+                    u("remove <line>", "Removes a lore line"),
+                    u("clear", "Removes all lore"),
+                    u("copy", "Copies the lore of the item in your hand"),
+                    u("paste", "Replaces the lore of the item in your hand with the copied lore")),
+            e("xp", u("", "Shows your experience"),
+                    u("<player>", "Shows another player's experience", "allium.xp.others"),
+                    u("give <player> <amount>[L]", "Gives experience points, or levels with L (e.g. 5L)", "allium.xp.give"),
+                    u("take <player> <amount>[L]", "Takes experience points, or levels with L", "allium.xp.take"),
+                    u("set <player> <amount>[L]", "Sets experience points, or levels with L", "allium.xp.set"),
+                    u("reset <player>", "Removes all of a player's experience", "allium.xp.set")),
+            e("customtext", u("", "Shows the custom text index"),
+                    u("<section> [page]", "Shows a section of the custom text")));
+
+    /** The hand-written usage lines for a command family, or none. */
+    public static List<CommandUsage> of(String command) {
+        if (command == null) {
+            return List.of();
+        }
+        return USAGES.getOrDefault(command.toLowerCase(Locale.ROOT), List.of());
+    }
+
+    /**
+     * The lines a usage card shows for {@code spec}. A command that reported a narrower usage
+     * ({@code /allium hide group <name> ...}) sees only the lines sharing its leading subcommand
+     * words, when there are any. Without hand-written lines the subcommand usages, then the
+     * reported usage, are shown without descriptions.
+     */
+    public static List<CommandUsage> select(CommandSpec spec, String requestedUsage) {
+        List<CommandUsage> listed = of(spec.canonicalName());
+        if (listed.isEmpty()) {
+            listed = fromChildren(spec);
+        }
+        if (listed.isEmpty()) {
+            return derive(requestedUsage == null || requestedUsage.isBlank() ? spec.selfUsage() : requestedUsage);
+        }
+        if (requestedUsage != null && !requestedUsage.equals(spec.selfUsage())) {
+            // A command that reported one exact form (the console's /heal <player>) gets just that line.
+            String wanted = afterLabel(firstAlternative(requestedUsage));
+            List<CommandUsage> exact = listed.stream().filter(u -> u.syntax().equalsIgnoreCase(wanted)).toList();
+            if (!exact.isEmpty()) {
+                return exact;
+            }
+        }
+        List<CommandUsage> narrowed = narrow(listed, requestedUsage);
+        return narrowed.isEmpty() ? listed : narrowed;
+    }
+
+    /** The command a usage string names ({@code give} for {@code /give <player>}), lower-cased, or null. */
+    public static String commandOf(String usage) {
+        if (usage == null) {
+            return null;
+        }
+        String trimmed = usage.trim();
+        if (!trimmed.startsWith("/") || trimmed.length() < 2) {
+            return null;
+        }
+        int space = trimmed.indexOf(' ');
+        String command = (space < 0 ? trimmed.substring(1) : trimmed.substring(1, space)).toLowerCase(Locale.ROOT);
+        return command.substring(command.lastIndexOf(':') + 1);
+    }
+
+    /** Lines sharing the requested usage's leading subcommand words; empty when it has none or none match. */
+    static List<CommandUsage> narrow(List<CommandUsage> usages, String requestedUsage) {
+        List<String> wanted = requestedLiterals(requestedUsage);
+        if (wanted.isEmpty()) {
+            return List.of();
+        }
+        List<CommandUsage> out = new ArrayList<>();
+        for (CommandUsage usage : usages) {
+            List<String> literals = usage.literalPrefix();
+            if (literals.size() >= wanted.size() && literals.subList(0, wanted.size()).equals(wanted)) {
+                out.add(usage);
+            }
+        }
+        return out;
+    }
+
+    /** {@code /allium hide group <name>} gives {@code [hide, group]}: the words after the label up to the first argument. */
+    static List<String> requestedLiterals(String requestedUsage) {
+        List<String> tokens = CommandUsage.tokens(firstAlternative(requestedUsage));
+        List<String> out = new ArrayList<>();
+        for (int i = 1; i < tokens.size(); i++) {
+            String token = tokens.get(i);
+            if (CommandUsage.isArgument(token) || token.contains("|")) {
+                break;
+            }
+            out.add(token.toLowerCase(Locale.ROOT));
+        }
+        return out;
+    }
+
+    /** Each alternative of a reported usage ({@code /tp <player> | /tp <x> <y> <z>}) as a line without a description. */
+    public static List<CommandUsage> derive(String usage) {
+        List<CommandUsage> out = new ArrayList<>();
+        if (usage == null) {
+            return out;
+        }
+        for (String alternative : usage.split(" \\| ")) {
+            out.add(CommandUsage.of(afterLabel(alternative), ""));
+        }
+        return out;
+    }
+
+    private static List<CommandUsage> fromChildren(CommandSpec spec) {
+        List<CommandUsage> out = new ArrayList<>();
+        for (CommandNodeSpec child : spec.children()) {
+            if (child.usage() != null && !child.usage().isBlank()) {
+                out.add(CommandUsage.of(afterLabel(child.usage()), "", child.permissionNode()));
+            }
+        }
+        return out;
+    }
+
+    private static String firstAlternative(String usage) {
+        if (usage == null) {
+            return "";
+        }
+        int bar = usage.indexOf(" | ");
+        return bar < 0 ? usage : usage.substring(0, bar);
+    }
+
+    /** {@code /gamemode <mode> [player]} becomes {@code <mode> [player]}. */
+    static String afterLabel(String usage) {
+        String trimmed = usage == null ? "" : usage.trim();
+        if (!trimmed.startsWith("/")) {
+            return trimmed;
+        }
+        int space = trimmed.indexOf(' ');
+        return space < 0 ? "" : trimmed.substring(space + 1).trim();
+    }
+}

@@ -54,7 +54,7 @@ def run_suite(lane):
     for perm in ['allium.balance','allium.pay','allium.nick','allium.info','allium.itemdb']:lane.fixture('perm InfoNorm '+perm+' true')
     response=bot.chat(bot.cmd('bal'),'ConfiguredAudit');require('#55ff55' in response['colors'] and '#ff55ff' in response['colors'],'bal uses configured language and balance/prefix colors')
     response=bot.chat(bot.cmd('pay'),'Invalid arguments or amount');require('#ff5555' in response['colors'],'economy errors use colored language feedback')
-    response=bot.chat(bot.cmd('nick'),'Usage: /nick');require('#ff5555' in response['colors'],'chat validation errors use colored language feedback')
+    response=bot.chat(bot.cmd('nick'),'/nick <nickname>');require('#ffaa00' in response['colors'],'missing nick arguments show the usage card with its argument colour')
     response=bot.chat(bot.cmd('allium:info'),'player(s) online');require('#ff55ff' in response['colors'],'info diagnostics use the configured prefix')
     require(lang_path.with_name('en_US.yml.before-color-fix').is_file() and yaml.safe_load(lang_path.read_text())['info']['afk']['kick'][0].startswith('&c'),'stock plain notices upgrade with an original-file backup')
     def give(text):

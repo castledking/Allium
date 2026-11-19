@@ -1,0 +1,223 @@
+package codes.castled.allium.economy;
+
+import codes.castled.allium.PluginStart;
+import codes.castled.allium.core.ModuleManager;
+import codes.castled.allium.database.DatabaseManager;
+import codes.castled.allium.message.MessageManager;
+import codes.castled.allium.message.Messages;
+import codes.castled.allium.naming.NameCache;
+import codes.castled.allium.naming.PlayerNameService;
+import codes.castled.allium.scheduler.TaskHandle;
+import codes.castled.allium.scheduler.TaskScheduler;
+import codes.castled.allium.util.AlliumLogger;
+import org.bukkit.Server;
+import org.bukkit.World;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.PluginManager;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.DriverManager;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import static codes.castled.allium.economy.EconomyResult.Found;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+public class EconomyTaxAndChequeRuntimeTest {
+
+    @TempDir Path temp;
+    PluginStart plugin;
+    MessageManager messages;
+    EconomyRuntime runtime;
+    UUID aliceId = UUID.randomUUID();
+    UUID bobId = UUID.randomUUID();
+    Player alice;
+    Player bob;
+    ConsoleCommandSender console;
+    ThreadPoolExecutor pool;
+
+    public interface HandleServer extends Server { Object getHandle(); }
+    public static final class Storage { final java.io.File dir; Storage(java.io.File dir) { this.dir = dir; } public java.io.File getPlayerDir() { return dir; } }
+    public static final class Handle { final Storage storage; Handle(java.io.File dir) { this.storage = new Storage(dir); } }
+
+    @BeforeEach
+    void setup() throws Exception {
+        Path playerDataDir = temp.resolve("world/playerdata");
+        Files.createDirectories(playerDataDir);
+        String dbUrl = "jdbc:sqlite:" + temp.resolve("allium.db");
+        plugin = mock(PluginStart.class);
+        messages = mock(MessageManager.class);
+        when(messages.resolve(any(Messages.class), any(String[].class))).thenAnswer(c -> c.getArgument(0, Messages.class).getDefault());
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("economy.starting-balance", "100.00");
+        config.set("economy.tax.enabled", true);
+        config.set("economy.tax.percent", 5);
+        config.set("economy.tax.account-name", "Tax");
+        config.set("economy.tax.apply-to.pay", true);
+        config.set("economy.tax.apply-to.cheques", false);
+
+        DatabaseManager db = mock(DatabaseManager.class);
+        codes.castled.allium.storage.ConnectionSource connSrc = () -> DriverManager.getConnection(dbUrl);
+        new codes.castled.allium.preference.PreferenceRepository(connSrc, codes.castled.allium.storage.SqlDialect.SQLITE, System::currentTimeMillis).migrate();
+        new codes.castled.allium.messaging.IgnoreRepository(connSrc, codes.castled.allium.storage.SqlDialect.SQLITE, System::currentTimeMillis).migrate();
+        when(db.connectionSource()).thenReturn(connSrc);
+        when(db.getConnection()).thenAnswer(c -> DriverManager.getConnection(dbUrl));
+
+        HandleServer server = mock(HandleServer.class);
+        when(server.getHandle()).thenReturn(new Handle(playerDataDir.toFile()));
+        World world = mock(World.class);
+        when(world.getWorldFolder()).thenReturn(temp.resolve("world").toFile());
+        when(server.getWorlds()).thenReturn(List.of(world));
+        when(server.getPluginManager()).thenReturn(mock(PluginManager.class));
+
+        alice = mock(Player.class);
+        bob = mock(Player.class);
+        console = mock(ConsoleCommandSender.class);
+        when(alice.getUniqueId()).thenReturn(aliceId);
+        when(alice.getName()).thenReturn("Alice");
+        when(alice.isOnline()).thenReturn(true);
+        when(alice.canSee(any(Player.class))).thenReturn(true);
+        when(alice.hasPermission(anyString())).thenAnswer(c -> !c.getArgument(0, String.class).equals("allium.tax.exempt"));
+        when(bob.getUniqueId()).thenReturn(bobId);
+        when(bob.getName()).thenReturn("Bob");
+        when(bob.isOnline()).thenReturn(true);
+        when(bob.canSee(any(Player.class))).thenReturn(true);
+        when(bob.hasPermission(anyString())).thenReturn(true);
+        when(console.getName()).thenReturn("CONSOLE");
+        when(console.hasPermission(anyString())).thenReturn(true);
+
+        when(server.getPlayer(aliceId)).thenReturn(alice);
+        when(server.getPlayer(bobId)).thenReturn(bob);
+        when(server.getPlayerExact("Alice")).thenReturn(alice);
+        when(server.getPlayerExact("Bob")).thenReturn(bob);
+        when(server.getOnlinePlayers()).thenAnswer(c -> List.of(alice, bob));
+
+        PlayerNameService names = mock(PlayerNameService.class);
+        NameCache cache = new NameCache(64);
+        cache.put(aliceId, "Alice", System.currentTimeMillis());
+        cache.put(bobId, "Bob", System.currentTimeMillis());
+        when(names.cache()).thenReturn(cache);
+        when(names.resolve("Alice")).thenReturn(CompletableFuture.completedFuture(Optional.of(new NameCache.Entry(aliceId, "Alice", 1L))));
+        when(names.resolve("Bob")).thenReturn(CompletableFuture.completedFuture(Optional.of(new NameCache.Entry(bobId, "Bob", 1L))));
+
+        pool = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        TaskScheduler scheduler = mock(TaskScheduler.class);
+        when(scheduler.runOnServer(any())).thenAnswer(c -> { ((Runnable) c.getArgument(0)).run(); return TaskHandle.NONE; });
+        when(scheduler.boundedPool(anyString(), anyInt(), anyInt())).thenReturn(pool);
+
+        when(plugin.getName()).thenReturn("Allium");
+        when(plugin.getConfig()).thenReturn(config);
+        when(plugin.getDatabaseManager()).thenReturn(db);
+        when(plugin.getServer()).thenReturn(server);
+        when(plugin.getPlayerNames()).thenReturn(names);
+        when(plugin.getScheduler()).thenReturn(scheduler);
+        when(plugin.getMessageManager()).thenReturn(messages);
+        when(plugin.getModuleManager()).thenReturn(mock(ModuleManager.class));
+        when(plugin.logger()).thenReturn(mock(AlliumLogger.class));
+
+        runtime = new EconomyRuntime(plugin);
+        runtime.enable();
+        drainWorker();
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (runtime != null) runtime.close();
+        if (pool != null) pool.shutdownNow();
+    }
+
+    private void drainWorker() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        runtime.submitWork(null, latch::countDown);
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    private long balance(UUID id) {
+        return ((Found) runtime.synchronousBalance(id)).available().minor();
+    }
+
+    @Test
+    void shorthandEcoAndTaxedAndExemptPayAndBaltopNamesWorkEndToEnd() throws Exception {
+        UUID taxId = runtime.taxSettings().accountUuid();
+        assertEquals(0L, balance(taxId), "Tax account opens at 0.00");
+
+        // /money give Alice 100k and /eco give Bob 1M
+        runtime.dispatch(console, "eco", new String[]{"give", "Alice", "100k"});
+        runtime.dispatch(console, "eco", new String[]{"give", "Bob", "1M"});
+        drainWorker();
+        assertEquals(10_010_000L, balance(aliceId));
+        assertEquals(100_010_000L, balance(bobId));
+
+        // /pay Bob 100k with 5% tax: Alice -100k, Bob +95k, Tax +5k
+        runtime.dispatch(alice, "pay", new String[]{"Bob", "100k"});
+        drainWorker();
+        assertEquals(10_000L, balance(aliceId));
+        assertEquals(109_510_000L, balance(bobId));
+        assertEquals(500_000L, balance(taxId));
+
+        // With allium.tax.exempt, /pay Bob 100 transfers full 100.00 with 0 tax
+        when(alice.hasPermission("allium.tax.exempt")).thenReturn(true);
+        runtime.dispatch(alice, "pay", new String[]{"Bob", "100"});
+        drainWorker();
+        assertEquals(0L, balance(aliceId));
+        assertEquals(109_520_000L, balance(bobId));
+        assertEquals(500_000L, balance(taxId));
+
+        // /baltop outputs header, Server Total, and one line per account with names (Bob, Tax, Alice), never raw UUIDs
+        runtime.dispatch(console, "baltop", new String[0]);
+        drainWorker();
+        verify(messages).send(eq(console), eq(Messages.ECO_TOP), eq("{page}"), eq("1"), eq("{pages}"), eq("1"));
+        verify(messages).send(eq(console), eq(Messages.ECO_TOP_TOTAL), eq("{total}"), eq("$1,100,200"));
+        verify(messages).send(eq(console), eq(Messages.ECO_TOP_ENTRY), eq("{rank}"), eq("1"), eq("{player}"), eq("Bob"), eq("{balance}"), eq("$1,095,200"));
+        verify(messages).send(eq(console), eq(Messages.ECO_TOP_ENTRY), eq("{rank}"), eq("2"), eq("{player}"), eq("Tax"), eq("{balance}"), eq("$5,000"));
+        verify(messages).send(eq(console), eq(Messages.ECO_TOP_ENTRY), eq("{rank}"), eq("3"), eq("{player}"), eq("Alice"), eq("{balance}"), eq("$0"));
+        verify(messages, never()).send(eq(console), eq(Messages.ECO_TOP_ENTRY), any(), any(), eq("{player}"), eq(taxId.toString()), any(), any());
+    }
+
+    @Test
+    void taxCommandImposeHistoryAndConfirmedRefundWork() throws Exception {
+        UUID taxId = runtime.taxSettings().accountUuid();
+        runtime.dispatch(console, "eco", new String[]{"set", "Alice", "1k"});
+        drainWorker();
+        assertEquals(100_000L, balance(aliceId));
+
+        // Impose 10% tax on Alice ($100 -> Tax)
+        runtime.dispatch(console, "tax", new String[]{"impose", "Alice", "10"});
+        drainWorker();
+        assertEquals(90_000L, balance(aliceId));
+        assertEquals(10_000L, balance(taxId));
+
+        // Refund without confirm only prompts; balances unchanged
+        runtime.dispatch(console, "tax", new String[]{"refund", "1", "50"});
+        drainWorker();
+        assertEquals(90_000L, balance(aliceId));
+        assertEquals(10_000L, balance(taxId));
+
+        // Confirmed 50% refund ($50 back from Tax -> Alice)
+        runtime.dispatch(console, "tax", new String[]{"refund", "1", "50", "confirm"});
+        drainWorker();
+        assertEquals(95_000L, balance(aliceId));
+        assertEquals(5_000L, balance(taxId));
+
+        // Second refund refused cleanly
+        runtime.dispatch(console, "tax", new String[]{"refund", "1", "100", "confirm"});
+        drainWorker();
+        assertEquals(95_000L, balance(aliceId));
+        assertEquals(5_000L, balance(taxId));
+    }
+}

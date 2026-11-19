@@ -20,4 +20,20 @@ class SignIdentityTest {
         assertFalse(budget.admit(p,200_000_000,2));assertTrue(budget.admit(other,200_000_000,2));
         assertTrue(budget.admit(p,1_000_000_000,2));budget.forget(p);assertTrue(budget.admit(p,1_000_000_001,2));
     }
+    @Test void v3EncodesPriceOverridesAndDecodesLegacyV1AndV2(){
+        UUID id=UUID.randomUUID();
+        var kitPaid=new SignIdentity(id,SignIdentity.Type.KIT,"starter",false,new codes.castled.allium.economy.Money(40_000),true);
+        assertEquals(kitPaid,SignIdentity.decode(kitPaid.encode()).orElseThrow());
+        var kitFreeOverride=new SignIdentity(id,SignIdentity.Type.KIT,"vip",false,new codes.castled.allium.economy.Money(0),true);
+        var decodedFree=SignIdentity.decode(kitFreeOverride.encode()).orElseThrow();
+        assertTrue(decodedFree.priceOverride());assertEquals(0,decodedFree.price().minor());
+        var warpPaid=new SignIdentity(id,SignIdentity.Type.WARP,"spawn",true,new codes.castled.allium.economy.Money(500),true);
+        assertEquals(warpPaid,SignIdentity.decode(warpPaid.encode()).orElseThrow());
+        // Legacy v1 and v2 still decode cleanly.
+        String arg=java.util.Base64.getUrlEncoder().withoutPadding().encodeToString("all".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var v2=SignIdentity.decode("2:"+id+":repair:0:"+arg+":2500").orElseThrow();
+        assertEquals(2500,v2.price().minor());assertTrue(v2.priceOverride());
+        assertThrows(IllegalArgumentException.class,()->new SignIdentity(id,SignIdentity.Type.COLOR,"",false,new codes.castled.allium.economy.Money(100),true));
+        assertThrows(IllegalArgumentException.class,()->new SignIdentity(id,SignIdentity.Type.COLOR,"",false,new codes.castled.allium.economy.Money(0),true));
+    }
 }

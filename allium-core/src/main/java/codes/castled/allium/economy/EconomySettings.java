@@ -4,14 +4,20 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Objects;
 
 /** Validated immutable Phase 1 settings; install only after admission is drained. */
 public record EconomySettings(Money starting, Money minimum, Money maximum, Money minimumPay,
-                              boolean offlinePay, boolean excludesIgnore, boolean defaultAcceptance) {
+                              boolean offlinePay, boolean excludesIgnore, boolean defaultAcceptance,
+                              TaxSettings tax) {
     public EconomySettings(Money starting, Money minimum, Money maximum, Money minimumPay, boolean offlinePay, boolean excludesIgnore) {
-        this(starting,minimum,maximum,minimumPay,offlinePay,excludesIgnore,true);
+        this(starting,minimum,maximum,minimumPay,offlinePay,excludesIgnore,true,TaxSettings.disabled());
+    }
+    public EconomySettings(Money starting, Money minimum, Money maximum, Money minimumPay, boolean offlinePay, boolean excludesIgnore, boolean defaultAcceptance) {
+        this(starting,minimum,maximum,minimumPay,offlinePay,excludesIgnore,defaultAcceptance,TaxSettings.disabled());
     }
     public EconomySettings {
+        Objects.requireNonNull(tax, "tax");
         if (minimum.minor() > 0 || maximum.minor() < 0 || minimum.compareTo(maximum) >= 0
                 || starting.compareTo(minimum) < 0 || starting.compareTo(maximum) > 0
                 || minimumPay.minor() < 1 || minimumPay.compareTo(maximum) > 0)
@@ -21,7 +27,7 @@ public record EconomySettings(Money starting, Money minimum, Money maximum, Mone
         return new EconomySettings(new Money(10_000), new Money(0), new Money(Money.HARD), new Money(1), true, true);
     }
     public String fingerprint() {
-        String canonical = "v1|"+starting.minor()+"|"+minimum.minor()+"|"+maximum.minor()+"|"+minimumPay.minor()+"|"+offlinePay+"|"+excludesIgnore+"|"+defaultAcceptance;
+        String canonical = "v1|"+starting.minor()+"|"+minimum.minor()+"|"+maximum.minor()+"|"+minimumPay.minor()+"|"+offlinePay+"|"+excludesIgnore+"|"+defaultAcceptance+"|"+tax.fingerprint();
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.US_ASCII))); }
         catch (NoSuchAlgorithmException impossible) { throw new AssertionError(impossible); }
     }

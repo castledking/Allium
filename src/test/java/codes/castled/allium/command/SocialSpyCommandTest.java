@@ -36,7 +36,8 @@ class SocialSpyCommandTest {
         }
         command.execute(context(plugin, mock(ConsoleCommandSender.class), new String[]{"on"}));
         verify(plugin, never()).getModuleManager();
-        verify(messages, times(4)).sendByKey(any(), anyString(), eq("{usage}"), eq("/socialspy [on|off]"));
+        // Each wrong form is answered with the /socialspy usage card.
+        verify(messages, times(4)).send(any(), eq(Messages.HELP_COMMAND_HEADER), eq("{command}"), eq("socialspy"));
     }
 
     @Test

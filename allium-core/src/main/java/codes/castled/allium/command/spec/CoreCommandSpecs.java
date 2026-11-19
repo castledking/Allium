@@ -51,6 +51,8 @@ public final class CoreCommandSpecs {
             Map.entry("paytoggle", "Allow or refuse incoming payments"),
             Map.entry("eco", "Give, take or set player balances"),
             Map.entry("baltop", "Show the richest accounts"),
+            Map.entry("cheque", "Write a redeemable money cheque"),
+            Map.entry("tax", "Inspect, impose, list or refund server taxes"),
             Map.entry("nick", "Set or clear your nickname (or another player's)"),
             Map.entry("channel", "Join, leave or write to a chat channel"),
             Map.entry("delmsg", "Delete a chat message for everyone"));
@@ -572,7 +574,8 @@ public final class CoreCommandSpecs {
             describe(name,"Allium chat: "+name),"/"+name,"/"+name,name.equals("delmsg")?null:"allium."+name,null,
             List.of(CommandArgSpec.optional("arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of()))).toList();
 
-    private static final List<String> MONEY_AMOUNTS = List.of("1", "10", "100", "1000");
+    private static final List<String> MONEY_AMOUNTS = List.of("1", "10", "100", "1k", "100k", "1M");
+    private static final List<String> TAX_PERCENTS = List.of("5", "10", "25", "50", "100");
 
     private static CommandSpec economySpec(String name, List<String> aliases, String usage, String othersPermission,
                                            List<CommandArgSpec> arguments, List<CommandNodeSpec> children) {
@@ -609,20 +612,46 @@ public final class CoreCommandSpecs {
                             new CommandNodeSpec("reservations", List.of(), "allium.eco.admin", "/eco reservations [player]",
                                     List.of(CommandArgSpec.optional("player", null, SuggestionSpec.knownPlayers(null))), List.of()),
                             new CommandNodeSpec("resolve", List.of(), "allium.eco.admin",
-                                    "/eco resolve <KIT|MAIL|REPAIR> <workflow> <capture|release> <reason>",
-                                    List.of(CommandArgSpec.required("kind", null, SuggestionSpec.literals(List.of("KIT", "MAIL", "REPAIR"), null)),
+                                    "/eco resolve <KIT|MAIL|REPAIR|CHEQUE> <workflow> <capture|release> <reason>",
+                                    List.of(CommandArgSpec.required("kind", null, SuggestionSpec.literals(List.of("KIT", "MAIL", "REPAIR", "CHEQUE"), null)),
                                             CommandArgSpec.required("workflow", null, SuggestionSpec.none()),
                                             CommandArgSpec.required("decision", null,
                                                     SuggestionSpec.literals(List.of("capture", "release"), null)),
                                             CommandArgSpec.required("reason", null, SuggestionSpec.none())), List.of()))),
-            economySpec("baltop", List.of(), "/baltop", null, List.of(), List.of()));
+            economySpec("baltop", List.of(), "/baltop [page]", null,
+                    List.of(CommandArgSpec.optional("page", null, SuggestionSpec.literals(List.of("1", "2", "3"), null))), List.of()),
+            economySpec("cheque", List.of(), "/cheque <amount> [player]", "allium.cheque.others",
+                    List.of(CommandArgSpec.required("amount", null, SuggestionSpec.literals(MONEY_AMOUNTS, null)),
+                            CommandArgSpec.optional("player", "allium.cheque.others",
+                                    SuggestionSpec.onlinePlayers("allium.cheque.others"))), List.of()),
+            economySpec("tax", List.of(), "/tax [impose|history|refund]", null, List.of(),
+                    List.of(
+                            new CommandNodeSpec("impose", List.of(), "allium.tax.impose",
+                                    "/tax impose <player|*|*> <percent>",
+                                    List.of(CommandArgSpec.required("target", null, SuggestionSpec.knownPlayers(null)),
+                                            CommandArgSpec.required("percent", null, SuggestionSpec.literals(TAX_PERCENTS, null))), List.of()),
+                            new CommandNodeSpec("history", List.of(), "allium.tax.history",
+                                    "/tax history [player] [page]",
+                                    List.of(CommandArgSpec.optional("player", null, SuggestionSpec.knownPlayers(null)),
+                                            CommandArgSpec.optional("page", null, SuggestionSpec.literals(List.of("1", "2"), null))), List.of()),
+                            new CommandNodeSpec("refund", List.of(), "allium.tax.refund",
+                                    "/tax refund <id|player> [percent] [confirm]",
+                                    List.of(CommandArgSpec.required("target", null, SuggestionSpec.knownPlayers(null)),
+                                            CommandArgSpec.optional("percent", null, SuggestionSpec.literals(TAX_PERCENTS, null)),
+                                            CommandArgSpec.optional("confirm", null, SuggestionSpec.literals(List.of("confirm"), null))), List.of()))));
 
-    public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps")
-            .map(CoreCommandSpecs::travelSpec).toList();
+    /** {@code /bed}: {@code /home bed}, for holders of {@code allium.home.bed}. */
+    public static final CommandSpec BED = new CommandSpec("bed", CommandSpec.DEFAULT_NAMESPACE, "travel", List.of(),
+            "Teleport to your bed", "/bed", "/bed", "allium.home.bed", null, List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> TRAVEL_SPECS = java.util.stream.Stream.concat(
+            java.util.stream.Stream.of("sethome","home","delhome","homes","setwarp","warp","delwarp","warps").map(CoreCommandSpecs::travelSpec),
+            java.util.stream.Stream.of(BED)).toList();
     private static CommandSpec travelSpec(String command) {
         boolean warp=command.contains("warp"),list=command.equals("homes")||command.equals("warps"),set=command.startsWith("set");
-        String usage="/"+command+(list?"":warp?" <name>":" [name]")+(set?" [confirm]":"");
+        String usage="/"+command+(command.equals("homes")?" [player]":list?"":warp?" <name>":" [name]")+(set?" [confirm]":"");
         java.util.ArrayList<CommandArgSpec> args=new java.util.ArrayList<>();
+        if(command.equals("homes"))args.add(CommandArgSpec.optional("player","allium.homes.others",SuggestionSpec.knownPlayers("allium.homes.others")));
         if(!list){var suggestion=new SuggestionSpec(warp?SuggestionSource.WARP_NAMES:SuggestionSource.HOME_NAMES,List.of(),null);
             args.add(warp?CommandArgSpec.required("name",null,suggestion):CommandArgSpec.optional("name",null,suggestion));
             if(set)args.add(CommandArgSpec.optional("confirm",null,SuggestionSpec.literals(List.of("confirm"),null)));}
@@ -934,9 +963,71 @@ public final class CoreCommandSpecs {
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    /** {@code /rename <name>|clear}: the held item's custom name. */
+    public static final CommandSpec RENAME = new CommandSpec(
+            "rename", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("itemname"),
+            "Rename the item in your hand",
+            "/rename <name|clear>", "/rename <name|clear>",
+            "allium.rename", null,
+            List.of(CommandArgSpec.required("name", null, SuggestionSpec.literals(List.of("clear"), null))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /lore add|set|insert|remove|clear}: the held item's lore lines. */
+    public static final CommandSpec LORE = new CommandSpec(
+            "lore", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("itemlore"),
+            "Edit the lore of the item in your hand",
+            "/lore <add|set|insert|remove|clear|copy|paste>", "/lore <add|set|insert|remove|clear|copy|paste>",
+            "allium.lore", null,
+            List.of(),
+            List.of(
+                    new CommandNodeSpec("add", List.of(), null, "/lore add <text>", List.of(), List.of()),
+                    new CommandNodeSpec("set", List.of(), null, "/lore set <line> <text>",
+                            List.of(CommandArgSpec.required("line", null, SuggestionSpec.literals(List.of("1", "2", "3"), null))), List.of()),
+                    new CommandNodeSpec("insert", List.of(), null, "/lore insert <line> <text>",
+                            List.of(CommandArgSpec.required("line", null, SuggestionSpec.literals(List.of("1", "2", "3"), null))), List.of()),
+                    new CommandNodeSpec("remove", List.of(), null, "/lore remove <line>",
+                            List.of(CommandArgSpec.required("line", null, SuggestionSpec.literals(List.of("1", "2", "3"), null))), List.of()),
+                    new CommandNodeSpec("clear", List.of(), null, "/lore clear", List.of(), List.of()),
+                    new CommandNodeSpec("copy", List.of(), null, "/lore copy", List.of(), List.of()),
+                    new CommandNodeSpec("paste", List.of(), null, "/lore paste", List.of(), List.of())),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    private static final List<CommandArgSpec> XP_CHANGE_ARGS = List.of(
+            CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
+            CommandArgSpec.required("amount", null, SuggestionSpec.literals(List.of("10", "100", "1L", "5L", "30L"), null)));
+
+    /** {@code /xp}: show, give, take, set or reset experience (vanilla's add/remove/query words work too). */
+    public static final CommandSpec XP = new CommandSpec(
+            "xp", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("exp"),
+            "Show or change experience",
+            "/xp [player] | /xp <give|take|set> <player> <amount>[L] | /xp reset <player>",
+            "/xp <player> | /xp <give|take|set> <player> <amount>[L] | /xp reset <player>",
+            "allium.xp", "allium.xp.others",
+            List.of(CommandArgSpec.optional("player", "allium.xp.others", SuggestionSpec.onlinePlayers("allium.xp.others"))),
+            List.of(
+                    new CommandNodeSpec("give", List.of("add"), "allium.xp.give", "/xp give <player> <amount>[L]", XP_CHANGE_ARGS, List.of()),
+                    new CommandNodeSpec("take", List.of("remove"), "allium.xp.take", "/xp take <player> <amount>[L]", XP_CHANGE_ARGS, List.of()),
+                    new CommandNodeSpec("set", List.of(), "allium.xp.set", "/xp set <player> <amount>[L]", XP_CHANGE_ARGS, List.of()),
+                    new CommandNodeSpec("reset", List.of(), "allium.xp.set", "/xp reset <player>",
+                            List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null))), List.of())),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /customtext [section] [page]}: pages of {@code customtext.txt}, with click and hover tags. */
+    public static final CommandSpec CUSTOMTEXT = new CommandSpec(
+            "customtext", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Show a page of the server's custom text",
+            "/customtext [section] [page]", "/customtext [section] [page]",
+            "allium.customtext", null,
+            List.of(CommandArgSpec.optional("section", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

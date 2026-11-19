@@ -23,6 +23,8 @@ public final class PlayerDataReceiptProof {
     public static final String KIT_RECEIPTS = "allium:kit_receipts";
     /** Paid repair signs: comma-separated workflow IDs whose repair is saved in this player file. */
     public static final String REPAIR_RECEIPTS = "allium:repair_receipts";
+    /** Player-funded cheques: comma-separated workflow IDs whose cheque item is saved in this player file. */
+    public static final String CHEQUE_RECEIPTS = "allium:cheque_receipts";
 
     /**
      * @param selectedItemSlot the player's selected hotbar slot ({@code SelectedItemSlot}, 0-8): the main

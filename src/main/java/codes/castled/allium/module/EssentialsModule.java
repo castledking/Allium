@@ -36,6 +36,7 @@ public final class EssentialsModule extends AbstractModule {
     public codes.castled.allium.player.FlightRestoration flights(){return flights;}
     private TimePauseCoordinator timePauseCoordinator;
     private UtilityCommand.DisposalListener disposalListener;
+    private codes.castled.allium.command.essentials.LoreClipboard loreClipboard;
     private SkullProfiles fallbackSkulls;
 
     public EssentialsModule(PluginStart plugin) {
@@ -86,6 +87,16 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new TimeCommand(plugin, CoreCommandSpecs.NIGHT, timePauseCoordinator));
         plugin.getCommandManager().register(new WeatherCommand(plugin));
         plugin.getCommandManager().register(new EnchantCommand(plugin));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.RENAME));
+        loreClipboard = new codes.castled.allium.command.essentials.LoreClipboard();
+        if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
+            plugin.getServer().getPluginManager().registerEvents(loreClipboard, plugin);
+        }
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.LORE, loreClipboard));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.XpCommand(plugin));
+        var customText = new codes.castled.allium.command.essentials.CustomTextCommand(plugin);
+        customText.installDefault();
+        plugin.getCommandManager().register(customText);
     }
 
     private SkullProfiles resolveSkullProfiles() {
@@ -122,6 +133,10 @@ public final class EssentialsModule extends AbstractModule {
         if (disposalListener != null) {
             HandlerList.unregisterAll(disposalListener);
             disposalListener = null;
+        }
+        if (loreClipboard != null) {
+            HandlerList.unregisterAll(loreClipboard);
+            loreClipboard = null;
         }
         if (timePauseCoordinator != null) {
             timePauseCoordinator.close();

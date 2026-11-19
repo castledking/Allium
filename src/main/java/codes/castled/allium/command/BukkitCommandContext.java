@@ -87,22 +87,18 @@ public final class BukkitCommandContext {
         }
 
         if (!(sender instanceof Player player)) {
-            plugin.getMessageManager().sendByKey(
-                    sender,
-                    spec.messageKeys().invalidArgsKey(),
-                    "{usage}", spec.consoleUsage()
-            );
+            sendInvalidArgs(spec.consoleUsage());
             return null;
         }
         return player;
     }
 
+    /**
+     * Shows the command's usage card ({@link CommandUsageCard}): its description and every form the
+     * sender may use, narrowed to the subcommand {@code usage} names ({@code /mail clear}).
+     */
     public void sendInvalidArgs(String usage) {
-        plugin.getMessageManager().sendByKey(
-                sender,
-                spec.messageKeys().invalidArgsKey(),
-                "{usage}", usage
-        );
+        CommandUsageCard.sendInvalid(plugin, sender, spec, label, usage);
     }
 
     public void sendOutcome(CommandSender recipient, String outcomeName, String... replacements) {

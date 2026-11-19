@@ -108,9 +108,7 @@ public final class MessageSoundsCommand implements SpecCommandHandler {
                 change(player, MessageSoundRules.reset());
                 plugin.getMessageManager().send(sender, Messages.SOUNDS_RESET, "{volume}", format(defaults.messageSoundVolume()));
             }
-            default -> {
-                plugin.getMessageManager().send(sender, Messages.SOUNDS_USAGE);
-            }
+            default -> context.sendInvalidArgs(spec().selfUsage());
         }
     }
 

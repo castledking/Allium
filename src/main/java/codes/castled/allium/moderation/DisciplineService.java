@@ -828,7 +828,12 @@ public final class DisciplineService implements Listener {
         String reason = start >= args.length ? "No reason supplied." : plain(String.join(" ", Arrays.copyOfRange(args, start, args.length)));
         return reason.length() > 256 ? reason.substring(0, 256) : reason;
     }
-    private void usage(CommandSender sender, String usage) { send(sender, Messages.DISCIPLINE_USAGE, "{usage}", usage); }
+    /** The command's usage card, narrowed to the form that was wrong. */
+    private void usage(CommandSender sender, String usage) {
+        if (closed) return;
+        String command = usage.startsWith("/") ? usage.substring(1).split(" ", 2)[0] : usage;
+        codes.castled.allium.command.CommandUsageCard.sendInvalid(plugin, sender, command, command, usage);
+    }
     private void send(CommandSender sender, Messages message, String... replacements) { plugin.getMessageManager().send(sender, message, replacements); }
     private FormattedText formatted(Messages message, String body, String... replacements) {
         return UntrustedText.insert(plugin.getMessageManager().resolve(message, replacements), UntrustedText.parse(body, UntrustedText.Allow.NONE));

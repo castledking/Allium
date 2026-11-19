@@ -1,6 +1,8 @@
 package codes.castled.allium.message;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.module.PreferencesModule;
+import codes.castled.allium.preference.EffectivePreferences;
 import codes.castled.allium.sound.SoundLevels;
 import codes.castled.allium.text.FormattedText;
 import codes.castled.allium.text.TextFormatter;
@@ -15,6 +17,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MessageManager {
@@ -55,7 +58,7 @@ public final class MessageManager {
         if (sender instanceof Player player) {
             MessageSoundSpec spec = langManager.getSound(message.key());
             if (spec != null) {
-                playSound(player, spec);
+                playMessageSound(player, spec);
             }
         }
     }
@@ -131,16 +134,48 @@ public final class MessageManager {
     }
 
     /**
-     * Plays a message's configured sound directly using Bukkit's sound API.
+     * Plays a message's configured sound scaled by the player's {@code /mfx} message sound volume.
      */
     public void playSoundIfPresent(Player player, Messages message) {
         MessageSoundSpec spec = langManager.getSound(message);
         if (spec != null) {
-            playSound(player, spec);
+            playMessageSound(player, spec);
         }
     }
 
-    /** Plays a message sound at its own (or the default) volume and pitch. */
+    /**
+     * Plays a message sound scaled by the player's {@code /mfx} volume override (or
+     * {@code sounds.messages.fallback-volume} when preferences are unavailable/disabled).
+     * Loading and failed preference sessions fail closed (silent).
+     */
+    public void playMessageSound(Player player, MessageSoundSpec spec) {
+        if (player == null || spec == null) {
+            return;
+        }
+        SoundLevels.Defaults defaults = soundDefaults(spec);
+        double recipientVolume = playerMessageSoundVolume(player, defaults);
+        if (recipientVolume <= 0.0D) {
+            return;
+        }
+        SoundLevels.notification(recipientVolume, spec.volume(), spec.pitch(), defaults)
+                .ifPresent(level -> play(player, spec, level));
+    }
+
+    private double playerMessageSoundVolume(Player player, SoundLevels.Defaults defaults) {
+        if (plugin.getModuleManager() != null
+                && plugin.getModuleManager().getModule("preferences") instanceof PreferencesModule preferences
+                && preferences.isEnabled()) {
+            UUID uuid = player.getUniqueId();
+            if (uuid == null) {
+                return 0.0D;
+            }
+            // Loading and failed sessions are silent, never replaced with a default.
+            return preferences.effective(uuid).map(EffectivePreferences::messageSoundVolume).orElse(0.0D);
+        }
+        return defaults.messageFallbackVolume();
+    }
+
+    /** Plays a message sound unscaled, at its own (or the default) volume and pitch. */
     public void playSound(Player player, MessageSoundSpec spec) {
         if (player == null || spec == null) {
             return;

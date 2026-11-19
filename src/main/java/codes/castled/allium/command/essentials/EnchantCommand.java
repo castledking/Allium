@@ -89,8 +89,8 @@ public final class EnchantCommand implements SpecCommandHandler {
             return;
         }
         var meta = held.getItemMeta();
-        String enchantName = enchantment.getKey().getKey();
-        String itemName = UtilitySupport.formatMaterialName(held.getType());
+        String enchantName = UtilitySupport.enchantName(enchantment.getKey());
+        String itemName = UtilitySupport.itemName(held);
 
         if (parsed.level() == 0) {
             if (meta instanceof EnchantmentStorageMeta book) {

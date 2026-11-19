@@ -23,7 +23,16 @@ final class LanguageColors {
             new Replacement("item.give.received","{prefix} &aRecibiste &f{amount}x {item}&a.","{prefix} &aRecibiste &f{amount} {item}&a."),
             new Replacement("utility.repair-held","{prefix} &aRepaired the held item.","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aRepaired &f{count} &adamaged item(s).","{prefix} &aRepaired &f{items}&a."),
-            new Replacement("utility.repair-all","{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s).","{prefix} &aReparaste &f{items}&a."));
+            new Replacement("utility.repair-all","{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s).","{prefix} &aReparaste &f{items}&a."),
+            // /whois shows one field per line.
+            new Replacement("info.whois.dates","&7First joined: &f{first_join} &8| &7{seen_label}: &f{seen_value}","&7First joined: &f{first_join}\n&7{seen_label}: &f{seen_value}"),
+            new Replacement("info.whois.state","&7Gamemode: &f{gamemode} &8| &7Fly: {fly} &8| &7Flying: {flying} &8| &7God: {god} &8| &7Vanished: {vanished} &8| &7AFK: {afk}","&7Gamemode: &f{gamemode}\n&7Fly: {fly}\n&7Flying: {flying}\n&7God: {god}\n&7Vanished: {vanished}\n&7AFK: {afk}"),
+            new Replacement("info.whois.vitals","&7Health: &f{health}&7/&f{max_health} &8| &7Food: &f{food} &8| &7Level: &f{level} &8| &7Ping: &f{ping}ms &8| &7Walk speed: &f{speed}","&7Health: &f{health}&7/&f{max_health}\n&7Food: &f{food}\n&7Level: &f{level}\n&7Ping: &f{ping}ms\n&7Walk speed: &f{speed}"),
+            new Replacement("info.whois.flags","&7Op: {op} &8| &7Muted: {muted} &8| &7Banned: {banned} &8| &7Whitelisted: {whitelisted} &8| &7Frozen: {frozen} &8| &7Jailed: {jailed}","&7Op: {op}\n&7Muted: {muted}\n&7Banned: {banned}\n&7Whitelisted: {whitelisted}\n&7Frozen: {frozen}\n&7Jailed: {jailed}"),
+            new Replacement("info.whois.dates","&7Primer ingreso: &f{first_join} &8| &7{seen_label}: &f{seen_value}","&7Primer ingreso: &f{first_join}\n&7{seen_label}: &f{seen_value}"),
+            new Replacement("info.whois.state","&7Modo: &f{gamemode} &8| &7Vuelo: {fly} &8| &7Volando: {flying} &8| &7Dios: {god} &8| &7Invisible: {vanished} &8| &7AFK: {afk}","&7Modo: &f{gamemode}\n&7Vuelo: {fly}\n&7Volando: {flying}\n&7Dios: {god}\n&7Invisible: {vanished}\n&7AFK: {afk}"),
+            new Replacement("info.whois.vitals","&7Vida: &f{health}&7/&f{max_health} &8| &7Comida: &f{food} &8| &7Nivel: &f{level} &8| &7Ping: &f{ping}ms &8| &7Velocidad: &f{speed}","&7Vida: &f{health}&7/&f{max_health}\n&7Comida: &f{food}\n&7Nivel: &f{level}\n&7Ping: &f{ping}ms\n&7Velocidad: &f{speed}"),
+            new Replacement("info.whois.flags","&7Op: {op} &8| &7Silenciado: {muted} &8| &7Baneado: {banned} &8| &7En lista blanca: {whitelisted} &8| &7Congelado: {frozen} &8| &7Encarcelado: {jailed}","&7Op: {op}\n&7Silenciado: {muted}\n&7Baneado: {banned}\n&7En lista blanca: {whitelisted}\n&7Congelado: {frozen}\n&7Encarcelado: {jailed}"));
 
     private static Replacement color(String key,String text) {
         return new Replacement(key,text,"&c"+text);
@@ -37,9 +46,11 @@ final class LanguageColors {
             var parsed=LanguageEntry.read(raw);
             if(parsed==null||!parsed.text().equals(replacement.before()))continue;
             if(raw instanceof List<?> values){
-                var copy=new ArrayList<Object>(values);
-                for(int i=0;i<copy.size();i++){
-                    if(replacement.before().equals(copy.get(i)))copy.set(i,replacement.after());
+                // A multi-line replacement becomes one list entry per line.
+                var copy=new ArrayList<Object>();
+                for(Object value:values){
+                    if(replacement.before().equals(value))copy.addAll(List.of(replacement.after().split("\n",-1)));
+                    else copy.add(value);
                 }
                 yaml.set(key,copy);
             }else if(yaml.isConfigurationSection(key)){

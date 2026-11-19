@@ -1745,7 +1745,7 @@ def main():
             require(False, 'shutdown: ' + str(error))
         clean_logs(lane)
     manifest = dict(suite=A.suite, run=A.run_name, alliumSha256=A.sha256, sources=SOURCE_HASHES,
-                    placeholderapiSha256=hashlib.sha256(A.placeholderapi.read_bytes()).hexdigest() if A.placeholderapi else None,
+                    placeholderJarChecksum=hashlib.sha256(A.placeholderapi.read_bytes()).hexdigest() if A.placeholderapi else None,
                     passed=not failures,
                     checks=len(checks), failures=failures, cases=cases, seconds=round(time.time() - started, 1), results=checks)
     (RUN / 'manifest.json').write_text(json.dumps(manifest, indent=2, default=str))

@@ -10,7 +10,7 @@
     "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
     "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
   },
-  "placeholderapiSha256": "fde03259f5af6938f3c33eeb4d814000a1adabf1d2304ce14970be81f609a437",
+  "placeholderJarChecksum": "fde03259f5af6938f3c33eeb4d814000a1adabf1d2304ce14970be81f609a437",
   "passed": true,
   "checks": 9,
   "failures": [],

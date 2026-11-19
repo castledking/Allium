@@ -191,9 +191,9 @@ commands:
     usage: /<command> [player]
     permission: allium.feed
   fly:
-    description: Toggle flight
-    usage: /<command> [player]
-    permission: allium.fly
+    description: Toggle flight, or your timed flight
+    usage: /<command> [player] | /<command> <player> <set|add|take|reset> [time]
+    permission: allium.tfly
   toggleslowfall:
     description: Toggle slow falling when you lose flight
     usage: /<command> [on|off|status]
@@ -516,6 +516,11 @@ permissions:
       allium.feed: true
       allium.feed.others: true
       allium.fly: true
+      allium.tfly: true
+      allium.tfly.add: true
+      allium.tfly.take: true
+      allium.tfly.set: true
+      allium.tfly.reset: true
       allium.fly.others: true
       allium.god: true
       allium.god.others: true
@@ -755,7 +760,24 @@ permissions:
     description: Allows feeding other players
     default: op
   allium.fly:
-    description: Allows use of /fly
+    description: Allows use of /fly for unlimited flight (includes allium.tfly)
+    default: op
+    children:
+      allium.tfly: true
+  allium.tfly:
+    description: Allows /fly for timed flight; time only comes from staff (/fly <player> add <time>)
+    default: true
+  allium.tfly.add:
+    description: Allows /fly <player> add <time> (any player, online or not)
+    default: op
+  allium.tfly.take:
+    description: Allows /fly <player> take <time>
+    default: op
+  allium.tfly.set:
+    description: Allows /fly <player> set <time>
+    default: op
+  allium.tfly.reset:
+    description: Allows /fly <player> reset
     default: op
   allium.fly.safelogin:
     description: Enable flight when joining in midair outside water

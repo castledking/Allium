@@ -868,6 +868,36 @@ player:
   fly-toggle:
     - "{prefix} &fFly mode {state} &ffor &d{player}&f."
     - "[sound] entity.bat.takeoff 1.15"
+  tfly-on:
+    - "{prefix} &aTimed flight on: &f{time} &aleft. It only runs while you fly."
+    - "[sound] entity.bat.takeoff 1.15"
+  tfly-off:
+    - "{prefix} &7Timed flight off: &f{time} &7left."
+    - "[sound] ui.button.click 0.9"
+  tfly-none:
+    - "{prefix} &cYou have no timed flight left."
+    - "[sound] block.note_block.bass 0.8"
+  tfly-loading:
+    - "{prefix} &cYour flight time is still loading. Try again shortly."
+    - "[sound] block.note_block.bass 0.8"
+  tfly-warning:
+    - "{prefix} &eTimed flight: &f{time} &eleft."
+    - "[sound] block.note_block.pling 1.4"
+  tfly-expired:
+    - "{prefix} &cYour timed flight has run out."
+    - "[sound] entity.bat.death 1.0"
+  tfly-changed:
+    - "{prefix} &f{player} &anow has &f{time} &aof timed flight."
+    - "[sound] block.note_block.chime 1.2"
+  tfly-notify:
+    - "{prefix} &7Your timed flight is now &f{time}&7."
+    - "[sound] block.note_block.chime 1.2"
+  tfly-invalid-time:
+    - "{prefix} &f{input} &cis not a time; use seconds or e.g. 30m, 2h, 1d or 1h30m."
+    - "[sound] block.note_block.bass 0.8"
+  tfly-storage:
+    - "{prefix} &cFlight time could not be read or saved. Try again shortly."
+    - "[sound] block.note_block.bass 0.8"
   god-toggle:
     - "{prefix} &fGod mode {state} &ffor &d{player}&f."
     - "[sound] block.beacon.activate 1.35"

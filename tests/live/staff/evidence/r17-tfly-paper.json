@@ -1,0 +1,174 @@
+{
+  "suite": "paper",
+  "run": "tfly-paper-2",
+  "alliumSha256": "a14ca00b8e03226e9cab844b9e67f0e04782a6ba6f9be7e6f1dc3463eacdda9b",
+  "sources": {
+    "tests/live/staff/run.py": "f874f2b14775a45ee538f96d7c585a4a3a1beba7bcae9fb26190e6c308929801",
+    "tests/live/staff/plugin/gate/StaffGate.java": "ad1eec29329a1e7070eadf5e3494b957718d41e1a6aea51720240c7c51d5a135",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "e3cb6743eca4ef8aad13af3d0335489b4d70a7751665a4bcba0ccdcf6be45c03",
+    "tests/live/staff/client-raw26.cjs": "4aeeddb2cf56c8c0506080823abc2c7a4c42a3f46a43060f297c06670eb4524a",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "placeholderJarChecksum": "fde03259f5af6938f3c33eeb4d814000a1adabf1d2304ce14970be81f609a437",
+  "passed": true,
+  "checks": 10,
+  "failures": [],
+  "cases": [
+    {
+      "name": "timed-flight",
+      "passed": true
+    }
+  ],
+  "seconds": 33.0,
+  "results": [
+    {
+      "label": "paper: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: timed flight allows flight without lifting the player",
+      "passed": true,
+      "detail": {
+        "allow": true,
+        "flying": false
+      }
+    },
+    {
+      "label": "paper: on the ground no time was spent, and /fly turns it off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: the fixture lifts PlayerBot into flight",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: at zero flight ends",
+      "passed": true,
+      "detail": {
+        "allow": false,
+        "flying": false
+      }
+    },
+    {
+      "label": "paper: fly placeholders on the ground",
+      "passed": true,
+      "detail": {
+        "fly": "temporary-paused",
+        "fly_time": "20s"
+      }
+    },
+    {
+      "label": "paper: the fly placeholder while timed flight is in the air",
+      "passed": true,
+      "detail": "temporary"
+    },
+    {
+      "label": "paper: about three seconds were spent while flying",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] Timed flight off: 17s left.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#aaaaaa"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] Timed flight off: ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "17s ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "left.",
+            "color": "#aaaaaa"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": {
+          "extra": [
+            {
+              "color": "gray",
+              "text": "["
+            },
+            {
+              "color": "light_purple",
+              "text": "Allium"
+            },
+            {
+              "color": "gray",
+              "text": "] Timed flight off: "
+            },
+            {
+              "color": "white",
+              "text": "17s "
+            },
+            {
+              "color": "gray",
+              "text": "left."
+            }
+          ],
+          "text": ""
+        },
+        "interactive": false
+      }
+    },
+    {
+      "label": "paper: an offline player's bank changes through storage",
+      "passed": true,
+      "detail": "[06:27:33 INFO]: [Allium] PlayerBot now has 12s of timed flight.\n"
+    },
+    {
+      "label": "paper: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

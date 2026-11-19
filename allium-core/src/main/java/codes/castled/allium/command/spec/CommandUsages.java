@@ -34,7 +34,12 @@ public final class CommandUsages {
     private static final Map<String, List<CommandUsage>> USAGES = Map.ofEntries(
             e("heal", u("", "Heals you"), u("<player>", "Heals another player", "allium.heal.others")),
             e("feed", u("", "Fills your hunger"), u("<player>", "Fills another player's hunger", "allium.feed.others")),
-            e("fly", u("", "Toggles your flight"), u("<player>", "Toggles another player's flight", "allium.fly.others")),
+            e("fly", u("", "Toggles your flight; without allium.fly, your timed flight"),
+                    u("<player>", "Toggles another player's flight", "allium.fly.others"),
+                    u("<player> add <time>", "Gives timed flight, e.g. 30m, 2h or 1d", "allium.tfly.add"),
+                    u("<player> take <time>", "Takes timed flight", "allium.tfly.take"),
+                    u("<player> set <time>", "Sets a player's timed flight", "allium.tfly.set"),
+                    u("<player> reset", "Removes all of a player's timed flight", "allium.tfly.reset")),
             e("god", u("", "Toggles your god mode"), u("<player>", "Toggles another player's god mode", "allium.god.others")),
             e("toggleslowfall", u("", "Toggles slow falling when you lose flight"),
                     u("<on|off>", "Turns slow falling on flight loss on or off"),

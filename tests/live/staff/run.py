@@ -11,6 +11,7 @@ Owned loopback ports 25860-25862 and disposable run directories only.
 import argparse
 import fcntl
 import hashlib
+import itertools
 import json
 import os
 import re
@@ -1111,17 +1112,23 @@ def broadcasts(lane):
     require(not player.saw(m, '[Tip]') and not player.saw(m, '[Vote]'), lane.name + ': broadcasts stop after reloading them off')
 
 
+PAPI_MARKS = itertools.count(1)
+
+
+def papi(lane, placeholder):
+    """PlayerBot's value of a placeholder, by `papi parse` from the console (the server thread)."""
+    marker = f'PHG{next(PAPI_MARKS)}|'
+    start = len(lane.logs)
+    lane.console(f'papi parse PlayerBot {marker}{placeholder}')
+    line = lane.log_since(start, marker, 15)
+    return line.split(marker, 1)[1].strip()
+
+
 def placeholders(lane):
     """%allium_...% through the real PlaceholderAPI, parsed from the console (the server thread)."""
-    counter = [0]
 
     def parse(placeholder):
-        counter[0] += 1
-        marker = f'PHG{counter[0]}|'
-        start = len(lane.logs)
-        lane.console(f'papi parse PlayerBot {marker}{placeholder}')
-        line = lane.log_since(start, marker, 15)
-        return line.split(marker, 1)[1].strip()
+        return papi(lane, placeholder)
 
     def until(placeholder, expected, timeout=25):
         deadline = time.monotonic() + timeout
@@ -1157,6 +1164,62 @@ def placeholders(lane):
     lane.console('mail send PlayerBot placeholder check')
     unread = until('%allium_mail_unread%', str(before + 1))
     require(unread == str(before + 1), lane.name + ': the unread mail count follows new mail', dict(before=before, after=unread))
+
+
+def timed_flight(lane):
+    """Legacy tfly: /fly without allium.fly spends banked time only while flying; staff change it, online or not."""
+    player = lane.bots['PlayerBot']
+    lane.fixture('tp PlayerBot 3.5 -61 0.5 0 0')
+    lane.console('fly PlayerBot reset')
+    window(1.0)
+    player.command('fly', 'You have no timed flight left.')
+
+    m = player.mark()
+    lane.console('fly PlayerBot add 8')
+    player.chat(m, 'Your timed flight is now 8s.')
+    player.command('fly', 'Timed flight on: 8s left.')
+    state = lane.fixture('flight PlayerBot')
+    require(state['allow'] and not state['flying'], lane.name + ': timed flight allows flight without lifting the player', state)
+    window(2.5)
+    player.command('fly', 'Timed flight off: 8s left.')
+    require(not lane.fixture('flight PlayerBot')['allow'], lane.name + ': on the ground no time was spent, and /fly turns it off')
+
+    player.command('fly', 'Timed flight on: 8s left.')
+    m = player.mark()
+    require(lane.fixture('flight PlayerBot fly')['flying'], lane.name + ': the fixture lifts PlayerBot into flight')
+    player.chat(m, 'Timed flight: 5s left.', 8)
+    player.chat(m, 'Your timed flight has run out.', 10)
+    state = lane.fixture('flight PlayerBot')
+    require(not state['allow'] and not state['flying'], lane.name + ': at zero flight ends', state)
+
+    # The bank is in storage: it survives a rejoin and staff can change it while the player is offline.
+    lane.console('fly PlayerBot add 20')
+    window(1.0)
+    player.command('fly', 'Timed flight on: 20s left.')
+    if A.placeholderapi:
+        shown = {k: papi(lane, '%allium_' + k + '%') for k in ['fly', 'fly_time']}
+        require(shown == {'fly': 'temporary-paused', 'fly_time': '20s'}, lane.name + ': fly placeholders on the ground', shown)
+    lane.fixture('flight PlayerBot fly')
+    window(3.2)
+    if A.placeholderapi:
+        shown = papi(lane, '%allium_fly%')
+        require(shown == 'temporary', lane.name + ': the fly placeholder while timed flight is in the air', shown)
+    off = player.command('fly', 'Timed flight off:')
+    left = int(re.search(r'(\d+)s left', off['plain']).group(1))
+    require(15 <= left <= 18, lane.name + ': about three seconds were spent while flying', off)
+    player.disconnect()
+    start = len(lane.logs)
+    lane.console('fly PlayerBot take 5')
+    changed = lane.log_since(start, 'PlayerBot now has', 15)
+    require(f'{left - 5}s of timed flight' in changed, lane.name + ': an offline player\'s bank changes through storage', changed)
+    player = lane.bot('PlayerBot')
+    player.command('fly', f'Timed flight on: {left - 5}s left.')
+    player.command('fly', 'Timed flight off:')
+    lane.console('fly PlayerBot set 1h30m')
+    window(1.0)
+    player.command('fly', 'Timed flight on: 1h 30m left.')
+    player.command('fly', 'Timed flight off:')
+    lane.console('fly PlayerBot reset')
 
 
 def restore(lane):
@@ -1738,6 +1801,7 @@ def main():
             case('placeholders', lambda: placeholders(lane))
         case('home-admin', lambda: home_admin(lane))
         case('motd-rules', lambda: motd_rules(lane))
+        case('timed-flight', lambda: timed_flight(lane))
     finally:
         try:
             lane.stop()

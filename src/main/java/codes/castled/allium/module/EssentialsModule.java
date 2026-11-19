@@ -38,6 +38,30 @@ public final class EssentialsModule extends AbstractModule {
     private UtilityCommand.DisposalListener disposalListener;
     private codes.castled.allium.command.essentials.LoreClipboard loreClipboard;
     private codes.castled.allium.command.essentials.MotdOnJoin motdOnJoin;
+    private codes.castled.allium.player.TimedFlight timedFlight;
+
+    /** Timed flight (legacy tfly); null when its storage could not start. */
+    public codes.castled.allium.player.TimedFlight timedFlight() {
+        return timedFlight;
+    }
+
+    private codes.castled.allium.player.TimedFlight startTimedFlight() {
+        if (plugin.getDatabaseManager() == null) {
+            return null;
+        }
+        try {
+            var repository = new codes.castled.allium.flight.FlightTimeRepository(plugin.getDatabaseManager().connectionSource(),
+                    plugin.getDatabaseManager().dialect(), System::currentTimeMillis);
+            repository.migrate();
+            var service = new codes.castled.allium.player.TimedFlight(plugin, repository,
+                    plugin.getScheduler().boundedPool("Allium-Flight", 1, 1024), flights);
+            service.enable();
+            return service;
+        } catch (java.sql.SQLException | RuntimeException failed) {
+            plugin.logger().warning("Timed flight is unavailable: its storage could not start (" + failed.getMessage() + ").");
+            return null;
+        }
+    }
     private codes.castled.allium.broadcast.BroadcastService broadcasts;
 
     /** Re-reads the timed broadcast settings ({@code /allium reload}). */
@@ -60,6 +84,7 @@ public final class EssentialsModule extends AbstractModule {
     @Override
     public void onEnable() {
         flights=new codes.castled.allium.player.FlightRestoration(plugin);flights.enable();
+        timedFlight=startTimedFlight();
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ToggleSlowFallCommand(flights));
         timePauseCoordinator = new TimePauseCoordinator(plugin);
         disposalListener = new UtilityCommand.DisposalListener();
@@ -72,7 +97,7 @@ public final class EssentialsModule extends AbstractModule {
         }
         plugin.getCommandManager().register(new HealCommand(plugin));
         plugin.getCommandManager().register(new FeedCommand(plugin));
-        plugin.getCommandManager().register(new FlyCommand(plugin));
+        plugin.getCommandManager().register(new FlyCommand(plugin, () -> timedFlight));
         plugin.getCommandManager().register(new GodCommand(plugin));
         plugin.getCommandManager().register(new GamemodeCommand(plugin));
 
@@ -149,6 +174,8 @@ public final class EssentialsModule extends AbstractModule {
 
     @Override
     public void onDisable() {
+        // Timed flight hands landing fliers to the flight restoration, so it stops first.
+        if(timedFlight!=null){timedFlight.close();timedFlight=null;}
         if(flights!=null){flights.close();flights=null;}
         if (disposalListener != null) {
             HandlerList.unregisterAll(disposalListener);

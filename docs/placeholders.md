@@ -18,7 +18,8 @@ empty values (the `baltop_` entries work for anyone).
 | `nickname_raw` | The nickname without formatting |
 | `displayname` | Bukkit's display name |
 | `ping` | Ping in ms |
-| `fly`, `god`, `vanished`, `afk`, `muted`, `jailed`, `frozen`, `spy` | `yes` or `no` (`spy` is social spy) |
+| `fly` | `yes` or `no`; with timed flight on, `temporary` while flying and `temporary-paused` on the ground |
+| `god`, `vanished`, `afk`, `muted`, `jailed`, `frozen`, `spy` | `yes` or `no` (`spy` is social spy) |
 | `fly_time` | Timed flight left, `1d 2h 30m 45s` (`0s` without any) |
 | `reply` | Who `/reply` would answer, or empty |
 | `mail_unread`, `mail_gifts` | Unread mail and unclaimed gifts |

@@ -199,7 +199,9 @@ public final class MessagingService implements Listener {
             return new MessagePolicy.Recipient(ReplyTargets.CONSOLE, true, false, MessagePolicy.Acceptance.ACCEPTS, MessagePolicy.Ignore.NO);
         }
         boolean hidden = sender instanceof Player viewer && vanish.hiddenFrom(viewer, target);
-        MessagePolicy.Ignore ignore = sender instanceof Player p ? ignores.ignores(target.getUniqueId(), p.getUniqueId()) : MessagePolicy.Ignore.NO;
+        MessagePolicy.Ignore ignore = sender instanceof Player p
+                ? (p.hasPermission("allium.chat.ignoreexempt") ? MessagePolicy.Ignore.NO : ignores.ignores(target.getUniqueId(), p.getUniqueId()))
+                : MessagePolicy.Ignore.NO;
         return new MessagePolicy.Recipient(target.getUniqueId(), target.isOnline(), hidden, acceptance(target.getUniqueId()), ignore);
     }
 
@@ -255,12 +257,22 @@ public final class MessagingService implements Listener {
         NotificationService.Notification notification = new NotificationService.Notification(Messages.SOCIALSPY_MESSAGE,
                 Map.of("{sender}", nameOf(sender), "{recipient}", nameOf(recipient)), body, NotificationService.Sound.MESSAGE);
         PreferencesModule preferences = preferences();
-        if (preferences != null) {
+        codes.castled.allium.moderation.StaffSpyService staffSpy = plugin.getModuleManager() != null
+                && plugin.getModuleManager().getModule("moderation") instanceof codes.castled.allium.module.ModerationModule mod
+                && mod.isEnabled() ? mod.spy() : null;
+        if (preferences != null || staffSpy != null) {
             for (Player spy : plugin.getServer().getOnlinePlayers()) {
                 if (idOf(spy).equals(idOf(sender)) || idOf(spy).equals(idOf(recipient))
                         || !spy.hasPermission("allium.socialspy")
-                        || !preferences.effective(spy.getUniqueId()).map(EffectivePreferences::socialSpy).orElse(false)
                         || !participantVisible(spy, sender) || !participantVisible(spy, recipient)) {
+                    continue;
+                }
+                boolean globalOn = preferences != null
+                        && preferences.effective(spy.getUniqueId()).map(EffectivePreferences::socialSpy).orElse(false);
+                boolean targetOn = staffSpy != null
+                        && ((sender instanceof Player sp && staffSpy.isSpyingMessagesTarget(spy.getUniqueId(), sp.getUniqueId()))
+                        || (recipient instanceof Player rp && staffSpy.isSpyingMessagesTarget(spy.getUniqueId(), rp.getUniqueId())));
+                if (!globalOn && !targetOn) {
                     continue;
                 }
                 notifications.send(spy, notification);

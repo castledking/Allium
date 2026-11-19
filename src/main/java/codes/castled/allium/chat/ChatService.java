@@ -1,9 +1,12 @@
 package codes.castled.allium.chat;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.message.MessageSoundSpec;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.command.BukkitCommandContext;
+import codes.castled.allium.messaging.MessagePolicy;
 import codes.castled.allium.messaging.UntrustedText;
+import codes.castled.allium.moderation.StaffSpyService;
 import codes.castled.allium.module.*;
 import codes.castled.allium.naming.PlayerNameVisibility;
 import codes.castled.allium.scheduler.TaskHandle;
@@ -14,6 +17,8 @@ import org.bukkit.event.*;
 import org.bukkit.event.player.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** One server-thread owner for audiences, render/history and replay; one bounded storage lane. */
 public final class ChatService implements Listener,AutoCloseable {
@@ -148,6 +153,14 @@ public final class ChatService implements Listener,AutoCloseable {
     public boolean canRead(Player p,ChatSettings.Channel channel){return channel.local()||p.hasPermission("allium.channel.join."+channel.id()+".read")||p.hasPermission("allium.channel.join."+channel.id()+".write")||channel.id().equals(settings.staffChannel())&&p.hasPermission("allium.staffchat");}
     public boolean canWrite(Player p,ChatSettings.Channel channel){return p.hasPermission("allium.channel.join."+channel.id()+".write")||channel.id().equals(settings.staffChannel())&&p.hasPermission("allium.staffchat");}
     private boolean listening(Session viewer,ChatSettings.Channel channel){return canRead(viewer.player,channel)&&(channel.local()||viewer.reads.contains(channel.id()));}
+    public static final String PERM_URL="allium.chat.url";
+    public static final String PERM_QUESTION="allium.chat.question";
+    public static final String PERM_MENTION="allium.chat.mention";
+    public static final String PERM_IGNORE_EXEMPT="allium.chat.ignoreexempt";
+    private static final Pattern URL_PATTERN=Pattern.compile(
+            "(?i)(?:https?://\\S+|www\\.\\S+|\\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.(?:com|net|org|gg|io|me|co|edu|gov|tv|xyz|dev|app|mc|info|biz|uk|ca|de|fr|au|jp|ru|br|es|it|nl|pl|se|no|fi|ch|at|be|dk|cz|eu|us|live|shop|store|site|online|cloud|fun|pro|club|tech|world|games|server|play)(?:/\\S*)?)");
+    private static final Pattern MENTION_PATTERN=Pattern.compile("(?<![A-Za-z0-9_])@([A-Za-z0-9_]{1,16})(?![A-Za-z0-9_])");
+    static boolean containsUrl(String text){return text!=null&&URL_PATTERN.matcher(text).find();}
     public void send(Player p,String explicit,String raw,Set<UUID> originalAudience){
         if(!ownsChat()||!p.isOnline()||!allowed(p))return;
         Session s=sessions.get(p.getUniqueId());
@@ -156,24 +169,103 @@ public final class ChatService implements Listener,AutoCloseable {
         if(settings.channelsEnabled()&&explicit==null&&target.equals(settings.staffChannel())&&raw.startsWith(">")){target=settings.defaultChannel();raw=raw.substring(1).strip();}
         else if(settings.channelsEnabled()&&explicit==null&&raw.startsWith("#")&&!raw.matches("^#[0-9a-fA-F]{6}.*")){target=settings.staffChannel();raw=raw.substring(1);}
         var c=settings.resolve(target);if(c==null||!canWrite(p,c)){tell(p,Messages.CHAT_CHANNEL_WRITE_DENIED);return;}
+        boolean question=false;
+        if(settings.channelsEnabled()&&explicit==null&&c.local()&&settings.questionEnabled()
+                &&raw.startsWith(settings.questionPrefix())&&raw.length()>settings.questionPrefix().length()){
+            if(!p.hasPermission(PERM_QUESTION)){tell(p,Messages.CHAT_QUESTION_DENIED);return;}
+            var global=settings.resolve(settings.defaultChannel());
+            if(global!=null&&canWrite(p,global)){
+                c=global;
+                raw=raw.substring(settings.questionPrefix().length()).strip();
+                question=true;
+            }
+        }
         if(raw.isBlank()||raw.length()>settings.maxBody()){tell(p,Messages.CHAT_MESSAGE_LENGTH_INVALID);return;}
-        FormattedText body=UntrustedText.parse(raw,new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient")));
-        String id=history.nextId();var render=new LinkedHashMap<UUID,String>();
-        String format=c.id().equals(settings.defaultChannel())?settings.groups().getOrDefault(s.decor.group(),c.format()):c.format();
-        if(!settings.formatting())format="{name}: {message}";
-        var values=values(s,body);var origin=p.getLocation();
+        if(settings.urlsRequirePermission()&&!p.hasPermission(PERM_URL)&&containsUrl(raw)){tell(p,Messages.CHAT_URL_DENIED);return;}
+        var allow=new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient"));
+        var origin=p.getLocation();
+        var recipients=new ArrayList<Session>();
+        boolean senderIgnoreExempt=p.hasPermission(PERM_IGNORE_EXEMPT);
+        MessagingModule messaging=plugin.getModuleManager()!=null&&plugin.getModuleManager().getModule("messaging") instanceof MessagingModule m&&m.isEnabled()?m:null;
         for(Session viewer:sessions.values()){
             Player recipient=viewer.player;
             // The sender always sees their own message, also in a channel they write to without reading it (/a <message>).
             boolean own=recipient==p&&canRead(p,c);
             if(!viewer.ready||!same(viewer)||!(own||listening(viewer,c))||originalAudience!=null&&!originalAudience.contains(recipient.getUniqueId()))continue;
             if(c.local()&&(!origin.getWorld().equals(recipient.getWorld())||origin.distanceSquared(recipient.getLocation())>c.radius()*c.radius()))continue;
-            render.put(recipient.getUniqueId(),ChatOutput.render(format,values,recipient,id,p.getName(),s.decor.group(),plugin.getConfig()));
+            if(!own&&!senderIgnoreExempt&&messaging!=null&&messaging.ignores().ignores(recipient.getUniqueId(),p.getUniqueId())==MessagePolicy.Ignore.YES)continue;
+            recipients.add(viewer);
+        }
+        Set<Player> mentioned=new LinkedHashSet<>();
+        FormattedText body=parseWithMentions(p,raw,allow,recipients,mentioned);
+        String id=history.nextId();var render=new LinkedHashMap<UUID,String>();
+        String format=question?settings.questionFormat():(c.id().equals(settings.defaultChannel())?settings.groups().getOrDefault(s.decor.group(),c.format()):c.format());
+        if(!settings.formatting())format="{name}: {message}";
+        var values=values(s,body);
+        for(Session viewer:recipients){
+            render.put(viewer.player.getUniqueId(),ChatOutput.render(format,values,viewer.player,id,p.getName(),s.decor.group(),plugin.getConfig()));
         }
         var message=history.add(id,p.getUniqueId(),p.getName(),c.id(),System.currentTimeMillis(),render);
         for(var entry:render.entrySet()){Session viewer=sessions.get(entry.getKey());if(viewer!=null&&!replays.containsKey(entry.getKey())&&!message.deleted().get())ChatOutput.send(viewer.player,entry.getValue());}
+        if(!mentioned.isEmpty()&&!settings.mentionSound().isBlank()&&plugin.getMessageManager()!=null){
+            MessageSoundSpec spec=new MessageSoundSpec(settings.mentionSound(),settings.mentionVolume(),settings.mentionPitch());
+            for(Player targetPlayer:mentioned){
+                if(!targetPlayer.getUniqueId().equals(p.getUniqueId())&&render.containsKey(targetPlayer.getUniqueId())){
+                    plugin.getMessageManager().playMessageSound(targetPlayer,spec);
+                }
+            }
+        }
+        if(c.local()&&!p.hasPermission(StaffSpyService.PERM_CHAT_SPY_EXEMPT)){
+            notifyLocalSpy(p,body,render.keySet());
+        }
         if(!c.local()&&!c.discordId().isEmpty())relay.send(message,c,p.getName(),body.toPlainText());
         plugin.getServer().getConsoleSender().sendMessage("["+c.id()+"] "+p.getName()+": "+body.toPlainText()+" ["+id+"]");
+    }
+    private FormattedText parseWithMentions(Player sender,String raw,UntrustedText.Allow allow,List<Session> recipients,Set<Player> mentioned){
+        if(!settings.mentionsEnabled()||!sender.hasPermission(PERM_MENTION)||!raw.contains("@")){
+            return UntrustedText.parse(raw,allow);
+        }
+        Map<String,Player> visibleByName=new HashMap<>();
+        for(Session viewer:recipients){
+            Player r=viewer.player;
+            if(PlayerNameVisibility.canSee(sender,r)){
+                visibleByName.put(r.getName().toLowerCase(Locale.ROOT),r);
+            }
+        }
+        Matcher matcher=MENTION_PATTERN.matcher(raw);
+        List<FormattedText.StyledGlyph> glyphs=new ArrayList<>();
+        int last=0;boolean matchedAny=false;
+        while(matcher.find()){
+            Player target=visibleByName.get(matcher.group(1).toLowerCase(Locale.ROOT));
+            if(target==null)continue;
+            matchedAny=true;
+            mentioned.add(target);
+            if(matcher.start()>last){
+                glyphs.addAll(UntrustedText.parse(raw.substring(last,matcher.start()),allow).glyphs());
+            }
+            glyphs.addAll(TextFormatter.parse(settings.mentionColor()+"@"+target.getName()).glyphs());
+            last=matcher.end();
+        }
+        if(!matchedAny)return UntrustedText.parse(raw,allow);
+        if(last<raw.length()){
+            glyphs.addAll(UntrustedText.parse(raw.substring(last),allow).glyphs());
+        }
+        return new FormattedText(glyphs);
+    }
+    private void notifyLocalSpy(Player sender,FormattedText body,Set<UUID> delivered){
+        if(plugin.getModuleManager()==null)return;
+        if(!(plugin.getModuleManager().getModule("moderation") instanceof ModerationModule mod)||!mod.isEnabled()||mod.spy()==null)return;
+        StaffSpyService spy=mod.spy();
+        String template=plugin.getMessageManager().resolve(Messages.CHAT_SPY_FORMAT,"{player}",sender.getName());
+        if(template==null||template.isEmpty())return;
+        FormattedText formatted=UntrustedText.insert(template,body);
+        for(Player observer:plugin.getServer().getOnlinePlayers()){
+            if(delivered.contains(observer.getUniqueId()))continue;
+            if(!observer.hasPermission(StaffSpyService.PERM_CHAT_SPY))continue;
+            if(!spy.isSpyingLocal(observer.getUniqueId(),sender.getUniqueId()))continue;
+            if(!PlayerNameVisibility.canSee(observer,sender))continue;
+            TextSender.sendLiteral(observer,formatted);
+        }
     }
     /** {@code /me <message>}: {@code chat.action-format} to everyone online, as chat (deletable, never relayed). */
     private void action(CommandSender sender,String[] args){
@@ -181,6 +273,7 @@ public final class ChatService implements Listener,AutoCloseable {
         if(args.length==0)throw new UsageFailure();
         if(!allowed(p))return;
         String raw=String.join(" ",args);if(raw.isBlank()||raw.length()>settings.maxBody()){tell(p,Messages.CHAT_MESSAGE_LENGTH_INVALID);return;}
+        if(settings.urlsRequirePermission()&&!p.hasPermission(PERM_URL)&&containsUrl(raw)){tell(p,Messages.CHAT_URL_DENIED);return;}
         Session s=sessions.get(p.getUniqueId());
         FormattedText body=UntrustedText.parse(raw,new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient")));
         String format=plugin.getConfig().getString("chat.action-format","&5* <display_name> &5<message>");

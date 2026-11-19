@@ -1,10 +1,13 @@
 package codes.castled.allium.module;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.moderation.CommandSpyCommand;
 import codes.castled.allium.command.moderation.EnderchestCommand;
 import codes.castled.allium.command.moderation.InvseeCommand;
 import codes.castled.allium.command.moderation.MuteCommand;
 import codes.castled.allium.command.moderation.MutesCommand;
+import codes.castled.allium.command.moderation.SpectateCommand;
+import codes.castled.allium.command.moderation.SpyCommand;
 import codes.castled.allium.command.moderation.UnmuteCommand;
 import codes.castled.allium.command.moderation.VanishCommand;
 import codes.castled.allium.core.AbstractModule;
@@ -12,6 +15,7 @@ import codes.castled.allium.moderation.InspectionService;
 import codes.castled.allium.moderation.ModerationRepository;
 import codes.castled.allium.moderation.ModerationService;
 import codes.castled.allium.moderation.DisciplineService;
+import codes.castled.allium.moderation.StaffSpyService;
 import codes.castled.allium.command.moderation.DisciplineCommand;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.storage.SqlDialect;
@@ -29,6 +33,7 @@ public final class ModerationModule extends AbstractModule {
     private ModerationService moderation;
     private DisciplineService discipline;
     private InspectionService inspection;
+    private StaffSpyService spy;
 
     public ModerationModule(PluginStart plugin) {
         super(plugin);
@@ -85,13 +90,19 @@ public final class ModerationModule extends AbstractModule {
         inspection = new InspectionService(plugin, repository, discipline, inspectionPool);
         inspection.enable();
 
+        spy = new StaffSpyService(plugin);
+        spy.enable();
+
         plugin.getCommandManager().register(new VanishCommand(plugin, moderation));
         plugin.getCommandManager().register(new MuteCommand(plugin, moderation));
         plugin.getCommandManager().register(new UnmuteCommand(plugin, moderation));
         plugin.getCommandManager().register(new MutesCommand(plugin, moderation));
         plugin.getCommandManager().register(new InvseeCommand(plugin, inspection));
         plugin.getCommandManager().register(new EnderchestCommand(plugin, inspection));
-        plugin.logger().info("Moderation enabled: /vanish, /mute, /unmute, /mutes, /invsee, /enderchest.");
+        plugin.getCommandManager().register(new CommandSpyCommand(plugin, spy));
+        plugin.getCommandManager().register(new SpyCommand(plugin, spy));
+        plugin.getCommandManager().register(new SpectateCommand(plugin, spy));
+        plugin.logger().info("Moderation enabled: /vanish, /mute, /unmute, /mutes, /invsee, /enderchest, /commandspy, /spy, /spectate.");
     }
 
     @Override
@@ -100,6 +111,9 @@ public final class ModerationModule extends AbstractModule {
                 && messagingModule.messaging() != null) {
             messagingModule.messaging().setVanishSource(null);
             messagingModule.messaging().setMuteSource(null);
+        }
+        if (spy != null) {
+            spy.disable();
         }
         if (inspection != null) {
             inspection.disable();
@@ -122,6 +136,10 @@ public final class ModerationModule extends AbstractModule {
 
     public InspectionService inspection() {
         return inspection;
+    }
+
+    public StaffSpyService spy() {
+        return spy;
     }
 
     public ModerationRepository repository() {

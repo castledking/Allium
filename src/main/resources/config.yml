@@ -466,6 +466,26 @@ chat:
         webhook-delivery: false
   # /me (/action): sent to everyone online like chat; deletable with /delmsg, never relayed to Discord.
   action-format: '&5* <display_name> &5<message>'
+  # @<player> mentions in chat (requires allium.chat.mention, default true).
+  mentions:
+    enabled: true
+    color: '&e'
+    sound: 'minecraft:entity.experience_orb.pickup'
+    volume: 0.8
+    pitch: 1.5
+  # EssentialsChat-style global questions from local chat (requires allium.chat.question, default true).
+  question:
+    enabled: true
+    prefix: '?'
+    format: '&e[Question] &r<prefix><display_name>&f: <message>'
+  # Require allium.chat.url (default op) to post links in chat.
+  urls:
+    enabled: true
+# Commands run by console when staff runs /spectate <player>.
+# Placeholders: {player} (spectator), {target} (target). Prefix with "player:" to run as the spectator.
+spectate-commands:
+  - 'tp {player} {target}'
+  - 'gmsp {player}'
 nickname:
   max-length: 32
   gradientplus-enabled: true

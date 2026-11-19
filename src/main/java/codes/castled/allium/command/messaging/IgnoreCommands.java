@@ -75,6 +75,10 @@ public final class IgnoreCommands {
                 plugin.getMessageManager().send(player, Messages.IGNORE_SELF);
                 return;
             }
+            if (target.hasPermission("allium.chat.ignoreexempt")) {
+                plugin.getMessageManager().send(player, Messages.IGNORE_EXEMPT, "{player}", target.getName());
+                return;
+            }
             String shown = target.getName();
             switch (ignores.add(player.getUniqueId(), target.getUniqueId(), saved -> {
                 if (!saved && player.isOnline()) {

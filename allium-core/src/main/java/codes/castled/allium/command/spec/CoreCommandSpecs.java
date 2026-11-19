@@ -591,8 +591,41 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    public static final CommandSpec COMMANDSPY = new CommandSpec(
+            "commandspy", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of("cmdspy", "cspy"),
+            "Opt in or out of seeing other players' commands",
+            "/commandspy [on|off]",
+            "/commandspy [on|off]",
+            "allium.commandspy", null,
+            List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null))),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec SPY = new CommandSpec(
+            "spy", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
+            "Inspect and toggle message, local chat, and command spying for a player",
+            "/spy <player>",
+            "/spy <player>",
+            "allium.spy", null,
+            List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null))),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec SPECTATE = new CommandSpec(
+            "spectate", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
+            "Spectate a player using the configured spectate commands",
+            "/spectate <player>",
+            "/spectate <player>",
+            "allium.spectate", null,
+            List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null))),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final List<CommandSpec> MODERATION_SPECS = java.util.stream.Stream.concat(
-            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES, INVSEE, ENDERCHEST), DISCIPLINE_SPECS.stream()).toList();
+            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES, INVSEE, ENDERCHEST, COMMANDSPY, SPY, SPECTATE), DISCIPLINE_SPECS.stream()).toList();
 
     public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg","action")
         .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"chat",

@@ -2,7 +2,7 @@ package codes.castled.allium.chat;
 import org.bukkit.configuration.ConfigurationSection;
 import java.util.*;
 
-public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEnabled,String format,Map<String,String> groups,Map<String,Channel> channels,String defaultChannel,String staffChannel,int clearEntries,int packetBudget,int maxBody,int nicknameLength,boolean animate,int updatesPerTick){
+public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEnabled,String format,Map<String,String> groups,Map<String,Channel> channels,String defaultChannel,String staffChannel,int clearEntries,int packetBudget,int maxBody,int nicknameLength,boolean animate,int updatesPerTick,boolean mentionsEnabled,String mentionColor,String mentionSound,double mentionVolume,double mentionPitch,boolean questionEnabled,String questionPrefix,String questionFormat,boolean urlsRequirePermission){
     public record Channel(String id,String display,Set<String> aliases,String format,double radius,String discordId,String discordIn,String discordOut,boolean webhook){public boolean local(){return radius>0;}}
     public static ChatSettings read(ConfigurationSection config){
         var channels=new LinkedHashMap<String,Channel>();var root=config.getConfigurationSection("chat.channels");
@@ -28,7 +28,17 @@ public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEn
         }
         var groups=new LinkedHashMap<String,String>();var g=config.getConfigurationSection("chat-format.groups");if(g!=null)for(String key:g.getKeys(false))groups.put(key,g.getString(key,format));
         int clear=config.getInt("chat.deletion_resend.clear_lines",500);clear=clear<=0?0:Math.max(100,Math.min(4096,clear));
-        return new ChatSettings(config.getBoolean("modules.chat",true),config.getBoolean("enable-chat-formatting",true),config.getBoolean("chat.channels.enabled",true),format,Map.copyOf(groups),Map.copyOf(channels),def,staff,clear,bounded(config,"chat.replay-packets-per-tick",64,1,256),bounded(config,"chat.max-message-length",512,1,4096),bounded(config,"nickname.max-length",32,1,64),config.getBoolean("nickname.animate-tab",false),bounded(config,"nickname.updates-per-tick",16,1,64));
+        boolean mentionsEnabled=config.getBoolean("chat.mentions.enabled",true);
+        String mentionColor=config.getString("chat.mentions.color","&e");
+        String mentionSound=config.getString("chat.mentions.sound","minecraft:entity.experience_orb.pickup");
+        double mentionVolume=config.getDouble("chat.mentions.volume",0.8);
+        double mentionPitch=config.getDouble("chat.mentions.pitch",1.5);
+        boolean questionEnabled=config.getBoolean("chat.question.enabled",true);
+        String questionPrefix=config.getString("chat.question.prefix","?");
+        if(questionPrefix==null||questionPrefix.isEmpty())questionPrefix="?";
+        String questionFormat=config.getString("chat.question.format","&e[Question] &r<prefix><display_name>&f: <message>");
+        boolean urlsRequirePerm=config.getBoolean("chat.urls.enabled",true);
+        return new ChatSettings(config.getBoolean("modules.chat",true),config.getBoolean("enable-chat-formatting",true),config.getBoolean("chat.channels.enabled",true),format,Map.copyOf(groups),Map.copyOf(channels),def,staff,clear,bounded(config,"chat.replay-packets-per-tick",64,1,256),bounded(config,"chat.max-message-length",512,1,4096),bounded(config,"nickname.max-length",32,1,64),config.getBoolean("nickname.animate-tab",false),bounded(config,"nickname.updates-per-tick",16,1,64),mentionsEnabled,mentionColor==null?"&e":mentionColor,mentionSound==null?"":mentionSound,Double.isFinite(mentionVolume)&&mentionVolume>=0?mentionVolume:0.8,Double.isFinite(mentionPitch)&&mentionPitch>=0.5&&mentionPitch<=2.0?mentionPitch:1.5,questionEnabled,questionPrefix,questionFormat==null?"&e[Question] &r<prefix><display_name>&f: <message>":questionFormat,urlsRequirePerm);
     }
     /** Fixed command labels of the default and staff channels, whatever their configured aliases. */
     public static final Set<String> GLOBAL_LABELS=Set.of("g","global","shout"),STAFF_LABELS=Set.of("a","ac","amsg","staffchat");

@@ -182,6 +182,10 @@ public final class CommandUsages {
                     u("<section> [page]", "Shows a section of the custom text")),
             e("motd", u("", "Shows the message of the day"),
                     u("<section> [page]", "Shows a section of the message of the day")),
+            e("broadcast", u("<message>", "Sends a message to everyone online; colours and click tags work")),
+            e("broadcasts", u("", "Shows the timed broadcasts and their settings"),
+                    u("send <name>", "Sends one broadcast now"),
+                    u("next", "Sends the next broadcast in the rotation now")),
             e("rules", u("", "Shows the server rules"),
                     u("<chapter> [page]", "Shows a chapter of the rules")));
 

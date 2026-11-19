@@ -1057,6 +1057,57 @@ def motd_rules(lane):
         rules.write_text(original)
 
 
+def broadcasts(lane):
+    """Timed broadcasts from broadcasts.txt, /broadcasts, /broadcast and the receive opt-out."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    for node in ['allium.broadcast', 'allium.broadcasts.admin']:
+        lane.perm('StaffBot', node)
+    path = lane.path / 'plugins/Allium/config.yml'
+    original = path.read_text()
+
+    def reload():
+        start = len(lane.logs)
+        lane.console('allium reload')
+        lane.log_since(start, 'Configuration reloaded', 30)
+
+    try:
+        cfg = yaml.safe_load(original)
+        cfg['broadcasts'] = {'enabled': True, 'interval-seconds': 10, 'order': 'sequential', 'minimum-players': 1}
+        path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+        m = player.mark()
+        reload()
+        tip = player.chat(m, 'New here? Read the rules.', 16)
+        require(tip['interactive'] and '/rules' in raw(tip), lane.name + ': the first timed broadcast arrives with its click tag', tip)
+        status = staff.command('broadcasts', 'Timed broadcasts are on: every 10s, sequential')
+        require('rules, homes, vote' in status['plain'], lane.name + ': /broadcasts lists the broadcasts in file order', status)
+
+        m, n = player.mark(), staff.mark()
+        staff.cmd('broadcasts send vote')
+        mine = player.chat(m, 'Vote for us')
+        theirs = staff.chat(n, 'Vote for us')
+        require('PlayerBot?' in mine['plain'] and 'StaffBot?' in theirs['plain'],
+                lane.name + ': placeholders are filled for each recipient', dict(player=mine['plain'], staff=theirs['plain']))
+        staff.command('broadcasts send nope', 'There is no broadcast called nope.')
+
+        m = player.mark()
+        staff.cmd('broadcast Restart in &e5 minutes')
+        player.chat(m, '[Broadcast] Restart in 5 minutes')
+
+        lane.perm('PlayerBot', 'allium.broadcasts.receive', False)
+        m, n = player.mark(), staff.mark()
+        staff.cmd('broadcasts send homes')
+        staff.chat(n, 'Set a home with /sethome')
+        window(1.5)
+        require(not player.saw(m, 'Set a home with'), lane.name + ': without allium.broadcasts.receive no timed broadcast arrives')
+    finally:
+        path.write_text(original)
+        reload()
+        lane.perm('PlayerBot', 'allium.broadcasts.receive', True)
+    m = player.mark()
+    window(12)
+    require(not player.saw(m, '[Tip]') and not player.saw(m, '[Vote]'), lane.name + ': broadcasts stop after reloading them off')
+
+
 def restore(lane):
     staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
     lane.fixture('clear PlayerBot')
@@ -1631,6 +1682,7 @@ def main():
         case('repair-halt-after-reserve', lambda: repair_halt(lane, 'repair.halt-after-reserve', 'released'))
         case('repair-halt-after-save', lambda: repair_halt(lane, 'repair.halt-after-save', 'captured'))
         # Both reconnect PlayerBot, which drops its non-sticky grants: keep them last.
+        case('broadcasts', lambda: broadcasts(lane))
         case('home-admin', lambda: home_admin(lane))
         case('motd-rules', lambda: motd_rules(lane))
     finally:

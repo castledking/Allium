@@ -1,5 +1,16 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r15): timed broadcasts
+
+**PASS on targeted runs:** the new `broadcasts` case on Spigot 1.20.1 (`bc-spigot-1`) and Paper 26.3
+(`bc-paper-1`), 7 checks each, SQLite, Allium.jar
+`57f9758af1747fc8b9945e9489b072456c074f9b4b66fa0ce37d089468b211af`. No exceptions or SEVERE lines.
+`./gradlew check`: 1052 unit tests, 0 failures. The other staff cases did not run on this jar.
+
+| Case | What ran |
+| --- | --- |
+| broadcasts | with `broadcasts.enabled` and a 10 s interval set and `/allium reload`, the first broadcast (`rules`) arrives with its click tag; `/broadcasts` shows the settings and `rules, homes, vote`; `/broadcasts send vote` fills `{player}` per recipient; an unknown name is refused; `/broadcast` reaches players as `[Broadcast] ...`; with `allium.broadcasts.receive` negated a timed broadcast skips that player; after restoring the config and reloading, none arrive for 12 s |
+
 ## November 19 follow-up (r14): /top, /bottom and one mail number sequence
 
 **PASS on targeted runs:** the new `top-bottom` case and the updated `mail-numbers` case on Spigot

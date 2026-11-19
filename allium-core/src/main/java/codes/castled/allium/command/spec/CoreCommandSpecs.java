@@ -1048,9 +1048,31 @@ public final class CoreCommandSpecs {
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    /** {@code /broadcast <message>}: staff's message to everyone. */
+    public static final CommandSpec BROADCAST = new CommandSpec(
+            "broadcast", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("bc", "bcast"),
+            "Send a message to everyone online",
+            "/broadcast <message>", "/broadcast <message>",
+            "allium.broadcast", null,
+            List.of(CommandArgSpec.required("message", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /broadcasts [send <name>|next]}: the timed broadcasts of {@code broadcasts.txt}. */
+    public static final CommandSpec BROADCASTS = new CommandSpec(
+            "broadcasts", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Show the timed broadcasts, or send one now",
+            "/broadcasts [send <name>|next]", "/broadcasts [send <name>|next]",
+            "allium.broadcasts.admin", null,
+            List.of(),
+            List.of(new CommandNodeSpec("send", List.of(), null, "/broadcasts send <name>", List.of(), List.of()),
+                    new CommandNodeSpec("next", List.of(), null, "/broadcasts next", List.of(), List.of())),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

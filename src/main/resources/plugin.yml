@@ -165,6 +165,15 @@ commands:
     description: Show a page of the server's custom text
     usage: /<command> [section] [page]
     permission: allium.customtext
+  broadcast:
+    description: Send a message to everyone online
+    usage: /<command> <message>
+    aliases: [bc, bcast]
+    permission: allium.broadcast
+  broadcasts:
+    description: Show the timed broadcasts, or send one now
+    usage: /<command> [send <name>|next]
+    permission: allium.broadcasts.admin
   motd:
     description: Show the message of the day
     usage: /<command> [section] [page]
@@ -641,6 +650,9 @@ permissions:
       allium.top.roof: true
       allium.bottom: true
       allium.motd: true
+      allium.broadcast: true
+      allium.broadcasts.admin: true
+      allium.broadcasts.receive: true
       allium.rules: true
       allium.home.bed: true
       allium.home.others: true
@@ -1402,6 +1414,15 @@ permissions:
     default: true
   allium.motd:
     description: Allows /motd, and shows the message of the day on join (motd.show-on-join)
+    default: true
+  allium.broadcast:
+    description: Allows /broadcast, which sends a message to everyone online
+    default: op
+  allium.broadcasts.admin:
+    description: Allows /broadcasts, to see the timed broadcasts and send one now
+    default: op
+  allium.broadcasts.receive:
+    description: Receives the timed broadcasts of broadcasts.txt (negate it to opt a player or group out)
     default: true
   allium.rules:
     description: Allows /rules

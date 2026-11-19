@@ -38,6 +38,14 @@ public final class EssentialsModule extends AbstractModule {
     private UtilityCommand.DisposalListener disposalListener;
     private codes.castled.allium.command.essentials.LoreClipboard loreClipboard;
     private codes.castled.allium.command.essentials.MotdOnJoin motdOnJoin;
+    private codes.castled.allium.broadcast.BroadcastService broadcasts;
+
+    /** Re-reads the timed broadcast settings ({@code /allium reload}). */
+    public void reloadBroadcasts() {
+        if (broadcasts != null) {
+            broadcasts.reload();
+        }
+    }
     private SkullProfiles fallbackSkulls;
 
     public EssentialsModule(PluginStart plugin) {
@@ -101,6 +109,10 @@ public final class EssentialsModule extends AbstractModule {
             textFile.installDefault();
             plugin.getCommandManager().register(textFile);
         }
+        broadcasts = new codes.castled.allium.broadcast.BroadcastService(plugin);
+        broadcasts.start();
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.BroadcastCommand(plugin, CoreCommandSpecs.BROADCAST, broadcasts));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.BroadcastCommand(plugin, CoreCommandSpecs.BROADCASTS, broadcasts));
         motdOnJoin = new codes.castled.allium.command.essentials.MotdOnJoin(plugin, motd);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
             plugin.getServer().getPluginManager().registerEvents(motdOnJoin, plugin);
@@ -149,6 +161,10 @@ public final class EssentialsModule extends AbstractModule {
         if (motdOnJoin != null) {
             HandlerList.unregisterAll(motdOnJoin);
             motdOnJoin = null;
+        }
+        if (broadcasts != null) {
+            broadcasts.stop();
+            broadcasts = null;
         }
         if (timePauseCoordinator != null) {
             timePauseCoordinator.close();

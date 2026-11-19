@@ -1076,6 +1076,44 @@ def creative_protection_steps(lane, player):
     require(not any('Creative' in a for a in armor), lane.name + ': leaving creative takes the creative armour off', armor)
 
 
+def playtime_placeholders(lane):
+    """/playtime (own, others, an offline player), %allium_gamemode% with restricted-creative,
+    the playtime and first-join placeholders, and a netherite short alias."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    own = player.command('playtime', 'You have played for')
+    require(re.search(r'First joined [A-Z][a-z]{2} \d{1,2}, \d{4}\.', own['plain']), lane.name + ': /playtime shows the first-join date', own)
+    player.command('playtime StaffBot', "You don't have permission to do that.")
+    lane.perm('StaffBot', 'allium.playtime.others')
+    other = staff.command('playtime PlayerBot', 'PlayerBot has played for')
+    require('First joined' in other['plain'], lane.name + ': /playtime <player> for an online player', other)
+
+    if A.placeholderapi:
+        values = {k: papi(lane, '%allium_' + k + '%') for k in ['gamemode', 'playtime', 'playtime_short', 'firstjoindate', 'fly_time_short']}
+        require(values['gamemode'] == 'survival' and re.fullmatch(r'(\d+[dhms] ?)+', values['playtime'])
+                and len(values['playtime_short'].split()) <= 2 and re.fullmatch(r'[A-Z][a-z]{2} \d{1,2}, \d{4}', values['firstjoindate'])
+                and values['fly_time_short'] == '0s', lane.name + ': the gamemode, playtime and first-join placeholders', values)
+        lane.console('gamemode creative PlayerBot')
+        wait(lambda: papi(lane, '%allium_gamemode%') == 'restricted-creative' or None, 'restricted-creative', 10)
+        lane.perm('PlayerBot', 'allium.gamemode.creative.bypass')
+        require(papi(lane, '%allium_gamemode%') == 'creative', lane.name + ': with allium.gamemode.creative.bypass creative is not restricted')
+        lane.perm('PlayerBot', 'allium.gamemode.creative.bypass', False)
+        lane.console('gamemode survival PlayerBot')
+        wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'SURVIVAL' or None, 'survival', 10)
+
+    lane.fixture('clear PlayerBot')
+    lane.console('give PlayerBot npick')
+    wait(lambda: (lambda inv: inv if any((v or {}).get('type') == 'NETHERITE_PICKAXE' for v in inv['slots'].values()) else None)(
+        lane.fixture('inv PlayerBot')), 'npick given', 10)
+    require(True, lane.name + ': the netherite short alias npick gives a netherite pickaxe')
+
+    player.disconnect()
+    window(1.0)
+    offline = staff.command('playtime PlayerBot', 'PlayerBot has played for')
+    require(re.search(r'played for \d', offline['plain']) and 'First joined' in offline['plain'],
+            lane.name + ': /playtime for an offline player reads the stats file', offline)
+    lane.bot('PlayerBot')
+
+
 def gamemode_perms(lane):
     player = lane.bots['PlayerBot']
     lane.perm('PlayerBot', 'allium.gamemode')
@@ -2404,6 +2442,7 @@ def main():
         case('home-admin', lambda: home_admin(lane))
         case('motd-rules', lambda: motd_rules(lane))
         case('timed-flight', lambda: timed_flight(lane))
+        case('playtime-placeholders', lambda: playtime_placeholders(lane))
     finally:
         try:
             lane.stop()

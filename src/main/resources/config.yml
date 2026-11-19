@@ -400,6 +400,11 @@ info:
     broadcast: true
     ignore-sleep: true
 
+# /playtime and %allium_firstjoindate%: how the first-join date is written (Java date pattern, in the
+# server's time zone).
+playtime:
+  date-format: 'MMM d, yyyy'
+
 # The message of the day: plugins/Allium/motd.txt, shown by /motd and on join to holders of
 # allium.motd (default true). /rules shows rules.txt. Both use customtext.txt's layout and tags.
 motd:

@@ -1,0 +1,390 @@
+{
+  "suite": "spigot",
+  "run": "r23-spigot-playtime",
+  "alliumSha256": "15f8761237576cc8676115988979a3bbd4d64dbe6f82c8ed76f2e3026b58d8fb",
+  "sources": {
+    "tests/live/staff/run.py": "00cfba3b20ac4b3d65bc830e6e164b9b61d76681392e0e4a6ae1bba6e3c78c25",
+    "tests/live/staff/plugin/gate/StaffGate.java": "fc48d7cf8e5029c4f8ce074dd2cbb4e4ccdb7fdd4b9bc8f3a187e695b8bf8911",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "1139f9232b030f9d1f1b12cdc217b3e1e0215eda1f6881815efc8a1f033c84f5",
+    "tests/live/staff/client-raw26.cjs": "8daa40894c31ed94970531527ac2a486828130e57848e7e931062f8b1a672750",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "placeholderJarChecksum": "fde03259f5af6938f3c33eeb4d814000a1adabf1d2304ce14970be81f609a437",
+  "passed": true,
+  "checks": 8,
+  "failures": [],
+  "cases": [
+    {
+      "name": "playtime-placeholders",
+      "passed": true
+    }
+  ],
+  "seconds": 19.0,
+  "results": [
+    {
+      "label": "spigot: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "spigot: /playtime shows the first-join date",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] You have played for 2s. First joined Nov 19, 2026.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#ffffff",
+          "#ffffff",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#55ff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "You have played for ",
+            "color": "#55ff55"
+          },
+          {
+            "text": "2s",
+            "color": "#ffffff"
+          },
+          {
+            "text": ". First joined ",
+            "color": "#55ff55"
+          },
+          {
+            "text": "Nov 19, 2026",
+            "color": "#ffffff"
+          },
+          {
+            "text": ".",
+            "color": "#55ff55"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": "{\"extra\":[{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"gray\",\"text\":\"[\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"light_purple\",\"text\":\"Allium\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"gray\",\"text\":\"] \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\"You have played for \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"white\",\"text\":\"2s\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\". First joined \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"white\",\"text\":\"Nov 19, 2026\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\".\"}],\"text\":\"\"}",
+        "interactive": false
+      }
+    },
+    {
+      "label": "spigot: /playtime <player> for an online player",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] PlayerBot has played for 3s. First joined Nov 19, 2026.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#ffffff",
+          "#ffffff",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#55ff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "PlayerBot ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "has played for ",
+            "color": "#55ff55"
+          },
+          {
+            "text": "3s",
+            "color": "#ffffff"
+          },
+          {
+            "text": ". First joined ",
+            "color": "#55ff55"
+          },
+          {
+            "text": "Nov 19, 2026",
+            "color": "#ffffff"
+          },
+          {
+            "text": ".",
+            "color": "#55ff55"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": "{\"extra\":[{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"gray\",\"text\":\"[\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"light_purple\",\"text\":\"Allium\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"gray\",\"text\":\"] \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"white\",\"text\":\"PlayerBot \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\"has played for \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"white\",\"text\":\"3s\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\". First joined \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"white\",\"text\":\"Nov 19, 2026\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\".\"}],\"text\":\"\"}",
+        "interactive": false
+      }
+    },
+    {
+      "label": "spigot: the gamemode, playtime and first-join placeholders",
+      "passed": true,
+      "detail": {
+        "gamemode": "survival",
+        "playtime": "3s",
+        "playtime_short": "3s",
+        "firstjoindate": "Nov 19, 2026",
+        "fly_time_short": "0s"
+      }
+    },
+    {
+      "label": "spigot: with allium.gamemode.creative.bypass creative is not restricted",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "spigot: the netherite short alias npick gives a netherite pickaxe",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "spigot: /playtime for an offline player reads the stats file",
+      "passed": true,
+      "detail": {
+        "plain": "[Allium] PlayerBot has played for 3s. First joined Nov 19, 2026.",
+        "colors": [
+          "#aaaaaa",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#ff55ff",
+          "#aaaaaa",
+          "#aaaaaa",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#ffffff",
+          "#ffffff",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#55ff55",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#55ff55"
+        ],
+        "runs": [
+          {
+            "text": "[",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "Allium",
+            "color": "#ff55ff"
+          },
+          {
+            "text": "] ",
+            "color": "#aaaaaa"
+          },
+          {
+            "text": "PlayerBot ",
+            "color": "#ffffff"
+          },
+          {
+            "text": "has played for ",
+            "color": "#55ff55"
+          },
+          {
+            "text": "3s",
+            "color": "#ffffff"
+          },
+          {
+            "text": ". First joined ",
+            "color": "#55ff55"
+          },
+          {
+            "text": "Nov 19, 2026",
+            "color": "#ffffff"
+          },
+          {
+            "text": ".",
+            "color": "#55ff55"
+          }
+        ],
+        "overlay": false,
+        "rawComponent": "{\"extra\":[{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"gray\",\"text\":\"[\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"light_purple\",\"text\":\"Allium\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"gray\",\"text\":\"] \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"white\",\"text\":\"PlayerBot \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\"has played for \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"white\",\"text\":\"3s\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\". First joined \"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"white\",\"text\":\"Nov 19, 2026\"},{\"bold\":false,\"italic\":false,\"underlined\":false,\"strikethrough\":false,\"obfuscated\":false,\"color\":\"green\",\"text\":\".\"}],\"text\":\"\"}",
+        "interactive": false
+      }
+    },
+    {
+      "label": "spigot: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

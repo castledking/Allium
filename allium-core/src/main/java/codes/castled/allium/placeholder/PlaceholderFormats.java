@@ -109,6 +109,12 @@ public final class PlaceholderFormats {
         return out.toString().trim();
     }
 
+    /** The two largest parts of {@link #duration}: {@code 12d 6h}, {@code 6h 30m}, {@code 45s}. */
+    public static String durationShort(long seconds) {
+        String[] parts = duration(seconds).split(" ");
+        return parts.length <= 2 ? String.join(" ", parts) : parts[0] + " " + parts[1];
+    }
+
     private static long hoursOf(long worldTime) {
         return (Math.floorMod(worldTime, TICKS_PER_DAY) / TICKS_PER_HOUR + 6) % 24;
     }

@@ -1,5 +1,18 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r20): /playtime and more placeholders
+
+**PASS on targeted runs:** the new `playtime-placeholders` case with PlaceholderAPI 2.12.3 on
+Spigot 1.20.1 (`r23-spigot-playtime`) and Paper 26.3 (`r23-paper-playtime`), 8 checks each,
+SQLite, Allium.jar `15f8761237576cc8676115988979a3bbd4d64dbe6f82c8ed76f2e3026b58d8fb`
+([spigot](evidence/r20-playtime-spigot.json), [paper](evidence/r20-playtime-paper.json)). No
+exceptions or SEVERE lines. `./gradlew check`: 1103 unit tests, 0 failures. The other staff cases
+did not run on this jar.
+
+| Case | What ran |
+| --- | --- |
+| playtime-placeholders | `/playtime` with the first-join date; `/playtime StaffBot` refused without `allium.playtime.others`; `/playtime PlayerBot` online and, after PlayerBot leaves, offline from the stats file; `%allium_gamemode%` reads `survival`, then `restricted-creative` in creative and `creative` with `allium.gamemode.creative.bypass`; `playtime`, `playtime_short`, `firstjoindate` and `fly_time_short`; `give PlayerBot npick` gives a netherite pickaxe |
+
 ## November 19 follow-up (r19): aliases, chat, travel, creative manager and two server fixes
 
 **PASS: the full staff gate, 546 live checks, 0 failures.** Spigot 1.20.1 (`r22-spigot-full`, 269

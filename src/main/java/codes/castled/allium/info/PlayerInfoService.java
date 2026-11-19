@@ -500,6 +500,12 @@ public final class PlayerInfoService implements Listener {
         return result;
     }
 
+    /** When an online player first joined, as /seen shows it; 0 while unknown. */
+    public long firstJoin(UUID player) {
+        PlayerSession session = sessions.get(player);
+        return session == null ? 0 : session.firstJoin;
+    }
+
     public long onlineDurationMillis(Player online, PlayerInfoRecord dbRecord) {
         PlayerSession session = sessions.get(online.getUniqueId());
         long joinedAt = session != null ? session.lastJoin : dbRecord.lastJoin();

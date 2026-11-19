@@ -1266,6 +1266,15 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    public static final CommandSpec PLAYTIME = new CommandSpec(
+            "playtime", CommandSpec.DEFAULT_NAMESPACE, "info", List.of(),
+            "Show how long you (or another player) have played",
+            "/playtime [player]", "/playtime <player>",
+            "allium.playtime", "allium.playtime.others",
+            List.of(CommandArgSpec.optional("player", "allium.playtime.others", SuggestionSpec.onlinePlayers("allium.playtime.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final CommandSpec AFK = new CommandSpec(
             "afk",
             CommandSpec.DEFAULT_NAMESPACE,
@@ -1283,7 +1292,7 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
-    public static final List<CommandSpec> INFO_SPECS = List.of(LIST, SEEN, WHOIS, NEAR, AFK);
+    public static final List<CommandSpec> INFO_SPECS = List.of(LIST, SEEN, WHOIS, NEAR, AFK, PLAYTIME);
 
     public static final CommandSpec ALTEXEMPT = new CommandSpec(
             "altexempt", CommandSpec.DEFAULT_NAMESPACE, "alts", List.of(),

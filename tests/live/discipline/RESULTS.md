@@ -1,5 +1,14 @@
 # S19 discipline live results
 
+## 2026-11-18 re-run after the usage cards (r13)
+
+**PASS** on Allium.jar `aaf722c8006ed72f5aba84268bb90fc620f2347893913378295ec6e6a4c80ea0` (commit `661b376`): Spigot 1.20.1 **293/293** (`r13-discipline-spigot`)
+and Paper 26.3 **293/293** (`r13-discipline-paper`), SQLite. Manifests under
+`/mnt/storage/.allium-validation/20261118/s19-discipline/runs/`. `/notes <player> add` now expects the usage card's
+`/notes <player> add <note>` line, so `evidence/harness-freeze.json` was re-frozen for `run.py`
+only. The MariaDB lane did not run: the shared `allium-gate-mariadb` container no longer exists,
+and this change does not touch storage.
+
 **PASS: 918/918 live checks** on identical frozen Allium SHA256 `d86686d3ee72ce578f0f8830bacb9dffdb5e3b22bd80c7f79b5120472623b016`.
 
 - Paper 26.3 / Java 25 / SQLite: **280/280**.

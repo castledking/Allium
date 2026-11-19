@@ -2,6 +2,15 @@
 
 **PASS** (initial S17 gate + S17 follow-up suites including live MariaDB 10.11).
 
+## 2026-11-18 re-run after the usage cards (r13)
+
+**PASS** on Allium.jar `aaf722c8006ed72f5aba84268bb90fc620f2347893913378295ec6e6a4c80ea0` (commit `661b376`): Spigot 1.20.1 **246/246** (`r13-moderation-spigot`)
+and Paper 26.3 **242/242** (`r13-moderation-paper`), SQLite. Manifests under
+`/mnt/storage/.allium-validation/20261118/s17-moderation/runs/`. The malformed-duration `/mute` check now expects the usage card's
+`/mute <player> <duration> [reason]` line. The MariaDB lane did not run: the shared
+`allium-gate-mariadb` container no longer exists, and this change does not touch storage. The
+later creative-audit fix (`69d1a916…`) was not run here; this gate does not trigger the audit.
+
 ## Latest S17 follow-up suites (frozen jar `d35785e22029c03dfae6e05540f9b24479f9148fc25772b2b0cf18210ddff483`)
 
 - **Spigot 1.20.1 / Java 17 (SQLite WAL):** 4/4 scopes and **176/176** checks passed (0 failures, 78s). Manifest: `/mnt/storage/.allium-validation/20261114/s17-moderation/runs/spigot-fu-r5/manifest.json`.

@@ -1,5 +1,10 @@
 # Item database, enchantment and teleport parity
 
+**2026-11-18 re-run (r13):** PASS **61/61** on Spigot 1.20.1 and **61/61** on Paper 26.3 on
+Allium.jar `aaf722c8006ed72f5aba84268bb90fc620f2347893913378295ec6e6a4c80ea0` (commit `661b376`), runs `r13-parity-spigot` and `r13-parity-paper` under
+`/mnt/storage/.allium-validation/20261118/s18-playerinfo/runs/`. `/nick` with no arguments now expects the usage card
+(`/nick <nickname>` with the gold argument colour) instead of a red `Usage:` line.
+
 Full `check shadowJar`: **919 units**, zero failures/errors/skips; delta **+23**
 from 896. Tests cover the compressed database and preservation of overrides,
 canonical precedence/completion bounds, potion/spawner and namespace parsing,

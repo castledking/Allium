@@ -44,7 +44,8 @@ class ChatServiceTest {
     }
     Player player(String name){
         var p=mock(Player.class);when(p.getName()).thenReturn(name);when(p.getUniqueId()).thenReturn(UUID.randomUUID());when(p.isOnline()).thenReturn(true);when(p.getWorld()).thenReturn(world);when(p.getLocation()).thenReturn(new Location(world,0,64,0));when(p.getDisplayName()).thenReturn(name);
-        var permissions=new HashSet<>(Set.of("allium.channel.join.default.read","allium.channel.join.default.write","allium.channel.join.local.write"));grants.put(p,permissions);when(p.hasPermission(anyString())).thenAnswer(call->permissions.contains(call.getArgument(0)));when(p.canSee(any(Player.class))).thenReturn(true);
+        var permissions=new HashSet<>(Set.of("allium.channel.join.default.read","allium.channel.join.default.write","allium.channel.join.local.write",
+                ChatService.RECEIVE_LOCAL,ChatService.RECEIVE_SHOUT,ChatService.RECEIVE_QUESTION,ChatService.RECEIVE_MENTION));grants.put(p,permissions);when(p.hasPermission(anyString())).thenAnswer(call->permissions.contains(call.getArgument(0)));when(p.canSee(any(Player.class))).thenReturn(true);
         List<String> packets=new ArrayList<>();received.put(p,packets);var spigot=mock(Player.Spigot.class);when(p.spigot()).thenReturn(spigot);
         doAnswer(call->{packets.add(net.md_5.bungee.chat.ComponentSerializer.toString((net.md_5.bungee.api.chat.BaseComponent[])call.getRawArguments()[1]));return null;}).when(spigot).sendMessage(eq(net.md_5.bungee.api.ChatMessageType.SYSTEM),any(net.md_5.bungee.api.chat.BaseComponent[].class));return p;
     }
@@ -84,6 +85,17 @@ class ChatServiceTest {
         assertEquals("action",history(bob).get(0).channel());
         String plain=net.md_5.bungee.api.chat.BaseComponent.toPlainText(net.md_5.bungee.chat.ComponentSerializer.parse(received.get(bob).get(0)));assertEquals("* Alice waves",plain);
         command(alice,"action","me");assertEquals(1,history(bob).size(),"no message: the usage card");
+    }
+    @Test void receiveNodesDecideWhoGetsLocalChatAndShouts(){
+        grants.get(alice).add(ChatService.SHOUT);
+        grants.get(bob).remove(ChatService.RECEIVE_LOCAL);
+        service.send(alice,"local","near but unwanted",null);
+        assertTrue(history(bob).isEmpty());assertEquals(1,history(alice).size(),"the sender still sees their own");
+        grants.get(bob).remove(ChatService.RECEIVE_SHOUT);
+        command(alice,"channel","shout","a shout");
+        assertTrue(history(bob).isEmpty());
+        say(alice,"ordinary global chat");
+        assertEquals(1,history(bob).size(),"ordinary chat is not a shout");
     }
     @Test void localAudienceUsesWorldAndRadius(){when(bob.getLocation()).thenReturn(new Location(world,200,64,0));service.send(alice,"local","near only",null);assertEquals(1,history(alice).size());assertTrue(history(bob).isEmpty());}
     @Test void deletionRebuildsOnlyOriginalRecipientHistoryAndSkipsDeletedCopies(){say(alice,"first");String id=history(bob).get(0).id();say(alice,"second");grants.get(alice).add("allium.delmsg");command(alice,"delmsg","delmsg",id);for(int i=0;i<8;i++)tick.getAsBoolean();assertTrue(service.history().find(id).orElseThrow().deleted().get());assertEquals(1,history(bob).size());String finalPacket=received.get(bob).get(received.get(bob).size()-1);assertTrue(finalPacket.contains("second"));assertFalse(finalPacket.contains("first"));verify(relay).delete(id);}

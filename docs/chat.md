@@ -42,6 +42,38 @@ The gamemode family also accepts `/gmc` and `/creative`, `/gms` and `/survival`,
 and uses the existing `allium.gamemode` / `allium.gamemode.others` checks.
 Disabling `gamemode` disables its fixed aliases.
 
+## Mentions, links, questions, ignores and the local chat spy
+
+- **Mentions:** with `allium.chat.mention` (default true) and `chat.mentions.enabled`, `@Name` of a
+  visible recipient is shown in `chat.mentions.color` and the mentioned player hears
+  `chat.mentions.sound` (scaled by their `/mfx`).
+- **Links:** with `chat.urls.enabled`, a message containing a link (`https://…`, `www.…` or a
+  domain such as `example.com`) is refused without `allium.chat.url` (default op).
+- **Questions:** writing to local chat, a message starting with `chat.question.prefix` (`?`) goes
+  to global chat in `chat.question.format` with `allium.chat.question` (default true), as
+  EssentialsChat's questions; without it the sender is told so.
+- **Ignores:** `/ignore` now also hides the ignored player's chat, `/me` included. Players with
+  `allium.chat.ignoreexempt` (default op) cannot be ignored and their chat is never hidden.
+- **Receive nodes** (all default true), as in EssentialsChat: without
+  `allium.chat.receive.local` a player gets no local chat from others; without `.shout`, no
+  `/g <message>` or `/shout <message>` messages (ordinary global chat still arrives); without
+  `.question`, no `?questions`; without `.mention`, they are neither highlighted nor pinged when
+  mentioned. Senders always see their own message.
+- **Local chat spy:** holders of `allium.chat.spy` (default op) see local chat from out of range
+  as `[LocalSpy] [name] message`, unless the sender has `allium.chat.spy.exempt` (default op).
+  It is on for everyone by default; `/spy` switches it per session.
+
+## Spying and `/spectate`
+
+| Command | Permission | Behaviour |
+| --- | --- | --- |
+| `/commandspy [on\|off]` (`/cmdspy`, `/cspy`) | `allium.commandspy` (op) | Off until switched on: shows other players' commands as `[CmdSpy] name: /command`. Holders of `allium.commandspy.exempt` are never shown; login and password commands never are; `moderation.commandspy.ignored-commands` lists more |
+| `/spy` | `allium.spy` (op) | What you spy on everywhere: private messages (social spy), local chat and commands, each row a click to switch it |
+| `/spy <player>` | `allium.spy` | The same for one player: a click spies on just that player (or, while you spy on everyone, stops that) |
+| `/spectate <player>` | `allium.spectate` (op) | Runs `spectate-commands` from the console with `{player}` (you) and `{target}`; a command starting `player:` runs as you. `tp {target}` and `gmsp` without `{player}` apply to you |
+
+Per-player spying lasts until the spy leaves; social spy keeps its saved `/socialspy` setting.
+
 ## Formatting and optional decorations
 
 `chat-format.default`, `.groups.<primary-group>` and per-channel `format` accept

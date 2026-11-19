@@ -124,8 +124,15 @@ class ChatPermissionsAndSpyTest {
         spyCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.SPY, staff, "spy", new String[]{"Target"}));
         verify(messages).send(staff, Messages.SPY_HEADER, "{player}", "Target");
 
+        assertTrue(spy.isSpyingLocal(staffId, targetId), "allium.chat.spy sees all local chat by default");
         spyCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.SPY, staff, "spy", new String[]{"Target", "toggle", "local"}));
-        assertTrue(spy.isSpyingLocal(staffId, targetId));
+        assertFalse(spy.isSpyingLocal(staffId, targetId), "clicking while spying on everyone switches that off");
+        spyCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.SPY, staff, "spy", new String[]{"Target", "toggle", "local"}));
+        assertTrue(spy.isSpyingLocal(staffId, targetId), "then the click spies on that player only");
+        assertFalse(spy.isSpyingLocal(staffId, UUID.randomUUID()));
+        spyCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.SPY, staff, "spy", new String[]{"toggle", "local"}));
+        assertTrue(spy.isSpyingLocal(staffId, UUID.randomUUID()), "/spy toggle local spies on everyone again");
+        verify(messages, org.mockito.Mockito.atLeastOnce()).send(staff, Messages.SPY_HEADER_OWN);
         spyCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.SPY, staff, "spy", new String[]{"Target", "toggle", "messages"}));
         assertTrue(spy.isSpyingMessagesTarget(staffId, targetId));
         spyCmd.execute(new BukkitCommandContext(plugin, CoreCommandSpecs.SPY, staff, "spy", new String[]{"Target", "toggle", "commands"}));
@@ -188,7 +195,8 @@ class ChatPermissionsAndSpyTest {
                 "allium.chat.mention", "allium.chat.question"));
         Set<String> bobPerms = new HashSet<>(Set.of(
                 "allium.channel.join.default.read", "allium.channel.join.default.write",
-                "allium.channel.join.local.read", "allium.channel.join.local.write"));
+                "allium.channel.join.local.read", "allium.channel.join.local.write",
+                ChatService.RECEIVE_LOCAL, ChatService.RECEIVE_SHOUT, ChatService.RECEIVE_QUESTION, ChatService.RECEIVE_MENTION));
         Set<String> spyPerms = new HashSet<>(Set.of(
                 "allium.channel.join.default.read", "allium.channel.join.default.write",
                 "allium.chat.spy", "allium.chat.ignoreexempt"));
@@ -244,10 +252,15 @@ class ChatPermissionsAndSpyTest {
         String mentionJson = chat.history().visible(bobId, System.currentTimeMillis()).get(1).rendered().get(bobId);
         String mentionPlain = BaseComponent.toPlainText(ComponentSerializer.parse(mentionJson));
         assertTrue(mentionPlain.contains("@Bob") && mentionJson.contains("yellow"), mentionPlain + " / " + mentionJson);
+        bobPerms.remove(ChatService.RECEIVE_MENTION);
+        chat.send(alice, "default", "hey @bob again", null);
+        verify(messages, org.mockito.Mockito.times(1)).playMessageSound(eq(bob), any(MessageSoundSpec.class));
+        String quietJson = chat.history().visible(bobId, System.currentTimeMillis()).get(2).rendered().get(bobId);
+        assertFalse(quietJson.contains("yellow"), "without allium.chat.receive.mention Bob is neither highlighted nor pinged: " + quietJson);
+        bobPerms.add(ChatService.RECEIVE_MENTION);
 
         // 3. Local chat + allium.chat.spy: StaffSpy outside radius sees [LocalSpy] when spying on Alice,
         //    and does NOT see it when Alice holds allium.chat.spy.exempt.
-        spyService.toggleTarget(staffSpy, alice, "local");
         clearInvocations(staffSpy.spigot());
         chat.send(alice, "local", "whisper near spawn", null);
         verify(staffSpy.spigot()).sendMessage(any(BaseComponent[].class));
@@ -268,6 +281,11 @@ class ChatPermissionsAndSpyTest {
         String qJson = chat.history().visible(bobId, System.currentTimeMillis()).get(beforeBob).rendered().get(bobId);
         String qPlain = BaseComponent.toPlainText(ComponentSerializer.parse(qJson));
         assertTrue(qPlain.contains("[Question]") && qPlain.contains("where is the shop"), qPlain);
+
+        bobPerms.remove(ChatService.RECEIVE_QUESTION);
+        chat.send(alice, null, "?unheard question", null);
+        assertEquals(beforeBob + 1, chat.history().visible(bobId, System.currentTimeMillis()).size(), "without allium.chat.receive.question");
+        bobPerms.add(ChatService.RECEIVE_QUESTION);
 
         alicePerms.remove("allium.chat.question");
         chat.send(alice, null, "?blocked question", null);

@@ -605,10 +605,10 @@ public final class CoreCommandSpecs {
     public static final CommandSpec SPY = new CommandSpec(
             "spy", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
             "Inspect and toggle message, local chat, and command spying for a player",
-            "/spy <player>",
-            "/spy <player>",
+            "/spy [player]",
+            "/spy [player]",
             "allium.spy", null,
-            List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null))),
+            List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null))),
             List.of(),
             CommandMessageKeys.ofOutcomes(Map.of())
     );

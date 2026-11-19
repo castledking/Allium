@@ -749,15 +749,21 @@ def mail_numbers(lane):
     staff.command('mail gift PlayerBot 1', 'Gift of')
     rows = wait(lambda: (lambda r: r if len([x for x in r if x['kind'] == 'GIFT' and x['state'] == 'READY']) == 2 else None)(
         lane.fixture('mailbox PlayerBot')['rows']), 'two gifts')
-    require(sorted(r['number'] for r in rows if r['kind'] == 'GIFT') == [1, 2], lane.name + ': gifts are numbered 1 and 2 apart from text', rows)
+    # Text and gifts share one sequence: texts hold 1-3, so the gifts are 4 and 5.
+    require(sorted(r['number'] for r in rows if r['kind'] == 'GIFT') == [4, 5], lane.name + ': gifts continue the text numbers', rows)
     m = player.cmd('mail read')
-    player.chat(m, '/mail claim 2')
-    player.command('mail claim 1', 'Claimed gift 1')
-    player.command('mail claim 1', 'You have no mail 1')
+    player.chat(m, '/mail claim 5')
+    lines = [c['plain'] for c in player.chats(m)]
+    numbered = [int(m.group(1)) for m in (re.match(r'\[(\d+)\] ', x) for x in lines) if m]
+    require(numbered == [1, 2, 3, 4, 5], lane.name + ': /mail lists one sequence, 1 to 5', lines)
+    player.command('mail claim 1', 'Mail 1 is not a gift.')
+    player.command('mail delete 4', 'still holds items')
+    player.command('mail claim 4', 'Claimed gift 4')
+    player.command('mail claim 4', 'You have no mail 4')
     staff.command('mail gift PlayerBot 1', 'Gift of')
     rows = wait(lambda: (lambda r: r if len([x for x in r if x['kind'] == 'GIFT' and x['state'] == 'READY']) == 2 else None)(
-        lane.fixture('mailbox PlayerBot')['rows']), 'gift reuses 1')
-    require(sorted(r['number'] for r in rows if r['kind'] == 'GIFT') == [1, 2], lane.name + ': the next gift reuses number 1', rows)
+        lane.fixture('mailbox PlayerBot')['rows']), 'gift reuses 4')
+    require(sorted(r['number'] for r in rows if r['kind'] == 'GIFT') == [4, 5], lane.name + ': the next gift reuses number 4', rows)
     player.command('mail claim all', 'Claimed gift')
     player.command('mail clear', 'read mail')
 

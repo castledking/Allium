@@ -1069,8 +1069,9 @@ public final class MailService implements Listener {
     }
 
     /**
-     * Finds one mail by its mailbox number ({@code 1} or {@code #1}, among {@code kind}'s numbers) or,
-     * as before numbers existed, by a unique prefix of its ID.
+     * Finds one mail by its mailbox number ({@code 1} or {@code #1}; text and gifts share one
+     * sequence) or, as before numbers existed, by a unique prefix of its ID. The caller reports a
+     * number of the wrong kind ("not a gift", "gifts cannot be deleted").
      */
     private void find(Player player, String typed, MailKind kind, java.util.function.Consumer<MailRecord> found) {
         String token = typed.toLowerCase(Locale.ROOT);
@@ -1087,7 +1088,7 @@ public final class MailService implements Listener {
             List<MailRecord> matches;
             try {
                 matches = repository.mailbox(id, now).stream()
-                        .filter(m -> numbered ? m.kind() == kind && m.number() == number : m.id().toString().startsWith(prefix))
+                        .filter(m -> numbered ? m.number() == number : m.id().toString().startsWith(prefix))
                         .toList();
             } catch (SQLException e) {
                 onServer(() -> send(player, Messages.MAIL_FAILED));

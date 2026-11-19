@@ -36,8 +36,13 @@ commands:
     permission: allium.nick
   channel:
     description: Join, leave or write to a chat channel
-    aliases: [g, global, l, local, a, staffchat]
+    aliases: [g, global, shout, l, local, a, ac, amsg, staffchat]
     permission: allium.channel
+  action:
+    description: Describe what you are doing in chat
+    usage: /<command> <message>
+    aliases: [me]
+    permission: allium.me
   delmsg:
     description: Delete a chat message for everyone
     aliases: [deletemsg]
@@ -53,7 +58,7 @@ commands:
   workbench:
     description: Open a crafting table anywhere
     usage: /<command>
-    aliases: [craft]
+    aliases: [craft, wb, wbench]
     permission: allium.workbench
   anvil:
     description: Open an anvil anywhere
@@ -66,6 +71,7 @@ commands:
   speed:
     description: Set your walk or fly speed
     usage: /<command> [walk|fly] <0..10|reset> [player]
+    aliases: [wspeed, walkspeed]
     permission: allium.speed
   scale:
     description: Set the scale of a player or selected mobs
@@ -75,6 +81,15 @@ commands:
     description: Show your (or a player's) connection latency
     usage: /<command> [player]
     permission: allium.ping
+  coords:
+    description: Show your (or a player's) position
+    usage: /<command> [player]
+    aliases: [getpos, whereami]
+    permission: allium.getpos
+  compass:
+    description: Show the direction you are facing
+    usage: /<command>
+    permission: allium.compass
   ext:
     description: Put out a burning player
     usage: /<command> [player]
@@ -206,7 +221,7 @@ commands:
   gamemode:
     description: Change gamemode (per-mode permission)
     usage: /<command> <mode> [player]
-    aliases: [gm, gmc, gma, gms, gmsp, creative, survival, spectator, adventure]
+    aliases: [gm, gmc, gma, gms, gmsp, creative, survival, spectator, adventure, creativemode, survivalmode, spectatormode, adventuremode]
     permission: allium.gamemode
   msg:
     description: Send a private message
@@ -378,7 +393,7 @@ commands:
   list:
     description: List online players by group
     usage: /<command>
-    aliases: [online]
+    aliases: [online, who]
     permission: allium.list
   seen:
     description: Show when a player was last online
@@ -496,6 +511,7 @@ commands:
   baltop:
     description: Show the richest accounts
     usage: /<command> [page]
+    aliases: [balancetop]
     permission: allium.baltop
   cheque:
     description: Write a redeemable money cheque
@@ -652,6 +668,11 @@ permissions:
       allium.xp.set: true
       allium.customtext: true
       allium.top: true
+      allium.me: true
+      allium.chat.shout: true
+      allium.getpos: true
+      allium.getpos.others: true
+      allium.compass: true
       allium.top.roof: true
       allium.bottom: true
       allium.motd: true
@@ -1547,6 +1568,12 @@ permissions:
     default: false
   allium.chat.gradient:
     default: false
+  allium.chat.shout:
+    description: Allows /g <message> and /shout <message>, one message to global chat
+    default: true
+  allium.me:
+    description: Allows /me (/action)
+    default: true
   allium.channel.join.default.read:
     default: true
   allium.channel.join.default.write:
@@ -1587,6 +1614,18 @@ permissions:
   allium.top:
     description: Allows /top
     default: op
+
+  allium.getpos:
+    description: Allows /coords (/getpos, /whereami) for your own position
+    default: true
+
+  allium.getpos.others:
+    description: Allows /coords <player>
+    default: op
+
+  allium.compass:
+    description: Allows /compass, the direction you are facing
+    default: true
 
   allium.top.roof:
     description: Lets /top stand on a world's roof, such as the Nether's; without it /top stays under the roof

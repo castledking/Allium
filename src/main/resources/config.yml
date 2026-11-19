@@ -451,17 +451,19 @@ chat:
     list:
       default:
         display-name: Global
-        aliases: [g, global]
+        aliases: [g, global, shout]
         format: '<prefix><display_name>&f: <message>'
         discord-channel-id: ''
         discord-out-format: '{player}: {message}'
         discord-in-format: '&8[Discord] &f{discord_username}: {message}'
       staff-chat:
         display-name: Staff
-        aliases: [a, staffchat]
+        aliases: [a, ac, amsg, staffchat]
         format: '&8[Staff] <prefix><display_name>&f: <message>'
         discord-channel-id: ''
         webhook-delivery: false
+  # /me (/action): sent to everyone online like chat; deletable with /delmsg, never relayed to Discord.
+  action-format: '&5* <display_name> &5<message>'
 nickname:
   max-length: 32
   gradientplus-enabled: true

@@ -85,6 +85,8 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             }
             args=withMode(fixedMode,args);
         }
+        String fixedSpeed=spec.canonicalName().equals("speed")?CoreCommandSpecs.speedAlias(label):null;
+        if(fixedSpeed!=null)args=withMode(fixedSpeed,args);
         handler.execute(new BukkitCommandContext(plugin, spec, sender, label, args));
         return true;
     }
@@ -204,7 +206,8 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         };
 
         String fixedMode=spec.canonicalName().equals("gamemode")?CoreCommandSpecs.gamemodeAlias(alias):null;
-        List<String> out=spec.complete(completionContext,fixedMode==null?args:withMode(fixedMode,args));
+        String fixedSpeed=spec.canonicalName().equals("speed")?CoreCommandSpecs.speedAlias(alias):null;
+        List<String> out=spec.complete(completionContext,fixedMode!=null?withMode(fixedMode,args):fixedSpeed!=null?withMode(fixedSpeed,args):args);
         if(spec.canonicalName().equals("tp")&&args.length==1&&"~".startsWith(args[0])&&sender.hasPermission("allium.tp.position")){
             out=new ArrayList<>(out);out.add("~");
         }

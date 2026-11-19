@@ -1004,6 +1004,42 @@ utility:
   ping-other:
     - "{prefix} &aPing de &f{player}&a: &f{ping}ms&a."
     - "[sound] block.note_block.bit 1.4"
+  coords-self:
+    - "{prefix} &aTu posición en &f{world}&a:"
+    - "&7X: &f{x} &8(+Este <-> -Oeste)"
+    - "&7Y: &f{y} &8(+Arriba <-> -Abajo)"
+    - "&7Z: &f{z} &8(+Sur <-> -Norte)"
+    - "&7Yaw: &f{yaw} &8(rotación)"
+    - "&7Pitch: &f{pitch} &8(ángulo de la cabeza)"
+    - "[sound] ui.cartography_table.take_result 1.2"
+  coords-other:
+    - "{prefix} &aPosición de &f{player} &aen &f{world}&a:"
+    - "&7X: &f{x} &8(+Este <-> -Oeste)"
+    - "&7Y: &f{y} &8(+Arriba <-> -Abajo)"
+    - "&7Z: &f{z} &8(+Sur <-> -Norte)"
+    - "&7Yaw: &f{yaw} &8(rotación)"
+    - "&7Pitch: &f{pitch} &8(ángulo de la cabeza)"
+    - "[sound] ui.cartography_table.take_result 1.2"
+  compass-bearing:
+    - "{prefix} &aMiras hacia el {direction} &7({degrees} grados)&a."
+    - "[sound] item.lodestone_compass.lock 1.3"
+  compass-direction:
+    north:
+      - "&fnorte"
+    north-east:
+      - "&fnoreste"
+    east:
+      - "&feste"
+    south-east:
+      - "&fsureste"
+    south:
+      - "&fsur"
+    south-west:
+      - "&fsuroeste"
+    west:
+      - "&foeste"
+    north-west:
+      - "&fnoroeste"
   ext-self:
     - "{prefix} &aHas sido extinguido."
     - "[sound] entity.generic.extinguish_fire 1.1"

@@ -70,6 +70,21 @@ class ChatServiceTest {
     @Test void mutedAfterNativeAdmissionDoesNotBroadcastOrRelay(){var event=new AsyncPlayerChatEvent(true,alice,"blocked",new HashSet<>(Set.of(alice,bob)));service.legacyChat(event);when(moderation.isMuted(alice.getUniqueId())).thenReturn(true);flush();assertTrue(history(bob).isEmpty());verifyNoInteractions(relay);}
     @Test void nativeAudienceRestrictionSurvivesFormatting(){var event=new AsyncPlayerChatEvent(true,alice,"only bob",new HashSet<>(Set.of(bob)));service.legacyChat(event);flush();assertTrue(history(alice).isEmpty());assertEquals(1,history(bob).size());}
     @Test void staffMessagesNeverEnterUnsubscribedRecipientsHistory(){grants.get(alice).add("allium.staffchat");command(alice,"channel","a");flush();say(alice,"secret");assertEquals("staff-chat",history(alice).get(0).channel());assertTrue(history(bob).isEmpty());}
+    @Test void staffAliasesSendOnceAndShoutNeedsItsPermission(){
+        grants.get(alice).add("allium.staffchat");
+        command(alice,"channel","ac","to staff");command(alice,"channel","amsg","again");
+        assertEquals(List.of("staff-chat","staff-chat"),history(alice).stream().map(ChatHistory.Message::channel).toList());assertTrue(history(bob).isEmpty());
+        command(alice,"channel","shout","hello all");
+        assertTrue(history(bob).isEmpty());verify(plugin.getMessageManager()).send(alice,codes.castled.allium.message.Messages.HIDE_NO_PERMISSION,"{cmd}","shout");
+        grants.get(alice).add(ChatService.SHOUT);command(alice,"channel","shout","hello all");command(alice,"channel","g","and again");
+        assertEquals(2,history(bob).size());assertEquals("default",history(bob).get(0).channel());
+    }
+    @Test void actionReachesEveryoneAsDeletableChat(){
+        command(alice,"action","me","waves");
+        assertEquals("action",history(bob).get(0).channel());
+        String plain=net.md_5.bungee.api.chat.BaseComponent.toPlainText(net.md_5.bungee.chat.ComponentSerializer.parse(received.get(bob).get(0)));assertEquals("* Alice waves",plain);
+        command(alice,"action","me");assertEquals(1,history(bob).size(),"no message: the usage card");
+    }
     @Test void localAudienceUsesWorldAndRadius(){when(bob.getLocation()).thenReturn(new Location(world,200,64,0));service.send(alice,"local","near only",null);assertEquals(1,history(alice).size());assertTrue(history(bob).isEmpty());}
     @Test void deletionRebuildsOnlyOriginalRecipientHistoryAndSkipsDeletedCopies(){say(alice,"first");String id=history(bob).get(0).id();say(alice,"second");grants.get(alice).add("allium.delmsg");command(alice,"delmsg","delmsg",id);for(int i=0;i<8;i++)tick.getAsBoolean();assertTrue(service.history().find(id).orElseThrow().deleted().get());assertEquals(1,history(bob).size());String finalPacket=received.get(bob).get(received.get(bob).size()-1);assertTrue(finalPacket.contains("second"));assertFalse(finalPacket.contains("first"));verify(relay).delete(id);}
     @Test void deletionAndLiveArrivalDuringReplayDoNotResurrectOrLoseMessages(){say(alice,"first");String one=history(bob).get(0).id();say(alice,"second");String two=history(bob).get(1).id();grants.get(alice).add("allium.delmsg");command(alice,"delmsg","delmsg",one);tick.getAsBoolean();say(alice,"live");command(alice,"delmsg","delmsg",two);for(int i=0;i<20;i++)tick.getAsBoolean();assertEquals(1,history(bob).size());assertTrue(received.get(bob).get(received.get(bob).size()-1).contains("live"));}

@@ -107,6 +107,8 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new SpeedCommand(plugin));
         plugin.getCommandManager().register(new ScaleCommand(plugin));
         plugin.getCommandManager().register(new PingCommand(plugin));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.CoordsCommand(plugin));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.CompassCommand(plugin));
         plugin.getCommandManager().register(new ExtCommand(plugin));
         plugin.getCommandManager().register(new BurnCommand(plugin));
         plugin.getCommandManager().register(new SmiteCommand(plugin));

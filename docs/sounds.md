@@ -29,6 +29,14 @@ messaging:
 - **An unknown sound ID** leaves the text working and logs one warning.
 - **Updates keep your omissions:** when an Allium update adds messages, it adds the missing
   ones to your lang file. It never puts back a `volume` or `pitch` you removed from an entry.
+- **Translations keep the English sounds:** in a locale other than `en_US`, an entry with no
+  sound line plays the `en_US` entry's sound, so a translation only needs the text.
+  `[sound] none` (or `sound: none`) silences that message in that locale.
+- **A locale Allium does not ship** (`settings.locale` other than `en_US` or `es_ES`, such as
+  `es_US`) starts as a copy of `en_US.yml`, sounds included, which you then translate.
+- **Action bar:** a list entry may have one `[actionbar] <text>` line; it is shown in the action
+  bar, never as a chat line, so it does not enter chat history or `/delmsg` replays. Chat replays
+  after `/delmsg` play no sounds.
 
 ```yaml
 # config.yml

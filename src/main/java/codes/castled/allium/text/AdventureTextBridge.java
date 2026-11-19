@@ -31,6 +31,14 @@ final class AdventureTextBridge {
         return true;
     }
 
+    static boolean trySendActionBar(CommandSender sender, FormattedText formatted) {
+        if (!(sender instanceof Audience audience)) {
+            return false;
+        }
+        audience.sendActionBar(formatted == null || formatted.isEmpty() ? Component.empty() : toComponent(formatted));
+        return true;
+    }
+
     static Component toComponent(FormattedText formatted) {
         if (formatted == null || formatted.isEmpty()) {
             return Component.empty();

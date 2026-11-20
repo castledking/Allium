@@ -117,6 +117,7 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         if(handler instanceof codes.castled.allium.command.essentials.TextFileCommand textFile)return textFile.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.BroadcastCommand broadcast)return broadcast.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.SpawnMobCommand spawnMob)return spawnMob.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.essentials.GlowCommand glowCommand)return glowCommand.complete(sender,args);
         boolean tpPosition=spec.canonicalName().equals("tp")&&args.length>=2&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[0]);
         if(tpPosition||spec.canonicalName().equals("tppos")){
             if(!sender.hasPermission(tpPosition?"allium.tp.position":"allium.tppos"))return List.of();

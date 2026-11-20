@@ -86,6 +86,10 @@ commands:
     usage: /<command> [player]
     aliases: [getpos, whereami]
     permission: allium.getpos
+  glow:
+    description: Set your glow colour, or another player's
+    usage: /<command> <color|rainbow|off|spectator> [player]
+    permission: allium.glow
   compass:
     description: Show the direction you are facing
     usage: /<command>
@@ -609,6 +613,7 @@ permissions:
       allium.gamemode.creative.keep-effects: true
       allium.gamemode.creative.own-armor: true
       allium.gamemode.creative.pickblock: true
+      allium.gamemode.creative.own-glow: true
       allium.gamemode.creative.bypass: true
       allium.gamemode.creative.inventory: true
       allium.gamemode.spectator.teleport: true
@@ -730,6 +735,10 @@ permissions:
       allium.getpos: true
       allium.getpos.others: true
       allium.compass: true
+      allium.glow: true
+      allium.glow.*: true
+      allium.glow.others: true
+      allium.gamemode.spectator.glow: true
       allium.tpo: true
       allium.tpohere: true
       allium.tpall: true
@@ -961,6 +970,9 @@ permissions:
   allium.gamemode.creative.pickblock:
     description: Use pick block in creative mode (Paper 1.21.4 and later; older servers leave pick block to the client)
     default: op
+  allium.gamemode.creative.own-glow:
+    description: Keep your own glow (or none) in restricted creative instead of the creative-manager.glow colour
+    default: op
   allium.gamemode.creative.bypass:
     description: Unrestricted creative mode (every creative-manager restriction lifted); %allium_gamemode% shows restricted-creative without it
     default: op
@@ -981,6 +993,7 @@ permissions:
       allium.gamemode.creative.keep-effects: true
       allium.gamemode.creative.own-armor: true
       allium.gamemode.creative.pickblock: true
+      allium.gamemode.creative.own-glow: true
   allium.gamemode.creative.inventory:
     description: Keep one shared inventory across gamemodes (no separate creative inventory)
     default: op
@@ -1854,6 +1867,40 @@ permissions:
   allium.compass:
     description: Allows /compass, the direction you are facing
     default: true
+
+  allium.glow:
+    description: Allows /glow on yourself; each colour needs allium.glow.<color> (or allium.glow.*)
+    default: op
+  allium.glow.*:
+    description: Every /glow colour and rainbow
+    default: op
+    children:
+      allium.glow.black: true
+      allium.glow.dark_blue: true
+      allium.glow.dark_green: true
+      allium.glow.dark_aqua: true
+      allium.glow.dark_red: true
+      allium.glow.dark_purple: true
+      allium.glow.gold: true
+      allium.glow.gray: true
+      allium.glow.dark_gray: true
+      allium.glow.blue: true
+      allium.glow.green: true
+      allium.glow.aqua: true
+      allium.glow.red: true
+      allium.glow.light_purple: true
+      allium.glow.yellow: true
+      allium.glow.white: true
+      allium.glow.rainbow: true
+  allium.glow.rainbow:
+    description: Allows /glow rainbow
+    default: op
+  allium.glow.others:
+    description: Allows /glow on other players
+    default: op
+  allium.gamemode.spectator.glow:
+    description: Glow while in spectator (seen by other spectators) unless a /glow choice shows; the colour from allium.gamemode.spectator.glow.<color|rainbow>, else white
+    default: op
 
   allium.top.roof:
     description: Lets /top stand on a world's roof, such as the Nether's; without it /top stays under the roof

@@ -322,6 +322,7 @@ public final class StaffGate extends JavaPlugin implements org.bukkit.event.List
                             org.bukkit.potion.PotionEffectType.getByName(args[3]), 20 * 120, 0));
                     out.put("effects", p.getActivePotionEffects().stream().map(e -> e.getType().getName()).toList());
                 }
+                case "glowing" -> out.put("glowing", online(args[1]).isGlowing());
                 case "armor" -> {
                     Player p = online(args[1]);
                     List<String> worn = new ArrayList<>();

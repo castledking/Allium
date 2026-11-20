@@ -880,6 +880,16 @@ public final class CoreCommandSpecs {
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    public static final CommandSpec GLOW = new CommandSpec(
+            "glow", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Set your glow colour, or another player's",
+            "/glow <color|rainbow|off|spectator> [player]", "/glow <color|rainbow|off|spectator> <player>",
+            "allium.glow", "allium.glow.others",
+            List.of(CommandArgSpec.required("color", null, SuggestionSpec.none()),
+                    CommandArgSpec.optional("player", "allium.glow.others", SuggestionSpec.onlinePlayers("allium.glow.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final CommandSpec COMPASS = new CommandSpec(
             "compass", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
             "Show the direction you are facing",
@@ -1187,7 +1197,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
-            SPEED, SCALE, PING, COORDS, COMPASS, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
+            SPEED, SCALE, PING, COORDS, COMPASS, GLOW, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
             ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS, SPAWNMOB
     );
 

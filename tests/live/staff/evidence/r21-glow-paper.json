@@ -1,0 +1,99 @@
+{
+  "suite": "paper",
+  "run": "r24-paper-glow-3",
+  "alliumSha256": "be257f12f2603f6e1dc1ec018c680db6fdda3f6173c7063332f54eb5e3c8d94c",
+  "sources": {
+    "tests/live/staff/run.py": "5a9b58fe45ded41bbebbbaaac45d811287ad99c62913c8e2a98acf33a2e7e9e5",
+    "tests/live/staff/plugin/gate/StaffGate.java": "88c7fabca419c1213fcfb07c1402dd6141659f3613621ae6a3bf0995e32966db",
+    "tests/live/staff/plugin/plugin.yml": "ec5d6b7a13867272f060fe626e509891f63062b1ca1accf319d93d9637bfbe48",
+    "tests/live/staff/client-mcp.cjs": "9c6f3c508a3e9ffffd881e473363f4976b27a4456c83b625308209324391c75b",
+    "tests/live/staff/client-raw26.cjs": "2e4d3ba3111b7154fcdc4fb50d8eb6f9da83b9bb82a48b524f3b049295d19d37",
+    "tests/live/staff/text-components.cjs": "c39e29bbcbc257073e96aefd7cae66237b6d435b5a87ff436d9e94bd77586851"
+  },
+  "placeholderJarChecksum": null,
+  "packetEventsJarChecksum": "060087c58ec268eae7dd0eb1f17ac3bea1eaadda1693414141ff64e506091bd7",
+  "passed": true,
+  "checks": 11,
+  "failures": [],
+  "cases": [
+    {
+      "name": "glow",
+      "passed": true
+    }
+  ],
+  "seconds": 19.5,
+  "results": [
+    {
+      "label": "paper: creative, alts and restore modules enabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /glow red makes the player glow",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: other players see the glow in red",
+      "passed": true,
+      "detail": {
+        "team": "aglow_70b213e157",
+        "mode": 0,
+        "color": 12,
+        "players": [
+          "PlayerBot"
+        ]
+      }
+    },
+    {
+      "label": "paper: /glow off stops it",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: allium.gamemode.spectator.glow glows in spectator, in the granted colour",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: restricted creative shows the pink creative glow over the player's own",
+      "passed": true,
+      "detail": {
+        "team": "aglow_70b213e157",
+        "mode": 2,
+        "color": 13,
+        "players": []
+      }
+    },
+    {
+      "label": "paper: allium.gamemode.creative.own-glow keeps the player's own glow",
+      "passed": true,
+      "detail": {
+        "team": "aglow_70b213e157",
+        "mode": 2,
+        "color": 12,
+        "players": []
+      }
+    },
+    {
+      "label": "paper: leaving creative brings the player's own glow back",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /glow spectator shows the glow only in spectator",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: /glow <colour> <player> and back off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "paper: no exceptions or SEVERE lines in the server log",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

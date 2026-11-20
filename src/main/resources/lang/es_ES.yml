@@ -1900,3 +1900,38 @@ restore:
   teleported:
     - "{prefix} &aTeletransportado a donde se tomo la instantanea."
     - "[sound] entity.enderman.teleport 1.0"
+glow:
+  set:
+    - "{prefix} &aBrillo puesto en {color}&a."
+    - "[sound] block.amethyst_block.chime 1.3"
+  set-other:
+    - "{prefix} &aBrillo de &f{player} &apuesto en {color}&a."
+    - "[sound] block.amethyst_block.chime 1.3"
+  "off":
+    - "{prefix} &aBrillo quitado."
+    - "[sound] block.amethyst_block.hit 0.9"
+  off-other:
+    - "{prefix} &aBrillo de &f{player} &aquitado."
+    - "[sound] block.amethyst_block.hit 0.9"
+  invalid:
+    - "{prefix} &cColor de brillo desconocido &f{color}&c. Colores: &f{colors}&c."
+    - "[sound] block.note_block.bass 0.8"
+  color-denied:
+    - "{prefix} &cNo tienes permiso para el color {color}&c."
+    - "[sound] entity.villager.no 0.9"
+  spectator-on:
+    - "{prefix} &aBrillo solo en espectador &eactivado&a: tu brillo solo se ve en modo espectador."
+    - "[sound] block.note_block.pling 1.3"
+  spectator-off:
+    - "{prefix} &aBrillo solo en espectador &cdesactivado&a: tu brillo se ve en todos los modos."
+    - "[sound] block.note_block.bass 0.85"
+  spectator-on-other:
+    - "{prefix} &aBrillo solo en espectador &eactivado &apara &f{player}&a."
+    - "[sound] block.note_block.pling 1.3"
+  spectator-off-other:
+    - "{prefix} &aBrillo solo en espectador &cdesactivado &apara &f{player}&a."
+    - "[sound] block.note_block.bass 0.85"
+  held:
+    - "{prefix} &7Se ve mientras estés en modo espectador."
+  overridden:
+    - "{prefix} &7En creativo restringido muestras el brillo de creativo; el tuyo vuelve al salir."

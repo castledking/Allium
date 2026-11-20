@@ -570,6 +570,12 @@ creative-manager:
   # Clear potion effects when a player enters or leaves creative (allium.gamemode.creative.keep-effects
   # keeps them).
   clear-effects-on-switch: true
+  # Players in restricted creative (creative without allium.gamemode.creative.bypass) glow in this
+  # colour (light_purple, red, gold... or rainbow), over any /glow they set, unless they hold
+  # allium.gamemode.creative.own-glow. Coloured glow needs PacketEvents; without it the glow is white.
+  glow:
+    enabled: false
+    color: light_purple
   # Armour worn while in creative. It cannot be taken off and is removed on leaving creative; with one
   # shared inventory the player's own armour comes back. allium.gamemode.creative.own-armor skips it.
   armor:

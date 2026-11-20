@@ -1900,3 +1900,38 @@ restore:
   teleported:
     - "{prefix} &aTeleported to where the snapshot was taken."
     - "[sound] entity.enderman.teleport 1.0"
+glow:
+  set:
+    - "{prefix} &aGlow set to {color}&a."
+    - "[sound] block.amethyst_block.chime 1.3"
+  set-other:
+    - "{prefix} &aSet &f{player}&a's glow to {color}&a."
+    - "[sound] block.amethyst_block.chime 1.3"
+  "off":
+    - "{prefix} &aGlow removed."
+    - "[sound] block.amethyst_block.hit 0.9"
+  off-other:
+    - "{prefix} &aRemoved &f{player}&a's glow."
+    - "[sound] block.amethyst_block.hit 0.9"
+  invalid:
+    - "{prefix} &cUnknown glow colour &f{color}&c. Colours: &f{colors}&c."
+    - "[sound] block.note_block.bass 0.8"
+  color-denied:
+    - "{prefix} &cYou don't have permission for the colour {color}&c."
+    - "[sound] entity.villager.no 0.9"
+  spectator-on:
+    - "{prefix} &aSpectator-only glow &eon&a: your glow shows only while you are in spectator."
+    - "[sound] block.note_block.pling 1.3"
+  spectator-off:
+    - "{prefix} &aSpectator-only glow &coff&a: your glow shows in every gamemode."
+    - "[sound] block.note_block.bass 0.85"
+  spectator-on-other:
+    - "{prefix} &aSpectator-only glow &eon &afor &f{player}&a."
+    - "[sound] block.note_block.pling 1.3"
+  spectator-off-other:
+    - "{prefix} &aSpectator-only glow &coff &afor &f{player}&a."
+    - "[sound] block.note_block.bass 0.85"
+  held:
+    - "{prefix} &7It shows while you are in spectator."
+  overridden:
+    - "{prefix} &7In restricted creative you show the creative glow; yours comes back when you leave it."

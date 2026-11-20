@@ -1,5 +1,18 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r21): /glow and creative/spectator glow
+
+**PASS on targeted runs:** the new `glow` case with PacketEvents 2.14.0 on Spigot 1.20.1
+(`r24-spigot-glow-2`) and Paper 26.3 (`r24-paper-glow-3`), 11 checks each, SQLite, Allium.jar
+`be257f12f2603f6e1dc1ec018c680db6fdda3f6173c7063332f54eb5e3c8d94c`
+([spigot](evidence/r21-glow-spigot.json), [paper](evidence/r21-glow-paper.json)). No exceptions or
+SEVERE lines. `./gradlew check`: 1107 unit tests, 0 failures. The other staff cases did not run on
+this jar.
+
+| Case | What ran |
+| --- | --- |
+| glow | `/glow red` refused without `allium.glow`; granted `/glow red` makes the player glow and sends the red packet team (`color=12`) to other players; `/glow off` stops it; `allium.gamemode.spectator.glow` glows in spectator in the granted colour; restricted creative overrides with the pink creative glow (`color=13`), `allium.gamemode.creative.own-glow` preserves the player's own colour (`color=12`), and leaving creative restores it; `/glow spectator` shows only in spectator; `/glow <colour> <player>` and `/glow off <player>` |
+
 ## November 19 follow-up (r20): /playtime and more placeholders
 
 **PASS on targeted runs:** the new `playtime-placeholders` case with PlaceholderAPI 2.12.3 on

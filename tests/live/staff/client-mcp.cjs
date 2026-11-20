@@ -25,6 +25,9 @@ client.on('packet', (packet, meta) => {
     console.log('BASEG-SOUND ' + JSON.stringify({packet: meta.name, name: s.data ? s.data.soundName : null, id: s.soundId ?? null,
       volume: packet.volume, pitch: packet.pitch}));
   }
+  if (meta.name === 'teams') {
+    console.log('BASEG-TEAM ' + JSON.stringify({team: packet.team, mode: packet.mode, color: packet.formatting ?? null, players: packet.players || []}));
+  }
   if (meta.name === 'action_bar') {
     let content = packet.text;
     if (content && typeof content === 'object' && content.type) content = nbt.simplify(content);

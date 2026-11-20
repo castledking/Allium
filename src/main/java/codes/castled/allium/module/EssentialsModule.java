@@ -39,6 +39,12 @@ public final class EssentialsModule extends AbstractModule {
     private codes.castled.allium.command.essentials.LoreClipboard loreClipboard;
     private codes.castled.allium.command.essentials.MotdOnJoin motdOnJoin;
     private codes.castled.allium.player.TimedFlight timedFlight;
+    private codes.castled.allium.glow.GlowService glow;
+
+    /** Glow colours (/glow, spectator and restricted-creative glow). */
+    public codes.castled.allium.glow.GlowService glow() {
+        return glow;
+    }
 
     /** Timed flight (legacy tfly); null when its storage could not start. */
     public codes.castled.allium.player.TimedFlight timedFlight() {
@@ -71,6 +77,9 @@ public final class EssentialsModule extends AbstractModule {
         }
         if (timedFlight != null) {
             timedFlight.reload();
+        }
+        if (glow != null) {
+            glow.reload();
         }
     }
     private SkullProfiles fallbackSkulls;
@@ -109,6 +118,9 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new PingCommand(plugin));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.CoordsCommand(plugin));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.CompassCommand(plugin));
+        glow = new codes.castled.allium.glow.GlowService(plugin);
+        glow.enable();
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.GlowCommand(plugin, () -> glow));
         plugin.getCommandManager().register(new ExtCommand(plugin));
         plugin.getCommandManager().register(new BurnCommand(plugin));
         plugin.getCommandManager().register(new SmiteCommand(plugin));
@@ -182,6 +194,7 @@ public final class EssentialsModule extends AbstractModule {
     public void onDisable() {
         // Timed flight hands landing fliers to the flight restoration, so it stops first.
         if(timedFlight!=null){timedFlight.close();timedFlight=null;}
+        if(glow!=null){glow.close();glow=null;}
         if(flights!=null){flights.close();flights=null;}
         if (disposalListener != null) {
             HandlerList.unregisterAll(disposalListener);

@@ -44,6 +44,7 @@ P.add_argument('--only', default='', help='comma-separated case names (debugging
 P.add_argument('--run-root', type=Path, default=Path('/mnt/storage/.allium-validation/20261117/staff/runs'))
 P.add_argument('--paper-template', type=Path, default=Path('/mnt/storage/.allium-validation/20261106/supplied-lanes/runs/paper-26.3'))
 P.add_argument('--placeholderapi', type=Path, help='a PlaceholderAPI jar: installs it and runs the placeholders case')
+P.add_argument('--packetevents', type=Path, help='a PacketEvents jar: installs it, so glow colours are checked')
 A = P.parse_args()
 
 if not re.fullmatch(r'[a-zA-Z0-9_][a-zA-Z0-9_.-]*', A.run_name):
@@ -214,6 +215,9 @@ class Bot:
     def sounds(self, start):
         return [json.loads(s.split(' ', 1)[1]) for s in self.lines[start:] if s.startswith('BASEG-SOUND ')]
 
+    def teams(self, start):
+        return [json.loads(s.split(' ', 1)[1]) for s in self.lines[start:] if s.startswith('BASEG-TEAM ')]
+
     def saw(self, start, fragment):
         return any(fragment in c.get('plain', '') for c in self.chats(start))
 
@@ -297,6 +301,8 @@ class Lane:
         shutil.copy2(RUN / 'helper/StaffGate.jar', self.path / 'plugins/StaffGate.jar')
         if A.placeholderapi:
             shutil.copy2(A.placeholderapi, self.path / 'plugins/PlaceholderAPI.jar')
+        if A.packetevents:
+            shutil.copy2(A.packetevents, self.path / 'plugins/packetevents.jar')
         with zipfile.ZipFile(JAR) as z:
             config = yaml.safe_load(z.read('config.yml'))
         config.setdefault('modules', {}).update({m: True for m in config['modules']})
@@ -1112,6 +1118,93 @@ def playtime_placeholders(lane):
     require(re.search(r'played for \d', offline['plain']) and 'First joined' in offline['plain'],
             lane.name + ': /playtime for an offline player reads the stats file', offline)
     lane.bot('PlayerBot')
+
+
+GLOW_IDS = {'red': 12, 'aqua': 11, 'light_purple': 13, 'blue': 9}
+
+
+def glow(lane):
+    """/glow (colours, off, others, spectator-only), the spectator glow and the restricted-creative glow
+    over a player's own; with --packetevents the colours other players receive are checked too."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+
+    def glowing():
+        return lane.fixture('glowing PlayerBot')['glowing']
+
+    def colour(m, expected, mode=None):
+        if not A.packetevents:
+            return None
+        team = wait(lambda: next((t for t in reversed(staff.teams(m)) if t['team'].startswith('aglow_')
+                                  and t['color'] == GLOW_IDS[expected] and (mode is None or t['mode'] == mode)), None),
+                    lane.name + ' team colour ' + expected, 6)
+        return team
+
+    player.command('glow red', 'unknown.command')  # without allium.glow the command is not in the player's list
+    lane.perm('PlayerBot', 'allium.glow')
+    player.command('glow red', "You don't have permission for the colour")
+    lane.perm('PlayerBot', 'allium.glow.red')
+    m = staff.mark()
+    player.command('glow red', 'Glow set to red.')
+    require(glowing(), lane.name + ': /glow red makes the player glow')
+    team = colour(m, 'red', 0)
+    require(team is None or team['players'] == ['PlayerBot'], lane.name + ': other players see the glow in red', team)
+    m = staff.mark()
+    player.command('glow off', 'Glow removed.')
+    require(not glowing(), lane.name + ': /glow off stops it')
+    if A.packetevents:
+        wait(lambda: any(t['mode'] == 1 and t['team'].startswith('aglow_') for t in staff.teams(m)) or None, 'team removed', 6)
+
+    for node in ['allium.gamemode.spectator.glow', 'allium.gamemode.spectator.glow.aqua']:
+        lane.perm('PlayerBot', node)
+    m = staff.mark()
+    lane.console('gamemode spectator PlayerBot')
+    wait(lambda: glowing() or None, 'spectator glow', 6)
+    colour(m, 'aqua')
+    lane.console('gamemode survival PlayerBot')
+    wait(lambda: (not glowing()) or None, 'spectator glow gone', 6)
+    require(True, lane.name + ': allium.gamemode.spectator.glow glows in spectator, in the granted colour')
+
+    cfg_path = lane.path / 'plugins/Allium/config.yml'
+    original = cfg_path.read_text()
+    try:
+        cfg = yaml.safe_load(original)
+        cfg['creative-manager'].setdefault('glow', {})['enabled'] = True
+        cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+        allium_reload(lane)
+        player.command('glow red', 'Glow set to red.')
+        m = staff.mark()
+        lane.console('gamemode creative PlayerBot')
+        team = colour(m, 'light_purple')
+        require(glowing(), lane.name + ': restricted creative shows the pink creative glow over the player\'s own', team)
+        m = staff.mark()
+        lane.perm('PlayerBot', 'allium.gamemode.creative.own-glow')
+        team = colour(m, 'red')
+        require(team is not None or not A.packetevents, lane.name + ': allium.gamemode.creative.own-glow keeps the player\'s own glow', team)
+        lane.perm('PlayerBot', 'allium.gamemode.creative.own-glow', False)
+        lane.console('gamemode survival PlayerBot')
+        wait(lambda: lane.fixture('inv PlayerBot')['gamemode'] == 'SURVIVAL' or None, 'survival', 10)
+        require(glowing(), lane.name + ': leaving creative brings the player\'s own glow back')
+    finally:
+        cfg_path.write_text(original)
+        allium_reload(lane)
+
+    lane.perm('PlayerBot', 'allium.gamemode.spectator')
+    player.command('glow spectator', 'Spectator-only glow on')
+    wait(lambda: (not glowing()) or None, 'held outside spectator', 6)
+    lane.console('gamemode spectator PlayerBot')
+    wait(lambda: glowing() or None, 'shown in spectator', 6)
+    lane.console('gamemode survival PlayerBot')
+    wait(lambda: (not glowing()) or None, 'held again', 6)
+    player.command('glow spectator', 'Spectator-only glow off')
+    require(True, lane.name + ': /glow spectator shows the glow only in spectator')
+
+    for node in ['allium.glow', 'allium.glow.blue', 'allium.glow.others']:
+        lane.perm('StaffBot', node)
+    m = staff.mark()
+    staff.command('glow blue PlayerBot', "Set PlayerBot's glow to blue.")
+    colour(m, 'blue')
+    player.command('glow off', 'Glow removed.')
+    require(not glowing(), lane.name + ': /glow <colour> <player> and back off')
 
 
 def gamemode_perms(lane):
@@ -2435,6 +2528,7 @@ def main():
         case('mass-teleports', lambda: mass_teleports(lane))
         case('economy-messages', lambda: economy_messages(lane))
         case('warmup-actionbar', lambda: warmup_actionbar(lane))
+        case('glow', lambda: glow(lane))
         # Both reconnect PlayerBot, which drops its non-sticky grants: keep them last.
         case('broadcasts', lambda: broadcasts(lane))
         if A.placeholderapi:
@@ -2451,6 +2545,7 @@ def main():
         clean_logs(lane)
     manifest = dict(suite=A.suite, run=A.run_name, alliumSha256=A.sha256, sources=SOURCE_HASHES,
                     placeholderJarChecksum=hashlib.sha256(A.placeholderapi.read_bytes()).hexdigest() if A.placeholderapi else None,
+                    packetEventsJarChecksum=hashlib.sha256(A.packetevents.read_bytes()).hexdigest() if A.packetevents else None,
                     passed=not failures,
                     checks=len(checks), failures=failures, cases=cases, seconds=round(time.time() - started, 1), results=checks)
     (RUN / 'manifest.json').write_text(json.dumps(manifest, indent=2, default=str))

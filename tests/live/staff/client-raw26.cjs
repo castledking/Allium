@@ -107,6 +107,21 @@ socket.on('data', chunk => { try {
           if (wid === openWindowId) openWindowId = 0;
         }
       if (id === ids.game_CLIENTBOUND['minecraft:open_sign_editor']) console.log('SIGN-EDITOR opened');
+      if (id === ids.game_CLIENTBOUND['minecraft:set_player_team']) {
+        // 26.2+ (protocol 777): name, method; create/update: display, prefix, suffix, visibility, collision, optional color, options; then players.
+        let [team, p] = readStr(payload, 0);
+        const mode = payload[p++];
+        let color = null;
+        if (mode === 0 || mode === 2) {
+          [, p] = readNbt(payload, p); [, p] = readNbt(payload, p); [, p] = readNbt(payload, p);
+          [, p] = read(payload, p); [, p] = read(payload, p);
+          if (payload[p++] === 1) [color, p] = read(payload, p);
+          [, p] = read(payload, p);
+        }
+        const players = [];
+        if (mode === 0 || mode === 3 || mode === 4) { let n; [n, p] = read(payload, p); for (let k = 0; k < n; k++) { let s; [s, p] = readStr(payload, p); players.push(s); } }
+        console.log('BASEG-TEAM ' + JSON.stringify({team, mode, color, players}));
+      }
       if (id === ids.game_CLIENTBOUND['minecraft:set_action_bar_text']) {
         // Paper sends action bars on their own packet, not as overlay system chat.
         const [component] = readNbt(payload, 0);

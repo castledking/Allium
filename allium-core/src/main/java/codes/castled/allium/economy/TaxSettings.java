@@ -15,9 +15,23 @@ public record TaxSettings(
         boolean applyToPay,
         boolean applyToCheques,
         RoundingMode roundMode,
-        Money minimumTax
+        Money minimumTax,
+        boolean accountInBaltop,
+        boolean accountPayable
 ) {
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+
+    public TaxSettings(
+            boolean enabled,
+            BigDecimal percent,
+            String accountName,
+            boolean applyToPay,
+            boolean applyToCheques,
+            RoundingMode roundMode,
+            Money minimumTax
+    ) {
+        this(enabled, percent, accountName, applyToPay, applyToCheques, roundMode, minimumTax, true, false);
+    }
 
     public TaxSettings {
         Objects.requireNonNull(percent, "percent");
@@ -133,6 +147,7 @@ public record TaxSettings(
 
     public String fingerprint() {
         return enabled + "|" + percentBps() + "|" + accountName + "|" + applyToPay + "|" + applyToCheques
-                + "|" + roundMode.name() + "|" + minimumTax.minor();
+                + "|" + roundMode.name() + "|" + minimumTax.minor()
+                + "|" + accountInBaltop + "|" + accountPayable;
     }
 }

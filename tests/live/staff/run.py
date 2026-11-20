@@ -1207,6 +1207,85 @@ def glow(lane):
     require(not glowing(), lane.name + ': /glow <colour> <player> and back off')
 
 
+def powertool(lane):
+    """/pt (/powertool): inline add (immediate + delayed actionbar), uses/recharge, cooldown,
+    /pt save <name> -> tools/<name>.yml, /pt give & /pt get, real right-click activation,
+    /pt toggle, and /pt delete."""
+    staff, player = lane.bots['StaffBot'], lane.bots['PlayerBot']
+    player.command('pt add message nope', 'unknown.command')
+
+    lane.perm('StaffBot', 'allium.powertool.*')
+    lane.fixture('held StaffBot 0')
+    lane.fixture('give StaffBot 0 BLAZE_ROD 1')
+    window(.3)
+    staff.command('pt add --t right message &aZap {player}!', 'Added action #1 on right')
+    staff.command('pt add --t right --delay 10t actionbar &dAftershock!', 'Added action #2 on right')
+    staff.command('pt cooldown --t right 3s --visual true', 'Set cooldown (right) to 3s')
+    staff.command('pt uses 2 --recharge 10s', 'Set uses to 2')
+    staff.command('pt info', 'Trigger right')
+    staff.command('pt save gate_wand', 'Saved powertool gate_wand to tools/gate_wand.yml')
+    tool_file = lane.path / 'plugins/Allium/tools/gate_wand.yml'
+    require(tool_file.is_file(), lane.name + ': /pt save writes plugins/Allium/tools/gate_wand.yml')
+
+    try:
+        lane.fixture('clear PlayerBot')
+        lane.fixture('held PlayerBot 0')
+        staff.command('pt give PlayerBot gate_wand', 'Gave 1x gate_wand to PlayerBot.')
+        inv = lane.fixture('inv PlayerBot')
+        require((slot(inv, 0) or {}).get('type') == 'BLAZE_ROD', lane.name + ': /pt give delivers the saved tool', slot(inv, 0))
+
+        lane.fixture('tp PlayerBot 3.5 -61 0.5 -90 0')
+        lane.fixture('setblock 5 -60 0 STONE')
+        window(.3)
+
+        # First activation: immediate message + delayed actionbar
+        m = player.mark()
+        player.signuse(5, -60, 0)
+        player.chat(m, 'Zap PlayerBot!', 10)
+        player.chat(m, 'Aftershock!', 10)
+        require(True, lane.name + ': saved powertool fires immediate message and delayed actionbar on right-click')
+
+        # Second click inside 3s cooldown -> actionbar cooldown feedback, no second Zap
+        window(.3)
+        m2 = player.mark()
+        player.signuse(5, -60, 0)
+        player.chat(m2, 'Recharging:', 8)
+        require(not player.saw(m2, 'Zap PlayerBot!'), lane.name + ': powertool cooldown blocks rapid re-use')
+
+        # Toggle off blocks firing even after cooldown
+        window(3.2)
+        lane.perm('PlayerBot', 'allium.powertool')
+        lane.perm('PlayerBot', 'allium.powertool.toggle')
+        player.command('pt toggle', 'PowerTools disabled for you.')
+        m3 = player.mark()
+        player.signuse(5, -60, 0)
+        window(.8)
+        require(not player.saw(m3, 'Zap PlayerBot!'), lane.name + ': /pt toggle disables personal powertool activation')
+        player.command('pt toggle', 'PowerTools enabled for you.')
+
+        # Second use succeeds, third use hits recharge (uses exhausted)
+        m4 = player.mark()
+        player.signuse(5, -60, 0)
+        player.chat(m4, 'Zap PlayerBot!', 10)
+        window(3.2)
+        m5 = player.mark()
+        player.signuse(5, -60, 0)
+        player.chat(m5, 'Recharging:', 8)
+        require(not player.saw(m5, 'Zap PlayerBot!'), lane.name + ': limited uses trigger recharge after spending final use')
+
+        # /pt get also works for staple tools (mob_disarmer)
+        staff.command('pt get mob_disarmer', 'Gave yourself 1x mob_disarmer.')
+        require(True, lane.name + ': /pt get gives staple tools as well as saved powertools')
+    finally:
+        staff.command('pt delete gate_wand', 'Deleted powertool gate_wand.')
+        require(not tool_file.exists(), lane.name + ': /pt delete removes tools/gate_wand.yml')
+        lane.fixture('setblock 5 -60 0 AIR')
+        lane.fixture('clear PlayerBot')
+        lane.perm('PlayerBot', 'allium.powertool', False)
+        lane.perm('PlayerBot', 'allium.powertool.toggle', False)
+        lane.perm('StaffBot', 'allium.powertool.*', False)
+
+
 def gamemode_perms(lane):
     player = lane.bots['PlayerBot']
     lane.perm('PlayerBot', 'allium.gamemode')
@@ -2529,6 +2608,7 @@ def main():
         case('economy-messages', lambda: economy_messages(lane))
         case('warmup-actionbar', lambda: warmup_actionbar(lane))
         case('glow', lambda: glow(lane))
+        case('powertool', lambda: powertool(lane))
         # Both reconnect PlayerBot, which drops its non-sticky grants: keep them last.
         case('broadcasts', lambda: broadcasts(lane))
         if A.placeholderapi:

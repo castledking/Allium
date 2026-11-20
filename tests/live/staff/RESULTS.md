@@ -1,5 +1,19 @@
 # Staff tooling live gate
 
+## November 19 follow-up (r22): /pt (/powertool)
+
+**PASS on targeted runs:** the new `powertool` case on Spigot 1.20.1 (`r26-spigot-powertool`) and
+Paper 26.3 (`r26-paper-powertool`), 10 checks each, SQLite, Allium.jar
+`93d086ce22d06b3d1422189fd01d6db5377badf4d40e06500ae4830a730788d5`. No exceptions or SEVERE lines.
+`./gradlew check`: 1118 unit tests, 0 failures. The other staff cases and the tax-account controls
+(`account-in-baltop`, `account-payable`, `allium.tax.balance` for `/bal <tax-account>`, `/tax balance`,
+and `/tax`) did not run live on this jar (unit-tested in `EconomySettingsInputTest` and
+`EconomyTaxAndChequeRuntimeTest`).
+
+| Case | What ran |
+| --- | --- |
+| powertool | `/pt add` refused without `allium.powertool`; `/pt add --t right` (immediate message + delayed actionbar), `/pt cooldown --t right 3s --visual true`, `/pt uses 2 --recharge 10s`, `/pt info`, `/pt save gate_wand` writing `tools/gate_wand.yml`; `/pt give PlayerBot gate_wand`; real right-click fires immediate message and delayed actionbar; rapid second click blocked by cooldown with actionbar feedback; `/pt toggle` disables and re-enables personal activation; spending final use triggers recharge; `/pt get mob_disarmer` delivers a staple tool; `/pt delete gate_wand` removes `tools/gate_wand.yml` |
+
 ## November 19 follow-up (r21): /glow and creative/spectator glow
 
 **PASS on targeted runs:** the new `glow` case with PacketEvents 2.14.0 on Spigot 1.20.1

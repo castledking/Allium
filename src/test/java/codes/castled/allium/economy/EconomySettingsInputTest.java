@@ -32,14 +32,18 @@ class EconomySettingsInputTest {
         TaxSettings defaults=EconomyRuntime.readTaxSettings(plugin);
         assertTrue(defaults.enabled());assertEquals(500,defaults.percentBps());assertEquals("Tax",defaults.accountName());
         assertTrue(defaults.applyToPay());assertFalse(defaults.applyToCheques());
+        assertTrue(defaults.accountInBaltop());assertFalse(defaults.accountPayable());
         config.set("economy.tax.percent",7.5);
         config.set("economy.tax.account-name","Treasury");
+        config.set("economy.tax.account-in-baltop",false);
+        config.set("economy.tax.account-payable",true);
         config.set("economy.tax.apply-to.pay",true);
         config.set("economy.tax.apply-to.cheques",true);
         config.set("economy.tax.round-mode","ceil");
         config.set("economy.tax.minimum-tax","0.50");
         TaxSettings custom=EconomyRuntime.readTaxSettings(plugin);
         assertEquals(750,custom.percentBps());assertEquals("Treasury",custom.accountName());
+        assertFalse(custom.accountInBaltop());assertTrue(custom.accountPayable());
         assertTrue(custom.applyToPay());assertTrue(custom.applyToCheques());
         assertEquals(java.math.RoundingMode.CEILING,custom.roundMode());assertEquals(50,custom.minimumTax().minor());
     }

@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -27,8 +28,26 @@ public record AlliumItemDefinition(
         @Nullable Integer customModelData,
         @Nullable String displayName,
         Map<String, String> defaultState,
-        boolean signed
+        boolean signed,
+        List<String> lore,
+        Map<String, Integer> enchantments,
+        boolean unbreakable,
+        List<String> hideFlags
 ) {
+    public AlliumItemDefinition(
+            String id,
+            Material carrierMaterial,
+            @Nullable String behaviorId,
+            boolean privileged,
+            @Nullable Integer customModelData,
+            @Nullable String displayName,
+            Map<String, String> defaultState,
+            boolean signed
+    ) {
+        this(id, carrierMaterial, behaviorId, privileged, customModelData, displayName, defaultState, signed,
+                List.of(), Map.of(), false, List.of());
+    }
+
     public AlliumItemDefinition(
             String id,
             Material carrierMaterial,
@@ -37,7 +56,8 @@ public record AlliumItemDefinition(
             @Nullable String displayName,
             Map<String, String> defaultState
     ) {
-        this(id, carrierMaterial, behaviorId, false, customModelData, displayName, defaultState, false);
+        this(id, carrierMaterial, behaviorId, false, customModelData, displayName, defaultState, false,
+                List.of(), Map.of(), false, List.of());
     }
 
     public AlliumItemDefinition(
@@ -49,7 +69,8 @@ public record AlliumItemDefinition(
             @Nullable String displayName,
             Map<String, String> defaultState
     ) {
-        this(id, carrierMaterial, behaviorId, privileged, customModelData, displayName, defaultState, privileged);
+        this(id, carrierMaterial, behaviorId, privileged, customModelData, displayName, defaultState, privileged,
+                List.of(), Map.of(), false, List.of());
     }
 
     public AlliumItemDefinition {
@@ -75,6 +96,11 @@ public record AlliumItemDefinition(
             }
             defaultState = Collections.unmodifiableMap(copy);
         }
+        lore = lore == null ? List.of() : List.copyOf(lore);
+        enchantments = enchantments == null || enchantments.isEmpty()
+                ? Map.of()
+                : Map.copyOf(new LinkedHashMap<>(enchantments));
+        hideFlags = hideFlags == null ? List.of() : List.copyOf(hideFlags);
     }
 
     public ProviderKey providerKey() {

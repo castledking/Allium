@@ -39,6 +39,7 @@ public enum Messages {
     ECO_CHEQUE_INVALID("economy.cheque-invalid", "{prefix} &cThis cheque is not valid."),
     ECO_CHEQUE_RECOVERED("economy.cheque-recovered", "{prefix} &7An interrupted cheque was settled: &f{captured} &7issued, &f{released} &7refunded."),
     ECO_TAX_INFO("economy.tax-info", "{prefix} &fTax: &e{rate} &7({status}; applies to: {applies}) &fAccount &e{account}&f: &a{balance}"),
+    ECO_TAX_INFO_RATE("economy.tax-info-rate", "{prefix} &fTax: &e{rate} &7({status}; applies to: {applies})"),
     ECO_TAX_IMPOSED("economy.tax-imposed", "{prefix} &aImposed &e{percent} &atax (&e{amount}&a) on &f{player}&a."),
     ECO_TAX_IMPOSED_MULTI("economy.tax-imposed-multi", "{prefix} &aImposed &e{percent} &atax on &f{count} &aplayer(s), collecting &e{total}&a."),
     ECO_TAX_IMPOSED_NOTIFY("economy.tax-imposed-notify", "{prefix} &eA &f{percent} &etax (&f{amount}&e) was imposed on your balance."),
@@ -747,7 +748,48 @@ public enum Messages {
     MAIL_DISABLED("mail.disabled", "{prefix} &cMail is disabled on this server."),
 
     // Preferences (shared by messages, payments and teleport requests)
-    PREFERENCES_UNAVAILABLE("preferences.unavailable", "{prefix} &c{player}'s settings are still loading. Try again shortly.");
+    PREFERENCES_UNAVAILABLE("preferences.unavailable", "{prefix} &c{player}'s settings are still loading. Try again shortly."),
+
+    // PowerTools (/pt)
+    POWERTOOL_COOLDOWN("tool.powertool.cooldown", "[actionbar] &cRecharging: &f{time}"),
+    POWERTOOL_NO_USES("tool.powertool.no-uses", "{prefix} &cThis powertool has no uses remaining."),
+    POWERTOOL_RECHARGING("tool.powertool.recharging", "[actionbar] &cRecharging: &f{time}"),
+    POWERTOOL_SINGLE_ITEM("tool.powertool.single-item", "{prefix} &cHold a single item, not a stack."),
+    POWERTOOL_UNAVAILABLE("tool.powertool.unavailable", "{prefix} &cPowerTools are not available right now."),
+    POWERTOOL_HOLD_ITEM("tool.powertool.hold-item", "{prefix} &cHold an item in your main hand."),
+    POWERTOOL_NOT_A_POWERTOOL("tool.powertool.not-a-powertool", "{prefix} &cThe item in your hand has no powertool bindings."),
+    POWERTOOL_INVALID_TRIGGER("tool.powertool.invalid-trigger", "{prefix} &cUnknown trigger &f{trigger}&c. Available: &f{triggers}&c."),
+    POWERTOOL_INVALID_ACTION("tool.powertool.invalid-action", "{prefix} &cUnknown action &f{action}&c. Available: &f{actions}&c."),
+    POWERTOOL_INVALID_VALUE("tool.powertool.invalid-value", "{prefix} &cInvalid powertool setting: {reason}."),
+    POWERTOOL_CONSOLE_BLOCKED("tool.powertool.console-blocked", "{prefix} &cConsole command &f{command} &cis not in powertools.console-allowlist."),
+    POWERTOOL_SELECTOR_BLOCKED("tool.powertool.selector-blocked", "{prefix} &cTarget selectors (@a, @e, ...) are blocked in console powertool commands."),
+    POWERTOOL_ACTION_ADDED("tool.powertool.action-added", "{prefix} &aAdded action #{index} on &f{trigger}&a: &7{action}"),
+    POWERTOOL_ACTION_SET("tool.powertool.action-set", "{prefix} &aReplaced action #{index} on &f{trigger}&a: &7{action}"),
+    POWERTOOL_NO_BINDING("tool.powertool.no-binding", "{prefix} &cNo powertool binding for trigger &f{trigger}&c."),
+    POWERTOOL_REMOVED("tool.powertool.removed", "{prefix} &aUpdated bindings for trigger &f{trigger}&a."),
+    POWERTOOL_CLEARED("tool.powertool.cleared", "{prefix} &aCleared all powertool bindings from your held item."),
+    POWERTOOL_UPDATED("tool.powertool.updated", "{prefix} &aSet &f{setting} &ato &f{value}&a."),
+    POWERTOOL_SAVED("tool.powertool.saved", "{prefix} &aSaved powertool &f{name} &ato &f{file}&a. Give it with &f/pt get {name}&a."),
+    POWERTOOL_SAVE_FAILED("tool.powertool.save-failed", "{prefix} &cCould not save powertool: {reason}"),
+    POWERTOOL_DELETED("tool.powertool.deleted", "{prefix} &aDeleted powertool &f{name}&a."),
+    POWERTOOL_BOUND("tool.powertool.bound", "{prefix} &aBound powertool &f{name} &ato your held item."),
+    POWERTOOL_NOT_FOUND("tool.powertool.not-found", "{prefix} &cNo saved tool named &f{name}&c."),
+    POWERTOOL_GIVEN_SELF("tool.powertool.given-self", "{prefix} &aGave yourself &f{amount}x {name}&a."),
+    POWERTOOL_GIVEN_OTHER("tool.powertool.given-other", "{prefix} &aGave &f{amount}x {name} &ato &f{player}&a."),
+    POWERTOOL_INFO_HEADER("tool.powertool.info-header", "{prefix} &dPowerTool &f{name} &7({id})"),
+    POWERTOOL_INFO_USES("tool.powertool.info-uses", "&7Uses: &f{max} &7(consume={consume}, recharge={recharge})"),
+    POWERTOOL_INFO_PERM("tool.powertool.info-perm", "&7Use permission: &f{permission}"),
+    POWERTOOL_INFO_BINDING("tool.powertool.info-binding", "&eTrigger &f{trigger} &7({meta}):"),
+    POWERTOOL_INFO_ACTION("tool.powertool.info-action", "  &8{index}. &f{action}"),
+    POWERTOOL_LIST("tool.powertool.list", "{prefix} &aSaved tools (&f{count}&a): &f{tools}"),
+    POWERTOOL_LIST_EMPTY("tool.powertool.list-empty", "{prefix} &7No saved tools found."),
+    POWERTOOL_TOGGLE_ON("tool.powertool.toggle-on", "{prefix} &aPowerTools &fenabled &afor you."),
+    POWERTOOL_TOGGLE_OFF("tool.powertool.toggle-off", "{prefix} &ePowerTools &fdisabled &efor you."),
+    POWERTOOL_RELOADED("tool.powertool.reloaded", "{prefix} &aReloaded &f{count} &apowertool definition(s)."),
+    POWERTOOL_HELP("tool.powertool.help", "{prefix} &d/pt &fadd|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|get|give|list|toggle|reload\n&7Use &f/pt help triggers&7, &f/pt help actions&7, or &f/pt help placeholders&7."),
+    POWERTOOL_HELP_TRIGGERS("tool.powertool.help-triggers", "{prefix} &dTriggers: &f{triggers}"),
+    POWERTOOL_HELP_ACTIONS("tool.powertool.help-actions", "{prefix} &dActions: &f{actions}"),
+    POWERTOOL_HELP_PLACEHOLDERS("tool.powertool.help-placeholders", "{prefix} &dPlaceholders: &f{placeholders}");
 
     private static final Map<String, Messages> BY_KEY;
 

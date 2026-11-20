@@ -686,8 +686,10 @@ public final class CoreCommandSpecs {
                     List.of(CommandArgSpec.required("amount", null, SuggestionSpec.literals(MONEY_AMOUNTS, null)),
                             CommandArgSpec.optional("player", "allium.cheque.others",
                                     SuggestionSpec.onlinePlayers("allium.cheque.others"))), List.of()),
-            economySpec("tax", List.of(), "/tax [impose|history|refund]", null, List.of(),
+            economySpec("tax", List.of(), "/tax [balance|impose|history|refund]", null, List.of(),
                     List.of(
+                            new CommandNodeSpec("balance", List.of("bal"), "allium.tax.balance",
+                                    "/tax balance", List.of(), List.of()),
                             new CommandNodeSpec("impose", List.of(), "allium.tax.impose",
                                     "/tax impose <player|*|*> <percent>",
                                     List.of(CommandArgSpec.required("target", null, SuggestionSpec.knownPlayers(null)),
@@ -1332,6 +1334,19 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of()));
 
     public static final List<CommandSpec> RESTORE_SPECS = List.of(RESTORE);
+
+    public static final CommandSpec POWERTOOL = new CommandSpec(
+            "powertool", CommandSpec.DEFAULT_NAMESPACE, "tools",
+            List.of("pt", "powertools", "ptt", "powertooltoggle"),
+            "Create, edit, save, bind and give interactive powertool items",
+            "/pt <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|get|give|list|toggle|reload|help> [args...]",
+            "/pt <give|list|delete|reload|help> [args...]",
+            "allium.powertool", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> TOOLS_SPECS = List.of(POWERTOOL);
 
     private CoreCommandSpecs() {
     }

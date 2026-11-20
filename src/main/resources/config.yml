@@ -85,6 +85,8 @@ economy:
     enabled: true
     percent: '5'
     account-name: 'Tax'
+    account-in-baltop: true
+    account-payable: false
     round-mode: nearest # nearest, floor, ceil
     minimum-tax: '0.00'
     apply-to:
@@ -609,3 +611,18 @@ restore:
   retention-days: 14
   # Only the newest snapshots of each player are kept.
   max-snapshots-per-player: 50
+
+# Interactive PowerTools (/pt, behavior: allium:powertool in plugins/Allium/tools/*.yml).
+powertools:
+  enabled: true
+  # Console commands allowed in console powertool actions. Entries may be a namespace prefix
+  # ending with ':' (e.g. 'allium:'), a specific command (e.g. 'minecraft:effect'), or '*' to allow all.
+  console-allowlist:
+    - "allium:"
+    - "minecraft:effect"
+    - "minecraft:particle"
+    - "minecraft:playsound"
+    - "minecraft:title"
+    - "minecraft:tellraw"
+  # Reject @a/@e/@p/@r/@s target selectors inside console powertool commands.
+  block-selectors: true

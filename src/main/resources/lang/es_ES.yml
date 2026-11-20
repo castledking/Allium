@@ -526,6 +526,8 @@ economy:
     - "{prefix} &7Se liquido un cheque interrumpido: &f{captured} &7emitido, &f{released} &7reembolsado."
   tax-info:
     - "{prefix} &fImpuesto: &e{rate} &7({status}; aplica a: {applies}) &fCuenta &e{account}&f: &a{balance}"
+  tax-info-rate:
+    - "{prefix} &fImpuesto: &e{rate} &7({status}; aplica a: {applies})"
   tax-imposed:
     - "{prefix} &aImpuesto de &e{percent} &a(&e{amount}&a) aplicado a &f{player}&a."
   tax-imposed-multi:
@@ -1428,6 +1430,113 @@ tool:
     stopped-axe:
       - "{prefix} &cSe detuvo la tala para evitar que se rompa tu hacha."
       - "[sound] item.shield.break 1.05"
+  powertool:
+    cooldown:
+      - "[actionbar] &cRecargando: &f{time}"
+      - "[sound] block.note_block.hat 0.85"
+    no-uses:
+      - "{prefix} &cEsta herramienta no tiene usos restantes."
+      - "[sound] block.note_block.bass 0.8"
+    recharging:
+      - "[actionbar] &cRecargando: &f{time}"
+      - "[sound] block.note_block.hat 0.85"
+    single-item:
+      - "{prefix} &cSosten un solo objeto, no una pila."
+      - "[sound] block.note_block.bass 0.8"
+    unavailable:
+      - "{prefix} &cLas powertools no estan disponibles ahora mismo."
+      - "[sound] block.note_block.bass 0.8"
+    hold-item:
+      - "{prefix} &cSosten un objeto en tu mano principal."
+      - "[sound] block.note_block.bass 0.85"
+    not-a-powertool:
+      - "{prefix} &cEl objeto en tu mano no tiene acciones de powertool."
+      - "[sound] block.note_block.hat 0.9"
+    invalid-trigger:
+      - "{prefix} &cDisparador desconocido &f{trigger}&c. Disponibles: &f{triggers}&c."
+      - "[sound] block.note_block.bass 0.85"
+    invalid-action:
+      - "{prefix} &cAccion desconocida &f{action}&c. Disponibles: &f{actions}&c."
+      - "[sound] block.note_block.bass 0.85"
+    invalid-value:
+      - "{prefix} &cAjuste de powertool invalido: {reason}."
+      - "[sound] block.note_block.bass 0.85"
+    console-blocked:
+      - "{prefix} &cEl comando de consola &f{command} &cno esta en powertools.console-allowlist."
+      - "[sound] entity.villager.no 0.9"
+    selector-blocked:
+      - "{prefix} &cLos selectores (@a, @e, ...) estan bloqueados en comandos de consola."
+      - "[sound] entity.villager.no 0.9"
+    action-added:
+      - "{prefix} &aSe agrego la accion #{index} en &f{trigger}&a: &7{action}"
+      - "[sound] block.note_block.pling 1.2"
+    action-set:
+      - "{prefix} &aSe reemplazo la accion #{index} en &f{trigger}&a: &7{action}"
+      - "[sound] block.note_block.pling 1.15"
+    no-binding:
+      - "{prefix} &cNo hay acciones para el disparador &f{trigger}&c."
+      - "[sound] block.note_block.bass 0.85"
+    removed:
+      - "{prefix} &aSe actualizaron las acciones para &f{trigger}&a."
+      - "[sound] ui.button.click 1.0"
+    cleared:
+      - "{prefix} &aSe borraron todas las acciones de powertool del objeto."
+      - "[sound] ui.button.click 1.0"
+    updated:
+      - "{prefix} &aSe configuro &f{setting} &aa &f{value}&a."
+      - "[sound] ui.button.click 1.1"
+    saved:
+      - "{prefix} &aSe guardo la powertool &f{name} &aen &f{file}&a. Obtenla con &f/pt get {name}&a."
+      - "[sound] entity.experience_orb.pickup 1.15"
+    save-failed:
+      - "{prefix} &cNo se pudo guardar la powertool: {reason}"
+      - "[sound] entity.villager.no 0.9"
+    deleted:
+      - "{prefix} &aSe elimino la powertool &f{name}&a."
+      - "[sound] ui.button.click 0.9"
+    bound:
+      - "{prefix} &aSe vinculo la powertool &f{name} &aa tu objeto."
+      - "[sound] block.note_block.pling 1.15"
+    not-found:
+      - "{prefix} &cNo existe ninguna herramienta guardada llamada &f{name}&c."
+      - "[sound] block.note_block.bass 0.85"
+    given-self:
+      - "{prefix} &aTe entregaste &f{amount}x {name}&a."
+      - "[sound] entity.item.pickup 1.25"
+    given-other:
+      - "{prefix} &aEntregaste &f{amount}x {name} &aa &f{player}&a."
+      - "[sound] entity.item.pickup 1.25"
+    info-header:
+      - "{prefix} &dPowerTool &f{name} &7({id})"
+    info-uses:
+      - "&7Usos: &f{max} &7(consumir={consume}, recarga={recharge})"
+    info-perm:
+      - "&7Permiso de uso: &f{permission}"
+    info-binding:
+      - "&eDisparador &f{trigger} &7({meta}):"
+    info-action:
+      - "  &8{index}. &f{action}"
+    list:
+      - "{prefix} &aHerramientas guardadas (&f{count}&a): &f{tools}"
+    list-empty:
+      - "{prefix} &7No se encontraron herramientas guardadas."
+    toggle-on:
+      - "{prefix} &aPowerTools &factivadas &apara ti."
+      - "[sound] ui.button.click 1.15"
+    toggle-off:
+      - "{prefix} &ePowerTools &fdesactivadas &epara ti."
+      - "[sound] ui.button.click 0.85"
+    reloaded:
+      - "{prefix} &aSe recargaron &f{count} &adefinicion(es) de powertool."
+      - "[sound] entity.experience_orb.pickup 1.1"
+    help:
+      - "{prefix} &d/pt &fadd|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|get|give|list|toggle|reload\n&7Usa &f/pt help triggers&7, &f/pt help actions&7 o &f/pt help placeholders&7."
+    help-triggers:
+      - "{prefix} &dDisparadores: &f{triggers}"
+    help-actions:
+      - "{prefix} &dAcciones: &f{actions}"
+    help-placeholders:
+      - "{prefix} &dVariables: &f{placeholders}"
 item:
   give:
     delivered:

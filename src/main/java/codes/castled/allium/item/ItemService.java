@@ -597,6 +597,17 @@ public final class ItemService {
             }
             appearance = nativeAppearance;
         } else if (pdcAppearance != null) {
+            if (pdcAppearance.isVanilla() && !pdcAppearance.equals(plainVanillaKey)) {
+                warnDiagnosticOnce("Identity mismatch on item stack: Allium PDC stamp reported '"
+                        + pdcAppearance + "' on carrier '" + plainVanillaKey + "'; resolving as plain " + plainVanillaKey + ".");
+                return Optional.of(new ItemRef(
+                        ItemRef.CURRENT_SCHEMA_VERSION,
+                        plainVanillaKey,
+                        null,
+                        stack.getAmount(),
+                        Collections.emptyMap()
+                ));
+            }
             ItemProviderAdapter claimedAdapter = providers.get(pdcAppearance.provider());
             if (!pdcAppearance.isVanilla()
                     && !pdcAppearance.isAllium()
@@ -897,6 +908,94 @@ public final class ItemService {
     }
 
     /**
+     * Stamps and signs an explicit admin-bound behavior (such as a powertool) onto an existing
+     * stack in place while keeping its visual metadata (name, lore, enchantments, damage, external
+     * provider tags). Existing {@code state_*} keys are replaced by {@code stateData}.
+     */
+    public boolean bindSignedBehavior(ItemStack stack, String behaviorId, Map<String, String> stateData) {
+        Objects.requireNonNull(stack, "stack");
+        String normalized = ItemRef.normalizeBehaviorId(behaviorId);
+        if (normalized == null || stack.getType() == Material.AIR || stack.getType().isAir()) {
+            return false;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) {
+            return false;
+        }
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        if (pdc == null) {
+            return false;
+        }
+        String existingUuid = pdc.get(KEY_INSTANCE_UUID, PersistentDataType.STRING);
+        // Determine authoritative appearance: native external provider if present, else vanilla carrier.
+        ProviderKey appearance = ProviderKey.minecraft(stack.getType().name().toLowerCase(Locale.ROOT));
+        for (ItemProviderAdapter adapter : providers.values()) {
+            String pName = adapter.providerName();
+            if (ProviderKey.MINECRAFT.equals(pName) || ProviderKey.ALLIUM.equals(pName)) {
+                continue;
+            }
+            if (adapter.status() == ProviderStatus.READY) {
+                Optional<String> externalId = adapter.identifyItemId(stack);
+                if (externalId.isPresent() && !externalId.get().isBlank()) {
+                    try {
+                        appearance = ProviderKey.of(pName, externalId.get());
+                        break;
+                    } catch (IllegalArgumentException ignored) {
+                    }
+                }
+            }
+        }
+        // Clear stale state_* keys before writing new state
+        for (NamespacedKey key : new java.util.ArrayList<>(pdc.getKeys())) {
+            if (NAMESPACE.equals(key.getNamespace()) && key.getKey().startsWith(STATE_KEY_PREFIX)) {
+                pdc.remove(key);
+            }
+        }
+        stack.setItemMeta(meta);
+        Map<String, String> normalizedState = new LinkedHashMap<>();
+        if (stateData != null) {
+            stateData.forEach((k, v) -> {
+                if (k != null && !k.isBlank() && v != null) {
+                    normalizedState.put(k.trim().toLowerCase(Locale.ROOT), v);
+                }
+            });
+        }
+        stampMetadata(stack, ItemRef.CURRENT_SCHEMA_VERSION, appearance, normalized, normalizedState, existingUuid, true);
+        return true;
+    }
+
+    /**
+     * Removes Allium behavior/identity/state/signature PDC keys from a stack while leaving its
+     * material, display name, lore, enchantments, and external provider tags untouched.
+     */
+    public boolean clearSignedBehavior(ItemStack stack) {
+        if (stack == null || stack.getType() == Material.AIR || stack.getType().isAir()) {
+            return false;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null || meta.getPersistentDataContainer() == null) {
+            return false;
+        }
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        boolean hadAny = pdc.has(KEY_BEHAVIOR_ID, PersistentDataType.STRING)
+                || pdc.has(KEY_SIGNATURE, PersistentDataType.STRING);
+        pdc.remove(KEY_SCHEMA_VERSION);
+        pdc.remove(KEY_PROVIDER);
+        pdc.remove(KEY_ITEM_ID);
+        pdc.remove(KEY_BEHAVIOR_ID);
+        pdc.remove(KEY_INSTANCE_UUID);
+        pdc.remove(KEY_SIGNATURE);
+        for (NamespacedKey key : new java.util.ArrayList<>(pdc.getKeys())) {
+            if (NAMESPACE.equals(key.getNamespace()) && key.getKey().startsWith(STATE_KEY_PREFIX)) {
+                pdc.remove(key);
+                hadAny = true;
+            }
+        }
+        stack.setItemMeta(meta);
+        return hadAny;
+    }
+
+    /**
      * Clones an {@link ItemStack} with a new stack size while preserving all provider,
      * behavior, signature, and state metadata.
      */
@@ -1098,7 +1197,47 @@ public final class ItemService {
                     meta.setCustomModelData(def.customModelData());
                 }
                 if (def.displayName() != null) {
-                    meta.setDisplayName(def.displayName());
+                    String name = def.displayName();
+                    if ((name.contains("&") || name.contains("<")) && !name.contains("§")) {
+                        name = codes.castled.allium.text.TextFormatter.toLegacy(name);
+                    }
+                    meta.setDisplayName(name);
+                }
+                if (!def.lore().isEmpty()) {
+                    java.util.List<String> lines = new java.util.ArrayList<>(def.lore().size());
+                    for (String line : def.lore()) {
+                        if ((line.contains("&") || line.contains("<")) && !line.contains("§")) {
+                            lines.add(codes.castled.allium.text.TextFormatter.toLegacy(line));
+                        } else {
+                            lines.add(line);
+                        }
+                    }
+                    meta.setLore(lines);
+                }
+                if (!def.enchantments().isEmpty()) {
+                    for (Map.Entry<String, Integer> entry : def.enchantments().entrySet()) {
+                        try {
+                            codes.castled.allium.item.library.EnchantmentAdapter.find(entry.getKey())
+                                    .ifPresent(ench -> meta.addEnchant(ench, entry.getValue(), true));
+                        } catch (RuntimeException | LinkageError ignored) {
+                            // No Bukkit enchantment registry in pure unit-test environments
+                        }
+                    }
+                }
+                if (def.unbreakable()) {
+                    meta.setUnbreakable(true);
+                }
+                if (!def.hideFlags().isEmpty()) {
+                    for (String rawFlag : def.hideFlags()) {
+                        if ("all".equalsIgnoreCase(rawFlag)) {
+                            meta.addItemFlags(org.bukkit.inventory.ItemFlag.values());
+                        } else {
+                            try {
+                                meta.addItemFlags(org.bukkit.inventory.ItemFlag.valueOf(rawFlag.trim().toUpperCase(Locale.ROOT)));
+                            } catch (IllegalArgumentException ignored) {
+                            }
+                        }
+                    }
                 }
                 stack.setItemMeta(meta);
             }

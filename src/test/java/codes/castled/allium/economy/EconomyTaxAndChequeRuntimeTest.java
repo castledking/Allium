@@ -220,4 +220,67 @@ public class EconomyTaxAndChequeRuntimeTest {
         assertEquals(95_000L, balance(aliceId));
         assertEquals(5_000L, balance(taxId));
     }
+
+    @Test
+    void taxAccountBaltopPayableAndCheckbalanceControlsWork() throws Exception {
+        UUID taxId = runtime.taxSettings().accountUuid();
+        runtime.dispatch(console, "eco", new String[]{"set", "Alice", "500"});
+        runtime.dispatch(console, "eco", new String[]{"set", "Bob", "200"});
+        runtime.dispatch(console, "eco", new String[]{"set", "Tax", "900"});
+        drainWorker();
+
+        // By default account-payable is false: /pay Tax 10 is refused
+        runtime.dispatch(alice, "pay", new String[]{"Tax", "10"});
+        drainWorker();
+        assertEquals(50_000L, balance(aliceId));
+        assertEquals(90_000L, balance(taxId));
+        verify(messages).send(eq(alice), eq(Messages.ECO_REFUSED));
+
+        // /bal Tax and /tax balance require allium.tax.balance (even if player has allium.balance.others)
+        when(alice.hasPermission("allium.balance")).thenReturn(true);
+        when(alice.hasPermission("allium.balance.others")).thenReturn(true);
+        when(alice.hasPermission("allium.tax")).thenReturn(true);
+        when(alice.hasPermission("allium.tax.balance")).thenReturn(false);
+        runtime.dispatch(alice, "balance", new String[]{"Tax"});
+        runtime.dispatch(alice, "tax", new String[]{"balance"});
+        runtime.dispatch(alice, "tax", new String[0]);
+        drainWorker();
+        verify(messages, times(2)).send(eq(alice), eq(Messages.NO_PERMISSION));
+        verify(messages).send(eq(alice), eq(Messages.ECO_TAX_INFO_RATE), eq("{rate}"), eq("5%"), eq("{status}"), eq("enabled"), eq("{applies}"), eq("pay"));
+
+        // With allium.tax.balance (even without allium.balance.others), /bal Tax and /tax balance both succeed
+        clearInvocations(messages);
+        when(alice.hasPermission("allium.balance.others")).thenReturn(false);
+        when(alice.hasPermission("allium.tax.balance")).thenReturn(true);
+        runtime.dispatch(alice, "balance", new String[]{"Tax"});
+        runtime.dispatch(alice, "tax", new String[]{"balance"});
+        drainWorker();
+        verify(messages, times(2)).send(eq(alice), eq(Messages.BALANCE), eq("{amount}"), eq("$900"));
+
+        // Flip account-in-baltop: false and account-payable: true and reload
+        plugin.getConfig().set("economy.tax.account-in-baltop", false);
+        plugin.getConfig().set("economy.tax.account-payable", true);
+        assertTrue(runtime.reload());
+
+        // Now /pay Tax 10 succeeds (tax-exempt payment into Tax account)
+        runtime.dispatch(alice, "pay", new String[]{"Tax", "10"});
+        drainWorker();
+        assertEquals(49_000L, balance(aliceId));
+        assertEquals(91_000L, balance(taxId));
+
+        // /baltop excludes Tax from both Server Total and entries
+        clearInvocations(messages);
+        runtime.dispatch(console, "baltop", new String[0]);
+        drainWorker();
+        verify(messages).send(eq(console), eq(Messages.ECO_TOP_TOTAL), eq("{total}"), eq("$690"));
+        verify(messages).send(eq(console), eq(Messages.ECO_TOP_ENTRY), eq("{rank}"), eq("1"), eq("{player}"), eq("Alice"), eq("{balance}"), eq("$490"));
+        verify(messages).send(eq(console), eq(Messages.ECO_TOP_ENTRY), eq("{rank}"), eq("2"), eq("{player}"), eq("Bob"), eq("{balance}"), eq("$200"));
+        verify(messages, never()).send(eq(console), eq(Messages.ECO_TOP_ENTRY), any(), any(), eq("{player}"), eq("Tax"), any(), any());
+
+        // Placeholder snapshot also excludes Tax
+        runtime.refreshPlaceholders(List.of(aliceId, bobId));
+        drainWorker();
+        assertEquals(2, runtime.placeholders().top().size());
+        assertTrue(runtime.placeholders().top().stream().noneMatch(e -> e.id().equals(taxId)));
+    }
 }

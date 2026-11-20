@@ -153,7 +153,33 @@ public final class ToolDefinitionParser {
         }
         String displayName = item.string("name", null);
         Integer model = item.has("custom-model-data") ? item.integer("custom-model-data", 0, 0, 16_777_215) : null;
-        return material == null ? null : new BuiltInItemSpec(material.trim(), displayName, model);
+        List<String> lore = new ArrayList<>();
+        if (item.has("lore")) {
+            Object rawLore = item.raw("lore").orElse(null);
+            if (rawLore instanceof List<?> list) {
+                for (int i = 0; i < list.size(); i++) {
+                    Object elem = list.get(i);
+                    if (elem instanceof String line) {
+                        lore.add(line);
+                    } else {
+                        item.error("lore[" + i + "]", "must be text");
+                    }
+                }
+            } else if (rawLore != null) {
+                item.error("lore", "must be a list of text lines");
+            }
+        }
+        Map<String, Integer> enchantments = new LinkedHashMap<>();
+        if (item.has("enchantments")) {
+            ConfigReader enchSection = item.section("enchantments");
+            for (String key : enchSection.keys()) {
+                int level = enchSection.integer(key, 1, 1, 255);
+                enchantments.put(key.trim().toLowerCase(java.util.Locale.ROOT), level);
+            }
+        }
+        boolean unbreakable = item.bool("unbreakable", false);
+        List<String> hideFlags = item.stringList("hide-flags", List.of());
+        return material == null ? null : new BuiltInItemSpec(material.trim(), displayName, model, lore, enchantments, unbreakable, hideFlags);
     }
 
     /**

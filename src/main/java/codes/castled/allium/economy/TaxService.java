@@ -57,6 +57,13 @@ public final class TaxService {
         String sub = args[0].toLowerCase(Locale.ROOT);
         String[] subArgs = java.util.Arrays.copyOfRange(args, 1, args.length);
         switch (sub) {
+            case "balance", "bal" -> {
+                if (!sender.hasPermission("allium.tax.balance")) {
+                    runtime.tellSender(sender, Messages.NO_PERMISSION);
+                    return;
+                }
+                showBalance(sender);
+            }
             case "impose" -> {
                 if (!sender.hasPermission("allium.tax.impose")) {
                     runtime.tellSender(sender, Messages.NO_PERMISSION);
@@ -92,6 +99,13 @@ public final class TaxService {
         if (tax.applyToCheques()) applies.add("cheques");
         String appliesText = applies.isEmpty() ? "none" : String.join(", ", applies);
         String status = tax.active() ? "enabled" : "disabled";
+        if (!sender.hasPermission("allium.tax.balance")) {
+            runtime.tellSender(sender, Messages.ECO_TAX_INFO_RATE,
+                    "{rate}", tax.formattedPercent(),
+                    "{status}", status,
+                    "{applies}", appliesText);
+            return;
+        }
         runtime.submitWork(sender, () -> {
             EconomyResult.Balance bal = runtime.engine().balance(tax.accountUuid());
             String formatted = bal instanceof EconomyResult.Found found
@@ -103,6 +117,19 @@ public final class TaxService {
                     "{applies}", appliesText,
                     "{account}", tax.accountName(),
                     "{balance}", formatted);
+        });
+    }
+
+    private void showBalance(CommandSender sender) {
+        TaxSettings tax = runtime.taxSettings();
+        EconomyDisplay display = runtime.display();
+        runtime.submitWork(sender, () -> {
+            EconomyResult.Balance bal = runtime.engine().balance(tax.accountUuid());
+            if (bal instanceof EconomyResult.Found found) {
+                runtime.tellSender(sender, Messages.BALANCE, "{amount}", display.format(found.available()));
+            } else {
+                runtime.tellSender(sender, bal instanceof EconomyResult.Missing ? Messages.ECO_MISSING : Messages.ECO_STORAGE);
+            }
         });
     }
 

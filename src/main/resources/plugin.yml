@@ -90,6 +90,11 @@ commands:
     description: Set your glow colour, or another player's
     usage: /<command> <color|rainbow|off|spectator> [player]
     permission: allium.glow
+  powertool:
+    description: Create, edit, save, bind and give interactive powertool items
+    usage: /<command> <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|get|give|list|toggle|reload|help> [args...]
+    aliases: [pt, powertools, ptt, powertooltoggle]
+    permission: allium.powertool
   compass:
     description: Show the direction you are facing
     usage: /<command>
@@ -570,7 +575,7 @@ commands:
     permission: allium.cheque
   tax:
     description: Inspect, impose, list or refund server taxes
-    usage: /<command> [impose|history|refund]
+    usage: /<command> [balance|impose|history|refund]
     permission: allium.tax
 
 permissions:
@@ -622,6 +627,7 @@ permissions:
       allium.cheque: true
       allium.cheque.others: true
       allium.tax: true
+      allium.tax.balance: true
       allium.tax.impose: true
       allium.tax.impose.offline: true
       allium.tax.history: true
@@ -739,6 +745,8 @@ permissions:
       allium.glow.*: true
       allium.glow.others: true
       allium.gamemode.spectator.glow: true
+      allium.powertool: true
+      allium.powertool.*: true
       allium.tpo: true
       allium.tpohere: true
       allium.tpall: true
@@ -1524,8 +1532,11 @@ permissions:
     description: Mint an admin cheque (or ranged cheque) for another player
     default: op
   allium.tax:
-    description: View the server tax rate and tax account balance
+    description: View the server tax rate (and tax account balance with allium.tax.balance)
     default: true
+  allium.tax.balance:
+    description: View the tax account balance with /tax balance, /tax, or /bal <tax-account>
+    default: op
   allium.tax.exempt:
     description: Exempt from automatic /pay and /cheque taxes and bulk /tax impose *. Explicit only; not in allium.*
     default: false
@@ -1900,6 +1911,51 @@ permissions:
     default: op
   allium.gamemode.spectator.glow:
     description: Glow while in spectator (seen by other spectators) unless a /glow choice shows; the colour from allium.gamemode.spectator.glow.<color|rainbow>, else white
+    default: op
+
+  allium.powertool:
+    description: Base permission for /pt (/powertool) commands (info, list, help)
+    default: op
+  allium.powertool.*:
+    description: Full access to all /pt (/powertool) commands and bypasses
+    default: op
+    children:
+      allium.powertool: true
+      allium.powertool.use: true
+      allium.powertool.edit: true
+      allium.powertool.console: true
+      allium.powertool.save: true
+      allium.powertool.bind: true
+      allium.powertool.give: true
+      allium.powertool.toggle: true
+      allium.powertool.reload: true
+      allium.powertool.bypass: true
+  allium.powertool.use:
+    description: Allows activating powertool items (individual tools may also require their own permissions.use node)
+    default: true
+  allium.powertool.edit:
+    description: Allows editing powertool bindings, cooldowns, permissions and uses on held items
+    default: op
+  allium.powertool.console:
+    description: Allows creating or saving powertool actions that execute console commands
+    default: op
+  allium.powertool.save:
+    description: Allows saving powertools to plugins/Allium/tools/<name>.yml and deleting saved powertools
+    default: op
+  allium.powertool.bind:
+    description: Allows binding or unbinding saved powertools onto held items
+    default: op
+  allium.powertool.give:
+    description: Allows /pt get and /pt give for saved tools
+    default: op
+  allium.powertool.toggle:
+    description: Allows /pt toggle (/ptt) to toggle personal powertool activation
+    default: true
+  allium.powertool.reload:
+    description: Allows /pt reload to reload powertool definitions from disk
+    default: op
+  allium.powertool.bypass:
+    description: Bypass powertool cooldowns and use/charge consumption
     default: op
 
   allium.top.roof:

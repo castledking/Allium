@@ -32,6 +32,11 @@ import codes.castled.allium.tool.felltree.FellTreeBehaviorType;
 import codes.castled.allium.tool.felltree.FellTreeListener;
 import codes.castled.allium.tool.felltree.FellTreeParameters;
 import codes.castled.allium.tool.felltree.FellTreeTool;
+import codes.castled.allium.tool.powertool.PowerToolBehavior;
+import codes.castled.allium.tool.powertool.PowerToolBehaviorType;
+import codes.castled.allium.tool.powertool.PowerToolListener;
+import codes.castled.allium.tool.powertool.PowerToolSettings;
+import codes.castled.allium.command.tools.PowerToolCommand;
 import org.bukkit.Material;
 import org.bukkit.event.HandlerList;
 import org.bukkit.permissions.Permission;
@@ -59,7 +64,8 @@ public final class ToolsModule extends AbstractModule {
     private static final Map<String, ToolBehaviorType<?>> BEHAVIORS = Map.of(
             DisarmBehaviorType.ID, new DisarmBehaviorType(),
             ObliterateBehaviorType.ID, new ObliterateBehaviorType(),
-            FellTreeBehaviorType.ID, new FellTreeBehaviorType());
+            FellTreeBehaviorType.ID, new FellTreeBehaviorType(),
+            PowerToolBehaviorType.ID, new PowerToolBehaviorType());
 
     /** The default definitions the jar ships, each installed once (tools/.defaults). */
     static final List<String> BUNDLED_DEFAULTS = List.of("mob_disarmer.yml", "phantom_obliterator.yml", "lazy_axe.yml");
@@ -73,6 +79,8 @@ public final class ToolsModule extends AbstractModule {
     private ObliterateBehavior obliterate;
     private FellTreeListener fellTreeListener;
     private FellTreeBehavior fellTree;
+    private PowerToolBehavior powerTools;
+    private PowerToolListener powerToolListener;
     private ToolCarrierSuppressionListener carrierSuppression;
     private ToolDefinitionLoader.Loaded loaded;
 
@@ -115,7 +123,13 @@ public final class ToolsModule extends AbstractModule {
         List<DisarmTool> disarmTools = new ArrayList<>();
         List<ObliterateTool> obliterateTools = new ArrayList<>();
         List<FellTreeTool> fellTreeTools = new ArrayList<>();
+        List<ToolDefinition> powerToolDefs = new ArrayList<>();
         for (ToolDefinition definition : loaded.enabled()) {
+            if (PowerToolBehaviorType.ID.equals(definition.behavior())) {
+                registerPermissions(definition);
+                powerToolDefs.add(definition);
+                continue;
+            }
             register(items, definition);
             if (DisarmBehaviorType.ID.equals(definition.behavior())) {
                 disarmTools.add(new DisarmTool(definition, System::nanoTime));
@@ -125,6 +139,7 @@ public final class ToolsModule extends AbstractModule {
                 fellTreeTools.add(new FellTreeTool(definition));
             }
         }
+        enablePowerTools(items, loader.directory(), coreItems, powerToolDefs);
         enableObliterate(items, obliterateTools);
         enableFellTree(items, fellTreeTools);
         if (disarmTools.isEmpty()) {
@@ -143,6 +158,59 @@ public final class ToolsModule extends AbstractModule {
                     + "s, radius " + parameters.radius() + ", protection hooks " + plugin.getProtectionService().hookNames()
                     + " + check event.");
         }
+    }
+
+    private void enablePowerTools(ItemService items, java.io.File toolsDir, Set<String> coreItems, List<ToolDefinition> definitions) {
+        PowerToolSettings ptSettings = PowerToolSettings.fromConfig(plugin.getConfig().getConfigurationSection("powertools"));
+        powerTools = new PowerToolBehavior(
+                items,
+                plugin.getProtectionService(),
+                plugin.getScheduler(),
+                plugin.getMessageManager()::send,
+                plugin.logger()::warning,
+                System::currentTimeMillis,
+                new Random(),
+                toolsDir,
+                () -> new BukkitToolEnvironment(coreItems, plugin.getLanguageManager()::hasKey),
+                ptSettings
+        );
+        for (ToolDefinition def : definitions) {
+            powerTools.registerDefinition(def);
+        }
+        powerToolListener = new PowerToolListener(powerTools);
+        plugin.getServer().getPluginManager().registerEvents(powerToolListener, plugin);
+        plugin.getCommandManager().register(new PowerToolCommand(plugin, () -> powerTools, () -> this));
+        if (!definitions.isEmpty()) {
+            plugin.logger().info("Loaded " + definitions.size() + " powertool definition(s): "
+                    + definitions.stream().map(ToolDefinition::localId).collect(Collectors.joining(", ")) + ".");
+        }
+    }
+
+    public void reloadPowerTools() {
+        if (powerTools != null) {
+            powerTools.updateSettings(PowerToolSettings.fromConfig(plugin.getConfig().getConfigurationSection("powertools")));
+            powerTools.reloadPowerTools();
+        }
+    }
+
+    public PowerToolBehavior powerTools() {
+        return powerTools;
+    }
+
+    public List<String> enabledToolLocalIds() {
+        List<String> out = new ArrayList<>();
+        if (loaded != null) {
+            loaded.enabled().forEach(d -> out.add(d.localId()));
+        }
+        if (powerTools != null) {
+            for (String id : powerTools.registryLocalIds()) {
+                if (!out.contains(id)) {
+                    out.add(id);
+                }
+            }
+        }
+        java.util.Collections.sort(out);
+        return out;
     }
 
     private void enableObliterate(ItemService items, List<ObliterateTool> tools) {
@@ -186,7 +254,8 @@ public final class ToolsModule extends AbstractModule {
         if (item != null) {
             Material material = Material.matchMaterial(item.material());
             items.registerAlliumItem(new AlliumItemDefinition(definition.localId(), material, definition.id(), false,
-                    item.customModelData(), item.name(), Map.of(), true));
+                    item.customModelData(), item.name(), Map.of(), true,
+                    item.lore(), item.enchantments(), item.unbreakable(), item.hideFlags()));
             registeredItems.add(definition.localId());
         }
         items.registerSignedBehavior(definition.id());
@@ -272,6 +341,14 @@ public final class ToolsModule extends AbstractModule {
         if (fellTreeListener != null) {
             HandlerList.unregisterAll(fellTreeListener);
             fellTreeListener = null;
+        }
+        if (powerToolListener != null) {
+            HandlerList.unregisterAll(powerToolListener);
+            powerToolListener = null;
+        }
+        if (powerTools != null) {
+            powerTools.disable();
+            powerTools = null;
         }
         disarm = null;
         obliterate = null;

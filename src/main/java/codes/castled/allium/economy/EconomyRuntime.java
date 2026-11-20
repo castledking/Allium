@@ -149,11 +149,13 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         boolean enabled=c.getBoolean(base+".enabled",true);
         java.math.BigDecimal percent=percent(c.get(base+".percent","5"),base+".percent");
         String accountName=c.getString(base+".account-name","Tax");
+        boolean accountInBaltop=c.getBoolean(base+".account-in-baltop",true);
+        boolean accountPayable=c.getBoolean(base+".account-payable",false);
         boolean applyPay=c.getBoolean(base+".apply-to.pay",true);
         boolean applyCheques=c.getBoolean(base+".apply-to.cheques",false);
         java.math.RoundingMode roundMode=TaxSettings.parseRoundMode(c.getString(base+".round-mode","nearest"));
         Money minimumTax=decimal(plugin,base+".minimum-tax","0.00");
-        return new TaxSettings(enabled,percent,accountName,applyPay,applyCheques,roundMode,minimumTax);
+        return new TaxSettings(enabled,percent,accountName,applyPay,applyCheques,roundMode,minimumTax,accountInBaltop,accountPayable);
     }
     private static java.math.BigDecimal percent(Object value,String path){
         if(value==null)return java.math.BigDecimal.valueOf(5);
@@ -246,6 +248,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             TaxSettings tax=taxSettings();
             boolean isTaxAccount=recipient.equals(tax.accountUuid());
             if(source.equals(recipient)){tell(sender,Messages.ECO_PAY_SELF);return;}
+            if(isTaxAccount&&!tax.accountPayable()){tell(sender,refusal());return;}
             if(target!=null&&!PlayerNameVisibility.canSee(actor,target)
                     ||!isTaxAccount&&target==null&&(!engine.settings().offlinePay()||!actor.hasPermission("allium.pay.offline"))){tell(sender,refusal());return;}
             var prefs=preferences();
@@ -311,7 +314,16 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     private void balance(CommandSender sender,String[] args){
         if(args.length>1)throw new IllegalArgumentException("balance");
         if(args.length==0){if(!(sender instanceof Player p))throw new IllegalArgumentException("player required");show(sender,p.getUniqueId());}
-        else{if(!sender.hasPermission("allium.balance.others")){tell(sender,Messages.NO_PERMISSION);return;}resolve(sender,args[0],id->show(sender,id));}
+        else{
+            TaxSettings tax=taxSettings();
+            if(args[0].equalsIgnoreCase(tax.accountName())){
+                if(!sender.hasPermission("allium.tax.balance")){tell(sender,Messages.NO_PERMISSION);return;}
+                show(sender,tax.accountUuid());
+                return;
+            }
+            if(!sender.hasPermission("allium.balance.others")){tell(sender,Messages.NO_PERMISSION);return;}
+            resolve(sender,args[0],id->show(sender,id));
+        }
     }
     private void show(CommandSender sender,UUID id){submit(sender,()->{
         Balance result=engine.balance(id);
@@ -417,9 +429,15 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             Map<UUID,BigDecimal> balances=new HashMap<>();
             for(UUID id:ids)if(engine.balance(id) instanceof Found found)balances.put(id,found.available().decimal());
             List<TopEntry> top=new ArrayList<>();
+            TaxSettings tax=taxSettings();
+            boolean excludeTax=!tax.accountInBaltop();
+            String sql=excludeTax
+                    ?"SELECT account_uuid,balance_minor FROM allium_economy_accounts WHERE account_uuid<>? ORDER BY balance_minor DESC,account_uuid LIMIT ?"
+                    :"SELECT account_uuid,balance_minor FROM allium_economy_accounts ORDER BY balance_minor DESC,account_uuid LIMIT ?";
             try(var c=plugin.getDatabaseManager().getConnection();
-                var ps=c.prepareStatement("SELECT account_uuid,balance_minor FROM allium_economy_accounts ORDER BY balance_minor DESC,account_uuid LIMIT ?")){
-                ps.setInt(1,PLACEHOLDER_TOP);
+                var ps=c.prepareStatement(sql)){
+                if(excludeTax){ps.setString(1,tax.accountUuid().toString());ps.setInt(2,PLACEHOLDER_TOP);}
+                else{ps.setInt(1,PLACEHOLDER_TOP);}
                 try(var r=ps.executeQuery()){
                     while(r.next()){UUID id=UUID.fromString(r.getString(1));top.add(new TopEntry(id,resolveDisplayName(id),new Money(r.getLong(2)).decimal()));}
                 }
@@ -442,22 +460,39 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         final int targetPage=requestedPage;
         submit(sender,()->{
             try(var c=plugin.getDatabaseManager().getConnection()){
+                TaxSettings tax=taxSettings();
+                boolean excludeTax=!tax.accountInBaltop();
                 int totalAccounts=0;
                 BigDecimal totalMinor=BigDecimal.ZERO;
-                try(var s=c.createStatement();var r=s.executeQuery("SELECT COUNT(*),COALESCE(SUM(balance_minor),0) FROM allium_economy_accounts")){
-                    if(r.next()){
-                        totalAccounts=r.getInt(1);
-                        BigDecimal sum=r.getBigDecimal(2);
-                        if(sum!=null)totalMinor=sum;
+                String countSql=excludeTax
+                        ?"SELECT COUNT(*),COALESCE(SUM(balance_minor),0) FROM allium_economy_accounts WHERE account_uuid<>?"
+                        :"SELECT COUNT(*),COALESCE(SUM(balance_minor),0) FROM allium_economy_accounts";
+                try(var ps=c.prepareStatement(countSql)){
+                    if(excludeTax)ps.setString(1,tax.accountUuid().toString());
+                    try(var r=ps.executeQuery()){
+                        if(r.next()){
+                            totalAccounts=r.getInt(1);
+                            BigDecimal sum=r.getBigDecimal(2);
+                            if(sum!=null)totalMinor=sum;
+                        }
                     }
                 }
                 int pages=Math.max(1,(totalAccounts+BALTOP_PAGE_SIZE-1)/BALTOP_PAGE_SIZE);
                 int page=Math.max(1,Math.min(targetPage,pages));
                 int offset=(page-1)*BALTOP_PAGE_SIZE;
                 var rows=new ArrayList<TopRow>();
-                try(var ps=c.prepareStatement("SELECT account_uuid,balance_minor FROM allium_economy_accounts ORDER BY balance_minor DESC,account_uuid LIMIT ? OFFSET ?")){
-                    ps.setInt(1,BALTOP_PAGE_SIZE);
-                    ps.setInt(2,offset);
+                String listSql=excludeTax
+                        ?"SELECT account_uuid,balance_minor FROM allium_economy_accounts WHERE account_uuid<>? ORDER BY balance_minor DESC,account_uuid LIMIT ? OFFSET ?"
+                        :"SELECT account_uuid,balance_minor FROM allium_economy_accounts ORDER BY balance_minor DESC,account_uuid LIMIT ? OFFSET ?";
+                try(var ps=c.prepareStatement(listSql)){
+                    if(excludeTax){
+                        ps.setString(1,tax.accountUuid().toString());
+                        ps.setInt(2,BALTOP_PAGE_SIZE);
+                        ps.setInt(3,offset);
+                    }else{
+                        ps.setInt(1,BALTOP_PAGE_SIZE);
+                        ps.setInt(2,offset);
+                    }
                     try(var r=ps.executeQuery()){
                         int rank=offset+1;
                         while(r.next()){

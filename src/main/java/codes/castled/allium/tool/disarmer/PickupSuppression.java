@@ -19,11 +19,11 @@ public final class PickupSuppression {
 
     private final LongSupplier clock;
 
-    PickupSuppression(LongSupplier clock) {
+    public PickupSuppression(LongSupplier clock) {
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
-    void block(Entity entity, long durationMillis) {
+    public void block(Entity entity, long durationMillis) {
         long until = clock.getAsLong() + durationMillis;
         entity.getPersistentDataContainer().set(BLOCKED_UNTIL, PersistentDataType.LONG, until < 0L ? Long.MAX_VALUE : until);
     }

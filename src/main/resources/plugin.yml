@@ -91,9 +91,9 @@ commands:
     usage: /<command> <color|rainbow|off|spectator> [player]
     permission: allium.glow
   powertool:
-    description: Create, edit, save, bind and give interactive powertool items
-    usage: /<command> <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|get|give|list|toggle|reload|help> [args...]
-    aliases: [pt, powertools, ptt, powertooltoggle]
+    description: Create, edit, save, bind, enable/disable and give interactive powertool items
+    usage: /<command> <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|enable|disable|get|give|list|toggle|reload|help> [args...]
+    aliases: [pt, tool, tools, powertools, ptt, powertooltoggle]
     permission: allium.powertool
   compass:
     description: Show the direction you are facing
@@ -109,8 +109,8 @@ commands:
     usage: /<command> <player> [seconds]
     permission: allium.burn
   smite:
-    description: Strike a player with harmless lightning
-    usage: /<command> <player>
+    description: Strike a player or where you are looking with harmless lightning
+    usage: /<command> [player]
     aliases: [lightning, strike]
     permission: allium.smite
   nv:

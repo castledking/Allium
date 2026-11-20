@@ -83,6 +83,7 @@ public final class ToolsModule extends AbstractModule {
     private PowerToolListener powerToolListener;
     private ToolCarrierSuppressionListener carrierSuppression;
     private ToolDefinitionLoader.Loaded loaded;
+    private Set<String> cachedCoreItems = Set.of();
 
     public ToolsModule(PluginStart plugin) {
         super(plugin);
@@ -105,8 +106,32 @@ public final class ToolsModule extends AbstractModule {
         ItemService items = plugin.getItemService();
         carrierSuppression = new ToolCarrierSuppressionListener(plugin, items);
         carrierSuppression.enable();
-        Set<String> coreItems = CoreItems.definitions(plugin.getPackManifest()).stream()
+        cachedCoreItems = CoreItems.definitions(plugin.getPackManifest()).stream()
                 .map(AlliumItemDefinition::id).collect(Collectors.toSet());
+        initPowerToolsRuntime(items, loader.directory(), cachedCoreItems);
+        loadAndActivateTools(loader, items, cachedCoreItems);
+    }
+
+    private void initPowerToolsRuntime(ItemService items, java.io.File toolsDir, Set<String> coreItems) {
+        PowerToolSettings ptSettings = PowerToolSettings.fromConfig(plugin.getConfig().getConfigurationSection("powertools"));
+        powerTools = new PowerToolBehavior(
+                items,
+                plugin.getProtectionService(),
+                plugin.getScheduler(),
+                plugin.getMessageManager()::send,
+                plugin.logger()::warning,
+                System::currentTimeMillis,
+                new Random(),
+                toolsDir,
+                () -> new BukkitToolEnvironment(coreItems, plugin.getLanguageManager()::hasKey),
+                ptSettings
+        );
+        powerToolListener = new PowerToolListener(powerTools);
+        plugin.getServer().getPluginManager().registerEvents(powerToolListener, plugin);
+        plugin.getCommandManager().register(new PowerToolCommand(plugin, () -> powerTools, () -> this));
+    }
+
+    private void loadAndActivateTools(ToolDefinitionLoader loader, ItemService items, Set<String> coreItems) {
         BukkitToolEnvironment environment = new BukkitToolEnvironment(coreItems, plugin.getLanguageManager()::hasKey);
         loaded = loader.load(BEHAVIORS, environment, items::resolveBoundBehaviorId);
 
@@ -139,7 +164,15 @@ public final class ToolsModule extends AbstractModule {
                 fellTreeTools.add(new FellTreeTool(definition));
             }
         }
-        enablePowerTools(items, loader.directory(), coreItems, powerToolDefs);
+        if (powerTools != null) {
+            for (ToolDefinition def : powerToolDefs) {
+                powerTools.registerDefinition(def);
+            }
+            if (!powerToolDefs.isEmpty()) {
+                plugin.logger().info("Loaded " + powerToolDefs.size() + " powertool definition(s): "
+                        + powerToolDefs.stream().map(ToolDefinition::localId).collect(Collectors.joining(", ")) + ".");
+            }
+        }
         enableObliterate(items, obliterateTools);
         enableFellTree(items, fellTreeTools);
         if (disarmTools.isEmpty()) {
@@ -160,37 +193,20 @@ public final class ToolsModule extends AbstractModule {
         }
     }
 
-    private void enablePowerTools(ItemService items, java.io.File toolsDir, Set<String> coreItems, List<ToolDefinition> definitions) {
-        PowerToolSettings ptSettings = PowerToolSettings.fromConfig(plugin.getConfig().getConfigurationSection("powertools"));
-        powerTools = new PowerToolBehavior(
-                items,
-                plugin.getProtectionService(),
-                plugin.getScheduler(),
-                plugin.getMessageManager()::send,
-                plugin.logger()::warning,
-                System::currentTimeMillis,
-                new Random(),
-                toolsDir,
-                () -> new BukkitToolEnvironment(coreItems, plugin.getLanguageManager()::hasKey),
-                ptSettings
-        );
-        for (ToolDefinition def : definitions) {
-            powerTools.registerDefinition(def);
+    /** Hot-reloads all tool definitions (both staple tools and powertools) on the fly. */
+    public void reloadAllTools() {
+        unloadStapleTools();
+        if (powerTools != null) {
+            powerTools.updateSettings(PowerToolSettings.fromConfig(plugin.getConfig().getConfigurationSection("powertools")));
+            powerTools.clearRegistry();
         }
-        powerToolListener = new PowerToolListener(powerTools);
-        plugin.getServer().getPluginManager().registerEvents(powerToolListener, plugin);
-        plugin.getCommandManager().register(new PowerToolCommand(plugin, () -> powerTools, () -> this));
-        if (!definitions.isEmpty()) {
-            plugin.logger().info("Loaded " + definitions.size() + " powertool definition(s): "
-                    + definitions.stream().map(ToolDefinition::localId).collect(Collectors.joining(", ")) + ".");
-        }
+        ToolDefinitionLoader loader = new ToolDefinitionLoader(plugin.getDataFolder(), plugin::getResource,
+                BUNDLED_DEFAULTS, plugin.logger()::info, plugin.logger()::warning);
+        loadAndActivateTools(loader, plugin.getItemService(), cachedCoreItems);
     }
 
     public void reloadPowerTools() {
-        if (powerTools != null) {
-            powerTools.updateSettings(PowerToolSettings.fromConfig(plugin.getConfig().getConfigurationSection("powertools")));
-            powerTools.reloadPowerTools();
-        }
+        reloadAllTools();
     }
 
     public PowerToolBehavior powerTools() {
@@ -312,8 +328,7 @@ public final class ToolsModule extends AbstractModule {
         modelSelectors.add(definition.localId());
     }
 
-    @Override
-    public void onDisable() {
+    private void unloadStapleTools() {
         ItemService items = plugin.getItemService();
         modelSelectors.forEach(id -> items.setModelSelector(id, null));
         modelSelectors.clear();
@@ -322,10 +337,6 @@ public final class ToolsModule extends AbstractModule {
         PluginManager manager = plugin.getServer().getPluginManager();
         registeredPermissions.forEach(manager::removePermission);
         registeredPermissions.clear();
-        if (carrierSuppression != null) {
-            carrierSuppression.disable();
-            carrierSuppression = null;
-        }
         if (disarmListener != null) {
             HandlerList.unregisterAll(disarmListener);
             disarmListener = null;
@@ -342,6 +353,19 @@ public final class ToolsModule extends AbstractModule {
             HandlerList.unregisterAll(fellTreeListener);
             fellTreeListener = null;
         }
+        disarm = null;
+        obliterate = null;
+        fellTree = null;
+        loaded = null;
+    }
+
+    @Override
+    public void onDisable() {
+        unloadStapleTools();
+        if (carrierSuppression != null) {
+            carrierSuppression.disable();
+            carrierSuppression = null;
+        }
         if (powerToolListener != null) {
             HandlerList.unregisterAll(powerToolListener);
             powerToolListener = null;
@@ -350,10 +374,6 @@ public final class ToolsModule extends AbstractModule {
             powerTools.disable();
             powerTools = null;
         }
-        disarm = null;
-        obliterate = null;
-        fellTree = null;
-        loaded = null;
     }
 
     /** The obliterate behavior, or {@code null} when no Phantom Obliterator is enabled. */

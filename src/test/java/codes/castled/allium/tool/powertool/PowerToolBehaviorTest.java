@@ -307,4 +307,55 @@ class PowerToolBehaviorTest {
         assertFalse(file.exists());
         assertTrue(behavior.registryTool("pulse_wand").isEmpty());
     }
+
+    @Test
+    void enableAndDisableToggleToolFilesOnTheFlyAndPreserveComments() throws Exception {
+        // Create a commented staple tool file (lazy_axe.yml) starting disabled
+        File toolsDir = tempDir.resolve("tools").toFile();
+        assertTrue(toolsDir.mkdirs() || toolsDir.isDirectory());
+        File lazyAxe = new File(toolsDir, "lazy_axe.yml");
+        java.nio.file.Files.writeString(lazyAxe.toPath(),
+                "# Lazy Axe comment\nschema: 1\nid: allium:lazy_axe\nname: Lazy Axe\nbehavior: allium:fell_tree\nenabled: false\n");
+
+        // Also save a powertool (starts enabled)
+        ItemStack held = MockItemStacks.create(Material.STICK);
+        PowerToolBinding binding = PowerToolBinding.empty(PowerToolTrigger.RIGHT)
+                .withActionAdded(new PowerToolAction(PowerToolAction.TYPE_COMMAND, "/ping", false,
+                        0L, PowerToolCooldownScope.PLAYER, null, 0L, null, Map.of()));
+        behavior.writeInline(held, PowerToolParameters.EMPTY.withBinding(PowerToolTrigger.RIGHT, binding), null);
+        assertTrue(behavior.saveHeldAsTool("ping_stick", held, false).saved());
+
+        // listAllToolFiles shows both enabled and disabled tools
+        List<PowerToolBehavior.ToolSummary> listed = behavior.listAllToolFiles();
+        assertTrue(listed.contains(new PowerToolBehavior.ToolSummary("lazy_axe", false)));
+        assertTrue(listed.contains(new PowerToolBehavior.ToolSummary("ping_stick", true)));
+
+        // Enable lazy_axe on the fly -> updates enabled: true and keeps header comment
+        AtomicInteger reloadCalls = new AtomicInteger();
+        PowerToolBehavior.EnableResult enabledLazy = behavior.setToolEnabled("lazy_axe", true, reloadCalls::incrementAndGet);
+        assertEquals(PowerToolBehavior.EnableOutcome.CHANGED, enabledLazy.outcome());
+        assertEquals(1, reloadCalls.get());
+        String lazyText = java.nio.file.Files.readString(lazyAxe.toPath());
+        assertTrue(lazyText.contains("# Lazy Axe comment"));
+        assertTrue(lazyText.contains("enabled: true"));
+
+        // Enabling again reports ALREADY_IN_STATE
+        assertEquals(PowerToolBehavior.EnableOutcome.ALREADY_IN_STATE,
+                behavior.setToolEnabled("lazy_axe", true, reloadCalls::incrementAndGet).outcome());
+
+        // Disable ping_stick on the fly -> unregisters it live from PowerToolBehavior
+        assertTrue(behavior.registryTool("ping_stick").isPresent());
+        PowerToolBehavior.EnableResult disabledPing = behavior.setToolEnabled("ping_stick", false, null);
+        assertEquals(PowerToolBehavior.EnableOutcome.CHANGED, disabledPing.outcome());
+        assertTrue(behavior.registryTool("ping_stick").isEmpty());
+
+        // Re-enable ping_stick -> hot-registers it back immediately
+        assertEquals(PowerToolBehavior.EnableOutcome.CHANGED,
+                behavior.setToolEnabled("ping_stick", true, null).outcome());
+        assertTrue(behavior.registryTool("ping_stick").isPresent());
+
+        // Aliases /tool and /tools are declared on CoreCommandSpecs.POWERTOOL
+        assertTrue(codes.castled.allium.command.spec.CoreCommandSpecs.POWERTOOL.aliases().contains("tool"));
+        assertTrue(codes.castled.allium.command.spec.CoreCommandSpecs.POWERTOOL.aliases().contains("tools"));
+    }
 }

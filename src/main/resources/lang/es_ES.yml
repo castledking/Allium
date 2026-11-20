@@ -1206,6 +1206,12 @@ utility:
   smite:
     - "{prefix} &eGolpeaste a &f{player} &econ un rayo."
     - "[sound] entity.lightning_bolt.thunder 1.1"
+  smite-here:
+    - "{prefix} &eLanzaste un rayo en &f{x}, {y}, {z}&e."
+    - "[sound] entity.lightning_bolt.thunder 1.1"
+  smite-no-target:
+    - "{prefix} &cNo hay ningun bloque a la vista para lanzar un rayo."
+    - "[sound] block.note_block.bass 0.85"
   smited:
     - "{prefix} &cFuiste alcanzado por un rayo."
     - "[sound] entity.lightning_bolt.impact 1.0"
@@ -1526,11 +1532,26 @@ tool:
     toggle-off:
       - "{prefix} &ePowerTools &fdesactivadas &epara ti."
       - "[sound] ui.button.click 0.85"
+    enabled:
+      - "{prefix} &aSe activo la herramienta &f{name}&a."
+      - "[sound] entity.experience_orb.pickup 1.15"
+    disabled:
+      - "{prefix} &eSe desactivo la herramienta &f{name}&e."
+      - "[sound] ui.button.click 0.85"
+    already-enabled:
+      - "{prefix} &7La herramienta &f{name} &7ya esta activada."
+      - "[sound] block.note_block.hat 0.9"
+    already-disabled:
+      - "{prefix} &7La herramienta &f{name} &7ya esta desactivada."
+      - "[sound] block.note_block.hat 0.9"
+    enable-failed:
+      - "{prefix} &cNo se pudo actualizar el estado de la herramienta: {reason}"
+      - "[sound] entity.villager.no 0.9"
     reloaded:
-      - "{prefix} &aSe recargaron &f{count} &adefinicion(es) de powertool."
+      - "{prefix} &aSe recargaron &f{count} &adefinicion(es) de herramientas."
       - "[sound] entity.experience_orb.pickup 1.1"
     help:
-      - "{prefix} &d/pt &fadd|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|get|give|list|toggle|reload\n&7Usa &f/pt help triggers&7, &f/pt help actions&7 o &f/pt help placeholders&7."
+      - "{prefix} &d/pt &fadd|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|enable|disable|get|give|list|toggle|reload\n&7Alias: &f/tool&7, &f/tools &7(listar). Usa &f/pt help triggers&7, &f/pt help actions&7 o &f/pt help placeholders&7."
     help-triggers:
       - "{prefix} &dDisparadores: &f{triggers}"
     help-actions:

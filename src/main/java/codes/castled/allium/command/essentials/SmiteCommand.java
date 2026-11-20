@@ -6,9 +6,14 @@ import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.message.Messages;
+import org.bukkit.FluidCollisionMode;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.util.RayTraceResult;
 
 public final class SmiteCommand implements SpecCommandHandler {
+
+    private static final double MAX_RANGE = 128.0D;
 
     private final PluginStart plugin;
 
@@ -23,11 +28,34 @@ public final class SmiteCommand implements SpecCommandHandler {
 
     @Override
     public void execute(BukkitCommandContext context) {
-        if (context.args().length != 1) {
+        String[] args = context.args();
+        if (args.length > 1) {
             context.sendInvalidArgs(spec().selfUsage());
             return;
         }
-        Player target = UtilitySupport.resolveVisibleOnlinePlayer(plugin, context.sender(), context.args()[0]);
+        if (args.length == 0) {
+            if (!(context.sender() instanceof Player player)) {
+                context.sendInvalidArgs(spec().consoleUsage());
+                return;
+            }
+            RayTraceResult hit = player.rayTraceBlocks(MAX_RANGE, FluidCollisionMode.NEVER);
+            if (hit == null || hit.getHitBlock() == null) {
+                UtilitySupport.send(plugin, player, Messages.UTILITY_SMITE_NO_TARGET);
+                return;
+            }
+            Location strikeAt = hit.getHitPosition() != null
+                    ? hit.getHitPosition().toLocation(player.getWorld())
+                    : hit.getHitBlock().getLocation().add(0.5D, 1.0D, 0.5D);
+            player.getWorld().strikeLightningEffect(strikeAt);
+            UtilitySupport.send(plugin, player, Messages.UTILITY_SMITE_HERE,
+                    "{x}", Integer.toString(strikeAt.getBlockX()),
+                    "{y}", Integer.toString(strikeAt.getBlockY()),
+                    "{z}", Integer.toString(strikeAt.getBlockZ()));
+            UtilitySupport.audit(plugin, player, "smite",
+                    "location=" + strikeAt.getBlockX() + "," + strikeAt.getBlockY() + "," + strikeAt.getBlockZ());
+            return;
+        }
+        Player target = UtilitySupport.resolveVisibleOnlinePlayer(plugin, context.sender(), args[0]);
         if (target == null) {
             return;
         }

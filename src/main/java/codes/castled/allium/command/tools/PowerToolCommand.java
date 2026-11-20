@@ -54,7 +54,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
 
     private static final List<String> SUBCOMMANDS = List.of(
             "add", "set", "remove", "clear", "cooldown", "perm", "uses", "cancel", "sneak", "hand",
-            "info", "save", "delete", "bind", "unbind", "get", "give", "list", "toggle", "reload", "help"
+            "info", "save", "delete", "bind", "unbind", "enable", "disable", "get", "give", "list", "toggle", "reload", "help"
     );
 
     private static final List<String> FLAGS = List.of(
@@ -90,9 +90,14 @@ public final class PowerToolCommand implements SpecCommandHandler {
             send(sender, Messages.POWERTOOL_UNAVAILABLE);
             return;
         }
-        String label = context.label().toLowerCase(Locale.ROOT);
-        if (label.endsWith("ptt") || label.endsWith("powertooltoggle")) {
+        String rawLabel = context.label().toLowerCase(Locale.ROOT);
+        String cmdLabel = rawLabel.contains(":") ? rawLabel.substring(rawLabel.indexOf(':') + 1) : rawLabel;
+        if (cmdLabel.equals("ptt") || cmdLabel.equals("powertooltoggle")) {
             handleToggle(sender, behavior);
+            return;
+        }
+        if (cmdLabel.equals("tools")) {
+            handleList(sender, behavior, args);
             return;
         }
         if (args.length == 0) {
@@ -124,6 +129,8 @@ public final class PowerToolCommand implements SpecCommandHandler {
             case "save" -> handleSave(sender, behavior, subArgs);
             case "delete", "del" -> handleDelete(sender, behavior, subArgs);
             case "bind" -> handleBind(sender, behavior, subArgs);
+            case "enable" -> handleSetEnabled(sender, behavior, subArgs, true);
+            case "disable" -> handleSetEnabled(sender, behavior, subArgs, false);
             case "get" -> handleGet(sender, behavior, subArgs);
             case "give" -> handleGive(sender, behavior, subArgs);
             case "list" -> handleList(sender, behavior, subArgs);
@@ -900,16 +907,50 @@ public final class PowerToolCommand implements SpecCommandHandler {
         }
     }
 
+    private void handleSetEnabled(CommandSender sender, PowerToolBehavior behavior, String[] args, boolean enabled) {
+        if (!sender.hasPermission(PERM_SAVE) && !sender.hasPermission(PERM_RELOAD)) {
+            send(sender, Messages.NO_PERMISSION);
+            return;
+        }
+        if (args.length != 1) {
+            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt " + (enabled ? "enable" : "disable") + " <tool>");
+            return;
+        }
+        ToolsModule module = toolsModuleSupplier.get();
+        Runnable reload = module != null ? module::reloadAllTools : null;
+        PowerToolBehavior.EnableResult result = behavior.setToolEnabled(args[0], enabled, reload);
+        switch (result.outcome()) {
+            case CHANGED -> send(sender, enabled ? Messages.POWERTOOL_ENABLED : Messages.POWERTOOL_DISABLED,
+                    "{name}", result.localId());
+            case ALREADY_IN_STATE -> send(sender, enabled ? Messages.POWERTOOL_ALREADY_ENABLED : Messages.POWERTOOL_ALREADY_DISABLED,
+                    "{name}", result.localId());
+            case NOT_FOUND -> send(sender, Messages.POWERTOOL_NOT_FOUND, "{name}", args[0]);
+            case FAILED -> send(sender, Messages.POWERTOOL_ENABLE_FAILED, "{reason}", result.message());
+        }
+    }
+
     private void handleList(CommandSender sender, PowerToolBehavior behavior, String[] args) {
         String filter = args.length >= 1 ? args[0].toLowerCase(Locale.ROOT) : "";
-        List<String> names = allGiveableToolIds(behavior).stream()
-                .filter(id -> filter.isEmpty() || id.contains(filter))
-                .toList();
-        if (names.isEmpty()) {
+        Map<String, Boolean> states = new java.util.TreeMap<>();
+        for (PowerToolBehavior.ToolSummary summary : behavior.listAllToolFiles()) {
+            states.put(summary.localId(), summary.enabled());
+        }
+        for (String id : allGiveableToolIds(behavior)) {
+            states.putIfAbsent(id, true);
+        }
+        List<String> formatted = new ArrayList<>();
+        for (Map.Entry<String, Boolean> entry : states.entrySet()) {
+            if (!filter.isEmpty() && !entry.getKey().contains(filter)) {
+                continue;
+            }
+            formatted.add(entry.getValue() ? entry.getKey() : entry.getKey() + " &7(disabled)&f");
+        }
+        if (formatted.isEmpty()) {
             send(sender, Messages.POWERTOOL_LIST_EMPTY);
             return;
         }
-        send(sender, Messages.POWERTOOL_LIST, "{count}", Integer.toString(names.size()), "{tools}", String.join(", ", names));
+        send(sender, Messages.POWERTOOL_LIST, "{count}", Integer.toString(formatted.size()),
+                "{tools}", String.join(", ", formatted));
     }
 
     private void handleToggle(CommandSender sender, PowerToolBehavior behavior) {
@@ -926,6 +967,12 @@ public final class PowerToolCommand implements SpecCommandHandler {
     private void handleReload(CommandSender sender, PowerToolBehavior behavior) {
         if (!sender.hasPermission(PERM_RELOAD)) {
             send(sender, Messages.NO_PERMISSION);
+            return;
+        }
+        ToolsModule module = toolsModuleSupplier.get();
+        if (module != null) {
+            module.reloadAllTools();
+            send(sender, Messages.POWERTOOL_RELOADED, "{count}", Integer.toString(module.enabledToolLocalIds().size()));
             return;
         }
         behavior.updateSettings(PowerToolSettings.fromConfig(plugin.getConfig().getConfigurationSection("powertools")));
@@ -949,11 +996,29 @@ public final class PowerToolCommand implements SpecCommandHandler {
     // ---- Tab completion ----
 
     public List<String> complete(CommandSender sender, String[] args) {
+        return complete(sender, "powertool", args);
+    }
+
+    public List<String> complete(CommandSender sender, String label, String[] args) {
         if (!sender.hasPermission(PERM_BASE)) {
             return List.of();
         }
         PowerToolBehavior behavior = behaviorSupplier.get();
         if (behavior == null) {
+            return List.of();
+        }
+        String cleanLabel = label == null ? "" : label.toLowerCase(Locale.ROOT);
+        if (cleanLabel.contains(":")) {
+            cleanLabel = cleanLabel.substring(cleanLabel.indexOf(':') + 1);
+        }
+        if ("tools".equals(cleanLabel)) {
+            String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+            return args.length <= 1
+                    ? behavior.listAllToolFiles().stream().map(PowerToolBehavior.ToolSummary::localId)
+                            .filter(id -> id.startsWith(prefix)).toList()
+                    : List.of();
+        }
+        if ("ptt".equals(cleanLabel) || "powertooltoggle".equals(cleanLabel)) {
             return List.of();
         }
         if (args.length <= 1) {
@@ -1022,6 +1087,14 @@ public final class PowerToolCommand implements SpecCommandHandler {
             }
             case "bind", "delete", "del", "info" -> args.length == 2
                     ? behavior.registryLocalIds().stream().filter(id -> id.startsWith(current)).toList()
+                    : List.of();
+            case "enable" -> args.length == 2
+                    ? behavior.listAllToolFiles().stream().filter(t -> !t.enabled())
+                            .map(PowerToolBehavior.ToolSummary::localId).filter(id -> id.startsWith(current)).toList()
+                    : List.of();
+            case "disable" -> args.length == 2
+                    ? behavior.listAllToolFiles().stream().filter(PowerToolBehavior.ToolSummary::enabled)
+                            .map(PowerToolBehavior.ToolSummary::localId).filter(id -> id.startsWith(current)).toList()
                     : List.of();
             case "save" -> args.length == 3
                     ? List.of("--overwrite").stream().filter(v -> v.startsWith(current)).toList()

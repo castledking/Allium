@@ -925,10 +925,10 @@ public final class CoreCommandSpecs {
 
     public static final CommandSpec SMITE = new CommandSpec(
             "smite", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("lightning", "strike"),
-            "Strike a player with visual lightning",
-            "/smite <player>", "/smite <player>",
+            "Strike a player or the block you are looking at with visual lightning",
+            "/smite [player]", "/smite <player>",
             "allium.smite", null,
-            List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null))),
+            List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null))),
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
@@ -1337,10 +1337,10 @@ public final class CoreCommandSpecs {
 
     public static final CommandSpec POWERTOOL = new CommandSpec(
             "powertool", CommandSpec.DEFAULT_NAMESPACE, "tools",
-            List.of("pt", "powertools", "ptt", "powertooltoggle"),
-            "Create, edit, save, bind and give interactive powertool items",
-            "/pt <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|get|give|list|toggle|reload|help> [args...]",
-            "/pt <give|list|delete|reload|help> [args...]",
+            List.of("pt", "tool", "tools", "powertools", "ptt", "powertooltoggle"),
+            "Create, edit, save, bind, enable/disable and give interactive powertool items",
+            "/pt <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|enable|disable|get|give|list|toggle|reload|help> [args...]",
+            "/pt <enable|disable|give|list|delete|reload|help> [args...]",
             "allium.powertool", null,
             List.of(),
             List.of(),

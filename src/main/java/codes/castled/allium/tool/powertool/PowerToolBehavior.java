@@ -95,6 +95,19 @@ public final class PowerToolBehavior {
         }
     }
 
+    public enum EnableOutcome {
+        CHANGED,
+        ALREADY_IN_STATE,
+        NOT_FOUND,
+        FAILED
+    }
+
+    public record EnableResult(EnableOutcome outcome, String localId, boolean enabled, String message) {
+    }
+
+    public record ToolSummary(String localId, boolean enabled) {
+    }
+
     private final ItemService items;
     private final TaskScheduler scheduler;
     private final Notifier notifier;
@@ -172,6 +185,10 @@ public final class PowerToolBehavior {
         actionRegistry.disable();
         cooldowns.clearAll();
         disabledPlayers.clear();
+        clearRegistry();
+    }
+
+    public void clearRegistry() {
         for (ToolDefinition def : registryTools.values()) {
             if (def.item() != null) {
                 items.unregisterAlliumItem(def.localId());
@@ -691,6 +708,119 @@ public final class PowerToolBehavior {
             items.unregisterAlliumItem(def.localId());
         }
         return SaveResult.ok(def, file);
+    }
+
+    /**
+     * Lists every valid tool definition file in {@code tools/} with its current {@code enabled}
+     * flag (both {@code allium:powertool} and staple tools such as {@code lazy_axe}).
+     */
+    public List<ToolSummary> listAllToolFiles() {
+        if (!toolsDirectory.isDirectory()) {
+            return List.of();
+        }
+        File[] files = toolsDirectory.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (files == null) {
+            return List.of();
+        }
+        Map<String, ToolSummary> byId = new java.util.TreeMap<>();
+        for (File file : files) {
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.load(file);
+            } catch (Exception e) {
+                continue;
+            }
+            String id = yaml.getString("id");
+            if (id == null || id.isBlank()) {
+                continue;
+            }
+            String localId = id.contains(":") ? id.substring(id.indexOf(':') + 1).trim().toLowerCase(Locale.ROOT) : id.trim().toLowerCase(Locale.ROOT);
+            boolean enabled = yaml.getBoolean("enabled", true);
+            byId.put(localId, new ToolSummary(localId, enabled));
+        }
+        return new ArrayList<>(byId.values());
+    }
+
+    /**
+     * Enables or disables any tool definition file in {@code plugins/Allium/tools/*.yml}
+     * (preserving YAML comments), then invokes {@code afterUpdate} (or reloads powertools when null)
+     * so the change takes effect immediately without restarting.
+     */
+    public EnableResult setToolEnabled(String rawName, boolean enabled, @Nullable Runnable afterUpdate) {
+        String normalized = rawName.trim().toLowerCase(Locale.ROOT);
+        if (normalized.startsWith(ProviderKey.ALLIUM + ":")) {
+            normalized = normalized.substring((ProviderKey.ALLIUM + ":").length());
+        }
+        File match = findToolFile(normalized);
+        if (match == null) {
+            return new EnableResult(EnableOutcome.NOT_FOUND, normalized, enabled, "No tool named '" + normalized + "' found in tools/.");
+        }
+        YamlConfiguration yaml = new YamlConfiguration();
+        try {
+            yaml.load(match);
+        } catch (Exception e) {
+            return new EnableResult(EnableOutcome.FAILED, normalized, enabled, "Could not read " + match.getName() + ": " + e.getMessage());
+        }
+        String rawId = yaml.getString("id", normalized);
+        String localId = rawId.contains(":") ? rawId.substring(rawId.indexOf(':') + 1).trim().toLowerCase(Locale.ROOT) : rawId.trim().toLowerCase(Locale.ROOT);
+        boolean current = yaml.getBoolean("enabled", true);
+        if (current == enabled) {
+            return new EnableResult(EnableOutcome.ALREADY_IN_STATE, localId, enabled, "Already " + (enabled ? "enabled" : "disabled"));
+        }
+        try {
+            String content = java.nio.file.Files.readString(match.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+            String updated;
+            java.util.regex.Pattern enabledLine = java.util.regex.Pattern.compile("(?m)^enabled\\s*:.*$");
+            if (enabledLine.matcher(content).find()) {
+                updated = enabledLine.matcher(content).replaceFirst("enabled: " + enabled);
+            } else {
+                java.util.regex.Pattern behaviorLine = java.util.regex.Pattern.compile("(?m)^behavior\\s*:.*$");
+                java.util.regex.Matcher bm = behaviorLine.matcher(content);
+                if (bm.find()) {
+                    updated = content.substring(0, bm.end()) + "\nenabled: " + enabled + content.substring(bm.end());
+                } else {
+                    updated = "enabled: " + enabled + "\n" + content;
+                }
+            }
+            java.nio.file.Files.writeString(match.toPath(), updated, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return new EnableResult(EnableOutcome.FAILED, localId, enabled, "Could not write " + match.getName() + ": " + e.getMessage());
+        }
+        if (afterUpdate != null) {
+            afterUpdate.run();
+        } else {
+            reloadPowerTools();
+        }
+        return new EnableResult(EnableOutcome.CHANGED, localId, enabled, enabled ? "Enabled" : "Disabled");
+    }
+
+    @Nullable
+    private File findToolFile(String localId) {
+        if (!toolsDirectory.isDirectory()) {
+            return null;
+        }
+        File direct = new File(toolsDirectory, localId + ".yml");
+        if (direct.isFile()) {
+            return direct;
+        }
+        File[] files = toolsDirectory.listFiles((dir, name) -> name.endsWith(".yml"));
+        if (files == null) {
+            return null;
+        }
+        String fullId = ProviderKey.ALLIUM + ":" + localId;
+        for (File file : files) {
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.load(file);
+            } catch (Exception e) {
+                continue;
+            }
+            String id = yaml.getString("id");
+            if (id != null && (id.equalsIgnoreCase(fullId) || id.equalsIgnoreCase(localId))) {
+                return file;
+            }
+        }
+        return null;
     }
 
     /** Hot-reloads all {@code allium:powertool} definitions from {@code plugins/Allium/tools/*.yml}. */

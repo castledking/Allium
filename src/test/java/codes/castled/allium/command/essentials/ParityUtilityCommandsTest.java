@@ -181,9 +181,22 @@ class ParityUtilityCommandsTest {
         verify(bob, times(1)).setFireTicks(anyInt());
         verify(alice).sendMessage(containsPlain("1 and 300"));
 
-        new BukkitCommandRenderer(plugin, policy, new SmiteCommand(plugin))
-                .onCommand(alice, command, "smite", new String[]{"Bob"});
+        var smite = new BukkitCommandRenderer(plugin, policy, new SmiteCommand(plugin));
+        smite.onCommand(alice, command, "smite", new String[]{"Bob"});
         verify(world).strikeLightningEffect(bob.getLocation());
+
+        // /smite with no player strikes where the player is looking
+        org.bukkit.block.Block lookBlock = mock(org.bukkit.block.Block.class);
+        when(lookBlock.getLocation()).thenReturn(new Location(world, 25, 70, -12));
+        when(alice.rayTraceBlocks(128.0D, org.bukkit.FluidCollisionMode.NEVER))
+                .thenReturn(new org.bukkit.util.RayTraceResult(new org.bukkit.util.Vector(25.5, 71.0, -11.5), lookBlock, org.bukkit.block.BlockFace.UP));
+        smite.onCommand(alice, command, "smite", new String[0]);
+        verify(world).strikeLightningEffect(new Location(world, 25.5, 71.0, -11.5));
+
+        // /smite looking at air reports no block in sight
+        when(alice.rayTraceBlocks(128.0D, org.bukkit.FluidCollisionMode.NEVER)).thenReturn(null);
+        smite.onCommand(alice, command, "smite", new String[0]);
+        verify(alice).sendMessage(containsPlain("No block in sight"));
     }
 
     @Test

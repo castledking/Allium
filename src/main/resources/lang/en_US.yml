@@ -1206,6 +1206,12 @@ utility:
   smite:
     - "{prefix} &eStruck &f{player} &ewith lightning."
     - "[sound] entity.lightning_bolt.thunder 1.1"
+  smite-here:
+    - "{prefix} &eStruck lightning at &f{x}, {y}, {z}&e."
+    - "[sound] entity.lightning_bolt.thunder 1.1"
+  smite-no-target:
+    - "{prefix} &cNo block in sight to smite."
+    - "[sound] block.note_block.bass 0.85"
   smited:
     - "{prefix} &cYou were struck by lightning."
     - "[sound] entity.lightning_bolt.impact 1.0"
@@ -1526,11 +1532,26 @@ tool:
     toggle-off:
       - "{prefix} &ePowerTools &fdisabled &efor you."
       - "[sound] ui.button.click 0.85"
+    enabled:
+      - "{prefix} &aEnabled tool &f{name}&a."
+      - "[sound] entity.experience_orb.pickup 1.15"
+    disabled:
+      - "{prefix} &eDisabled tool &f{name}&e."
+      - "[sound] ui.button.click 0.85"
+    already-enabled:
+      - "{prefix} &7Tool &f{name} &7is already enabled."
+      - "[sound] block.note_block.hat 0.9"
+    already-disabled:
+      - "{prefix} &7Tool &f{name} &7is already disabled."
+      - "[sound] block.note_block.hat 0.9"
+    enable-failed:
+      - "{prefix} &cCould not update tool state: {reason}"
+      - "[sound] entity.villager.no 0.9"
     reloaded:
-      - "{prefix} &aReloaded &f{count} &apowertool definition(s)."
+      - "{prefix} &aReloaded &f{count} &atool definition(s)."
       - "[sound] entity.experience_orb.pickup 1.1"
     help:
-      - "{prefix} &d/pt &fadd|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|get|give|list|toggle|reload\n&7Use &f/pt help triggers&7, &f/pt help actions&7, or &f/pt help placeholders&7."
+      - "{prefix} &d/pt &fadd|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|enable|disable|get|give|list|toggle|reload\n&7Aliases: &f/tool&7, &f/tools &7(list). Use &f/pt help triggers&7, &f/pt help actions&7, or &f/pt help placeholders&7."
     help-triggers:
       - "{prefix} &dTriggers: &f{triggers}"
     help-actions:

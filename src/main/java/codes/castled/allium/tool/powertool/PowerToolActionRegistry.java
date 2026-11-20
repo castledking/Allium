@@ -374,17 +374,24 @@ public final class PowerToolActionRegistry {
 
         TreeScanner.Limits limits = new TreeScanner.Limits(maxBlocks, maxRadius, maxHeight, minLeaves, stripped);
         TreeScanner.Scan scan = TreeScanner.scan(view, startPos, families, limits);
-        if (scan.result() != TreeScanner.Result.FELL || scan.logs().isEmpty()) {
+        if (scan.result() != TreeScanner.Result.FELL) {
+            return false;
+        }
+        List<TreeScanner.Pos> toFell = new ArrayList<>(scan.logs());
+        if (!startPos.equals(brokenPos)) {
+            toFell.add(0, startPos);
+        }
+        if (toFell.isEmpty()) {
             return false;
         }
 
         Set<Long> chunks = new HashSet<>();
         chunks.add(chunkKey(brokenPos.x() >> 4, brokenPos.z() >> 4));
-        for (TreeScanner.Pos pos : scan.logs()) {
+        for (TreeScanner.Pos pos : toFell) {
             chunks.add(chunkKey(pos.x() >> 4, pos.z() >> 4));
         }
 
-        LazyAxeFellEvent fellEvent = new LazyAxeFellEvent(player, broken, ctx.toolId(), scan.logs().size(), breakAsPlayer);
+        LazyAxeFellEvent fellEvent = new LazyAxeFellEvent(player, broken, ctx.toolId(), toFell.size(), breakAsPlayer);
         try {
             Bukkit.getPluginManager().callEvent(fellEvent);
         } catch (RuntimeException | LinkageError ignored) {
@@ -399,7 +406,7 @@ public final class PowerToolActionRegistry {
                 player.getUniqueId(),
                 world,
                 ctx.instanceUuid(),
-                new ArrayList<>(scan.logs()),
+                toFell,
                 chunks,
                 blocksPerTick,
                 breakAsPlayer,

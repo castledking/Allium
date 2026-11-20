@@ -156,4 +156,67 @@ class TreeScannerTest {
         assertEquals(TreeScanner.Result.FELL, scan.result());
         assertTrue(scan.logs().stream().allMatch(p -> Math.abs(p.x()) <= 8), "nothing beyond max-radius 8");
     }
+
+    @Test
+    void naturalMangroveWithRootsMossCarpetVinesAndBridgedBranchesFellsOnlyLogs() {
+        World w = new World();
+        // Swamp floor: mix of stone, water, and mud with stilt roots and moss carpet on top
+        for (int x = -3; x <= 3; x++) {
+            for (int z = -3; z <= 3; z++) {
+                w.set(x, 0, z, (x + z) % 2 == 0 ? "stone" : "mud");
+            }
+        }
+        w.set(0, 1, 0, "mangrove_roots");
+        w.set(0, 2, 0, "mangrove_roots");
+        w.set(1, 1, 0, "muddy_mangrove_roots");
+        w.set(1, 2, 0, "mangrove_roots");
+        w.set(1, 3, 0, "moss_carpet");
+        // Trunk starts above roots and moss carpet, wrapped by vines on orthogonal faces
+        w.set(0, 3, 0, "mangrove_log");
+        w.set(0, 4, 0, "mangrove_log");
+        w.set(0, 5, 0, "mangrove_log");
+        w.set(-1, 3, 0, "vine");
+        w.set(0, 3, 1, "vine");
+        w.set(0, 3, -1, "vine");
+        // Diagonal branch and 1-block bridged upper branch separated by mangrove_leaves
+        w.set(1, 6, 1, "mangrove_log");
+        w.set(1, 7, 1, "mangrove_leaves");
+        w.set(1, 8, 1, "mangrove_log");
+        // Natural canopy leaves (including diagonal to the logs)
+        w.set(1, 5, 1, "mangrove_leaves");
+        w.set(-1, 5, 1, "mangrove_leaves");
+        w.set(-1, 5, -1, "mangrove_leaves");
+        w.set(1, 5, -1, "mangrove_leaves");
+        w.set(0, 6, 0, "mangrove_leaves");
+
+        List<TreeFamily> mangroveFamilies = List.of(TreeFamily.ALL.get("mangrove"));
+        TreeScanner.Scan scan = TreeScanner.scan(w, new TreeScanner.Pos(0, 3, 0), mangroveFamilies, LIMITS);
+        assertEquals(TreeScanner.Result.FELL, scan.result(), scan.reason());
+        assertEquals(5, scan.size());
+        assertTrue(scan.logs().contains(new TreeScanner.Pos(0, 4, 0)));
+        assertTrue(scan.logs().contains(new TreeScanner.Pos(0, 5, 0)));
+        assertTrue(scan.logs().contains(new TreeScanner.Pos(1, 6, 1)));
+        assertTrue(scan.logs().contains(new TreeScanner.Pos(1, 8, 1)));
+        assertFalse(scan.logs().contains(new TreeScanner.Pos(0, 2, 0)), "mangrove_roots should not be felled");
+        assertFalse(scan.logs().contains(new TreeScanner.Pos(1, 1, 0)), "muddy_mangrove_roots should not be felled");
+    }
+
+    @Test
+    void floatingMangroveStructureWithoutRootsOrGroundIsNotFelled() {
+        World w = new World();
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
+                w.set(x, 0, z, "stone");
+            }
+        }
+        for (int y = 5; y <= 8; y++) w.set(0, y, 0, "mangrove_log");
+        w.set(1, 8, 0, "mangrove_leaves");
+        w.set(-1, 8, 0, "mangrove_leaves");
+        w.set(0, 8, 1, "mangrove_leaves");
+        w.set(0, 8, -1, "mangrove_leaves");
+
+        List<TreeFamily> mangroveFamilies = List.of(TreeFamily.ALL.get("mangrove"));
+        TreeScanner.Scan scan = TreeScanner.scan(w, new TreeScanner.Pos(0, 5, 0), mangroveFamilies, LIMITS);
+        assertEquals(TreeScanner.Result.NOT_A_TREE, scan.result(), "floating mangrove logs without roots/ground must not fell");
+    }
 }

@@ -245,7 +245,11 @@ public final class FellTreeBehavior {
         if (scan.result() != TreeScanner.Result.FELL) {
             return;
         }
-        if (scan.logs().isEmpty()) {
+        List<TreeScanner.Pos> toFell = new ArrayList<>(scan.logs());
+        if (!startPos.equals(brokenPos)) {
+            toFell.add(0, startPos);
+        }
+        if (toFell.isEmpty()) {
             return;
         }
 
@@ -256,7 +260,7 @@ public final class FellTreeBehavior {
 
         Set<Long> chunks = new HashSet<>();
         chunks.add(chunkKey(brokenPos.x() >> 4, brokenPos.z() >> 4));
-        for (TreeScanner.Pos pos : scan.logs()) {
+        for (TreeScanner.Pos pos : toFell) {
             chunks.add(chunkKey(pos.x() >> 4, pos.z() >> 4));
         }
 
@@ -265,7 +269,7 @@ public final class FellTreeBehavior {
                 world,
                 instanceUuid,
                 tool,
-                new ArrayList<>(scan.logs()),
+                toFell,
                 chunks,
                 scan.family(),
                 scan.species()

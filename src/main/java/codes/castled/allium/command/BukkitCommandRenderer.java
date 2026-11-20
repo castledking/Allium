@@ -110,8 +110,13 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             return clear.complete(sender, args);
         }
         if((spec.canonicalName().equals("give")&&args.length==2||spec.canonicalName().equals("i")&&args.length==1)&&sender.hasPermission("allium.give")&&plugin.getModuleManager().getModule("items") instanceof codes.castled.allium.module.ItemsModule items&&items.isEnabled())return items.complete(args[args.length-1]);
-        if(java.util.Set.of("tp","tphere","there").contains(spec.canonicalName())&&args.length>0&&args[args.length-1].startsWith("@")){
-            if(!sender.hasPermission(spec.basePermission())||!codes.castled.allium.teleport.TeleportTargets.selectors(sender))return List.of();String prefix=args[args.length-1];return java.util.stream.Stream.of("@p","@r","@a","@s","@e").filter(v->v.startsWith(prefix)).filter(v->!v.equals("@a")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.all")).filter(v->!v.equals("@e")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.entities")).toList();
+        if(java.util.Set.of("tp","tpo","tphere","there").contains(spec.canonicalName())&&args.length>0&&args[args.length-1].startsWith("@")){
+            if(!sender.hasPermission(spec.basePermission()))return List.of();
+            String prefix=args[args.length-1];
+            if(!codes.castled.allium.teleport.TeleportTargets.selectors(sender)){
+                return (spec.canonicalName().equals("tp")||spec.canonicalName().equals("tpo"))&&"@s".startsWith(prefix)?List.of("@s"):List.of();
+            }
+            return java.util.stream.Stream.of("@p","@r","@a","@s","@e").filter(v->v.startsWith(prefix)).filter(v->!v.equals("@a")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.all")).filter(v->!v.equals("@e")||sender.hasPermission("allium.admin")||sender.hasPermission("allium.command.selector.entities")).toList();
         }
         if(spec.canonicalName().equals("help")&&handler instanceof HelpCommand help)return help.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.TextFileCommand textFile)return textFile.complete(sender,args);
@@ -119,10 +124,14 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         if(handler instanceof codes.castled.allium.command.essentials.SpawnMobCommand spawnMob)return spawnMob.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.GlowCommand glowCommand)return glowCommand.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.tools.PowerToolCommand powerToolCommand)return powerToolCommand.complete(sender,alias,args);
-        boolean tpPosition=spec.canonicalName().equals("tp")&&args.length>=2&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[0]);
-        if(tpPosition||spec.canonicalName().equals("tppos")){
-            if(!sender.hasPermission(tpPosition?"allium.tp.position":"allium.tppos"))return List.of();
-            int index=args.length-1;String prefix=args.length==0?"":args[index];
+        boolean tpSelfPosition=(spec.canonicalName().equals("tp")||spec.canonicalName().equals("tpo"))&&args.length>=2&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[0]);
+        boolean tpTargetPosition=(spec.canonicalName().equals("tp")||spec.canonicalName().equals("tpo"))&&args.length>=3&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[1]);
+        if(tpSelfPosition||tpTargetPosition||spec.canonicalName().equals("tppos")){
+            if(spec.canonicalName().equals("tp")&&!sender.hasPermission("allium.tp.position"))return List.of();
+            if(spec.canonicalName().equals("tpo")&&!sender.hasPermission("allium.tpo"))return List.of();
+            if(spec.canonicalName().equals("tppos")&&!sender.hasPermission("allium.tppos"))return List.of();
+            int offset=tpTargetPosition?1:0;
+            int index=args.length-1-offset;String prefix=args.length==0?"":args[args.length-1];
             if(index<5)return "~".startsWith(prefix)?List.of("~"):List.of();
             if(index==5)return plugin.getServer().getWorlds().stream().map(org.bukkit.World::getName).filter(n->codes.castled.allium.teleport.CoordinateArgs.startsWithIgnoreCase(n,prefix)).sorted().limit(50).toList();
             return List.of();

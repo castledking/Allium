@@ -16,7 +16,8 @@ public final class TeleportCommand implements SpecCommandHandler {
     @Override public CommandSpec spec(){return spec;}
     @Override public void execute(BukkitCommandContext context){
         String[] args=context.args();String command=spec.canonicalName();CommandSender sender=context.sender();
-        if(command.equals("tppos")||command.equals("tp")&&codes.castled.allium.teleport.CoordinateArgs.startsWithPosition(java.util.Arrays.asList(args))){position(context);return;}
+        if(command.equals("tppos")||(command.equals("tp")||command.equals("tpo"))&&codes.castled.allium.teleport.CoordinateArgs.startsWithPosition(java.util.Arrays.asList(args))){position(context);return;}
+        if((command.equals("tp")||command.equals("tpo"))&&args.length>=4&&codes.castled.allium.teleport.CoordinateArgs.startsWithPosition(java.util.Arrays.asList(args).subList(1,args.length))){positionForTarget(context);return;}
         if(java.util.Set.of("tp","tphere","there","tppet","tpent").contains(command)&&!(command.equals("tp")&&java.util.Arrays.stream(args).noneMatch(a->a.startsWith("@")))){extended(context);return;}
         if(command.equals("tptoggle")){
             if(args.length>2||args.length>0&&!args[0].equalsIgnoreCase("on")&&!args[0].equalsIgnoreCase("off")){context.sendInvalidArgs(spec.selfUsage());return;}
@@ -147,13 +148,45 @@ public final class TeleportCommand implements SpecCommandHandler {
         CommandSender sender=context.sender();String command=spec.canonicalName();String[] args=context.args();
         if(!(sender instanceof Player player)){plugin.getMessageManager().send(sender,Messages.PLAYER_ONLY);return;}
         if(command.equals("tp")&&!sender.hasPermission("allium.tp.position")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
-        if(args.length<3||args.length>6){context.sendInvalidArgs(command.equals("tp")?"/tp <x> <y> <z> [yaw] [pitch] [world]":spec.selfUsage());return;}
+        if(args.length<3||args.length>6){context.sendInvalidArgs(command.equals("tp")||command.equals("tpo")?"/"+command+" <x> <y> <z> [yaw] [pitch] [world]":spec.selfUsage());return;}
         org.bukkit.Location here=player.getLocation();codes.castled.allium.teleport.CoordinateArgs.Position at;
         try{at=codes.castled.allium.teleport.CoordinateArgs.parse(java.util.Arrays.asList(args),here.getX(),here.getY(),here.getZ(),here.getYaw(),here.getPitch());}
         catch(IllegalArgumentException invalid){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}",invalid.getMessage());return;}
         org.bukkit.World world=at.world().isPresent()?plugin.getServer().getWorld(at.world().get()):here.getWorld();
         if(world==null){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}","No world is named "+codes.castled.allium.messaging.MessagingService.safeName(at.world().get())+".");return;}
         service.forceLocation(sender,player,new org.bukkit.Location(world,at.x(),at.y(),at.z(),at.yaw(),at.pitch()),command);
+    }
+    /** {@code /tp <target|@s|selector> <x> <y> <z> [yaw] [pitch] [world]} (and {@code /tpo} with the same arguments). */
+    private void positionForTarget(BukkitCommandContext context){
+        CommandSender sender=context.sender();String command=spec.canonicalName();String[] args=context.args();
+        if(args.length<4||args.length>7){context.sendInvalidArgs("/"+command+" <target> <x> <y> <z> [yaw] [pitch] [world]");return;}
+        if(command.equals("tp")&&!sender.hasPermission("allium.tp.position")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
+        java.util.List<Player> movers;
+        if(args[0].equalsIgnoreCase("@s")){
+            if(!(sender instanceof Player player)){plugin.getMessageManager().send(sender,Messages.PLAYER_ONLY);return;}
+            movers=java.util.List.of(player);
+        }else if(args[0].startsWith("@")){
+            try{
+                var resolved=new codes.castled.allium.teleport.TeleportTargets(plugin).resolve(sender,args[0]);
+                if(resolved.isEmpty()){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}","No visible targets found.");return;}
+                if(resolved.stream().anyMatch(e->!(e instanceof Player))){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}","/tp source selector must resolve to players.");return;}
+                movers=resolved.stream().map(e->(Player)e).toList();
+            }catch(SecurityException denied){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
+            catch(IllegalArgumentException invalid){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}",invalid.getMessage());return;}
+        }else{
+            Player mover=target(sender,args[0]);
+            if(mover==null)return;
+            movers=java.util.List.of(mover);
+        }
+        if(command.equals("tp")&&movers.stream().anyMatch(p->p!=sender)&&!sender.hasPermission("allium.tp.others")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
+        org.bukkit.Location base=sender instanceof Player p?p.getLocation():movers.get(0).getLocation();
+        codes.castled.allium.teleport.CoordinateArgs.Position at;
+        try{at=codes.castled.allium.teleport.CoordinateArgs.parse(java.util.Arrays.asList(args).subList(1,args.length),base.getX(),base.getY(),base.getZ(),base.getYaw(),base.getPitch());}
+        catch(IllegalArgumentException invalid){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}",invalid.getMessage());return;}
+        org.bukkit.World world=at.world().isPresent()?plugin.getServer().getWorld(at.world().get()):base.getWorld();
+        if(world==null){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}","No world is named "+codes.castled.allium.messaging.MessagingService.safeName(at.world().get())+".");return;}
+        org.bukkit.Location dest=new org.bukkit.Location(world,at.x(),at.y(),at.z(),at.yaw(),at.pitch());
+        for(Player mover:movers)service.forceLocation(sender,mover,dest,command);
     }
     private Player target(CommandSender viewer,String name){Player p=service.find(viewer,name);if(p==null)plugin.getMessageManager().send(viewer,Messages.PLAYER_NOT_FOUND,"{player}",codes.castled.allium.messaging.MessagingService.safeName(name));return p;}
 }

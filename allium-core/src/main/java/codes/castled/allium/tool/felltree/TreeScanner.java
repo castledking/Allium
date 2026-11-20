@@ -58,6 +58,12 @@ public final class TreeScanner {
     }
 
     private static final int[][] FACES = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    private static final Set<String> MANGROVE_BRIDGE = Set.of(
+            "mangrove_roots", "muddy_mangrove_roots", "mangrove_leaves", "vine", "moss_carpet");
+    private static final Set<String> MANGROVE_ROOT_BLOCKS = Set.of(
+            "mangrove_roots", "muddy_mangrove_roots", "mud");
+    private static final Set<String> MANGROVE_PASS_THROUGH = Set.of(
+            "air", "cave_air", "void_air", "vine", "moss_carpet", "mangrove_leaves", "mangrove_propagule", "water");
 
     /** Name parts of blocks players build with; touching one stops a fell. */
     private static final List<String> STRUCTURE = List.of("planks", "_slab", "_stairs", "fence", "door", "glass", "wool", "concrete",
@@ -79,6 +85,7 @@ public final class TreeScanner {
             return Scan.no(material + " is not a log of an enabled family");
         }
         String species = species(material);
+        boolean isMangrove = "mangrove".equals(family.id());
 
         Set<Pos> logs = new LinkedHashSet<>();
         Deque<Pos> queue = new ArrayDeque<>();
@@ -93,10 +100,7 @@ public final class TreeScanner {
                             continue;
                         }
                         Pos next = at.offset(dx, dy, dz);
-                        if (logs.contains(next) || Math.abs(next.x() - broken.x()) > limits.maxRadius()
-                                || Math.abs(next.z() - broken.z()) > limits.maxRadius()
-                                || Math.abs(next.y() - broken.y()) > limits.maxHeight()
-                                || next.y() < view.minY() || next.y() > view.maxY()) {
+                        if (logs.contains(next) || outOfBounds(next, broken, limits, view)) {
                             continue;
                         }
                         String m = view.material(next.x(), next.y(), next.z());
@@ -112,6 +116,23 @@ public final class TreeScanner {
                                 return new Scan(Result.TOO_LARGE, List.of(), logs.size(), "more than " + limits.maxBlocks() + " logs", family, species);
                             }
                             queue.add(next);
+                        } else if (isMangrove && MANGROVE_BRIDGE.contains(m)) {
+                            // Vanilla mangrove branches and split trunks can have a 1-block gap of roots,
+                            // leaves, vines or moss carpet between adjacent mangrove logs.
+                            for (int[] face : FACES) {
+                                Pos hop = next.offset(face[0], face[1], face[2]);
+                                if (logs.contains(hop) || outOfBounds(hop, broken, limits, view)) {
+                                    continue;
+                                }
+                                String hm = view.material(hop.x(), hop.y(), hop.z());
+                                if (hm != null && family.isLog(hm, limits.stripped()) && species(hm).equals(species)) {
+                                    logs.add(hop);
+                                    if (logs.size() > limits.maxBlocks()) {
+                                        return new Scan(Result.TOO_LARGE, List.of(), logs.size(), "more than " + limits.maxBlocks() + " logs", family, species);
+                                    }
+                                    queue.add(hop);
+                                }
+                            }
                         }
                     }
                 }
@@ -122,22 +143,30 @@ public final class TreeScanner {
         int lowest = Integer.MAX_VALUE;
         for (Pos log : logs) {
             lowest = Math.min(lowest, log.y());
-            for (int[] face : FACES) {
-                Pos side = log.offset(face[0], face[1], face[2]);
-                if (logs.contains(side)) {
-                    continue;
-                }
-                String m = view.material(side.x(), side.y(), side.z());
-                if (m == null) {
-                    continue;
-                }
-                if (family.leaves().contains(m)) {
-                    BlockView.Leaf leaf = view.leaf(side.x(), side.y(), side.z());
-                    if (family.leafless() || (leaf != null && !leaf.persistent())) {
-                        naturalLeaves.add(side);
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (dx == 0 && dy == 0 && dz == 0) {
+                            continue;
+                        }
+                        Pos side = log.offset(dx, dy, dz);
+                        if (logs.contains(side)) {
+                            continue;
+                        }
+                        String m = view.material(side.x(), side.y(), side.z());
+                        if (m == null) {
+                            continue;
+                        }
+                        boolean orthogonal = Math.abs(dx) + Math.abs(dy) + Math.abs(dz) == 1;
+                        if (family.leaves().contains(m)) {
+                            BlockView.Leaf leaf = view.leaf(side.x(), side.y(), side.z());
+                            if (family.leafless() || (leaf != null && !leaf.persistent())) {
+                                naturalLeaves.add(side);
+                            }
+                        } else if (orthogonal && isStructure(m)) {
+                            return Scan.no("a log touches " + m + ", a building block");
+                        }
                     }
-                } else if (isStructure(m)) {
-                    return Scan.no("a log touches " + m + ", a building block");
                 }
             }
         }
@@ -145,12 +174,16 @@ public final class TreeScanner {
             return Scan.no(naturalLeaves.size() + " natural (non-persistent) leaves touch it; " + limits.minNaturalLeaves() + " are needed");
         }
         boolean grounded = false;
-        for (Pos log : logs) {
-            if (log.y() == lowest) {
-                String below = view.material(log.x(), log.y() - 1, log.z());
-                if (below != null && family.ground().contains(below)) {
-                    grounded = true;
-                    break;
+        if (isMangrove) {
+            grounded = isMangroveGrounded(view, logs, family);
+        } else {
+            for (Pos log : logs) {
+                if (log.y() == lowest) {
+                    String below = view.material(log.x(), log.y() - 1, log.z());
+                    if (below != null && family.ground().contains(below)) {
+                        grounded = true;
+                        break;
+                    }
                 }
             }
         }
@@ -161,6 +194,53 @@ public final class TreeScanner {
         toBreak.remove(broken);
         toBreak.sort(Comparator.comparingInt(Pos::y).thenComparingInt(Pos::x).thenComparingInt(Pos::z));
         return new Scan(Result.FELL, toBreak, logs.size(), "a natural " + species + " tree", family, species);
+    }
+
+    private static boolean outOfBounds(Pos next, Pos broken, Limits limits, BlockView view) {
+        return Math.abs(next.x() - broken.x()) > limits.maxRadius()
+                || Math.abs(next.z() - broken.z()) > limits.maxRadius()
+                || Math.abs(next.y() - broken.y()) > limits.maxHeight()
+                || next.y() < view.minY() || next.y() > view.maxY();
+    }
+
+    /**
+     * Mangroves stand on stilt roots (often topped by moss carpet or surrounded by vines) while
+     * drooping branches can dip lower over air/water. Grounded if any log rests on mangrove ground,
+     * touches mangrove roots, or sits within 3 blocks above mangrove roots/mud through natural foliage/air.
+     */
+    private static boolean isMangroveGrounded(BlockView view, Set<Pos> logs, TreeFamily family) {
+        for (Pos log : logs) {
+            String below = view.material(log.x(), log.y() - 1, log.z());
+            if (below != null && family.ground().contains(below)) {
+                return true;
+            }
+            // Touching mangrove roots on any neighbor (e.g. roots wrapping the base of the trunk)
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (dx == 0 && dy == 0 && dz == 0) continue;
+                        String m = view.material(log.x() + dx, log.y() + dy, log.z() + dz);
+                        if (m != null && ("mangrove_roots".equals(m) || "muddy_mangrove_roots".equals(m))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            // Directly above moss carpet / vine / leaves / air sitting on mangrove roots or mud
+            if (below != null && MANGROVE_PASS_THROUGH.contains(below)) {
+                for (int dy = 2; dy <= 4; dy++) {
+                    String under = view.material(log.x(), log.y() - dy, log.z());
+                    if (under == null) break;
+                    if (MANGROVE_ROOT_BLOCKS.contains(under)) {
+                        return true;
+                    }
+                    if (!MANGROVE_PASS_THROUGH.contains(under)) {
+                        break;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /** oak_log, stripped_oak_wood and oak_wood are all oak; mangrove roots belong to the mangrove. */

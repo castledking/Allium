@@ -1092,6 +1092,8 @@ permissions:
       allium.teleport.cooldown.bypass.there: true
       allium.teleport.cooldown.bypass.tpoffline: true
       allium.teleport.cooldown.bypass.tppos: true
+      allium.teleport.cooldown.bypass.top: true
+      allium.teleport.cooldown.bypass.bottom: true
       allium.teleport.cooldown.bypass.homes: true
       allium.teleport.cooldown.bypass.warps: true
       allium.teleport.cooldown.bypass.requests: true
@@ -1115,19 +1117,25 @@ permissions:
     default: false
   allium.teleport.cooldown.bypass.tp:
     description: Skip the teleport cooldown for tp teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.tphere:
     description: Skip the teleport cooldown for tphere teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.there:
     description: Skip the teleport cooldown for there teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.tpoffline:
     description: Skip the teleport cooldown for tpoffline teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.tppos:
     description: Skip the teleport cooldown for tppos teleports
-    default: false
+    default: op
+  allium.teleport.cooldown.bypass.top:
+    description: Skip the teleport cooldown for top teleports
+    default: op
+  allium.teleport.cooldown.bypass.bottom:
+    description: Skip the teleport cooldown for bottom teleports
+    default: op
   allium.teleport.cooldown.bypass.homes:
     description: Skip the teleport cooldown for homes teleports
     default: false
@@ -1152,6 +1160,8 @@ permissions:
       allium.teleport.timer.bypass.there: true
       allium.teleport.timer.bypass.tpoffline: true
       allium.teleport.timer.bypass.tppos: true
+      allium.teleport.timer.bypass.top: true
+      allium.teleport.timer.bypass.bottom: true
       allium.teleport.timer.bypass.homes: true
       allium.teleport.timer.bypass.warps: true
       allium.teleport.timer.bypass.requests: true
@@ -1175,19 +1185,25 @@ permissions:
     default: false
   allium.teleport.timer.bypass.tp:
     description: Skip the teleport warmup timer for tp teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.tphere:
     description: Skip the teleport warmup timer for tphere teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.there:
     description: Skip the teleport warmup timer for there teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.tpoffline:
     description: Skip the teleport warmup timer for tpoffline teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.tppos:
     description: Skip the teleport warmup timer for tppos teleports
-    default: false
+    default: op
+  allium.teleport.timer.bypass.top:
+    description: Skip the teleport warmup timer for top teleports
+    default: op
+  allium.teleport.timer.bypass.bottom:
+    description: Skip the teleport warmup timer for bottom teleports
+    default: op
   allium.teleport.timer.bypass.homes:
     description: Skip the teleport warmup timer for homes teleports
     default: false
@@ -1212,6 +1228,8 @@ permissions:
       allium.teleport.timer.move.there: true
       allium.teleport.timer.move.tpoffline: true
       allium.teleport.timer.move.tppos: true
+      allium.teleport.timer.move.top: true
+      allium.teleport.timer.move.bottom: true
       allium.teleport.timer.move.homes: true
       allium.teleport.timer.move.warps: true
       allium.teleport.timer.move.requests: true
@@ -1247,6 +1265,12 @@ permissions:
     default: false
   allium.teleport.timer.move.tppos:
     description: Move during the teleport warmup without cancelling it for tppos teleports
+    default: false
+  allium.teleport.timer.move.top:
+    description: Move during the teleport warmup without cancelling it for top teleports
+    default: false
+  allium.teleport.timer.move.bottom:
+    description: Move during the teleport warmup without cancelling it for bottom teleports
     default: false
   allium.teleport.timer.move.homes:
     description: Move during the teleport warmup without cancelling it for homes teleports

@@ -192,6 +192,70 @@ class TeleportServiceTest {
         assertEquals(java.util.List.of("tpahere", "requests"), TeleportService.typeNames("tpahere"));
         assertEquals(java.util.List.of("tppos"), TeleportService.typeNames("tppos"));
         assertEquals(java.util.List.of("spawn"), TeleportService.typeNames("spawn"));
+        assertEquals(java.util.List.of("tpo", "tp"), TeleportService.typeNames("tpo"));
+        assertEquals(java.util.List.of("tpohere", "tphere"), TeleportService.typeNames("tpohere"));
+    }
+
+    @Test
+    void tpAtSelfAndTargetCoordinatesWorkAndRespectPermissions() throws Exception {
+        enable();
+        when(server.getPlayerExact("Mover")).thenReturn(mover);
+        when(server.getPlayerExact("Target")).thenReturn(target);
+        when(mover.hasPermission("allium.selectors")).thenReturn(false);
+        when(mover.hasPermission("allium.tp.others")).thenReturn(false);
+
+        var tpSpec = codes.castled.allium.command.spec.CoreCommandSpecs.TELEPORT_SPECS.stream()
+                .filter(s -> s.canonicalName().equals("tp")).findFirst().orElseThrow();
+        var cmd = new codes.castled.allium.command.teleport.TeleportCommand(plugin, service, tpSpec);
+        cmd.execute(new codes.castled.allium.command.BukkitCommandContext(
+                plugin, tpSpec, mover, "tp",
+                new String[]{"@s", "-341", "74", "-122"}));
+
+        ArgumentCaptor<Location> selfDest = ArgumentCaptor.forClass(Location.class);
+        verify(mover).teleport(selfDest.capture(), eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+        assertEquals(-340.5, selfDest.getValue().getX(), 1e-6);
+        assertEquals(74.0, selfDest.getValue().getY(), 1e-6);
+        assertEquals(-121.5, selfDest.getValue().getZ(), 1e-6);
+        drainWorker();
+
+        // Moving another player to coordinates requires allium.tp.others
+        cmd.execute(new codes.castled.allium.command.BukkitCommandContext(
+                plugin, tpSpec, mover, "tp",
+                new String[]{"Target", "-341", "74", "-122"}));
+        verify(target, never()).teleport(any(Location.class), eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+        verify(plugin.getMessageManager()).send(mover, codes.castled.allium.message.Messages.NO_PERMISSION);
+
+        // Staff with allium.tp.others can move Target to coordinates
+        cmd.execute(new codes.castled.allium.command.BukkitCommandContext(
+                plugin, tpSpec, staff, "tp",
+                new String[]{"Target", "-341", "74", "-122"}));
+        ArgumentCaptor<Location> targetDest = ArgumentCaptor.forClass(Location.class);
+        verify(target).teleport(targetDest.capture(), eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+        assertEquals(-340.5, targetDest.getValue().getX(), 1e-6);
+        assertEquals(74.0, targetDest.getValue().getY(), 1e-6);
+        assertEquals(-121.5, targetDest.getValue().getZ(), 1e-6);
+        drainWorker();
+    }
+
+    @Test
+    void staffTeleportBypassPermissionsDefaultToOpWhilePlayerTeleportsStayExplicit() throws Exception {
+        try (var stream = getClass().getClassLoader().getResourceAsStream("plugin.yml")) {
+            assertNotNull(stream, "plugin.yml must be on classpath");
+            YamlConfiguration pluginYml = YamlConfiguration.loadConfiguration(
+                    new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
+            for (String type : List.of("there", "tp", "tphere", "tppos", "tpoffline", "top", "bottom")) {
+                assertEquals("op", pluginYml.getString("permissions.allium.teleport.timer.bypass." + type + ".default"),
+                        "staff timer bypass default for " + type);
+                assertEquals("op", pluginYml.getString("permissions.allium.teleport.cooldown.bypass." + type + ".default"),
+                        "staff cooldown bypass default for " + type);
+            }
+            assertEquals("false", String.valueOf(pluginYml.get("permissions.allium.teleport.bypass.warmup.default")));
+            assertEquals("false", String.valueOf(pluginYml.get("permissions.allium.teleport.bypass.cooldown.default")));
+            for (String type : List.of("home", "warp", "tpa", "tpahere", "back", "spawn")) {
+                assertEquals("false", String.valueOf(pluginYml.get("permissions.allium.teleport.timer.bypass." + type + ".default")),
+                        "player timer bypass default for " + type);
+            }
+        }
     }
 
     @Test

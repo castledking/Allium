@@ -56,6 +56,16 @@ class SfExportTest(unittest.TestCase):
             self.assertIn('missing required client input', result.stderr)
             self.assertEqual('existing export', marker.read_text())
 
+    def test_description_color_codes_and_gui_slot_are_preserved(self):
+        derived, _ = sf_export.derive(
+            self.manifest, self.root, self.root / 'output',
+            include_lazy_axe=False, description='&dAllium Resources &7v1.0',
+        )
+        self.assertEqual('§dAllium Resources §7v1.0', derived['pack']['description'])
+        gui_slot = next(t for t in derived['tools'] if t['id'] == 'gui_slot')
+        self.assertEqual('ready', gui_slot['status'])
+        self.assertEqual(7, len(gui_slot['states']))
+
 
 if __name__ == '__main__':
     unittest.main()

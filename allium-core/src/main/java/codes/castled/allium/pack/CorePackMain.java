@@ -51,11 +51,13 @@ public final class CorePackMain {
         Path root = Path.of(args[2]);
         Path out = Path.of(args[3]);
         Path textureRoot = null;
+        Path packIcon = null;
         String name = DEFAULT_NAME;
         for (int i = 4; i < args.length; i += 2) {
             if (i + 1 >= args.length) usage();
             switch (args[i]) {
                 case "--texture-root" -> textureRoot = Path.of(args[i + 1]);
+                case "--pack-icon" -> packIcon = Path.of(args[i + 1]);
                 case "--name" -> name = args[i + 1];
                 default -> usage();
             }
@@ -63,6 +65,12 @@ public final class CorePackMain {
         AssetManifest manifest = AssetManifest.parse(Files.readString(manifestPath));
         Path textures = textureRoot == null ? root : textureRoot;
         SortedMap<String, byte[]> files = CorePackBuilder.files(manifest, t -> Files.readAllBytes(textures.resolve(t.file())), textureRoot == null);
+        Path resolvedIcon = packIcon != null ? packIcon : root.resolve("pack.png");
+        if (Files.isRegularFile(resolvedIcon)) {
+            files.put("pack.png", Files.readAllBytes(resolvedIcon));
+        } else if (packIcon != null) {
+            throw new IOException("pack icon does not exist: " + packIcon);
+        }
         List<String> problems = PackValidator.structure(files, manifest, textureRoot != null);
         if (!problems.isEmpty()) {
             problems.forEach(p -> System.err.println("INVALID " + p));
@@ -160,7 +168,7 @@ public final class CorePackMain {
     }
 
     private static void usage() {
-        System.err.println("usage: build <manifest> <pack root> <out dir> [--texture-root <dir>] [--name <zip>]\n"
+        System.err.println("usage: build <manifest> <pack root> <out dir> [--texture-root <dir>] [--pack-icon <png>] [--name <zip>]\n"
                 + "       validate <zip> <manifest> [--lane <label> <format> <client.jar>]... [--report <file>] [--local-export]\n"
                 + "       mcmeta <client format> <pack.mcmeta>...");
         System.exit(2);

@@ -3,7 +3,7 @@
   "namespace": "allium",
   "licenseNote": "Textures here are original work made for Allium. The repository has no LICENSE yet; the owner must assign one (UNASSIGNED below) before public distribution. Server-only art (for example SF's Nexo textures) is never committed: see pack/tools/sf_export.py.",
   "pack": {
-    "description": "Allium core tools",
+    "description": "§dAllium Resources §7v1.0",
     "baseFormat": 15,
     "maxFormat": 97,
     "itemDefinitionsOverlay": {

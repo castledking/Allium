@@ -230,6 +230,17 @@ class CorePackTest {
         assertThrows(IllegalArgumentException.class, () -> Json.parse("{\"a\":1} x"));
     }
 
+    @Test
+    void packIconAndDescriptionValidateCleanly() throws IOException {
+        AssetManifest manifest = manifest();
+        assertEquals("§dAllium Resources §7v1.0", manifest.pack().description());
+        SortedMap<String, byte[]> files = build(manifest);
+        files.put("pack.png", Files.readAllBytes(ROOT.resolve("pack.png")));
+        assertEquals(List.of(), PackValidator.structure(files, manifest));
+        files.put("pack.png", "not-a-png".getBytes(StandardCharsets.UTF_8));
+        assertTrue(PackValidator.structure(files, manifest).stream().anyMatch(e -> e.contains("pack.png")));
+    }
+
     private static void assertError(Map<String, Object> pack, String fragment) {
         PackFormatRules.Result result = PackFormatRules.evaluate(Map.of("pack", pack), PackFormatRules.Format.parse("97.1"));
         assertFalse(result.compatible());

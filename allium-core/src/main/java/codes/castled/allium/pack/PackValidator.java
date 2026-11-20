@@ -181,6 +181,9 @@ public final class PackValidator {
         Deque<String> pending = new ArrayDeque<>();
         Set<String> reached = new HashSet<>();
         pending.add("pack.mcmeta");
+        if (files.containsKey("pack.png")) {
+            pending.add("pack.png");
+        }
         for (AssetManifest.Tool tool : manifest.readyTools()) {
             pending.add("assets/minecraft/models/item/" + tool.carrier() + ".json");
             pending.add(overlay + "assets/minecraft/items/" + tool.carrier() + ".json");

@@ -161,6 +161,7 @@ val corePack = tasks.register<JavaExec>("corePack") {
     classpath = coreProject.the<SourceSetContainer>()["main"].runtimeClasspath
     mainClass.set("codes.castled.allium.pack.CorePackMain")
     inputs.file("pack/manifest.json")
+    inputs.file("pack/pack.png")
     inputs.dir("pack/assets")
     outputs.dir(corePackDir)
     doFirst { delete(corePackDir) }

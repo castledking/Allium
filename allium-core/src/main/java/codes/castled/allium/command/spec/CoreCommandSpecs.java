@@ -491,8 +491,8 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec MUTE = new CommandSpec(
-            "mute", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
-            "Mute a player with an optional duration and reason",
+            "mute", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of("silence"),
+            "Mute or toggle mute on a player with an optional duration and reason",
             "/mute <player> [duration] [reason]",
             "/mute <player> [duration] [reason]",
             "allium.mute", null,
@@ -531,42 +531,61 @@ public final class CoreCommandSpecs {
     );
 
     public static final List<CommandSpec> DISCIPLINE_SPECS = java.util.stream.Stream.of(
-            "kick", "ban", "tempban", "unban", "banlist", "ipban", "freeze", "setjail", "jail", "unjail", "warn", "notes")
+            "kick", "kickall", "ban", "tempban", "unban", "banlist", "ipban", "tempbanip", "unbanip",
+            "freeze", "setjail", "deljail", "jails", "jailedplayers", "jail", "unjail", "togglejail", "warn", "notes")
             .map(CoreCommandSpecs::disciplineSpec).toList();
 
     private static CommandSpec disciplineSpec(String name) {
         String usage = switch (name) {
             case "kick", "ban", "ipban", "warn" -> "/" + name + " <player> [reason]";
+            case "kickall" -> "/kickall [reason]";
             case "tempban" -> "/tempban <player> <duration> [reason]";
+            case "tempbanip" -> "/tempbanip <player|ip> <duration> [reason]";
+            case "unbanip" -> "/unbanip <player|ip>";
             case "unban", "unjail" -> "/" + name + " <player>";
-            case "banlist" -> "/banlist";
+            case "banlist", "jails", "jailedplayers" -> "/" + name;
             case "freeze" -> "/freeze <player> [on|off] [reason]";
             case "setjail" -> "/setjail <name>";
+            case "deljail" -> "/deljail <jail>";
             case "jail" -> "/jail <player> <jail> [reason]";
+            case "togglejail" -> "/togglejail <player> [jail] [time]";
             case "notes" -> "/notes <player> [add <note>]";
             default -> throw new IllegalArgumentException(name);
         };
-        List<CommandArgSpec> arguments = name.equals("banlist") ? List.of()
-                : List.of(CommandArgSpec.required(name.equals("setjail") ? "name" : "player", null,
-                    name.equals("setjail") ? SuggestionSpec.none() : SuggestionSpec.knownPlayers(null)));
-        if (name.equals("jail")) {
-            arguments = List.of(arguments.get(0), CommandArgSpec.required("jail", null,
+        List<CommandArgSpec> arguments = switch (name) {
+            case "banlist", "jails", "jailedplayers", "kickall" -> List.of();
+            case "setjail" -> List.of(CommandArgSpec.required("name", null, SuggestionSpec.none()));
+            case "deljail" -> List.of(CommandArgSpec.required("jail", null,
                     new SuggestionSpec(SuggestionSource.JAIL_NAMES, List.of(), null)));
-        } else if (name.equals("freeze")) {
-            arguments = List.of(arguments.get(0), CommandArgSpec.optional("state", null,
-                    SuggestionSpec.literals(List.of("on", "off"), null)));
-        } else if (name.equals("tempban")) {
-            arguments = List.of(arguments.get(0), CommandArgSpec.required("duration", null,
-                    SuggestionSpec.literals(List.of("5m", "15m", "1h", "1d", "7d"), null)));
-        } else if (name.equals("warn")) {
-            arguments = List.of(arguments.get(0), CommandArgSpec.optional("history", null,
-                    SuggestionSpec.literals(List.of("history", "list"), null)));
-        } else if (name.equals("notes")) {
-            arguments = List.of(arguments.get(0), CommandArgSpec.optional("action", null,
-                    SuggestionSpec.literals(List.of("list", "add"), null)));
-        }
-        return new CommandSpec(name, CommandSpec.DEFAULT_NAMESPACE, "moderation",
-                name.equals("unban") ? List.of("pardon") : List.of(),
+            case "jail" -> List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)),
+                    CommandArgSpec.required("jail", null, new SuggestionSpec(SuggestionSource.JAIL_NAMES, List.of(), null)));
+            case "togglejail" -> List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)),
+                    CommandArgSpec.optional("jail", null, new SuggestionSpec(SuggestionSource.JAIL_NAMES, List.of(), null)),
+                    CommandArgSpec.optional("time", null, SuggestionSpec.literals(List.of("5m", "15m", "1h", "1d"), null)));
+            case "freeze" -> List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)),
+                    CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)));
+            case "tempban", "tempbanip" -> List.of(
+                    CommandArgSpec.required(name.equals("tempbanip") ? "playerOrIp" : "player", null, SuggestionSpec.knownPlayers(null)),
+                    CommandArgSpec.required("duration", null, SuggestionSpec.literals(List.of("5m", "15m", "1h", "1d", "7d"), null)));
+            case "warn" -> List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)),
+                    CommandArgSpec.optional("history", null, SuggestionSpec.literals(List.of("history", "list"), null)));
+            case "notes" -> List.of(
+                    CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)),
+                    CommandArgSpec.optional("action", null, SuggestionSpec.literals(List.of("list", "add"), null)));
+            default -> List.of(CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)));
+        };
+        List<String> aliases = switch (name) {
+            case "unban" -> List.of("pardon");
+            case "unbanip" -> List.of("pardonip");
+            case "togglejail" -> List.of("tjail");
+            case "deljail" -> List.of("remjail", "rmjail");
+            default -> List.of();
+        };
+        return new CommandSpec(name, CommandSpec.DEFAULT_NAMESPACE, "moderation", aliases,
                 describe(name, "Persisted, audited moderation: " + name), usage, usage, "allium." + name,
                 null, arguments, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     }
@@ -1247,10 +1266,50 @@ public final class CoreCommandSpecs {
             List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    /** {@code /potion <clear|apply|effect:<effect> power:<power> duration:<seconds>>}: edit or apply held potion effects. */
+    public static final CommandSpec POTION = new CommandSpec(
+            "potion", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("elixer", "elixir"),
+            "Edit or apply custom effects on the held potion",
+            "/potion <clear|apply|effect:<effect> power:<power> duration:<seconds> [splash:<true|false>]>",
+            "/potion <clear|apply|effect:<effect> power:<power> duration:<seconds>>",
+            "allium.potion", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /firework <<meta>|power <power>|clear|fire [amount]>}: edit or launch the held firework rocket. */
+    public static final CommandSpec FIREWORK = new CommandSpec(
+            "firework", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Edit or launch the held firework rocket",
+            "/firework <color:<colors> [fade:<colors>] [shape:<shape>] [effect:<effects>]|power <0-4>|clear|fire [amount]>",
+            "/firework <meta|power <0-4>|clear|fire [amount]>",
+            "allium.firework", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /ptime [list|reset|@<time>|<time>] [player|*]}: per-player client time (never {@code /pt}). */
+    public static final CommandSpec PTIME = new CommandSpec(
+            "ptime", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("playertime"),
+            "View, set, freeze, or reset a player's client time",
+            "/ptime [list|reset|@<time>|<time>] [player|*]",
+            "/ptime <list|reset|@<time>|<time>> [player|*]",
+            "allium.ptime", "allium.ptime.others",
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /pweather [list|reset|sun|storm] [player|*]}: per-player client weather. */
+    public static final CommandSpec PWEATHER = new CommandSpec(
+            "pweather", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("playerweather"),
+            "View, set, or reset a player's client weather",
+            "/pweather [list|reset|sun|storm] [player|*]",
+            "/pweather <list|reset|sun|storm> [player|*]",
+            "allium.pweather", "allium.pweather.others",
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, COORDS, COMPASS, GLOW, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, INFO, INFORM, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS,
-            SPAWNMOB, RECIPE
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, PTIME, PWEATHER, ENCHANT, RENAME, LORE, XP, INFO, INFORM, CUSTOMTEXT, MOTD, RULES,
+            BROADCAST, BROADCASTS, SPAWNMOB, RECIPE, POTION, FIREWORK
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

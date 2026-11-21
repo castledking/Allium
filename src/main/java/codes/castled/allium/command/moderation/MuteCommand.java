@@ -50,13 +50,19 @@ public final class MuteCommand implements SpecCommandHandler {
             return;
         }
 
-        Optional<NameCache.Entry> resolved = moderation.resolveModerationTarget(sender, args[0], false);
+        Optional<NameCache.Entry> resolved = moderation.resolveModerationTarget(sender, args[0], true);
         if (resolved.isEmpty()) {
             plugin.getMessageManager().send(
                     sender,
                     Messages.PLAYER_NOT_FOUND,
                     "{player}", MessagingService.safeName(args[0])
             );
+            return;
+        }
+
+        NameCache.Entry target = resolved.get();
+        if (args.length == 1 && moderation.isMuted(target.uuid())) {
+            moderation.unmute(sender, target.uuid(), target.name(), null);
             return;
         }
 
@@ -77,7 +83,6 @@ public final class MuteCommand implements SpecCommandHandler {
             }
         }
 
-        NameCache.Entry target = resolved.get();
         moderation.mute(sender, target.uuid(), target.name(), durationMillis, reason);
     }
 }

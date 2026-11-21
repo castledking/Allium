@@ -118,6 +118,15 @@ commands:
     description: Show how an item is made
     usage: /<command> [item] [number]
     permission: allium.recipe
+  potion:
+    aliases: [elixer, elixir]
+    description: Edit or apply custom effects on the held potion
+    usage: /<command> <clear|apply|effect:<effect> power:<power> duration:<seconds>>
+    permission: allium.potion
+  firework:
+    description: Edit or launch the held firework rocket
+    usage: /<command> <<meta>|power <0-4>|clear|fire [amount]>
+    permission: allium.firework
   smite:
     description: Strike a player or where you are looking with harmless lightning
     usage: /<command> [player]
@@ -176,6 +185,16 @@ commands:
     description: Set the weather to clear, rain or thunder
     usage: /<command> <clear|sun|rain|storm|thunder> [duration] [world|*]
     permission: allium.weather
+  ptime:
+    description: View, set, freeze, or reset a player's client time
+    usage: /<command> [list|reset|@<time>|<time>] [player|*]
+    aliases: [playertime]
+    permission: allium.ptime
+  pweather:
+    description: View, set, or reset a player's client weather
+    usage: /<command> [list|reset|sun|storm] [player|*]
+    aliases: [playerweather]
+    permission: allium.pweather
   enchant:
     description: Add or remove enchantments on the held item
     usage: /<command> <enchantment> <level> [player]
@@ -434,8 +453,9 @@ commands:
     aliases: [v]
     permission: allium.vanish
   mute:
-    description: Mute a player, optionally for a time
+    description: Mute or toggle mute on a player, optionally for a time
     usage: /<command> <player> [duration] [reason]
+    aliases: [silence]
     permission: allium.mute
   unmute:
     description: Unmute a player
@@ -561,6 +581,11 @@ commands:
     usage: /<command> <player> [reason]
     permission: allium.kick
 
+  kickall:
+    description: Kick every online player except the sender and exempt players
+    usage: /<command> [reason]
+    permission: allium.kickall
+
   ban:
     description: Ban a player permanently
     usage: /<command> <player> [reason]
@@ -587,6 +612,17 @@ commands:
     usage: /<command> <player> [reason]
     permission: allium.ipban
 
+  tempbanip:
+    description: Temporarily ban a player or literal IP address
+    usage: /<command> <player|ip> <duration> [reason]
+    permission: allium.tempbanip
+
+  unbanip:
+    description: Remove IP bans for a player or literal IP address
+    usage: /<command> <player|ip>
+    aliases: [pardonip]
+    permission: allium.unbanip
+
   freeze:
     description: Freeze or unfreeze a player in place
     usage: /<command> <player> [on|off] [reason]
@@ -597,6 +633,22 @@ commands:
     usage: /<command> <name>
     permission: allium.setjail
 
+  deljail:
+    description: Delete an empty jail
+    usage: /<command> <jail>
+    aliases: [remjail, rmjail]
+    permission: allium.deljail
+
+  jails:
+    description: List all defined jails
+    usage: /<command>
+    permission: allium.jails
+
+  jailedplayers:
+    description: List currently jailed players
+    usage: /<command>
+    permission: allium.jailedplayers
+
   jail:
     description: Send a player to a jail
     usage: /<command> <player> <jail> [reason]
@@ -606,6 +658,12 @@ commands:
     description: Release a player from jail
     usage: /<command> <player>
     permission: allium.unjail
+
+  togglejail:
+    description: Toggle a player's jail status with an optional jail and duration
+    usage: /<command> <player> [jail] [time]
+    aliases: [tjail]
+    permission: allium.togglejail
 
   warn:
     description: Warn a player and record it
@@ -760,15 +818,22 @@ permissions:
       allium.vanish.see: true
       allium.mute: true
       allium.kick: true
+      allium.kickall: true
       allium.ban: true
       allium.tempban: true
       allium.unban: true
       allium.banlist: true
       allium.ipban: true
+      allium.tempbanip: true
+      allium.unbanip: true
       allium.freeze: true
       allium.setjail: true
+      allium.deljail: true
+      allium.jails: true
+      allium.jailedplayers: true
       allium.jail: true
       allium.unjail: true
+      allium.togglejail: true
       allium.warn: true
       allium.notes: true
       allium.invsee: true
@@ -809,6 +874,13 @@ permissions:
       allium.burn: true
       allium.smite: true
       allium.recipe: true
+      allium.potion: true
+      allium.potion.apply: true
+      allium.potions.*: true
+      allium.potions.multiple: true
+      allium.firework: true
+      allium.firework.fire: true
+      allium.firework.multiple: true
       allium.nv: true
       allium.nv.others: true
       allium.clearinventory: true
@@ -828,6 +900,10 @@ permissions:
       allium.time.add: true
       allium.time.pause: true
       allium.weather: true
+      allium.ptime: true
+      allium.ptime.others: true
+      allium.pweather: true
+      allium.pweather.others: true
       allium.enchant: true
       allium.enchant.others: true
       allium.rename: true
@@ -1726,6 +1802,12 @@ permissions:
   allium.kick:
     description: Allows /kick
     default: op
+  allium.kickall:
+    description: Allows /kickall
+    default: op
+  allium.kickall.exempt:
+    description: Exempts a player from being kicked by /kickall. Explicit only; not in allium.*
+    default: false
   allium.ban:
     description: Allows /ban
     default: op
@@ -1741,17 +1823,35 @@ permissions:
   allium.ipban:
     description: Allows /ipban
     default: op
+  allium.tempbanip:
+    description: Allows /tempbanip
+    default: op
+  allium.unbanip:
+    description: Allows /unbanip
+    default: op
   allium.freeze:
     description: Allows /freeze
     default: op
   allium.setjail:
     description: Allows /setjail
     default: op
+  allium.deljail:
+    description: Allows /deljail
+    default: op
+  allium.jails:
+    description: Allows /jails
+    default: op
+  allium.jailedplayers:
+    description: Allows /jailedplayers
+    default: op
   allium.jail:
     description: Allows /jail
     default: op
   allium.unjail:
     description: Allows /unjail
+    default: op
+  allium.togglejail:
+    description: Allows /togglejail
     default: op
   allium.warn:
     description: Allows /warn
@@ -1872,6 +1972,27 @@ permissions:
   allium.recipe:
     description: See how items are made with /recipe (/formula, /method, /recipes)
     default: true
+  allium.potion:
+    description: Edit custom effects on the held potion with /potion (/elixer)
+    default: op
+  allium.potion.apply:
+    description: Apply the held potion's custom effects to yourself with /potion apply
+    default: op
+  allium.potions.*:
+    description: Allows adding any potion effect with /potion
+    default: op
+  allium.potions.multiple:
+    description: Allows adding multiple custom effects to a single potion with /potion
+    default: op
+  allium.firework:
+    description: Edit firework rocket effects and flight power with /firework
+    default: op
+  allium.firework.fire:
+    description: Launch copies of the held firework rocket with /firework fire
+    default: op
+  allium.firework.multiple:
+    description: Allows adding multiple explosion effects to a single firework with /firework
+    default: op
   allium.smite:
     default: op
   allium.nv:
@@ -1915,6 +2036,18 @@ permissions:
   allium.time.pause:
     default: op
   allium.weather:
+    default: op
+  allium.ptime:
+    description: Allows /ptime (/playertime) for yourself
+    default: op
+  allium.ptime.others:
+    description: Allows /ptime for other players or *
+    default: op
+  allium.pweather:
+    description: Allows /pweather (/playerweather) for yourself
+    default: op
+  allium.pweather.others:
+    description: Allows /pweather for other players or *
     default: op
   allium.enchant:
     default: op

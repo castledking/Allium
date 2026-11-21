@@ -81,7 +81,10 @@ class DestinationSafetyTest {
         terrain.put(1, 63, 0, Material.AIR);
         assertTrue(safety.resolve(boundary, settings).isEmpty(), "one unsupported body corner is unsafe");
         terrain.put(1, 63, 0, Material.SAND);
-        assertTrue(safety.resolve(boundary, settings).isEmpty(), "a falling block is not a stable landing");
+        assertTrue(safety.resolve(boundary, settings).isPresent(), "grounded sand resting on solid ground is safe");
+        terrain.put(1, 62, 0, Material.AIR);
+        assertTrue(safety.resolve(boundary, settings).isEmpty(), "floating sand over air is not a stable landing");
+        terrain.put(1, 62, 0, Material.STONE);
         terrain.put(1, 63, 0, Material.OAK_FENCE);
         assertTrue(safety.resolve(boundary, settings).isEmpty(), "a solid material alone does not prove full top support");
         terrain.put(1, 63, 0, Material.WATER);

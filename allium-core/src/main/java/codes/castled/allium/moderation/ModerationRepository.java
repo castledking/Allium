@@ -43,7 +43,7 @@ public final class ModerationRepository {
     private static final String PLAYER_COLUMNS = "player_uuid, player_name, actor_name, reason, created_at";
     private static final String BAN_COLUMNS = PLAYER_COLUMNS + ", expires_at, ip_address";
     private static final String LOCATION_COLUMNS = "world_id, world_name, x, y, z, yaw, pitch";
-    private static final String ASSIGNMENT_COLUMNS = PLAYER_COLUMNS + ", jail_name, " + LOCATION_COLUMNS;
+    private static final String ASSIGNMENT_COLUMNS = PLAYER_COLUMNS + ", jail_name, " + LOCATION_COLUMNS + ", expires_at";
     private static final String PLAYER_DEFINITION = "player_uuid CHAR(36) NOT NULL PRIMARY KEY, "
             + "player_name VARCHAR(36) NOT NULL, actor_name VARCHAR(64) NOT NULL, "
             + "reason VARCHAR(256) NOT NULL, created_at BIGINT NOT NULL";
@@ -116,6 +116,7 @@ public final class ModerationRepository {
     }
 
     public int migrate() throws SQLException {
+        List<String> v3 = List.of("ALTER TABLE " + JAILED_TABLE + " ADD COLUMN expires_at BIGINT NULL");
         return new SchemaMigrator(source, dialect, clock).migrate(COMPONENT, List.of(
                 Migration.of(
                         1,
@@ -124,7 +125,8 @@ public final class ModerationRepository {
                         List.of(CREATE_VANISH, CREATE_MUTES, CREATE_AUDIT_MYSQL)
                 ),
                 Migration.of(2, "bans, freezes, jails, warnings, and staff notes",
-                        s19Schema(SqlDialect.SQLITE), s19Schema(SqlDialect.MYSQL))
+                        s19Schema(SqlDialect.SQLITE), s19Schema(SqlDialect.MYSQL)),
+                Migration.of(3, "timed jail expiry", v3, v3)
         ));
     }
 
@@ -313,6 +315,27 @@ public final class ModerationRepository {
         return removePlayerState(BANS_TABLE, playerUuid, actorName, "UNBAN");
     }
 
+    /** Removes every ban row tied to {@code ipAddress} in one transaction and records an UNBANIP audit row. */
+    public int removeBansByIp(String ipAddress, String actorName) throws SQLException {
+        String address = ipAddress(ipAddress);
+        if (address == null) return 0;
+        String actor = actorName(actorName);
+        return transaction(c -> {
+            try (PreparedStatement ps = c.prepareStatement("UPDATE " + BANS_TABLE + " SET ip_address = ip_address WHERE ip_address = ?")) {
+                ps.setString(1, address);
+                ps.executeUpdate();
+            }
+            int removed;
+            try (PreparedStatement ps = c.prepareStatement("DELETE FROM " + BANS_TABLE + " WHERE ip_address = ?")) {
+                ps.setString(1, address);
+                removed = ps.executeUpdate();
+            }
+            if (removed == 0) return 0;
+            writeAudit(c, "UNBANIP", actor, null, boundedText(address, 36), "ip_address=" + address + " removed=" + removed);
+            return removed;
+        });
+    }
+
     public List<FreezeRecord> loadFrozenPlayers() throws SQLException {
         return query("SELECT " + PLAYER_COLUMNS + " FROM " + FREEZES_TABLE + " ORDER BY created_at, player_uuid",
                 ps -> {}, ModerationRepository::readFreeze);
@@ -408,10 +431,11 @@ public final class ModerationRepository {
                 bindPlayer(ps, record.playerUuid(), record.playerName(), record.actorName(), record.reason(), record.createdAt());
                 ps.setString(6, record.jailName());
                 bindLocation(ps, 7, record.returnLocation());
+                if (record.expiresAt() == null) ps.setNull(14, Types.BIGINT); else ps.setLong(14, record.expiresAt());
                 ps.executeUpdate();
             }
             writeAudit(c, "JAIL", record.actorName(), record.playerUuid(), record.playerName(),
-                    "jail=" + record.jailName() + " reason=" + record.reason());
+                    "jail=" + record.jailName() + " expires_at=" + record.expiresAt() + " reason=" + record.reason());
             return true;
         });
     }
@@ -547,8 +571,10 @@ public final class ModerationRepository {
     }
 
     private static JailAssignment readAssignment(ResultSet rs) throws SQLException {
+        long expiry = rs.getLong(14);
+        Long nullableExpiry = rs.wasNull() ? null : expiry;
         return new JailAssignment(UUID.fromString(rs.getString(1)), rs.getString(2), rs.getString(3), rs.getString(4),
-                rs.getLong(5), rs.getString(6), readLocation(rs, 7));
+                rs.getLong(5), rs.getString(6), readLocation(rs, 7), nullableExpiry);
     }
 
     static String playerName(UUID uuid, String name) {
@@ -565,6 +591,61 @@ public final class ModerationRepository {
         String trimmed = address.trim();
         if (trimmed.length() > 45) throw new IllegalArgumentException("IP address exceeds 45 characters");
         return trimmed;
+    }
+
+    /** True when {@code raw} is a literal IPv4 or IPv6 address (checked purely syntactically, with no DNS lookup). */
+    public static boolean isLiteralIp(String raw) {
+        if (raw == null) return false;
+        String s = raw.trim();
+        if (s.isEmpty() || s.length() > 45) return false;
+        if (s.indexOf('.') >= 0 && s.indexOf(':') < 0) {
+            String[] parts = s.split("\\.", -1);
+            if (parts.length != 4) return false;
+            for (String p : parts) {
+                if (p.isEmpty() || p.length() > 3) return false;
+                for (int i = 0; i < p.length(); i++) {
+                    if (!Character.isDigit(p.charAt(i))) return false;
+                }
+                int val = Integer.parseInt(p);
+                if (val < 0 || val > 255) return false;
+            }
+            return true;
+        }
+        if (s.indexOf(':') >= 0) {
+            // Strip optional brackets around IPv6 literal
+            if (s.startsWith("[") && s.endsWith("]") && s.length() > 2) {
+                s = s.substring(1, s.length() - 1);
+            }
+            if (s.contains(":::")) return false;
+            int doubleColon = s.indexOf("::");
+            if (doubleColon >= 0 && s.indexOf("::", doubleColon + 2) >= 0) return false;
+            String[] groups = s.split(":", -1);
+            int nonEmpty = 0;
+            for (int i = 0; i < groups.length; i++) {
+                String g = groups[i];
+                if (g.isEmpty()) continue;
+                if (i == groups.length - 1 && g.contains(".")) {
+                    if (!isLiteralIp(g)) return false;
+                    nonEmpty += 2;
+                    continue;
+                }
+                if (g.length() > 4) return false;
+                for (int j = 0; j < g.length(); j++) {
+                    char c = g.charAt(j);
+                    boolean hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+                    if (!hex) return false;
+                }
+                nonEmpty++;
+            }
+            return doubleColon >= 0 ? nonEmpty <= 7 : nonEmpty == 8;
+        }
+        return false;
+    }
+
+    /** Deterministic UUID key for a literal IP ban row that is not tied to a player account. */
+    public static UUID ipBanUuid(String ipAddress) {
+        String normalized = Objects.requireNonNull(ipAddress(ipAddress), "ipAddress").toLowerCase(Locale.ROOT);
+        return UUID.nameUUIDFromBytes(("allium-ipban:" + normalized).getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     static String jailName(String name) {

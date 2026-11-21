@@ -34,8 +34,8 @@ class ModerationS19RepositoryTest {
 
     private static ModerationRepository repository(ModerationDatabases.Db db, AtomicLong clock) throws SQLException {
         ModerationRepository repo = reopen(db, clock);
-        assertEquals(2, repo.migrate(), db.name());
-        assertEquals(2, repo.migrate(), db.name());
+        assertEquals(3, repo.migrate(), db.name());
+        assertEquals(3, repo.migrate(), db.name());
         return repo;
     }
 
@@ -58,15 +58,15 @@ class ModerationS19RepositoryTest {
                     for (String table : ModerationDatabases.S19_TABLES) s.execute("DROP TABLE " + table);
                     s.executeUpdate("UPDATE allium_schema SET version = 1 WHERE component = 'moderation'");
                 }
-                assertEquals(2, repo.migrate());
+                assertEquals(3, repo.migrate());
                 BanRecord ban = new BanRecord(PLAYER, "Player", "Staff", "ban", 1000, null, "192.0.2.10");
                 repo.saveBan(ban);
-                // Simulate all v2 DDL having committed before the schema version was recorded.
+                // Simulate all v2+v3 DDL having committed before the schema version was recorded.
                 try (Connection c = db.source().connection(); var s = c.createStatement()) {
                     s.executeUpdate("UPDATE allium_schema SET version = 1 WHERE component = 'moderation'");
                 }
-                assertEquals(2, repo.migrate(), "existing index definitions are safely recognized");
-                assertEquals(2, repo.migrate());
+                assertEquals(3, repo.migrate(), "existing index and column definitions are safely recognized");
+                assertEquals(3, repo.migrate());
                 assertTrue(repo.loadVanished(PLAYER));
                 assertEquals(Optional.of(mute), repo.loadActiveMute(OTHER));
                 assertEquals(Optional.of(ban), repo.loadActiveBan(PLAYER));
@@ -338,6 +338,44 @@ class ModerationS19RepositoryTest {
                 codes.castled.allium.storage.SqlDialect.SQLITE, () -> 0);
         assertThrows(IllegalArgumentException.class, () -> closed.loadJail("bad name"));
         assertThrows(IllegalArgumentException.class, () -> closed.deleteJail("bad name", "Staff"));
+    }
+
+    @Test
+    void timedJailExpiryAndRemoveBansByIpAndLiteralIpValidationWork() throws Exception {
+        assertTrue(ModerationRepository.isLiteralIp("192.0.2.10"));
+        assertTrue(ModerationRepository.isLiteralIp("2001:db8::1"));
+        assertTrue(ModerationRepository.isLiteralIp("::1"));
+        assertFalse(ModerationRepository.isLiteralIp("999.0.0.1"));
+        assertFalse(ModerationRepository.isLiteralIp("Steve"));
+        assertFalse(ModerationRepository.isLiteralIp("example.com"));
+
+        for (var database : ModerationDatabases.all(dir)) {
+            try (var db = database) {
+                AtomicLong clock = new AtomicLong(1000);
+                ModerationRepository repo = repository(db, clock);
+                repo.saveJail(new JailRecord("cell", CELL), "Staff");
+
+                JailAssignment timed = new JailAssignment(PLAYER, "Player", "Staff", "timeout", 1000, "cell", ORIGIN, 61_000L);
+                assertTrue(repo.setJailed(timed));
+                ModerationRepository restarted = reopen(db, clock);
+                JailAssignment loaded = restarted.loadJailed(PLAYER).orElseThrow();
+                assertEquals(61_000L, loaded.expiresAt());
+                assertFalse(loaded.isPermanent());
+                assertFalse(loaded.isExpired(60_999L));
+                assertTrue(loaded.isExpired(61_000L));
+
+                UUID ipKey = ModerationRepository.ipBanUuid("192.0.2.99");
+                repo.saveBan(new BanRecord(PLAYER, "Player", "Staff", "a", 1000, 50_000L, "192.0.2.99"));
+                repo.saveBan(new BanRecord(ipKey, "192.0.2.99", "Staff", "b", 1100, 60_000L, "192.0.2.99"));
+                repo.saveBan(new BanRecord(OTHER, "Other", "Staff", "c", 1200, null, "192.0.2.100"));
+
+                assertEquals(2, repo.removeBansByIp("192.0.2.99", "Admin"));
+                assertEquals(0, repo.removeBansByIp("192.0.2.99", "Admin"));
+                assertTrue(restarted.loadBanByIp("192.0.2.99").isEmpty());
+                assertTrue(restarted.loadBanByIp("192.0.2.100").isPresent());
+                assertEquals("UNBANIP", repo.loadRecentAudit(1).get(0).action());
+            }
+        }
     }
 
     @FunctionalInterface

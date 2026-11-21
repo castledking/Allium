@@ -59,9 +59,12 @@ import java.util.function.LongSupplier;
 public final class DisciplineService implements Listener {
     private static final Map<PluginStart, DisciplineService> OWNERS = new WeakHashMap<>();
     public static final String BYPASS_PERMISSION = "allium.moderation.bypass";
+    public static final String KICKALL_EXEMPT_PERMISSION = "allium.kickall.exempt";
     private static final List<String> DEFAULT_RANKS = List.of(
             "allium.mute,allium.unmute,allium.warn,allium.notes",
-            "allium.freeze,allium.kick", "allium.jail,allium.tempban", "allium.ban,allium.ipban");
+            "allium.freeze,allium.kick,allium.kickall",
+            "allium.jail,allium.togglejail,allium.tempban",
+            "allium.ban,allium.ipban,allium.tempbanip,allium.unbanip");
     // Safety is mandatory for jail placement even when ordinary teleport safety is disabled.
     private static final TeleportSettings JAIL_SAFETY = new TeleportSettings(
             0, 0, 1000, false, true, false, 0, 0, true, true, true, true, false, Map.of());
@@ -178,8 +181,9 @@ public final class DisciplineService implements Listener {
             if (closed) return false;
             connections.entrySet().removeIf(e -> e.getValue().player == null
                     && System.nanoTime() - e.getValue().createdNanos > TimeUnit.SECONDS.toNanos(60));
+            tickExpiredJails();
             return true;
-        }, 10_000, 10_000);
+        }, 2_000, 2_000);
     }
 
     public void disable() {
@@ -230,10 +234,26 @@ public final class DisciplineService implements Listener {
     }
 
     public boolean isFrozen(UUID id) { return frozen.containsKey(id); }
-    public boolean jailed(UUID id) { return prisoners.containsKey(id); }
+    public boolean jailed(UUID id) {
+        JailAssignment assignment = prisoners.get(id);
+        return assignment != null && !assignment.isExpired(clock.getAsLong());
+    }
+    public Optional<JailAssignment> jailAssignment(UUID id) {
+        JailAssignment assignment = prisoners.get(id);
+        return assignment != null && !assignment.isExpired(clock.getAsLong()) ? Optional.of(assignment) : Optional.empty();
+    }
     public boolean isBanned(UUID id) {
         BanRecord record = bans.get(id);
         return record != null && !record.isExpired(clock.getAsLong());
+    }
+    public boolean isIpBanned(String ipAddress) {
+        if (ipAddress == null || ipAddress.isBlank()) return false;
+        long now = clock.getAsLong();
+        String trimmed = ipAddress.trim();
+        for (BanRecord ban : bans.values()) {
+            if (trimmed.equals(ban.ipAddress()) && !ban.isExpired(now)) return true;
+        }
+        return false;
     }
     public int pendingWrites() { return writes.get(); }
     public List<String> completeJails(String prefix) {
@@ -445,10 +465,78 @@ public final class DisciplineService implements Listener {
         if (assignment != null) {
             PendingRelease release = releases.get(player.getUniqueId());
             if (release != null && release.player == player && !release.unsafeRespawn) return;
+            if (assignment.isExpired(clock.getAsLong())) {
+                releaseExpiredJail(player, assignment);
+                return;
+            }
             JailRecord jail = jails.get(assignment.jailName());
             Location location = jail == null ? null : safe(jail.location());
             if (location != null && !samePosition(player.getLocation(), location)) move(player, location);
         }
+    }
+
+    /** Releases any online prisoners whose timed jail sentence has elapsed. */
+    void tickExpiredJails() {
+        long now = clock.getAsLong();
+        for (JailAssignment assignment : List.copyOf(prisoners.values())) {
+            if (!assignment.isExpired(now)) continue;
+            UUID id = assignment.playerUuid();
+            if (!ready(id)) continue;
+            Player online = plugin.getServer().getPlayer(id);
+            if (!sameSession(online)) continue;
+            releaseExpiredJail(online, assignment);
+        }
+    }
+
+    private void releaseExpiredJail(Player online, JailAssignment assignment) {
+        UUID id = assignment.playerUuid();
+        if (pending.containsKey(id) || releases.containsKey(id)) return;
+        Location origin = safe(assignment.returnLocation());
+        if (origin == null || !move(online, origin)) return;
+        PendingRelease release = new PendingRelease(online, assignment);
+        if (releases.putIfAbsent(id, release) != null) return;
+        Object token = new Object();
+        if (writes.get() >= 256 || pending.putIfAbsent(id, token) != null) {
+            releases.remove(id, release);
+            return;
+        }
+        writes.incrementAndGet();
+        revisions.merge(id, 1L, Long::sum);
+        submit(() -> {
+            if (closed) { finish(id, token); releases.remove(id, release); return; }
+            try {
+                if (release.unsafeRespawn) throw new SQLException("Return location became unsafe during expired release");
+                boolean removed = repository.removeJailed(id, "System");
+                if (removed) publish(() -> prisoners.remove(id, assignment));
+                server(() -> {
+                    try {
+                        if (release.unsafeRespawn && removed) {
+                            publish(() -> prisoners.put(id, assignment));
+                            restoreRelease(id, release, 0);
+                            return;
+                        }
+                        releases.remove(id, release);
+                        if (removed && sameSession(online)) {
+                            send(online, Messages.DISCIPLINE_JAIL_RELEASED);
+                        }
+                    } finally { finish(id, token); }
+                });
+                if (closed) finish(id, token);
+            } catch (SQLException | RuntimeException failure) {
+                plugin.logger().warning("Expired jail release storage failed for " + id + ": " + failure.getMessage());
+                finish(id, token);
+                server(() -> {
+                    releases.remove(id, release);
+                    if (sameSession(online)) enforceLoaded(online);
+                });
+            }
+        }, () -> {
+            finish(id, token);
+            server(() -> {
+                releases.remove(id, release);
+                if (sameSession(online)) enforceLoaded(online);
+            });
+        });
     }
 
     private boolean constrained(Player player) {
@@ -523,34 +611,68 @@ public final class DisciplineService implements Listener {
     public void dispatch(CommandSender sender, String label, String[] args) {
         String action = label.toLowerCase(Locale.ROOT);
         if (action.contains(":")) action = action.substring(action.indexOf(':') + 1);
-        if (action.equals("pardon")) action = "unban";
+        action = switch (action) {
+            case "pardon" -> "unban";
+            case "pardonip" -> "unbanip";
+            case "tjail" -> "togglejail";
+            case "remjail", "rmjail" -> "deljail";
+            default -> action;
+        };
         String permission = "allium." + action;
         Actor actor = new Actor(sender, permission, sender instanceof Player p ? p : null, plain(sender.getName()));
         if (!authorized(actor)) { send(sender, Messages.NO_PERMISSION); return; }
         if (closed || !catalogReady) { send(sender, Messages.DISCIPLINE_UNAVAILABLE); return; }
-        if (action.equals("ipban") && !settings.ipBans()) { send(sender, Messages.DISCIPLINE_IP_DISABLED); return; }
+        if ((action.equals("ipban") || action.equals("tempbanip")) && !settings.ipBans()) {
+            send(sender, Messages.DISCIPLINE_IP_DISABLED); return;
+        }
         if (action.equals("banlist")) {
             if (args.length != 0) { usage(sender, "/banlist"); return; }
             listBans(sender); return;
+        }
+        if (action.equals("jails")) {
+            if (args.length != 0) { usage(sender, "/jails"); return; }
+            listJails(sender); return;
+        }
+        if (action.equals("jailedplayers")) {
+            if (args.length != 0) { usage(sender, "/jailedplayers"); return; }
+            listJailedPlayers(sender); return;
         }
         if (action.equals("setjail")) {
             if (args.length != 1 || !(sender instanceof Player)) { usage(sender, "/setjail <name>"); return; }
             setJail(actor, args[0]); return;
         }
-        if (!List.of("kick", "ban", "tempban", "unban", "ipban", "freeze", "jail", "unjail", "warn", "notes").contains(action)) {
+        if (action.equals("deljail")) {
+            if (args.length != 1) { usage(sender, "/deljail <jail>"); return; }
+            deleteJail(actor, args[0]); return;
+        }
+        if (action.equals("kickall")) {
+            kickAll(actor, args); return;
+        }
+        if (!List.of("kick", "ban", "tempban", "unban", "ipban", "tempbanip", "unbanip",
+                "freeze", "jail", "unjail", "togglejail", "warn", "notes").contains(action)) {
             usage(sender, "/" + action); return;
         }
-        if (args.length == 0 || action.equals("tempban") && args.length < 2 || action.equals("jail") && args.length < 2
+        if (args.length == 0
+                || (action.equals("tempban") || action.equals("tempbanip")) && args.length < 2
+                || action.equals("jail") && args.length < 2
                 || action.equals("notes") && (args.length > 1 && !args[1].equalsIgnoreCase("list") && !args[1].equalsIgnoreCase("add")
                     || args.length > 2 && args[1].equalsIgnoreCase("list") || args.length == 2 && args[1].equalsIgnoreCase("add"))
-                || action.equals("unjail") && args.length != 1 || action.equals("unban") && args.length != 1) {
+                || (action.equals("unjail") || action.equals("unban") || action.equals("unbanip")) && args.length != 1) {
             usage(sender, usage(action)); return;
         }
         Long duration = null;
-        if (action.equals("tempban")) {
+        if (action.equals("tempban") || action.equals("tempbanip")) {
             var parsed = DurationParser.parseMillis(args[1]);
             if (parsed.isEmpty() || parsed.getAsLong() > Long.MAX_VALUE - clock.getAsLong()) { usage(sender, usage(action)); return; }
             duration = parsed.getAsLong();
+        }
+        if (action.equals("tempbanip") && ModerationRepository.isLiteralIp(args[0])) {
+            tempBanLiteralIp(actor, args[0].trim(), duration, reason(args, 2));
+            return;
+        }
+        if (action.equals("unbanip") && ModerationRepository.isLiteralIp(args[0])) {
+            unbanLiteralIp(actor, args[0].trim());
+            return;
         }
         String finalAction = action;
         Long finalDuration = duration;
@@ -574,7 +696,11 @@ public final class DisciplineService implements Listener {
     private static String usage(String action) {
         return switch (action) {
             case "tempban" -> "/tempban <player> <duration> [reason]";
+            case "tempbanip" -> "/tempbanip <player|ip> <duration> [reason]";
+            case "unbanip" -> "/unbanip <player|ip>";
             case "jail" -> "/jail <player> <jail> [reason]";
+            case "togglejail" -> "/togglejail <player> [jail] [time]";
+            case "deljail" -> "/deljail <jail>";
             case "notes" -> "/notes <player> [list|add <note>]";
             case "freeze" -> "/freeze <player> [on|off] [reason]";
             case "unban", "unjail" -> "/" + action + " <player>";
@@ -587,7 +713,7 @@ public final class DisciplineService implements Listener {
         Player online = plugin.getServer().getPlayer(id);
         // Hidden players are treated exactly like offline players for policy and command feedback.
         Player visible = online != null && online.isOnline() && PlayerNameVisibility.canSeeTarget(actor.sender(), online) ? online : null;
-        String reason = reason(args, action.equals("tempban") || action.equals("jail") || action.equals("notes") ? 2 : 1);
+        String reason = reason(args, action.equals("tempban") || action.equals("tempbanip") || action.equals("jail") || action.equals("notes") ? 2 : 1);
         String actorName = actor.name();
         long now = clock.getAsLong();
         switch (action) {
@@ -599,26 +725,53 @@ public final class DisciplineService implements Listener {
                     return true;
                 }, action, target.name(), notice("kick", actorName, target.name(), reason, null, null));
             }
-            case "ban", "tempban", "ipban" -> {
-                if (action.equals("ipban") && (visible == null || visible.getAddress() == null)) {
-                    send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return;
+            case "ban", "tempban", "ipban", "tempbanip" -> {
+                boolean isIp = action.equals("ipban") || action.equals("tempbanip");
+                String ip = null;
+                if (isIp) {
+                    if (visible != null && visible.getAddress() != null) {
+                        ip = visible.getAddress().getAddress().getHostAddress();
+                    } else if (action.equals("tempbanip")) {
+                        BanRecord existing = bans.get(id);
+                        if (existing != null && existing.ipAddress() != null) ip = existing.ipAddress();
+                    }
+                    if (ip == null) { send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return; }
                 }
-                String ip = action.equals("ipban") ? visible.getAddress().getAddress().getHostAddress() : null;
-                BanRecord ban = new BanRecord(id, target.name(), actorName, reason, now, duration == null ? null : now + duration, ip);
+                String finalIp = ip;
+                BanRecord ban = new BanRecord(id, target.name(), actorName, reason, now, duration == null ? null : now + duration, finalIp);
                 write(actor, id, online, () -> {
                     repository.saveBan(ban);
                     publish(() -> { Map<UUID, BanRecord> next = new HashMap<>(bans); next.put(id, ban); bans = Map.copyOf(next); });
                     return ban;
                 }, result -> {
                     if (sameSession(online)) online.kickPlayer(text(Messages.DISCIPLINE_BAN_DENIED, result.reason()));
+                    if (isIp && finalIp != null) kickMatchingIp(actor.sender(), finalIp, result.reason(), id);
                     return true;
-                }, action, target.name(), notice(action, actorName, target.name(), reason, ban.expiresAt(), null));
+                }, action, target.name(), notice(isIp ? "ipban" : action, actorName, target.name(), reason, ban.expiresAt(), null));
             }
             case "unban" -> write(actor, id, online, () -> {
                 boolean removed = repository.removeBan(id, actorName);
                 publish(() -> { Map<UUID, BanRecord> next = new HashMap<>(bans); next.remove(id); bans = Map.copyOf(next); });
                 return removed;
             }, removed -> removed, action, target.name(), notice("unban", actorName, target.name(), null, null, null));
+            case "unbanip" -> {
+                BanRecord existing = bans.get(id);
+                String ip = existing != null && existing.ipAddress() != null ? existing.ipAddress()
+                        : (visible != null && visible.getAddress() != null ? visible.getAddress().getAddress().getHostAddress() : null);
+                if (ip == null) { send(actor.sender(), Messages.DISCIPLINE_NOT_ACTIVE, "{player}", target.name()); return; }
+                String finalIp = ip;
+                write(actor, id, online, () -> {
+                    int removed = repository.removeBansByIp(finalIp, actorName);
+                    if (removed > 0) {
+                        publish(() -> {
+                            Map<UUID, BanRecord> next = new HashMap<>(bans);
+                            next.values().removeIf(b -> finalIp.equals(b.ipAddress()));
+                            bans = Map.copyOf(next);
+                        });
+                    }
+                    return removed > 0;
+                }, removed -> removed, "unbanip", target.name(), notice("unban", actorName, target.name(), null, null, null));
+            }
             case "freeze" -> {
                 boolean freeze = !isFrozen(id);
                 int offset = 1;
@@ -635,8 +788,9 @@ public final class DisciplineService implements Listener {
                         next ? "freeze" : "unfreeze", target.name(),
                         notice(next ? "freeze" : "unfreeze", actorName, target.name(), record.reason(), null, null));
             }
-            case "jail" -> jail(actor, target, online, args[1], reason);
+            case "jail" -> jail(actor, target, online, args[1], reason, null);
             case "unjail" -> unjail(actor, target, online);
+            case "togglejail" -> toggleJail(actor, target, online, args);
             case "warn", "notes" -> write(actor, id, online,
                     () -> action.equals("warn") ? repository.addWarning(id, target.name(), actorName, reason)
                             : repository.addNote(id, target.name(), actorName, reason), entry -> {
@@ -645,6 +799,113 @@ public final class DisciplineService implements Listener {
                     }, action, target.name(), notice(action.equals("warn") ? "warn" : "note", actorName, target.name(), reason, null, null));
             default -> throw new IllegalArgumentException(action);
         }
+    }
+
+    private void tempBanLiteralIp(Actor actor, String ip, long duration, String reason) {
+        if (!rate(actor.sender())) return;
+        for (Player online : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+            if (online != null && online.isOnline() && online.getAddress() != null
+                    && ip.equalsIgnoreCase(online.getAddress().getAddress().getHostAddress())
+                    && !canModerate(actor.sender(), online.getUniqueId())) {
+                send(actor.sender(), Messages.DISCIPLINE_EXEMPT);
+                return;
+            }
+        }
+        UUID id = ModerationRepository.ipBanUuid(ip);
+        long now = clock.getAsLong();
+        BanRecord ban = new BanRecord(id, ip, actor.name(), reason, now, now + duration, ip);
+        write(actor, id, null, () -> {
+            repository.saveBan(ban);
+            publish(() -> { Map<UUID, BanRecord> next = new HashMap<>(bans); next.put(id, ban); bans = Map.copyOf(next); });
+            return ban;
+        }, result -> {
+            kickMatchingIp(actor.sender(), ip, result.reason(), null);
+            return true;
+        }, "tempbanip", ip, () -> {}, null, false);
+    }
+
+    private void unbanLiteralIp(Actor actor, String ip) {
+        if (!rate(actor.sender())) return;
+        UUID id = ModerationRepository.ipBanUuid(ip);
+        write(actor, id, null, () -> {
+            int removed = repository.removeBansByIp(ip, actor.name());
+            if (removed > 0) {
+                publish(() -> {
+                    Map<UUID, BanRecord> next = new HashMap<>(bans);
+                    next.values().removeIf(b -> ip.equals(b.ipAddress()));
+                    bans = Map.copyOf(next);
+                });
+            }
+            return removed > 0;
+        }, removed -> removed, "unbanip", ip, () -> {}, null, false);
+    }
+
+    private void kickMatchingIp(CommandSender actor, String ip, String reason, UUID alreadyKicked) {
+        String message = text(Messages.DISCIPLINE_BAN_DENIED, reason);
+        for (Player online : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+            if (online == null || !online.isOnline() || online.getAddress() == null) continue;
+            if (alreadyKicked != null && alreadyKicked.equals(online.getUniqueId())) continue;
+            if (!ip.equalsIgnoreCase(online.getAddress().getAddress().getHostAddress())) continue;
+            if (canModerate(actor, online.getUniqueId())) {
+                online.kickPlayer(message);
+            }
+        }
+    }
+
+    private void toggleJail(Actor actor, NameCache.Entry target, Player online, String[] args) {
+        JailAssignment existing = prisoners.get(target.uuid());
+        if (existing != null && !existing.isExpired(clock.getAsLong())) {
+            if (args.length == 1 || (args.length == 2 && args[1].equalsIgnoreCase(existing.jailName()))) {
+                unjail(actor, target, online);
+                return;
+            }
+            if (args.length == 2) {
+                var parsed = DurationParser.parseMillis(args[1]);
+                if (parsed.isPresent() && parsed.getAsLong() <= Long.MAX_VALUE - clock.getAsLong()) {
+                    jail(actor, target, online, existing.jailName(), existing.reason(), parsed.getAsLong());
+                    return;
+                }
+                send(actor.sender(), Messages.DISCIPLINE_ALREADY_JAILED, "{player}", target.name(), "{jail}", existing.jailName());
+                return;
+            }
+            if (args[1].equalsIgnoreCase(existing.jailName())) {
+                var parsed = DurationParser.parseMillis(args[2]);
+                if (parsed.isEmpty() || parsed.getAsLong() > Long.MAX_VALUE - clock.getAsLong()) {
+                    usage(actor.sender(), usage("togglejail"));
+                    return;
+                }
+                String reason = args.length >= 4 ? reason(args, 3) : existing.reason();
+                jail(actor, target, online, existing.jailName(), reason, parsed.getAsLong());
+                return;
+            }
+            send(actor.sender(), Messages.DISCIPLINE_ALREADY_JAILED, "{player}", target.name(), "{jail}", existing.jailName());
+            return;
+        }
+
+        String jailName;
+        if (args.length >= 2) {
+            jailName = args[1];
+        } else if (jails.size() == 1) {
+            jailName = jails.keySet().iterator().next();
+        } else if (jails.isEmpty()) {
+            send(actor.sender(), Messages.DISCIPLINE_JAILS_EMPTY);
+            return;
+        } else {
+            usage(actor.sender(), usage("togglejail"));
+            return;
+        }
+
+        Long durationMillis = null;
+        if (args.length >= 3) {
+            var parsed = DurationParser.parseMillis(args[2]);
+            if (parsed.isEmpty() || parsed.getAsLong() > Long.MAX_VALUE - clock.getAsLong()) {
+                usage(actor.sender(), usage("togglejail"));
+                return;
+            }
+            durationMillis = parsed.getAsLong();
+        }
+        String reason = args.length >= 4 ? reason(args, 3) : "No reason supplied.";
+        jail(actor, target, online, jailName, reason, durationMillis);
     }
 
     private void setJail(Actor actor, String name) {
@@ -658,10 +919,65 @@ public final class DisciplineService implements Listener {
             repository.saveJail(record, actor.name());
             publish(() -> { Map<String, JailRecord> next = new HashMap<>(jails); next.put(record.name(), record); jails = Map.copyOf(next); });
             return record;
-        }, result -> true, "setjail", record.name());
+        }, result -> true, "setjail", record.name(), () -> {}, null, false);
     }
 
-    private void jail(Actor actor, NameCache.Entry target, Player online, String jailName, String reason) {
+    private void deleteJail(Actor actor, String rawName) {
+        String key;
+        try { key = ModerationRepository.jailName(rawName); }
+        catch (IllegalArgumentException e) { send(actor.sender(), Messages.DISCIPLINE_JAIL_NOT_FOUND, "{jail}", plain(rawName)); return; }
+        if (!jails.containsKey(key)) {
+            send(actor.sender(), Messages.DISCIPLINE_JAIL_NOT_FOUND, "{jail}", key);
+            return;
+        }
+        for (JailAssignment prisoner : prisoners.values()) {
+            if (key.equals(prisoner.jailName())) {
+                send(actor.sender(), Messages.DISCIPLINE_JAIL_IN_USE, "{jail}", key);
+                return;
+            }
+        }
+        if (!rate(actor.sender())) return;
+        write(actor, new UUID(0, 0), null, () -> {
+            boolean deleted = repository.deleteJail(key, actor.name());
+            if (deleted) {
+                publish(() -> { Map<String, JailRecord> next = new HashMap<>(jails); next.remove(key); jails = Map.copyOf(next); });
+            }
+            return deleted;
+        }, deleted -> deleted, "deljail", key, () -> {}, null, false);
+    }
+
+    private void kickAll(Actor actor, String[] args) {
+        if (!rate(actor.sender())) return;
+        String reason = reason(args, 0);
+        String kickText = text(Messages.DISCIPLINE_KICK_NOTICE, reason);
+        CommandSender sender = actor.sender();
+        String exemptNode = settings.exemptPermission();
+        boolean trustedActor = sender instanceof ConsoleCommandSender || sender.hasPermission(BYPASS_PERMISSION);
+        int kicked = 0;
+        for (Player online : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+            if (online == null || !online.isOnline()) continue;
+            if (sender instanceof Player p && p.getUniqueId().equals(online.getUniqueId())) continue;
+            if (online.hasPermission(KICKALL_EXEMPT_PERMISSION)) continue;
+            if (!trustedActor && exemptNode != null && !exemptNode.isBlank() && online.hasPermission(exemptNode)) continue;
+            online.kickPlayer(kickText);
+            kicked++;
+        }
+        if (kicked == 0) {
+            send(sender, Messages.DISCIPLINE_KICKALL_NONE);
+            return;
+        }
+        int finalKicked = kicked;
+        send(sender, Messages.DISCIPLINE_KICKALL_SUCCESS, "{count}", Integer.toString(finalKicked));
+        submit(() -> {
+            try {
+                repository.recordAudit("KICKALL", actor.name(), null, "all(" + finalKicked + ")", reason);
+            } catch (SQLException | RuntimeException failure) {
+                plugin.logger().warning("Discipline kickall audit failed: " + failure.getMessage());
+            }
+        }, () -> {});
+    }
+
+    private void jail(Actor actor, NameCache.Entry target, Player online, String jailName, String reason, Long durationMillis) {
         JailRecord jail = jails.get(jailName.toLowerCase(Locale.ROOT));
         if (jail == null) { send(actor.sender(), Messages.DISCIPLINE_JAIL_NOT_FOUND, "{jail}", plain(jailName)); return; }
         if (safe(jail.location()) == null) { send(actor.sender(), Messages.DISCIPLINE_UNSAFE_LOCATION); return; }
@@ -669,14 +985,16 @@ public final class DisciplineService implements Listener {
         if (existing == null && (online == null || !online.isOnline() || !ready(target.uuid()))) {
             send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return;
         }
+        long now = clock.getAsLong();
+        Long expiresAt = durationMillis == null ? null : now + durationMillis;
         SavedLocation origin = existing == null ? saved(online.getLocation()) : existing.returnLocation();
         JailAssignment assignment = new JailAssignment(target.uuid(), target.name(), actor.name(), reason,
-                clock.getAsLong(), jail.name(), origin);
+                now, jail.name(), origin, expiresAt);
         write(actor, target.uuid(), online, () -> {
             JailAssignment previous = repository.loadJailed(target.uuid()).orElse(null);
             JailAssignment persisted = previous == null ? assignment : new JailAssignment(assignment.playerUuid(),
                     assignment.playerName(), assignment.actorName(), assignment.reason(), assignment.createdAt(),
-                    assignment.jailName(), previous.returnLocation());
+                    assignment.jailName(), previous.returnLocation(), assignment.expiresAt());
             if (!repository.setJailed(persisted)) throw new SQLException("Jail no longer exists");
             publish(() -> prisoners.put(target.uuid(), persisted));
             return persisted;
@@ -686,7 +1004,7 @@ public final class DisciplineService implements Listener {
                 return destination != null && move(online, destination);
             }
             return true;
-        }, "jail", target.name(), notice("jail", actor.name(), target.name(), reason, null, jail.name()));
+        }, "jail", target.name(), notice("jail", actor.name(), target.name(), reason, expiresAt, jail.name()));
     }
 
     private void unjail(Actor actor, NameCache.Entry target, Player online) {
@@ -743,17 +1061,22 @@ public final class DisciplineService implements Listener {
     }
 
     private <T> void write(Actor actor, UUID id, Player expectedTarget, SqlWork<T> sql, Commit<T> commit, String action, String name) {
-        write(actor, id, expectedTarget, sql, commit, action, name, () -> {}, null);
+        write(actor, id, expectedTarget, sql, commit, action, name, () -> {}, null, true);
     }
 
     private <T> void write(Actor actor, UUID id, Player expectedTarget, SqlWork<T> sql, Commit<T> commit, String action, String name,
                            codes.castled.allium.discord.StaffPosts.Notice notice) {
-        write(actor, id, expectedTarget, sql, commit, action, name, () -> {}, notice);
+        write(actor, id, expectedTarget, sql, commit, action, name, () -> {}, notice, true);
+    }
+
+    private <T> void write(Actor actor, UUID id, Player expectedTarget, SqlWork<T> sql, Commit<T> commit, String action, String name,
+                           Runnable failed, codes.castled.allium.discord.StaffPosts.Notice notice) {
+        write(actor, id, expectedTarget, sql, commit, action, name, failed, notice, true);
     }
 
     /** {@code notice}, when not null, goes to the Discord feeds once the action is saved and applied. */
     private <T> void write(Actor actor, UUID id, Player expectedTarget, SqlWork<T> sql, Commit<T> commit, String action, String name,
-                           Runnable failed, codes.castled.allium.discord.StaffPosts.Notice notice) {
+                           Runnable failed, codes.castled.allium.discord.StaffPosts.Notice notice, boolean checkTargetModerate) {
         Object token = new Object();
         if (writes.get() >= 256) { failed.run(); send(actor.sender(), Messages.DISCIPLINE_BUSY); return; }
         if (pending.putIfAbsent(id, token) != null) { failed.run(); send(actor.sender(), Messages.DISCIPLINE_BUSY); return; }
@@ -762,26 +1085,35 @@ public final class DisciplineService implements Listener {
         // Queue a server-thread authorization checkpoint immediately before queuing the JDBC write.
         // This catches disconnects/permission changes while waiting in a saturated storage pool.
         submit(() -> server(() -> {
-            if (!authorized(actor) || !action.equals("setjail") && !canModerate(actor.sender(), id)
+            if (!authorized(actor) || checkTargetModerate && !canModerate(actor.sender(), id)
                     || expectedTarget != null && !sameSession(expectedTarget)) {
                 finish(id, token); failed.run(); sendIfCurrent(actor, Messages.DISCIPLINE_EXEMPT); return;
             }
             submit(() -> {
                 if (closed) { finish(id, token); return; }
                 try {
-                    if (!action.equals("setjail") && expectedTarget == null && !(actor.sender() instanceof ConsoleCommandSender))
+                    if (checkTargetModerate && expectedTarget == null && !(actor.sender() instanceof ConsoleCommandSender))
                         repository.recordAudit("DISCIPLINE_BYPASS", actor.name(), id, name, "offline permission override action=" + action);
                     T result = sql.run();
                     server(() -> {
                         try {
-                            boolean permitted = authorized(actor) && (action.equals("setjail") || canModerate(actor.sender(), id));
+                            boolean permitted = authorized(actor) && (!checkTargetModerate || canModerate(actor.sender(), id));
                             // Durable actions must reach the captured target session even when the
                             // actor leaves during SQL. Authorization here gates feedback only.
                             boolean changed = commit.apply(result);
                             if (changed && notice != null) notices.accept(notice);
                             if (permitted) {
-                                if (changed) send(actor.sender(), Messages.DISCIPLINE_SUCCESS, "{action}", action, "{player}", name);
-                                else send(actor.sender(), Messages.DISCIPLINE_NOT_ACTIVE, "{player}", name);
+                                if (changed) {
+                                    if (action.equals("setjail")) {
+                                        send(actor.sender(), Messages.DISCIPLINE_JAIL_SET, "{jail}", name);
+                                    } else if (action.equals("deljail")) {
+                                        send(actor.sender(), Messages.DISCIPLINE_JAIL_DELETED, "{jail}", name);
+                                    } else {
+                                        send(actor.sender(), Messages.DISCIPLINE_SUCCESS, "{action}", action, "{player}", name);
+                                    }
+                                } else {
+                                    send(actor.sender(), Messages.DISCIPLINE_NOT_ACTIVE, "{player}", name);
+                                }
                             }
                         } finally { finish(id, token); }
                     });
@@ -813,6 +1145,32 @@ public final class DisciplineService implements Listener {
         if (records.isEmpty()) { send(sender, Messages.DISCIPLINE_LIST_EMPTY); return; }
         send(sender, Messages.DISCIPLINE_LIST_HEADER, "{count}", Integer.toString(records.size()));
         for (BanRecord b : records) literal(sender, Messages.DISCIPLINE_LIST_ENTRY, b.reason(), "{player}", b.playerName(), "{actor}", b.actorName());
+    }
+
+    private void listJails(CommandSender sender) {
+        List<String> names = jails.keySet().stream().sorted().toList();
+        if (names.isEmpty()) { send(sender, Messages.DISCIPLINE_JAILS_EMPTY); return; }
+        send(sender, Messages.DISCIPLINE_JAILS_LIST, "{count}", Integer.toString(names.size()), "{jails}", String.join(", ", names));
+    }
+
+    private void listJailedPlayers(CommandSender sender) {
+        long now = clock.getAsLong();
+        List<JailAssignment> active = prisoners.values().stream()
+                .filter(j -> !j.isExpired(now))
+                .filter(j -> {
+                    Player online = plugin.getServer().getPlayer(j.playerUuid());
+                    return online == null || PlayerNameVisibility.canSeeTarget(sender, online);
+                })
+                .sorted(Comparator.comparing(j -> j.playerName().toLowerCase(Locale.ROOT)))
+                .toList();
+        if (active.isEmpty()) { send(sender, Messages.DISCIPLINE_JAILED_PLAYERS_EMPTY); return; }
+        send(sender, Messages.DISCIPLINE_JAILED_PLAYERS_HEADER, "{count}", Integer.toString(active.size()));
+        for (JailAssignment assignment : active) {
+            send(sender, Messages.DISCIPLINE_JAILED_PLAYERS_ENTRY,
+                    "{player}", assignment.playerName(),
+                    "{jail}", assignment.jailName(),
+                    "{remaining}", assignment.formattedRemaining(now));
+        }
     }
 
     private void listHistory(Actor actor, NameCache.Entry target, boolean warnings) {

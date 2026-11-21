@@ -128,6 +128,8 @@ public final class EssentialsModule extends AbstractModule {
         recipes = new codes.castled.allium.recipe.RecipeViewer(plugin);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) recipes.enable();
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.RecipeCommand(plugin, () -> recipes));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.PotionCommand(plugin));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.FireworkCommand(plugin));
         plugin.getCommandManager().register(new NvCommand(plugin));
         var clearInventory = new ClearInventoryCommand(plugin);
         plugin.getCommandManager().register(clearInventory);
@@ -141,6 +143,8 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new TimeCommand(plugin, CoreCommandSpecs.DAY, timePauseCoordinator));
         plugin.getCommandManager().register(new TimeCommand(plugin, CoreCommandSpecs.NIGHT, timePauseCoordinator));
         plugin.getCommandManager().register(new WeatherCommand(plugin));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.PlayerTimeCommand(plugin));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.PlayerWeatherCommand(plugin));
         plugin.getCommandManager().register(new EnchantCommand(plugin));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.RENAME));
         loreClipboard = new codes.castled.allium.command.essentials.LoreClipboard();

@@ -128,10 +128,13 @@ public final class WorldTimeParser {
         if (named != null) {
             return OptionalLong.of(named);
         }
+        if (lower.endsWith("am") || lower.endsWith("pm")) {
+            return parseTwelveHourClock(lower);
+        }
         if (lower.contains(":")) {
             return parseClock(lower);
         }
-        String digits = lower.endsWith("t") ? lower.substring(0, lower.length() - 1) : lower;
+        String digits = stripTicksSuffix(lower);
         if (digits.isEmpty() || !allDigits(digits)) {
             return OptionalLong.empty();
         }
@@ -151,7 +154,7 @@ public final class WorldTimeParser {
             return OptionalLong.empty();
         }
         String lower = raw.trim().toLowerCase(Locale.ROOT);
-        String digits = lower.endsWith("t") ? lower.substring(0, lower.length() - 1) : lower;
+        String digits = stripTicksSuffix(lower);
         if (digits.isEmpty() || !allDigits(digits)) {
             return OptionalLong.empty();
         }
@@ -164,6 +167,58 @@ public final class WorldTimeParser {
         } catch (NumberFormatException e) {
             return OptionalLong.empty();
         }
+    }
+
+    private static String stripTicksSuffix(String lower) {
+        if (lower.endsWith("ticks")) {
+            return lower.substring(0, lower.length() - 5);
+        }
+        if (lower.endsWith("tick")) {
+            return lower.substring(0, lower.length() - 4);
+        }
+        if (lower.endsWith("t")) {
+            return lower.substring(0, lower.length() - 1);
+        }
+        return lower;
+    }
+
+    private static OptionalLong parseTwelveHourClock(String lower) {
+        boolean pm = lower.endsWith("pm");
+        String body = lower.substring(0, lower.length() - 2);
+        if (body.isEmpty()) {
+            return OptionalLong.empty();
+        }
+        int hours;
+        int minutes = 0;
+        if (body.contains(":")) {
+            String[] parts = body.split(":", -1);
+            if (parts.length != 2 || parts[0].isEmpty() || parts[1].isEmpty()
+                    || !allDigits(parts[0]) || !allDigits(parts[1])) {
+                return OptionalLong.empty();
+            }
+            try {
+                hours = Integer.parseInt(parts[0]);
+                minutes = Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                return OptionalLong.empty();
+            }
+        } else {
+            if (!allDigits(body)) {
+                return OptionalLong.empty();
+            }
+            try {
+                hours = Integer.parseInt(body);
+            } catch (NumberFormatException e) {
+                return OptionalLong.empty();
+            }
+        }
+        if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+            return OptionalLong.empty();
+        }
+        int hour24 = (hours % 12) + (pm ? 12 : 0);
+        long ticksFromMidnight = hour24 * 1000L + Math.round((minutes * 1000.0d) / 60.0d);
+        long normalized = ((ticksFromMidnight - 6000L) % DAY_TICKS + DAY_TICKS) % DAY_TICKS;
+        return OptionalLong.of(normalized);
     }
 
     private static OptionalLong parseClock(String raw) {

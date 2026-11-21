@@ -121,7 +121,7 @@ public final class DestinationSafety {
                 }
                 Block floor = world.getBlockAt(x, floorY, z);
                 if (rules.lava() && danger(floor.getType())) return false;
-                if (sturdy(floor) || floor.getType() == Material.WATER) continue;
+                if (sturdy(world, x, floorY, z, floor) || floor.getType() == Material.WATER) continue;
                 if (rules.falls()) return false;
                 if (rules.voids() && !landingBelow(world, x, floorY, z, floor, rules)) return false;
             }
@@ -133,17 +133,33 @@ public final class DestinationSafety {
         // A heightmap can report a roof above the player. Only evidence below their feet counts.
         // Falls may be enabled, but an unknown landing after this bounded scan still fails closed.
         for (int depth = 0; depth < LANDING_SCAN && floorY - depth >= world.getMinHeight(); depth++) {
-            Block below = depth == 0 ? floor : world.getBlockAt(x, floorY - depth, z);
+            int y = floorY - depth;
+            Block below = depth == 0 ? floor : world.getBlockAt(x, y, z);
             if (rules.lava() && danger(below.getType())) return false;
-            if (sturdy(below) || below.getType() == Material.WATER) return true;
+            if (sturdy(world, x, y, z, below) || below.getType() == Material.WATER) return true;
             if (!below.isPassable()) return false; // Non-sturdy collision is not a proven landing.
         }
         return false;
     }
 
-    private static boolean sturdy(Block block) {
-        return !block.isPassable() && !block.getType().hasGravity()
-                && block.getBlockData().isFaceSturdy(BlockFace.UP, BlockSupport.FULL);
+    private static boolean sturdy(World world, int x, int y, int z, Block block) {
+        if (block.isPassable() || !block.getBlockData().isFaceSturdy(BlockFace.UP, BlockSupport.FULL)) {
+            return false;
+        }
+        if (!block.getType().hasGravity()) {
+            return true;
+        }
+        // A gravity block (sand, gravel, concrete powder) is stable when supported underneath by solid ground.
+        for (int depth = 1; depth <= LANDING_SCAN && y - depth >= world.getMinHeight(); depth++) {
+            Block below = world.getBlockAt(x, y - depth, z);
+            if (below.isPassable() || danger(below.getType())) {
+                return false;
+            }
+            if (!below.getType().hasGravity()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean withinWorld(Location point) {

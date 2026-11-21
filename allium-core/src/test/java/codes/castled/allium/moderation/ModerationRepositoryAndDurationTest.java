@@ -60,8 +60,8 @@ class ModerationRepositoryAndDurationTest {
                 AtomicLong clock = new AtomicLong(1_000_000L);
                 ModerationRepository repo = new ModerationRepository(db.source(), db.dialect(), clock::get);
 
-                assertEquals(2, repo.migrate(), db.name());
-                assertEquals(2, repo.migrate(), db.name());
+                assertEquals(3, repo.migrate(), db.name());
+                assertEquals(3, repo.migrate(), db.name());
 
                 UUID staffA = UUID.randomUUID();
                 UUID staffB = UUID.randomUUID();

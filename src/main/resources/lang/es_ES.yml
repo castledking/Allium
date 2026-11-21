@@ -796,6 +796,41 @@ moderation:
     list-empty:
       - "{prefix} &7No se encontraron registros de moderacion."
       - "[sound] block.note_block.hat 0.95"
+    jail-in-use:
+      - "{prefix} &cLa carcel &f{jail} &cno se puede eliminar mientras haya jugadores encarcelados alli."
+      - "[sound] block.note_block.bass 0.8"
+    jail-set:
+      - "{prefix} &aCarcel &f{jail} &aestablecida."
+      - "[sound] block.enchantment_table.use 1.25"
+    jail-deleted:
+      - "{prefix} &aCarcel &f{jail} &aeliminada."
+      - "[sound] item.book.page_turn 0.9"
+    already-jailed:
+      - "{prefix} &c{player} ya esta encarcelado en &f{jail}&c."
+      - "[sound] block.note_block.bass 0.85"
+    jail-released:
+      - "{prefix} &aTu condena de carcel ha terminado y has sido liberado."
+      - "[sound] entity.player.levelup 1.2"
+    jails-list:
+      - "{prefix} &fCarceles &7({count}): &e{jails}"
+      - "[sound] item.book.page_turn 1.0"
+    jails-empty:
+      - "{prefix} &7No hay carceles definidas."
+      - "[sound] block.note_block.hat 0.95"
+    jailed-players-header:
+      - "{prefix} &fJugadores encarcelados &7({count}):"
+      - "[sound] item.book.page_turn 1.0"
+    jailed-players-entry:
+      - "&7- &f{player} &7en &e{jail} &7({remaining})"
+    jailed-players-empty:
+      - "{prefix} &7No hay jugadores encarcelados actualmente."
+      - "[sound] block.note_block.hat 0.95"
+    kickall-success:
+      - "{prefix} &aExpulsados &f{count} &ajugador(es)."
+      - "[sound] block.note_block.pling 1.2"
+    kickall-none:
+      - "{prefix} &7No se expulso a ningun jugador."
+      - "[sound] block.note_block.hat 0.95"
   inspect:
     self:
       - "{prefix} &cNo puedes usar /invsee contigo mismo."
@@ -1166,6 +1201,78 @@ utility:
   weather-set:
     - "{prefix} &aClima establecido a &f{weather} &aen &f{world}&a."
     - "[sound] block.note_block.chime 1.05"
+  ptime:
+    set-self:
+      - "{prefix} &aTu tiempo ha sido establecido a &f{time}&a."
+      - "[sound] block.note_block.bell 1.2"
+    set-fixed-self:
+      - "{prefix} &aTu tiempo ha sido fijado en &f{time}&a."
+      - "[sound] block.note_block.bell 1.2"
+    set-other:
+      - "{prefix} &aTiempo de &f{player} &aestablecido a &f{time}&a."
+      - "[sound] block.note_block.bell 1.2"
+    set-fixed-other:
+      - "{prefix} &aTiempo de &f{player} &afijado en &f{time}&a."
+      - "[sound] block.note_block.bell 1.2"
+    set-all:
+      - "{prefix} &aTiempo establecido a &f{time} &apara &f{count} &ajugador(es)."
+      - "[sound] block.note_block.bell 1.2"
+    set-fixed-all:
+      - "{prefix} &aTiempo fijado en &f{time} &apara &f{count} &ajugador(es)."
+      - "[sound] block.note_block.bell 1.2"
+    reset-self:
+      - "{prefix} &aTu tiempo se ha restablecido al del mundo."
+      - "[sound] block.note_block.chime 1.1"
+    reset-other:
+      - "{prefix} &aEl tiempo de &f{player} &ase ha restablecido al del mundo."
+      - "[sound] block.note_block.chime 1.1"
+    reset-all:
+      - "{prefix} &aTiempo restablecido al del mundo para &f{count} &ajugador(es)."
+      - "[sound] block.note_block.chime 1.1"
+    status-normal:
+      - "{prefix} &7El tiempo de &f{player} &7esta sincronizado con el mundo (&e{time}&7)."
+    status-fixed:
+      - "{prefix} &7El tiempo de &f{player} &7esta fijado en &e{time}&7."
+    status-relative:
+      - "{prefix} &7El tiempo de &f{player} &7esta en &e{time} &7(en movimiento)."
+    list-empty:
+      - "{prefix} &7No hay jugadores en linea."
+  pweather:
+    set-clear-self:
+      - "{prefix} &aTu clima ha sido establecido a &fdespejado&a."
+      - "[sound] block.note_block.chime 1.1"
+    set-storm-self:
+      - "{prefix} &aTu clima ha sido establecido a &ftormenta&a."
+      - "[sound] block.note_block.chime 0.9"
+    set-clear-other:
+      - "{prefix} &aClima de &f{player} &aestablecido a &fdespejado&a."
+      - "[sound] block.note_block.chime 1.1"
+    set-storm-other:
+      - "{prefix} &aClima de &f{player} &aestablecido a &ftormenta&a."
+      - "[sound] block.note_block.chime 0.9"
+    set-clear-all:
+      - "{prefix} &aClima establecido a &fdespejado &apara &f{count} &ajugador(es)."
+      - "[sound] block.note_block.chime 1.1"
+    set-storm-all:
+      - "{prefix} &aClima establecido a &ftormenta &apara &f{count} &ajugador(es)."
+      - "[sound] block.note_block.chime 0.9"
+    reset-self:
+      - "{prefix} &aTu clima se ha restablecido al del mundo."
+      - "[sound] block.note_block.chime 1.05"
+    reset-other:
+      - "{prefix} &aEl clima de &f{player} &ase ha restablecido al del mundo."
+      - "[sound] block.note_block.chime 1.05"
+    reset-all:
+      - "{prefix} &aClima restablecido al del mundo para &f{count} &ajugador(es)."
+      - "[sound] block.note_block.chime 1.05"
+    status-normal:
+      - "{prefix} &7El clima de &f{player} &7esta sincronizado con el mundo."
+    status-clear:
+      - "{prefix} &7El clima de &f{player} &7esta en &edespejado&7."
+    status-storm:
+      - "{prefix} &7El clima de &f{player} &7esta en &etormenta&7."
+    list-empty:
+      - "{prefix} &7No hay jugadores en linea."
   inventory-busy:
     - "{prefix} &cEl inventario de {player} esta ocupado con recuperacion de correo o kits. Intentalo de nuevo en un momento."
     - "[sound] block.note_block.hat 0.85"
@@ -1235,6 +1342,71 @@ utility:
       - "[sound] block.note_block.bass 0.85"
     bad-number:
       - "{prefix} &f{item} &ctiene &f{count} &creceta(s)."
+      - "[sound] block.note_block.bass 0.85"
+  potion:
+    list:
+      - "{prefix} &dEfectos de pocion disponibles: &f{effects}"
+    none-allowed:
+      - "{prefix} &cNo tienes permiso para ningun efecto de pocion."
+      - "[sound] entity.villager.no 0.9"
+    hold:
+      - "{prefix} &cSostén una pocion, pocion arrojadiza, persistente o flecha con efecto en tu mano principal."
+      - "[sound] block.note_block.bass 0.85"
+    cleared:
+      - "{prefix} &aSe borraron todos los efectos personalizados de la pocion."
+      - "[sound] block.brewing_stand.brew 1.0"
+    no-effects:
+      - "{prefix} &cEsa pocion no tiene efectos personalizados para aplicar."
+      - "[sound] block.note_block.bass 0.85"
+    applied:
+      - "{prefix} &aSe aplicaron &f{count} &aefecto(s) personalizado(s) de la pocion."
+      - "[sound] entity.generic.drink 1.1"
+    updated:
+      - "{prefix} &aPocion actualizada: &f{summary}&a."
+      - "[sound] block.brewing_stand.brew 1.2"
+    invalid:
+      - "{prefix} &cIndica effect:<nombre>, power:<nivel> (o amplifier:<n>) y duration:<segundos>."
+      - "[sound] block.note_block.bass 0.85"
+    invalid-meta:
+      - "{prefix} &cOpcion de pocion invalida &f{value}&c."
+      - "[sound] block.note_block.bass 0.85"
+    no-effect-perm:
+      - "{prefix} &cNo tienes permiso para el efecto &f{effect}&c."
+      - "[sound] entity.villager.no 0.9"
+    no-multiple:
+      - "{prefix} &cNo tienes permiso para anadir multiples efectos a una pocion."
+      - "[sound] entity.villager.no 0.9"
+  firework:
+    hold:
+      - "{prefix} &cSostén un cohete de fuegos artificiales en tu mano principal."
+      - "[sound] block.note_block.bass 0.85"
+    cleared:
+      - "{prefix} &aSe borraron todos los efectos del cohete."
+      - "[sound] block.note_block.pling 1.1"
+    power-set:
+      - "{prefix} &aPotencia del cohete puesta en &f{power}&a."
+      - "[sound] block.note_block.pling 1.2"
+    invalid-power:
+      - "{prefix} &cLa potencia del cohete debe ser un entero entre &f{min} &cy &f{max}&c."
+      - "[sound] block.note_block.bass 0.85"
+    fired:
+      - "{prefix} &aLanzado(s) &f{count} &acohete(s)."
+    fire-limit:
+      - "{prefix} &eCantidad limitada al maximo de &f{limit}&e."
+    added:
+      - "{prefix} &aSe anadio(eron) &f{count} &aefecto(s) al cohete (&f{total} &aen total)."
+      - "[sound] entity.firework_rocket.twinkle 1.1"
+    invalid-format:
+      - "{prefix} &cValor de cohete invalido &f{value} &cpara &f{key}&c."
+      - "[sound] block.note_block.bass 0.85"
+    color-required:
+      - "{prefix} &cUn efecto de cohete necesita al menos un color (ej. &fcolor:red,blue&c)."
+      - "[sound] block.note_block.bass 0.85"
+    no-multiple:
+      - "{prefix} &cNo tienes permiso para anadir multiples efectos a un cohete."
+      - "[sound] entity.villager.no 0.9"
+    too-many:
+      - "{prefix} &cUn cohete puede tener como maximo &f{max} &cefectos."
       - "[sound] block.note_block.bass 0.85"
   smite:
     - "{prefix} &eGolpeaste a &f{player} &econ un rayo."

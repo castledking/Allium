@@ -131,6 +131,10 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         if(handler instanceof codes.castled.allium.command.worth.SetWorthCommand setWorth)return setWorth.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.tools.VoucherCommand voucher)return voucher.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.RecipeCommand recipe)return recipe.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.essentials.PotionCommand potion)return potion.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.essentials.FireworkCommand firework)return firework.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.essentials.PlayerTimeCommand ptime)return ptime.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.essentials.PlayerWeatherCommand pweather)return pweather.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.moderation.ReportCommand report)return report.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.explosion.FireballCommand fireball)return fireball.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.explosion.NukeCommand nuke)return nuke.complete(sender,args);

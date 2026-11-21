@@ -796,6 +796,41 @@ moderation:
     list-empty:
       - "{prefix} &7No moderation records found."
       - "[sound] block.note_block.hat 0.95"
+    jail-in-use:
+      - "{prefix} &cJail &f{jail} &ccannot be deleted while players are jailed there."
+      - "[sound] block.note_block.bass 0.8"
+    jail-set:
+      - "{prefix} &aJail &f{jail} &aset."
+      - "[sound] block.enchantment_table.use 1.25"
+    jail-deleted:
+      - "{prefix} &aJail &f{jail} &adeleted."
+      - "[sound] item.book.page_turn 0.9"
+    already-jailed:
+      - "{prefix} &c{player} is already jailed in &f{jail}&c."
+      - "[sound] block.note_block.bass 0.85"
+    jail-released:
+      - "{prefix} &aYour jail sentence has ended and you have been released."
+      - "[sound] entity.player.levelup 1.2"
+    jails-list:
+      - "{prefix} &fJails &7({count}): &e{jails}"
+      - "[sound] item.book.page_turn 1.0"
+    jails-empty:
+      - "{prefix} &7No jails are defined."
+      - "[sound] block.note_block.hat 0.95"
+    jailed-players-header:
+      - "{prefix} &fJailed players &7({count}):"
+      - "[sound] item.book.page_turn 1.0"
+    jailed-players-entry:
+      - "&7- &f{player} &7in &e{jail} &7({remaining})"
+    jailed-players-empty:
+      - "{prefix} &7No players are currently jailed."
+      - "[sound] block.note_block.hat 0.95"
+    kickall-success:
+      - "{prefix} &aKicked &f{count} &aplayer(s)."
+      - "[sound] block.note_block.pling 1.2"
+    kickall-none:
+      - "{prefix} &7No players were kicked."
+      - "[sound] block.note_block.hat 0.95"
   inspect:
     self:
       - "{prefix} &cYou cannot use /invsee on yourself."
@@ -1166,6 +1201,78 @@ utility:
   weather-set:
     - "{prefix} &aWeather set to &f{weather} &ain &f{world}&a."
     - "[sound] block.note_block.chime 1.05"
+  ptime:
+    set-self:
+      - "{prefix} &aYour time has been set to &f{time}&a."
+      - "[sound] block.note_block.bell 1.2"
+    set-fixed-self:
+      - "{prefix} &aYour time has been fixed at &f{time}&a."
+      - "[sound] block.note_block.bell 1.2"
+    set-other:
+      - "{prefix} &aSet &f{player}&a's time to &f{time}&a."
+      - "[sound] block.note_block.bell 1.2"
+    set-fixed-other:
+      - "{prefix} &aFixed &f{player}&a's time at &f{time}&a."
+      - "[sound] block.note_block.bell 1.2"
+    set-all:
+      - "{prefix} &aSet player time to &f{time} &afor &f{count} &aplayer(s)."
+      - "[sound] block.note_block.bell 1.2"
+    set-fixed-all:
+      - "{prefix} &aFixed player time at &f{time} &afor &f{count} &aplayer(s)."
+      - "[sound] block.note_block.bell 1.2"
+    reset-self:
+      - "{prefix} &aYour time has been reset to match the world."
+      - "[sound] block.note_block.chime 1.1"
+    reset-other:
+      - "{prefix} &aReset &f{player}&a's time to match the world."
+      - "[sound] block.note_block.chime 1.1"
+    reset-all:
+      - "{prefix} &aReset player time to match the world for &f{count} &aplayer(s)."
+      - "[sound] block.note_block.chime 1.1"
+    status-normal:
+      - "{prefix} &f{player}&7's time is synced with the world (&e{time}&7)."
+    status-fixed:
+      - "{prefix} &f{player}&7's time is fixed at &e{time}&7."
+    status-relative:
+      - "{prefix} &f{player}&7's time is set to &e{time} &7(moving)."
+    list-empty:
+      - "{prefix} &7No players are online."
+  pweather:
+    set-clear-self:
+      - "{prefix} &aYour weather has been set to &fclear&a."
+      - "[sound] block.note_block.chime 1.1"
+    set-storm-self:
+      - "{prefix} &aYour weather has been set to &fstorm&a."
+      - "[sound] block.note_block.chime 0.9"
+    set-clear-other:
+      - "{prefix} &aSet &f{player}&a's weather to &fclear&a."
+      - "[sound] block.note_block.chime 1.1"
+    set-storm-other:
+      - "{prefix} &aSet &f{player}&a's weather to &fstorm&a."
+      - "[sound] block.note_block.chime 0.9"
+    set-clear-all:
+      - "{prefix} &aSet player weather to &fclear &afor &f{count} &aplayer(s)."
+      - "[sound] block.note_block.chime 1.1"
+    set-storm-all:
+      - "{prefix} &aSet player weather to &fstorm &afor &f{count} &aplayer(s)."
+      - "[sound] block.note_block.chime 0.9"
+    reset-self:
+      - "{prefix} &aYour weather has been reset to match the world."
+      - "[sound] block.note_block.chime 1.05"
+    reset-other:
+      - "{prefix} &aReset &f{player}&a's weather to match the world."
+      - "[sound] block.note_block.chime 1.05"
+    reset-all:
+      - "{prefix} &aReset player weather to match the world for &f{count} &aplayer(s)."
+      - "[sound] block.note_block.chime 1.05"
+    status-normal:
+      - "{prefix} &f{player}&7's weather is synced with the world."
+    status-clear:
+      - "{prefix} &f{player}&7's weather is set to &eclear&7."
+    status-storm:
+      - "{prefix} &f{player}&7's weather is set to &estorm&7."
+    list-empty:
+      - "{prefix} &7No players are online."
   inventory-busy:
     - "{prefix} &c{player}'s inventory is busy with mail or kit recovery. Try again shortly."
     - "[sound] block.note_block.hat 0.85"
@@ -1235,6 +1342,71 @@ utility:
       - "[sound] block.note_block.bass 0.85"
     bad-number:
       - "{prefix} &f{item} &chas &f{count} &crecipe(s)."
+      - "[sound] block.note_block.bass 0.85"
+  potion:
+    list:
+      - "{prefix} &dAvailable potion effects: &f{effects}"
+    none-allowed:
+      - "{prefix} &cYou don't have permission for any potion effects."
+      - "[sound] entity.villager.no 0.9"
+    hold:
+      - "{prefix} &cHold a potion, splash potion, lingering potion or tipped arrow in your main hand."
+      - "[sound] block.note_block.bass 0.85"
+    cleared:
+      - "{prefix} &aCleared all custom effects from the held potion."
+      - "[sound] block.brewing_stand.brew 1.0"
+    no-effects:
+      - "{prefix} &cThat potion has no custom effects to apply."
+      - "[sound] block.note_block.bass 0.85"
+    applied:
+      - "{prefix} &aApplied &f{count} &acustom effect(s) from the held potion."
+      - "[sound] entity.generic.drink 1.1"
+    updated:
+      - "{prefix} &aUpdated held potion: &f{summary}&a."
+      - "[sound] block.brewing_stand.brew 1.2"
+    invalid:
+      - "{prefix} &cGive effect:<name>, power:<level> (or amplifier:<n>) and duration:<seconds>."
+      - "[sound] block.note_block.bass 0.85"
+    invalid-meta:
+      - "{prefix} &cInvalid potion option &f{value}&c."
+      - "[sound] block.note_block.bass 0.85"
+    no-effect-perm:
+      - "{prefix} &cYou don't have permission for the &f{effect} &ceffect."
+      - "[sound] entity.villager.no 0.9"
+    no-multiple:
+      - "{prefix} &cYou don't have permission to add multiple effects to a potion."
+      - "[sound] entity.villager.no 0.9"
+  firework:
+    hold:
+      - "{prefix} &cHold a firework rocket in your main hand."
+      - "[sound] block.note_block.bass 0.85"
+    cleared:
+      - "{prefix} &aCleared all effects from the held firework."
+      - "[sound] block.note_block.pling 1.1"
+    power-set:
+      - "{prefix} &aSet held firework power to &f{power}&a."
+      - "[sound] block.note_block.pling 1.2"
+    invalid-power:
+      - "{prefix} &cFirework power must be a whole number from &f{min} &cto &f{max}&c."
+      - "[sound] block.note_block.bass 0.85"
+    fired:
+      - "{prefix} &aLaunched &f{count} &afirework(s)."
+    fire-limit:
+      - "{prefix} &eClamped firework launch count to the limit of &f{limit}&e."
+    added:
+      - "{prefix} &aAdded &f{count} &aeffect(s) to the held firework (&f{total} &atotal)."
+      - "[sound] entity.firework_rocket.twinkle 1.1"
+    invalid-format:
+      - "{prefix} &cInvalid firework value &f{value} &cfor &f{key}&c."
+      - "[sound] block.note_block.bass 0.85"
+    color-required:
+      - "{prefix} &cA firework effect needs at least one colour (e.g. &fcolor:red,blue&c)."
+      - "[sound] block.note_block.bass 0.85"
+    no-multiple:
+      - "{prefix} &cYou don't have permission to add multiple effects to a firework."
+      - "[sound] entity.villager.no 0.9"
+    too-many:
+      - "{prefix} &cA firework can hold at most &f{max} &ceffects."
       - "[sound] block.note_block.bass 0.85"
   smite:
     - "{prefix} &eStruck &f{player} &ewith lightning."

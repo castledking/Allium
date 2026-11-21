@@ -53,6 +53,13 @@ public final class SkullProfiles implements AutoCloseable {
     }
 
     public static final long SLOW_FAULT_MILLIS = 2_000L;
+    /**
+     * How long a profile without a skin stays cached. On an online-mode server that usually means the
+     * session server refused the lookup (429 or "Service unavailable"), which Paper logs instead of
+     * failing, so it is retried after a minute rather than kept for the whole cache lifetime. A minute
+     * is also how often Mojang lets one profile be fetched.
+     */
+    public static final long NO_SKIN_RETRY_MILLIS = 60_000L;
 
     private final Function<String, Player> onlinePlayers;
     private final Function<String, PlayerProfile> nameOnly;
@@ -194,7 +201,8 @@ public final class SkullProfiles implements AutoCloseable {
                         return;
                     }
                     Resolved resolved = checked(name, profile);
-                    // Profiles without a skin are cached too, so a repeated give does not look up again.
+                    // Profiles without a skin are cached briefly, so a repeated give does not look up again
+                    // at once, while a refused lookup is retried soon (NO_SKIN_RETRY_MILLIS).
                     store(key, resolved);
                     resolvedCount.incrementAndGet();
                     result.complete(resolved);
@@ -259,7 +267,8 @@ public final class SkullProfiles implements AutoCloseable {
 
     private synchronized void store(String key, Resolved profile) {
         cache.put(key, profile);
-        expiry.put(key, new long[]{clock.getAsLong() + ttlMillis});
+        long life = profile.degraded() ? Math.min(ttlMillis, NO_SKIN_RETRY_MILLIS) : ttlMillis;
+        expiry.put(key, new long[]{clock.getAsLong() + life});
     }
 
     public int cachedCount() {

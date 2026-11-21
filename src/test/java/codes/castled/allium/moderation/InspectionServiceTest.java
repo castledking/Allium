@@ -399,7 +399,7 @@ class InspectionServiceTest {
                 "allium.invsee.edit", "allium.invsee.offline",
                 "allium.enderchest.edit", "allium.enderchest.offline")) {
             assertFalse(wildcard.contains(privileged), "Must NOT be inside allium.*: " + privileged);
-            assertEquals("false", pluginYml.getString("permissions/" + privileged + "/default"));
+            assertEquals("op", pluginYml.getString("permissions/" + privileged + "/default"));
         }
         assertEquals("op", pluginYml.getString("permissions/allium.invsee/default"));
         assertEquals("op", pluginYml.getString("permissions/allium.enderchest/default"));
@@ -454,8 +454,8 @@ class InspectionServiceTest {
         verify(messages, times(2)).send(noOfflinePermViewer, Messages.INSPECT_OFFLINE_REQUIRED, "{permission}", InspectionService.PERMISSION_INVSEE_OFFLINE);
         verify(noOfflinePermViewer, never()).openInventory(any(Inventory.class));
 
-        // Even WITH .offline + bypass, hidden vanished online target CANNOT open live or .dat -> INSPECT_OFFLINE_UNAVAILABLE (same as missing .dat)
-        Player fullViewer = createPlayer("Admin", InspectionService.PERMISSION_INVSEE, InspectionService.PERMISSION_INVSEE_OFFLINE, InspectionService.PERMISSION_BYPASS);
+        // With .offline (no bypass needed), hidden vanished online target CANNOT open live or .dat -> INSPECT_OFFLINE_UNAVAILABLE (same as missing .dat)
+        Player fullViewer = createPlayer("Admin", InspectionService.PERMISSION_INVSEE, InspectionService.PERMISSION_INVSEE_OFFLINE);
         service.dispatchInvsee(fullViewer, new String[]{"Ghost"});
         drainQueues();
         service.dispatchInvsee(fullViewer, new String[]{"UnknownPlayer"});
@@ -506,6 +506,60 @@ class InspectionServiceTest {
         InventoryDragEvent drag = new InventoryDragEvent(viewer.getOpenInventory(), null, item(Material.STONE, 1), false, Map.of(27, item(Material.STONE, 1)));
         service.onInventoryDrag(drag);
         assertTrue(drag.isCancelled());
+    }
+
+    @Test
+    void clicksInTheViewResendTheWindowOnceNextTickAndClosingResendsTheViewersInventory() {
+        Player viewer = createPlayer("GhostMod", InspectionService.PERMISSION_INVSEE);
+        Player target = createPlayer("Plain");
+        target.getInventory().setItem(0, item(Material.DIAMOND, 4));
+        service.dispatchInvsee(viewer, new String[]{"Plain"});
+        drainQueues();
+        Inventory gui = viewer.getOpenInventory().getTopInventory();
+
+        // The empty helmet cell holds an icon; a click on it is refused, and so is a top click.
+        service.onInventoryClick(click(viewer, gui, 36, InventoryAction.SWAP_WITH_CURSOR, ClickType.LEFT));
+        service.onInventoryClick(click(viewer, gui, 27, InventoryAction.PICKUP_ALL, ClickType.LEFT));
+        service.onInventoryDrag(new InventoryDragEvent(viewer.getOpenInventory(), null, item(Material.STONE, 1), false,
+                Map.of(46, item(Material.STONE, 1))));
+        verify(viewer, never()).updateInventory();
+        drainQueues();
+        verify(viewer, times(1)).updateInventory();
+
+        viewer.closeInventory();
+        drainQueues();
+        verify(viewer, times(2)).updateInventory();
+    }
+
+    @Test
+    void aBackButtonFromAnotherMenuSitsInTheLastLockedCellAndReturnsNextTick() {
+        Player viewer = createPlayer("CmMod", InspectionService.PERMISSION_INVSEE);
+        createPlayer("Shown");
+        int[] backs = {0};
+        service.dispatchInvsee(viewer, new String[]{"Shown"},
+                new InspectionService.BackButton("Return to the creative manager", () -> backs[0]++));
+        drainQueues();
+        Inventory gui = viewer.getOpenInventory().getTopInventory();
+        assertEquals(Material.ARROW, gui.getItem(44).getType());
+        InventoryClickEvent back = click(viewer, gui, 44, InventoryAction.PICKUP_ALL, ClickType.LEFT);
+        service.onInventoryClick(back);
+        assertTrue(back.isCancelled(), "the button is never picked up");
+        assertEquals(0, backs[0], "the other menu opens on the next tick, not inside the click");
+        drainQueues();
+        assertEquals(1, backs[0]);
+        InventoryDragEvent drag = new InventoryDragEvent(viewer.getOpenInventory(), null, item(Material.STONE, 1), false,
+                Map.of(44, item(Material.STONE, 1)));
+        service.onInventoryDrag(drag);
+        assertTrue(drag.isCancelled());
+
+        viewer.closeInventory();
+        service.dispatchInvsee(viewer, new String[]{"Shown"});
+        drainQueues();
+        Inventory plain = viewer.getOpenInventory().getTopInventory();
+        assertEquals(Material.LIGHT_GRAY_STAINED_GLASS_PANE, plain.getItem(44).getType(), "plain /invsee has no back button");
+        service.onInventoryClick(click(viewer, plain, 44, InventoryAction.PICKUP_ALL, ClickType.LEFT));
+        drainQueues();
+        assertEquals(1, backs[0]);
     }
 
     @Test
@@ -675,8 +729,7 @@ class InspectionServiceTest {
                 InspectionService.PERMISSION_ENDERCHEST,
                 InspectionService.PERMISSION_ENDERCHEST_OTHERS,
                 InspectionService.PERMISSION_ENDERCHEST_EDIT,
-                InspectionService.PERMISSION_ENDERCHEST_OFFLINE,
-                InspectionService.PERMISSION_BYPASS);
+                InspectionService.PERMISSION_ENDERCHEST_OFFLINE);
 
         new EnderchestCommand(plugin, service).execute(new BukkitCommandContext(
                 plugin, CoreCommandSpecs.ENDERCHEST, admin, "ec", new String[]{"Sleepy"}));

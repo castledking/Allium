@@ -20,6 +20,8 @@ public final class CoreItems {
     public static final String MANIFEST_RESOURCE = "pack/manifest.json";
     public static final String PACK_RESOURCE = "pack/allium-core-pack.zip";
     public static final String PACK_INFO_RESOURCE = "pack/allium-core-pack.zip.json";
+    public static final String STANDALONE_PACK_RESOURCE = "pack/allium-standalone-pack.zip";
+    public static final String STANDALONE_PACK_INFO_RESOURCE = "pack/allium-standalone-pack.zip.json";
 
     private CoreItems() {
     }

@@ -42,6 +42,23 @@ class EconomyEngineTest {
         var conflicting=new EconomyRequest(UUID.randomUUID(),first.origin(),first.key(),DEPOSIT,"console",a,null,new Money(11),first.settings());
         assertEquals("IDEMPOTENCY_CONFLICT",((Rejected)engine.execute(conflicting)).reason());assertEquals(10010,balance(a));
     }
+    @Test void outcomeSettlesAReplayRefusedAfterASettingsChange()throws Exception{
+        open(a);UUID sale=UUID.randomUUID(),operation=SaleReceipts.operation(sale);
+        var deposit=engine.request(operation,"SELL",sale.toString(),DEPOSIT,a.toString(),a,null,new Money(500));
+        assertInstanceOf(Committed.class,engine.execute(deposit));
+        assertTrue(((Committed)engine.execute(deposit)).replay());
+        engine.installSettings(new EconomySettings(new Money(10_000),new Money(0),new Money(Money.HARD-1),new Money(1),true,true));
+        var after=engine.request(operation,"SELL",sale.toString(),DEPOSIT,a.toString(),a,null,new Money(500));
+        assertEquals("IDEMPOTENCY_CONFLICT",((Rejected)engine.execute(after)).reason());
+        var outcome=engine.outcome(operation).orElseThrow();
+        assertTrue(outcome.committed());assertEquals("OK",outcome.code());assertEquals(a,outcome.source());assertEquals(500,outcome.amount().minor());
+        assertEquals(10_500,balance(a));
+        assertTrue(engine.outcome(UUID.randomUUID()).isEmpty());
+        assertInstanceOf(Committed.class,engine.execute(q(ADMIN_SET,a,null,Money.HARD-1)));
+        UUID capped=SaleReceipts.operation(UUID.randomUUID());
+        assertEquals("CAP",((Rejected)engine.execute(engine.request(capped,"SELL","k",DEPOSIT,a.toString(),a,null,new Money(1)))).reason());
+        var refused=engine.outcome(capped).orElseThrow();assertFalse(refused.committed());assertEquals("CAP",refused.code());
+    }
     @Test void reusedOperationIdAndDifferentExistingKeyCannotSelectArbitraryReceipt() {
         open(a);var first=q(DEPOSIT,a,null,1);var second=q(DEPOSIT,a,null,2);
         assertInstanceOf(Committed.class,engine.execute(first));assertInstanceOf(Committed.class,engine.execute(second));

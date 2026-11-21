@@ -35,7 +35,9 @@ public final class RestoreModule extends AbstractModule {
         }
         restore = new RestoreService(plugin, repository, plugin.getScheduler().boundedPool("Allium-Restore", 1, 1024));
         restore.enable();
-        menus = new RestoreMenus(plugin, restore);
+        menus = new RestoreMenus(plugin, restore, () -> plugin.getModuleManager() != null
+                && plugin.getModuleManager().getModule("items") instanceof ItemsModule items && items.isEnabled()
+                ? items.skulls() : null);
         menus.enable();
         plugin.getCommandManager().register(new RestoreCommand(plugin, menus));
         plugin.logger().info("Inventory snapshots and /restore enabled.");

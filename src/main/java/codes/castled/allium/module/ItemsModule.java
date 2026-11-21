@@ -134,6 +134,20 @@ public final class ItemsModule extends AbstractModule {
         return library;
     }
 
+    /**
+     * The item an item name ({@code diamond_pickaxe}, {@code minecraft:diamond_pickaxe}) or an Allium item
+     * alias ({@code dpick}) names, or null. A potion or spawner alias names its material.
+     */
+    @org.jetbrains.annotations.Nullable
+    public Material material(String name) {
+        Material material = Material.matchMaterial(name);
+        if (material == null && database != null) {
+            String alias = database.lookup(name);
+            if (alias != null) material = Material.matchMaterial(alias.split("[; ]", 2)[0]);
+        }
+        return material != null && material.isItem() && !material.isAir() ? material : null;
+    }
+
     public ItemDeliveryService delivery() {
         return delivery;
     }

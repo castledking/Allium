@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
+import org.bukkit.configuration.file.YamlConfiguration;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -306,6 +307,49 @@ class PowerToolBehaviorTest {
         assertTrue(behavior.deleteSavedTool("pulse_wand").saved());
         assertFalse(file.exists());
         assertTrue(behavior.registryTool("pulse_wand").isEmpty());
+    }
+
+    @Test
+    void anImportedVoucherKeepsItselfWhenNothingIsLeftToGrantAndIsUsedUpEvenByBypassHolders() throws Exception {
+        YamlConfiguration legacy = new YamlConfiguration();
+        legacy.loadFromString(codes.castled.allium.importer.VoucherImportTest.LEGACY);
+        codes.castled.allium.importer.VoucherImport.Item glow = codes.castled.allium.importer.VoucherImport.plan(legacy,
+                new codes.castled.allium.importer.VoucherImport.Context(Set.of("fly"), List.of("allium:"), true, name -> null,
+                        codes.castled.allium.importer.VoucherImportTest::validate)).items().get(1);
+        File tools = tempDir.resolve("tools").toFile();
+        assertTrue(tools.mkdirs() || tools.isDirectory());
+        java.nio.file.Files.writeString(tools.toPath().resolve("voucher_randomglow.yml"),
+                codes.castled.allium.importer.VoucherImport.yaml(glow.document()));
+        assertEquals(1, behavior.reloadPowerTools());
+
+        AtomicInteger grants = new AtomicInteger();
+        java.util.concurrent.atomic.AtomicBoolean everythingHeld = new java.util.concurrent.atomic.AtomicBoolean(true);
+        behavior.actions().register(PowerToolAction.TYPE_GRANT, (ctx, action) -> {
+            if (everythingHeld.get()) return false;
+            grants.incrementAndGet();
+            return true;
+        });
+        // An operator: holds the global bypass, which skips other tools' uses.
+        Player player = mockPlayer("Alex", Set.of(PowerToolBehavior.PERM_GLOBAL_USE, PowerToolBehavior.PERM_GLOBAL_BYPASS,
+                "allium.tool.voucher_randomglow.use"));
+        AtomicReference<ItemStack> mainHand = new AtomicReference<>(behavior.createToolItem("voucher_randomglow", 2).itemStack().orElseThrow());
+        mainHand.get().setAmount(2);
+        PlayerInventory inventory = player.getInventory();
+        doAnswer(i -> { mainHand.set(i.getArgument(0)); return null; }).when(inventory).setItemInMainHand(any());
+
+        // Every colour already held: the required grant does not run, so nothing else does and both stay.
+        assertTrue(behavior.handleTrigger(player, mainHand.get(), PowerToolBinding.HAND_MAIN, PowerToolTrigger.RIGHT, null, null, null, null));
+        assertEquals(0, grants.get());
+        assertEquals(2, mainHand.get().getAmount());
+        assertEquals(List.of(), sentMessageKeys);
+        verify(player, never()).sendMessage(anyString());
+
+        // A colour left: it is granted and one voucher is used up, bypass or not.
+        everythingHeld.set(false);
+        clock.addAndGet(1_000L);
+        assertTrue(behavior.handleTrigger(player, mainHand.get(), PowerToolBinding.HAND_MAIN, PowerToolTrigger.RIGHT, null, null, null, null));
+        assertEquals(1, grants.get());
+        assertEquals(1, mainHand.get().getAmount());
     }
 
     @Test

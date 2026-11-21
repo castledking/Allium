@@ -90,7 +90,8 @@ public final class PowerToolBehaviorType implements ToolBehaviorType<PowerToolPa
             boolean consumeOnEmpty = usesSection.bool("consume-on-empty", false);
             int rechargeSeconds = usesSection.integer("recharge-seconds", 0, 0, 86_400);
             boolean requireSingle = usesSection.bool("require-single-item", max > 0 && !consumeOnEmpty);
-            uses = new PowerToolUses(max, consumeOnEmpty, rechargeSeconds, requireSingle);
+            boolean bypassable = usesSection.bool("bypassable", true);
+            uses = new PowerToolUses(max, consumeOnEmpty, rechargeSeconds, requireSingle, bypassable);
         }
 
         long clickGuardMillis = PowerToolParameters.DEFAULT_CLICK_GUARD_MILLIS;
@@ -210,8 +211,15 @@ public final class PowerToolBehaviorType implements ToolBehaviorType<PowerToolPa
         if ((PowerToolAction.TYPE_COMMAND.equals(type) || PowerToolAction.TYPE_CONSOLE.equals(type)
                 || PowerToolAction.TYPE_MESSAGE.equals(type) || PowerToolAction.TYPE_ACTIONBAR.equals(type)
                 || PowerToolAction.TYPE_SOUND.equals(type) || PowerToolAction.TYPE_PARTICLE.equals(type)
-                || PowerToolAction.TYPE_POTION.equals(type)) && (value == null || value.isBlank())) {
+                || PowerToolAction.TYPE_POTION.equals(type) || PowerToolAction.TYPE_GRANT.equals(type))
+                && (value == null || value.isBlank())) {
             ar.error("value", "is required for action type '" + type + "'");
+        }
+        if (PowerToolAction.TYPE_GRANT.equals(type) && value != null && !value.isBlank()) {
+            String invalid = PowerToolGrants.firstInvalid(value);
+            if (invalid != null) {
+                ar.error("value", "'" + invalid + "' is not a permission node or weight:node");
+            }
         }
 
         long cooldownMillis = parseDurationField(ar, "cooldown", 0L);
@@ -226,6 +234,11 @@ public final class PowerToolBehaviorType implements ToolBehaviorType<PowerToolPa
         if (requirePermission != null && !requirePermission.isBlank()
                 && !PERM_NODE.matcher(requirePermission.trim().toLowerCase(Locale.ROOT)).matches()) {
             ar.error("require-permission", "'" + requirePermission + "' is not a valid permission node");
+        }
+
+        boolean required = ar.bool("required", false);
+        if (required && delayMillis > 0L) {
+            ar.error("required", "a required action cannot have a delay: whether it worked is only known afterwards");
         }
 
         Map<String, Object> params = new LinkedHashMap<>();
@@ -251,7 +264,8 @@ public final class PowerToolBehaviorType implements ToolBehaviorType<PowerToolPa
                 cooldownId,
                 delayTicks,
                 requirePermission == null ? null : requirePermission.trim().toLowerCase(Locale.ROOT),
-                params
+                params,
+                required
         );
     }
 

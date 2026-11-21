@@ -152,10 +152,10 @@ public final class PluginStart extends JavaPlugin {
         logger.info("Allium v" + getDescription().getVersion() + " enabled.");
     }
 
-    /** The bundled core pack's bytes, or {@code null} if the jar lacks it. */
+    /** Reads a bundled pack resource from the jar, or {@code null} if absent. */
     @org.jetbrains.annotations.Nullable
-    private byte[] bundledPack() {
-        try (java.io.InputStream in = getResource(CoreItems.PACK_RESOURCE)) {
+    private byte[] bundledPackResource(String resource) {
+        try (java.io.InputStream in = getResource(resource)) {
             return in == null ? null : in.readAllBytes();
         } catch (IOException e) {
             return null;
@@ -176,15 +176,28 @@ public final class PluginStart extends JavaPlugin {
         exportPack(settings, new codes.castled.allium.pack.delivery.PackExport.Logs(getLogger()::info, getLogger()::warning));
     }
 
-    /** The pack to deliver: {@code resource-pack.pack-file} if it is a valid core-pack build, else the bundled pack. */
+    /**
+     * The pack to deliver: {@code resource-pack.pack-file} if it is a valid core-pack build, else
+     * the bundled standalone pack (when {@code owner: standalone} and bundled in the jar), else the
+     * bundled core pack.
+     */
     @org.jetbrains.annotations.Nullable
     private codes.castled.allium.pack.delivery.PackSource packSource(ResourcePackSettings settings, java.util.function.Consumer<String> warn) {
-        byte[] bundled = bundledPack();
-        if (bundled == null) {
+        byte[] core = bundledPackResource(CoreItems.PACK_RESOURCE);
+        if (core == null) {
             warn.accept("The core resource pack is missing from the plugin jar; nothing was exported or sent.");
             return null;
         }
-        return codes.castled.allium.pack.delivery.PackSource.choose(getDataFolder().toPath(), settings.packFile(), bundled, warn);
+        if (settings.packFile() != null && !settings.packFile().isBlank()) {
+            return codes.castled.allium.pack.delivery.PackSource.choose(getDataFolder().toPath(), settings.packFile(), core, warn);
+        }
+        if (settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
+            byte[] standalone = bundledPackResource(CoreItems.STANDALONE_PACK_RESOURCE);
+            if (standalone != null) {
+                return codes.castled.allium.pack.delivery.PackSource.bundled(standalone);
+            }
+        }
+        return codes.castled.allium.pack.delivery.PackSource.bundled(core);
     }
 
     private codes.castled.allium.pack.delivery.PackSource exportPack(ResourcePackSettings settings,
@@ -214,7 +227,11 @@ public final class PluginStart extends JavaPlugin {
     private void reportCorePack() {
         ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
         settings.warnings().forEach(logger::warning);
-        try (java.io.InputStream in = getClassLoader().getResourceAsStream(CoreItems.PACK_INFO_RESOURCE)) {
+        String infoResource = settings.owner() == ResourcePackSettings.Owner.STANDALONE
+                && getClassLoader().getResource(CoreItems.STANDALONE_PACK_INFO_RESOURCE) != null
+                ? CoreItems.STANDALONE_PACK_INFO_RESOURCE
+                : CoreItems.PACK_INFO_RESOURCE;
+        try (java.io.InputStream in = getClassLoader().getResourceAsStream(infoResource)) {
             if (in == null) {
                 logger.warning("The core resource pack is missing from the plugin jar.");
                 return;
@@ -223,7 +240,9 @@ public final class PluginStart extends JavaPlugin {
                     new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
             String owner = switch (settings.owner()) {
                 case NONE -> "none, so Allium does not send or export it";
-                case STANDALONE -> "standalone, so Allium sends it from resource-pack.standalone.url";
+                case STANDALONE -> settings.selfHost().enabled()
+                        ? "standalone (self-hosted), so Allium serves and sends it directly"
+                        : "standalone, so Allium sends it from resource-pack.standalone.url";
                 case RPM_EXPORT -> "rpm-export, so ResourcePackManager merges and sends it";
             };
             logger.info("Core resource pack " + info.get("sha1") + " (" + info.get("bytes") + " bytes) is bundled; delivery owner " + owner + ".");
@@ -287,6 +306,12 @@ public final class PluginStart extends JavaPlugin {
             if(moduleManager.getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule essentials && essentials.isEnabled())essentials.reloadSettings();
             if(moduleManager.getModule("tools") instanceof codes.castled.allium.module.ToolsModule tools && tools.isEnabled())tools.reloadPowerTools();
             if(moduleManager.getModule("restore") instanceof codes.castled.allium.module.RestoreModule restoreModule && restoreModule.isEnabled())restoreModule.reloadSettings();
+            if(moduleManager.getModule("rtp") instanceof codes.castled.allium.module.RtpModule rtpModule && rtpModule.isEnabled()
+                    && !rtpModule.reloadSettings()) throw new IllegalArgumentException("invalid rtp.yml; previous random teleport settings retained");
+            if(moduleManager.getModule("worth") instanceof codes.castled.allium.module.WorthModule worthModule && worthModule.isEnabled()
+                    && !worthModule.reloadSettings()) throw new IllegalArgumentException("invalid worth.yml; previous prices retained");
+            if(moduleManager.getModule("explosions") instanceof codes.castled.allium.module.ExplosionsModule explosions && explosions.isEnabled()
+                    && !explosions.reloadSettings()) throw new IllegalArgumentException("invalid explosions.yml; previous explosion settings retained");
             ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
             settings.warnings().forEach(logger::warning);
             if (settings.owner() != startupPackOwner) {

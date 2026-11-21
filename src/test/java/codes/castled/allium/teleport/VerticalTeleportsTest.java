@@ -33,6 +33,11 @@ class VerticalTeleportsTest {
             }
 
             @Override
+            public boolean water(int y) {
+                return at(y) == 'W';
+            }
+
+            @Override
             public boolean space(int y) {
                 return at(y) == '.';
             }
@@ -47,6 +52,15 @@ class VerticalTeleportsTest {
         assertEquals(OptionalInt.of(2), VerticalTeleports.highest(c, 5, 0), "y=5 has only one free block above");
         assertEquals(OptionalInt.empty(), VerticalTeleports.highest(column("SWW"), 2, 0));
         assertEquals(OptionalInt.empty(), VerticalTeleports.highest(column("M.."), 2, 0));
+    }
+
+    @Test
+    void topUnderOceanLandsAtWaterSurfaceInsteadOfStayingInCave() {
+        // Cave floor at 0 (air 1..2), stone 3..4, flooded cave water 5..6, ocean floor stone 7..8, ocean water 9..11, sky 12..13
+        //                                  01234567890123
+        VerticalTeleports.Column ocean = column("S..SSWWSSWWW..");
+        assertEquals(OptionalInt.of(12), VerticalTeleports.highest(ocean, 11, 0),
+                "top must land on the ocean surface above y=11, not drop back to the cave floor at y=1");
     }
 
     @Test

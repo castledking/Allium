@@ -184,6 +184,31 @@ class TeleportServiceTest {
     }
 
     @Test
+    void anOutcomeIsReportedOnceForArrivalRefusalAndInterruptionAndAProviderSetsTheCooldown() throws Exception {
+        warmup();
+        enable();
+        List<Boolean> outcomes = new java.util.ArrayList<>();
+        Location far = new Location(world, 30, 64, 2);
+        assertTrue(service.teleport(mover, destination(), "rtp", outcomes::add));
+        assertTrue(outcomes.isEmpty(), "nothing is reported while warming up");
+        service.move(new org.bukkit.event.player.PlayerMoveEvent(mover, mover.getLocation(), far));
+        assertEquals(List.of(false), outcomes, "moving interrupts: not arrived");
+        drainWorker();
+
+        service.cooldownProvider("rtp", player -> 60_000L);
+        assertTrue(service.teleport(mover, destination(), "rtp", outcomes::add));
+        tickAfterWarmup();
+        assertEquals(List.of(false, true), outcomes, "arrived");
+        drainWorker();
+        assertFalse(service.teleport(mover, destination(), "rtp", outcomes::add), "the provider's 60 s cooldown applies");
+        assertEquals(List.of(false, true, false), outcomes, "a refused start reports once");
+        assertTrue(service.cooldownSeconds(mover, mover.getUniqueId(), "rtp") > 50);
+        granted.add("allium.teleport.cooldown.bypass.rtp");
+        assertEquals(0, service.cooldownSeconds(mover, mover.getUniqueId(), "rtp"), "the per-type bypass counts");
+        service.cooldownProvider("rtp", null);
+    }
+
+    @Test
     void perTypeNodesNameTheCommandAndItsGroup() {
         // allium.teleport.{cooldown.bypass,timer.bypass,timer.move}.<type>
         assertEquals(java.util.List.of("home", "homes"), TeleportService.typeNames("home"));
@@ -238,23 +263,22 @@ class TeleportServiceTest {
     }
 
     @Test
-    void staffTeleportBypassPermissionsDefaultToOpWhilePlayerTeleportsStayExplicit() throws Exception {
+    void teleportWarmupAndCooldownBypassDefaultToOpWhilePrivacyBypassesStayExplicit() throws Exception {
         try (var stream = getClass().getClassLoader().getResourceAsStream("plugin.yml")) {
             assertNotNull(stream, "plugin.yml must be on classpath");
             YamlConfiguration pluginYml = YamlConfiguration.loadConfiguration(
                     new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
-            for (String type : List.of("there", "tp", "tphere", "tppos", "tpoffline", "top", "bottom")) {
+            assertEquals("op", pluginYml.getString("permissions.allium.teleport.bypass.warmup.default"));
+            assertEquals("op", pluginYml.getString("permissions.allium.teleport.bypass.cooldown.default"));
+            for (String type : List.of("there", "tp", "tphere", "tppos", "tpoffline", "top", "bottom",
+                    "home", "warp", "tpa", "tpahere", "back", "spawn")) {
                 assertEquals("op", pluginYml.getString("permissions.allium.teleport.timer.bypass." + type + ".default"),
-                        "staff timer bypass default for " + type);
+                        "timer bypass default for " + type);
                 assertEquals("op", pluginYml.getString("permissions.allium.teleport.cooldown.bypass." + type + ".default"),
-                        "staff cooldown bypass default for " + type);
+                        "cooldown bypass default for " + type);
             }
-            assertEquals("false", String.valueOf(pluginYml.get("permissions.allium.teleport.bypass.warmup.default")));
-            assertEquals("false", String.valueOf(pluginYml.get("permissions.allium.teleport.bypass.cooldown.default")));
-            for (String type : List.of("home", "warp", "tpa", "tpahere", "back", "spawn")) {
-                assertEquals("false", String.valueOf(pluginYml.get("permissions.allium.teleport.timer.bypass." + type + ".default")),
-                        "player timer bypass default for " + type);
-            }
+            assertEquals("false", String.valueOf(pluginYml.get("permissions.allium.teleport.bypass.toggle.default")));
+            assertEquals("false", String.valueOf(pluginYml.get("permissions.allium.teleport.bypass.ignore.default")));
         }
     }
 

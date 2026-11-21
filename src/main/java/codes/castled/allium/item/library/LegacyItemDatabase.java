@@ -13,6 +13,14 @@ import java.util.zip.GZIPInputStream;
 /** Immutable aliases and numeric defaults; upgrades preserve operator customizations. */
 public final class LegacyItemDatabase {
     private static final int MAX_BYTES = 8 * 1024 * 1024;
+    /**
+     * Items Bukkit renamed between the versions Allium supports (1.20.3, 1.20.5, and after 1.21.8). An alias naming
+     * either name resolves to the one this server has.
+     */
+    private static final Map<String, String> RENAMED = Map.of(
+            "GRASS", "SHORT_GRASS", "SHORT_GRASS", "GRASS",
+            "SCUTE", "TURTLE_SCUTE", "TURTLE_SCUTE", "SCUTE",
+            "CHAIN", "IRON_CHAIN", "IRON_CHAIN", "CHAIN");
     private final Map<String, String> values;
     private final NavigableSet<String> completions;
 
@@ -20,7 +28,8 @@ public final class LegacyItemDatabase {
         values = Map.copyOf(aliases);
         var names = new TreeSet<String>();
         for (var entry : aliases.entrySet()) {
-            Material material = Material.matchMaterial(entry.getValue().split(";", 2)[0]);
+            // "POTION potion:long_swiftness" and "SPAWNER;ZOMBIE" both start with the material.
+            Material material = Material.matchMaterial(adapt(entry.getValue()).split("[; ]", 2)[0]);
             if (material != null && material.isItem() && !material.isAir() && !numeric(entry.getKey())) {
                 names.add(entry.getKey());
             }
@@ -45,6 +54,7 @@ public final class LegacyItemDatabase {
             replace(file, bundled);
         }
         if (Files.size(file) > MAX_BYTES) throw new IOException("Item database too large");
+        byte[] asRead = Files.readAllBytes(file);
         var yaml = new YamlConfiguration();
         yaml.load(file.toFile());
         var defaults = new YamlConfiguration();
@@ -59,6 +69,19 @@ public final class LegacyItemDatabase {
             if (!Files.exists(backup)) Files.copy(file, backup, StandardCopyOption.COPY_ATTRIBUTES);
             replace(file, yaml.saveToString());
             plugin.getLogger().info("Updated Essentials legacy item IDs; custom mappings retained, original saved as " + backup.getFileName());
+        }
+        var earlier = new YamlConfiguration();
+        try (var resource = plugin.getResource("itemdb-previous-aliases.yml")) {
+            if (resource != null) earlier.loadFromString(new String(bounded(resource), StandardCharsets.UTF_8));
+        }
+        int upgraded = upgradeAliasDefaults(yaml, defaults, earlier);
+        if (upgraded > 0) {
+            Path backup = file.resolveSibling("itemdb.yml.before-alias-sync");
+            // The file as it was at startup, before any upgrade above rewrote it.
+            if (!Files.exists(backup)) Files.write(backup, asRead);
+            replace(file, yaml.saveToString());
+            plugin.getLogger().info("Updated " + upgraded + " item aliases to the bundled values (synced with EssentialsX); "
+                    + "your own aliases and changes were kept, the previous file saved as " + backup.getFileName());
         }
         // Aliases added to Allium later reach an existing itemdb.yml; the server's own file wins where both name one.
         var aliases = new HashMap<String, String>();
@@ -85,6 +108,33 @@ public final class LegacyItemDatabase {
             if (!yaml.contains("legacy-ids." + entry.getKey())) {
                 yaml.set("legacy-ids." + entry.getKey(), entry.getValue());
                 changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /**
+     * Gives the new bundled value to each alias whose value in the server's file is one of its earlier
+     * bundled values (an unedited copy). An admin's own value, or an alias the bundle no longer has,
+     * is left alone. Returns how many changed.
+     */
+    static int upgradeAliasDefaults(YamlConfiguration yaml, YamlConfiguration defaults, YamlConfiguration earlier)
+            throws IOException {
+        var aliases = yaml.getConfigurationSection("aliases");
+        var history = earlier.getConfigurationSection("aliases");
+        if (aliases == null || history == null) return 0;
+        Map<String, String> bundled = section(defaults, "aliases");
+        // Keys keep the server file's own spelling; history and bundle keys are lower case.
+        int changed = 0;
+        for (String key : aliases.getKeys(false)) {
+            String alias = key.toLowerCase(Locale.ROOT);
+            Object current = aliases.get(key);
+            String now = bundled.get(alias);
+            if (!(current instanceof String value) || now == null || now.equals(value)) continue;
+            List<String> before = history.getStringList(alias);
+            if (before.stream().anyMatch(old -> old.equalsIgnoreCase(value))) {
+                aliases.set(key, now);
+                changed++;
             }
         }
         return changed;
@@ -130,9 +180,19 @@ public final class LegacyItemDatabase {
         if (value == null && numeric(id)) {
             value = id.contains(":") && id.endsWith(":0") ? values.get(id.substring(0, id.length() - 2)) : values.get(id + ":0");
         }
-        // Bukkit renamed the grass item in 1.20.3; the numeric identity is unchanged.
-        if (numeric(id) && "GRASS".equals(value) && Material.matchMaterial("GRASS") == null
-                && Material.matchMaterial("SHORT_GRASS") != null) return "SHORT_GRASS";
+        return adapt(value);
+    }
+
+    /** {@code value} with a renamed item's material swapped for the name this server knows. */
+    static String adapt(String value) {
+        if (value == null) return null;
+        int end = 0;
+        while (end < value.length() && value.charAt(end) != ';' && value.charAt(end) != ' ') end++;
+        String head = value.substring(0, end);
+        String other = RENAMED.get(head.toUpperCase(Locale.ROOT));
+        if (other != null && Material.matchMaterial(head) == null && Material.matchMaterial(other) != null) {
+            return other + value.substring(end);
+        }
         return value;
     }
 

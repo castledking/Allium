@@ -118,6 +118,9 @@ public final class AlliumPlaceholders {
         if (key.startsWith("baltop_") && !key.startsWith("baltop_rank")) {
             return baltop(key);
         }
+        if (key.startsWith("worth_")) {
+            return worth(key.substring("worth_".length()));
+        }
         if (!PLAYER_KEYS.contains(key) && !extra.containsKey(key)) {
             return null;
         }
@@ -252,6 +255,25 @@ public final class AlliumPlaceholders {
 
     /** {@code baltop_player_<n>}, {@code baltop_player_stripped_<n>}, {@code baltop_balance[_commas|_fixed|_formatted|_display]_<n>}. */
     @Nullable
+    /**
+     * {@code worth_<item>}: one item's price from {@code worth.yml} in two decimals ({@code 200.00});
+     * {@code worth_display_<item>} as {@code /worth} shows it. Empty when it does not sell. Any thread:
+     * prices are an immutable snapshot.
+     */
+    String worth(String item) {
+        boolean display = item.startsWith("display_");
+        if (display) item = item.substring("display_".length());
+        if (!(plugin.getModuleManager().getModule("worth") instanceof codes.castled.allium.module.WorthModule module)
+                || !module.isEnabled() || module.worth() == null || item.isEmpty()) {
+            return "";
+        }
+        var worth = module.worth();
+        org.bukkit.Material material = worth.material(item);
+        if (material == null) return "";
+        return worth.price(material).map(price -> display
+                ? worth.format(codes.castled.allium.economy.Money.exact(price)) : price.toPlainString()).orElse("");
+    }
+
     String baltop(String key) {
         String[] parts = key.split("_");
         if (parts.length < 3) {

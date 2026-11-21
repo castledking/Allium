@@ -1,0 +1,66 @@
+# Explosion regeneration and the explosive commands: /antioch (/grenade, /tnt), /fireball
+# (/fireentity, /fireskull), /beezooka (/beecannon), /kittycannon, /nuke and /explode.
+#
+# An explosion that regenerates breaks its blocks with no drops: what containers held stays inside
+# them, and the torches, signs, plants and doors resting on the blocks (and the sand and gravel
+# above them) go with them instead of popping off or falling. After delay-seconds the blocks come
+# back, the lowest first and the attached ones last. Until then nothing can be placed, poured,
+# flow or spread into the hole, and its chunks stay loaded. Stopping the server puts everything
+# back at once; after a crash the next start finishes the job from plugins/Allium/regeneration/.
+regeneration:
+  # Which explosions put their blocks back. Those that are off break blocks as usual.
+  sources:
+    creeper: true
+    # Large fireballs: ghasts' (and other plugins'). /fireball's are under commands below.
+    ghast-fireball: true
+    # The wither and its skulls.
+    wither: false
+    # TNT and TNT minecarts lit by players, fire or redstone.
+    tnt: false
+    end-crystal: false
+    # Beds and respawn anchors used in the wrong dimension, and explosions with no entity.
+    block: false
+    # Anything else, such as explosions made by other plugins.
+    other: false
+  # Explosions made by Allium's commands. /nuke never breaks blocks, and /beezooka and /kittycannon
+  # make harmless explosions.
+  commands:
+    antioch: true
+    fireball: true
+    explode: true
+  # Seconds after an explosion before its blocks start coming back.
+  delay-seconds: 5
+  # Blocks put back per second, per explosion.
+  blocks-per-second: 40
+  # Hearts and a chime as blocks come back.
+  effects: true
+  # Worlds where nothing regenerates.
+  disabled-worlds: []
+  # Leave land claims (GriefPrevention) to the claim's own explosion rules: blocks inside a claim
+  # that an explosion may break there are not put back.
+  skip-claims: true
+  # Blocks that never come back; they break and drop as usual.
+  ignored-blocks: []
+  # An explosion breaking more blocks than this is not regenerated at all.
+  max-blocks: 10000
+  # Item frames and paintings survive explosions that regenerate, and /nuke.
+  protect-hanging: true
+
+antioch:
+  # Broadcast Essentials' lines with every /antioch: "...lobbest thou thy Holy Hand Grenade of
+  # Antioch towards thy foe, who being naughty in My sight, shall snuff it." (explosion.antioch in
+  # the language files).
+  announce: true
+
+fireball:
+  # The fastest speed /fireball accepts.
+  max-speed: 8
+
+# /explode drops a fireball of this power on a player; higher powers add lightning, titles and a
+# broadcast (from 76). The highest possible power is 127.
+explode:
+  min-power: 1
+  max-power: 10
+  default-power: 2
+  # Whether its fireball sets fires.
+  incendiary: true

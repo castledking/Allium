@@ -140,5 +140,42 @@ class CoreItemsTest {
         YamlConfiguration bad = new YamlConfiguration();
         bad.loadFromString("owner: everyone\n");
         assertEquals(ResourcePackSettings.Owner.NONE, ResourcePackSettings.parse(bad).owner());
+
+        assertFalse(settings.selfHost().enabled(), "self-host is disabled by default");
+        assertEquals("0.0.0.0", settings.selfHost().bindHost());
+        assertEquals(8080, settings.selfHost().port());
+
+        YamlConfiguration selfHosted = new YamlConfiguration();
+        selfHosted.loadFromString("""
+                owner: standalone
+                standalone:
+                  self-host:
+                    enabled: true
+                    bind-host: 127.0.0.1
+                    port: 9091
+                    public-host: play.example.com
+                """);
+        ResourcePackSettings sh = ResourcePackSettings.parse(selfHosted);
+        assertEquals(ResourcePackSettings.Owner.STANDALONE, sh.owner());
+        assertTrue(sh.sendsUrl(), "self-host satisfies standalone without external url");
+        assertTrue(sh.selfHost().enabled());
+        assertEquals("127.0.0.1", sh.selfHost().bindHost());
+        assertEquals(9091, sh.selfHost().port());
+        assertEquals("play.example.com", sh.selfHost().publicHost());
+        assertEquals(List.of(), sh.warnings());
+
+        YamlConfiguration badSelfHost = new YamlConfiguration();
+        badSelfHost.loadFromString("""
+                owner: standalone
+                standalone:
+                  self-host:
+                    enabled: true
+                    port: 99999
+                    public-url: ftp://bad.example/pack.zip
+                """);
+        ResourcePackSettings bsh = ResourcePackSettings.parse(badSelfHost);
+        assertEquals(8080, bsh.selfHost().port());
+        assertEquals("", bsh.selfHost().publicUrl());
+        assertEquals(2, bsh.warnings().size());
     }
 }

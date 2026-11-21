@@ -69,6 +69,27 @@ public final class ProtectionService {
         return ProtectionDecision.allow();
     }
 
+    /**
+     * Whether any hook reports a claim at {@code location}. A hook that throws counts as a claim, so
+     * a broken integration leaves the area to vanilla rules.
+     */
+    public boolean claimed(Location location) {
+        Objects.requireNonNull(location, "location");
+        for (ProtectionHook hook : hooks) {
+            try {
+                if (hook.claimed(location)) {
+                    return true;
+                }
+            } catch (RuntimeException | LinkageError e) {
+                if (warnedHooks.add(hook.name())) {
+                    warningLogger.accept("Protection hook " + hook.name() + " failed; treating every spot as claimed until it works: " + e);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
     public ProtectionDecision checkBlockBreak(Player player, Location location, String action, @Nullable Event cause) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(location, "location");

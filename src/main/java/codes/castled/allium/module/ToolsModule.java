@@ -81,6 +81,7 @@ public final class ToolsModule extends AbstractModule {
     private FellTreeBehavior fellTree;
     private PowerToolBehavior powerTools;
     private PowerToolListener powerToolListener;
+    private codes.castled.allium.tool.powertool.LegacyVoucherListener legacyVouchers;
     private ToolCarrierSuppressionListener carrierSuppression;
     private ToolDefinitionLoader.Loaded loaded;
     private Set<String> cachedCoreItems = Set.of();
@@ -126,9 +127,18 @@ public final class ToolsModule extends AbstractModule {
                 () -> new BukkitToolEnvironment(coreItems, plugin.getLanguageManager()::hasKey),
                 ptSettings
         );
+        powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_GRANT,
+                new codes.castled.allium.tool.powertool.PermissionGrantAction(
+                        () -> codes.castled.allium.creative.manage.CreativeAccess.current(plugin.getServer()),
+                        plugin.getScheduler(), plugin.getMessageManager()::send, plugin.logger()::info, plugin.logger()::warning,
+                        new Random(), this::singleUseCopy));
         powerToolListener = new PowerToolListener(powerTools);
         plugin.getServer().getPluginManager().registerEvents(powerToolListener, plugin);
+        legacyVouchers = new codes.castled.allium.tool.powertool.LegacyVoucherListener(plugin, powerTools, items,
+                plugin.getMessageManager()::send, plugin.logger()::info, plugin.logger()::warning);
+        plugin.getServer().getPluginManager().registerEvents(legacyVouchers, plugin);
         plugin.getCommandManager().register(new PowerToolCommand(plugin, () -> powerTools, () -> this));
+        plugin.getCommandManager().register(new codes.castled.allium.command.tools.VoucherCommand(plugin, () -> powerTools, () -> this));
     }
 
     private void loadAndActivateTools(ToolDefinitionLoader loader, ItemService items, Set<String> coreItems) {
@@ -211,6 +221,28 @@ public final class ToolsModule extends AbstractModule {
 
     public PowerToolBehavior powerTools() {
         return powerTools;
+    }
+
+    /** A fresh copy of a single-use consumable powertool (a voucher), to give back; null for any other tool. */
+    @org.jetbrains.annotations.Nullable
+    private org.bukkit.inventory.ItemStack singleUseCopy(String toolId) {
+        PowerToolBehavior tools = powerTools;
+        if (tools == null) return null;
+        return tools.registryTool(toolId)
+                .filter(definition -> {
+                    var uses = definition.parameters(codes.castled.allium.tool.powertool.PowerToolParameters.class).uses();
+                    return uses.max() == 1 && uses.consumeOnEmpty();
+                })
+                .flatMap(definition -> tools.createToolItem(definition.localId(), 1).itemStack())
+                .orElse(null);
+    }
+
+    /** Errors the tool parser finds in a powertool document named {@code name}; empty when it would load. */
+    public List<String> validatePowerTool(String name, Map<String, Object> document) {
+        ToolDefinitionParser.Result result = ToolDefinitionParser.parse(ToolDefinitionLoader.DIRECTORY + "/" + name + ".yml", document,
+                Map.of(PowerToolBehaviorType.ID, new PowerToolBehaviorType()),
+                new BukkitToolEnvironment(cachedCoreItems, plugin.getLanguageManager()::hasKey));
+        return result.valid() ? List.of() : result.errors();
     }
 
     public List<String> enabledToolLocalIds() {
@@ -369,6 +401,10 @@ public final class ToolsModule extends AbstractModule {
         if (powerToolListener != null) {
             HandlerList.unregisterAll(powerToolListener);
             powerToolListener = null;
+        }
+        if (legacyVouchers != null) {
+            HandlerList.unregisterAll(legacyVouchers);
+            legacyVouchers = null;
         }
         if (powerTools != null) {
             powerTools.disable();

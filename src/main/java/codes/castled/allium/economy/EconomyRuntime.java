@@ -110,6 +110,8 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         if(result instanceof Committed done)log(request,done,null,null);
         return result;
     }
+    /** Records a committed operation started outside this runtime (such as /sell) in trade.log. */
+    public void logTrade(EconomyRequest request,Committed done,String actorName,String targetName){log(request,done,actorName,targetName);}
     private void log(EconomyRequest request,Committed done,String actorName,String targetName){
         LogSettings settings=logging;
         if(done.replay()||!(request.origin().equals("VAULT")?settings.vault():settings.enabled()))return;

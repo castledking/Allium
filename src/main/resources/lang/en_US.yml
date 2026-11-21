@@ -28,6 +28,21 @@ core:
     lang-failed:
       - "{prefix} &cThe lang import failed: &f{reason}"
       - "[sound] block.note_block.bass 0.75"
+    vouchers-no-source:
+      - "{prefix} &cNo legacy vouchers file at &f{file}&c."
+      - "[sound] block.note_block.bass 0.8"
+    vouchers-report:
+      - "{prefix} &7{mode}: &f{write} &7powertool(s) to write, &f{same} &7already imported, &f{kept} &7kept (another tool has the name), &f{blocked} &7blocked. Details are in the console."
+      - "[sound] item.book.page_turn 1.0"
+    vouchers-applied:
+      - "{prefix} &aWrote &f{write} &apowertool(s) to &ftools/ &aand loaded them; give one with &f/pt give <player> <tool>&a."
+      - "[sound] entity.player.levelup 1.35"
+    vouchers-nothing:
+      - "{prefix} &aNothing to import; every voucher already has its powertool."
+      - "[sound] block.note_block.hat 1.15"
+    vouchers-failed:
+      - "{prefix} &cThe voucher import failed: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
     legacy-started:
       - "{prefix} &7Reading the legacy Allium database for {mode}..."
       - "[sound] block.note_block.hat 1.15"
@@ -1473,6 +1488,24 @@ tool:
     selector-blocked:
       - "{prefix} &cTarget selectors (@a, @e, ...) are blocked in console powertool commands."
       - "[sound] entity.villager.no 0.9"
+    granted:
+      - "{prefix} &aYou received &6{permission}&a."
+      - "[sound] entity.player.levelup 1.2"
+    grant-nothing:
+      - "{prefix} &eYou already have everything this gives."
+      - "[sound] block.note_block.bass 0.85"
+    grant-unavailable:
+      - "{prefix} &cThis can't give permissions right now; tell staff."
+      - "[sound] block.note_block.bass 0.85"
+    grant-failed:
+      - "{prefix} &f{permission} &ccould not be saved; tell staff."
+      - "[sound] block.note_block.bass 0.85"
+    grant-refunded:
+      - "{prefix} &f{permission} &ccould not be saved, so you got the item back."
+      - "[sound] block.note_block.bass 0.85"
+    legacy-voucher:
+      - "{prefix} &eThis voucher is from before Allium's update; it works again once staff convert it."
+      - "[sound] block.note_block.bass 0.85"
     action-added:
       - "{prefix} &aAdded action #{index} on &f{trigger}&a: &7{action}"
       - "[sound] block.note_block.pling 1.2"
@@ -1550,8 +1583,6 @@ tool:
     reloaded:
       - "{prefix} &aReloaded &f{count} &atool definition(s)."
       - "[sound] entity.experience_orb.pickup 1.1"
-    help:
-      - "{prefix} &d/pt &fadd|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|enable|disable|get|give|list|toggle|reload\n&7Aliases: &f/tool&7, &f/tools &7(list). Use &f/pt help triggers&7, &f/pt help actions&7, or &f/pt help placeholders&7."
     help-triggers:
       - "{prefix} &dTriggers: &f{triggers}"
     help-actions:
@@ -1980,6 +2011,229 @@ creative:
   spectator-teleport-denied:
     - "{prefix} &cYou are not allowed to teleport from the spectator menu."
     - "[sound] entity.villager.no 0.9"
+  manage:
+    unavailable:
+      - "{prefix} &cChanging creative flags needs LuckPerms, or Vault with a permissions plugin."
+      - "[sound] block.note_block.bass 0.75"
+    unknown-flag:
+      - "{prefix} &cUnknown creative flag &f{flag}&c. Flags: &f{flags}"
+      - "[sound] block.note_block.bass 0.75"
+    unknown-group:
+      - "{prefix} &cNo permissions group named &f{group}&c."
+      - "[sound] block.note_block.bass 0.75"
+    added:
+      - "{prefix} &aGave &f{holder} &athe creative flag &f{flag}&a."
+      - "[sound] entity.experience_orb.pickup 1.2"
+    removed:
+      - "{prefix} &eRemoved the creative flag &f{flag} &efrom &f{holder}&e."
+      - "[sound] ui.button.click 1.25"
+    already:
+      - "{prefix} &f{holder} &ealready has &f{flag} &eset."
+      - "[sound] block.note_block.bass 0.75"
+    not-set:
+      - "{prefix} &f{holder} &ehas no &f{flag} &eflag of its own to remove."
+      - "[sound] block.note_block.bass 0.75"
+    list:
+      - "{prefix} &dCreative flags on &f{holder} &7({backend})&d: &f{flags}"
+    list-empty:
+      - "{prefix} &7No creative flags are set on &f{holder} &7({backend})."
+    check:
+      - "{prefix} &f{flag}&7: {state}"
+    failed:
+      - "{prefix} &cCould not change &f{holder}&c: {reason}"
+      - "[sound] block.note_block.bass 0.75"
+rtp:
+  searching:
+    - "{prefix} &7Looking for a safe spot in &f{world}&7..."
+    - "[sound] block.amethyst_block.chime 1.2"
+  not-found:
+    - "{prefix} &cNo safe spot was found after &f{attempts} &ctries. Try again."
+    - "[sound] block.note_block.bass 0.75"
+  busy:
+    - "{prefix} &cAlready looking for a random spot."
+    - "[sound] block.note_block.bass 0.75"
+  unknown-location:
+    - "{prefix} &cNo random teleport location or world named &f{location}&c."
+    - "[sound] block.note_block.bass 0.75"
+  disabled-world:
+    - "{prefix} &cRandom teleport is off in &f{world}&c."
+    - "[sound] block.note_block.bass 0.75"
+  sent-other:
+    - "{prefix} &aSending &f{player} &ato a random spot in &f{world}&a."
+  set:
+    - "{prefix} &aSet &f{key} &aof &f{location} &ato &f{value}&a."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  removed:
+    - "{prefix} &eRemoved the random teleport location &f{location}&e."
+    - "[sound] ui.button.click 1.25"
+  info:
+    - "{prefix} &d{location}&7: world &f{world}&7, centre &f{center}&7, range &f{min}&7-&f{max}&7, shape &f{shape}&7, height &f{height}"
+  locations:
+    - "{prefix} &dRandom teleport locations: &f{locations}"
+  invalid-value:
+    - "{prefix} &c{reason}"
+    - "[sound] block.note_block.bass 0.75"
+  cost-unavailable:
+    - "{prefix} &cRandom teleport costs money here, but the economy is unavailable."
+    - "[sound] block.note_block.bass 0.75"
+  insufficient-funds:
+    - "{prefix} &cA random teleport costs &f{price}&c; you cannot afford it."
+    - "[sound] block.note_block.bass 0.75"
+  paid:
+    - "{prefix} &aPaid &f{price} &afor the random teleport."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  unknown-biome:
+    - "{prefix} &cUnknown biome &f{biome}&c."
+    - "[sound] block.note_block.bass 0.75"
+  save-failed:
+    - "{prefix} &cCould not save rtp.yml: {reason}"
+    - "[sound] block.note_block.bass 0.75"
+worth:
+  each:
+    - "{prefix} &f{item} &7is worth &a{each} &7each."
+  amount:
+    - "{prefix} &f{amount} {item} &7sell for &a{total} &7({each} each)."
+  inventory:
+    - "{prefix} &7Your inventory sells for &a{total}&7: &f{items}"
+  blocks:
+    - "{prefix} &7Your blocks sell for &a{total}&7: &f{items}"
+  not-sellable:
+    - "{prefix} &f{item} &ccannot be sold."
+    - "[sound] block.note_block.bass 0.75"
+  worthless:
+    - "{prefix} &f{item} &cis worthless, so it is not sold."
+    - "[sound] block.note_block.bass 0.75"
+  unknown-item:
+    - "{prefix} &cUnknown item &f{item}&c."
+    - "[sound] block.note_block.bass 0.75"
+  invalid-amount:
+    - "{prefix} &cThe amount must be a whole number: &f10&c, &f-10 &c(all but ten) or &f2s &c(two stacks)."
+    - "[sound] block.note_block.bass 0.75"
+  set:
+    - "{prefix} &aSet the worth of &f{item} &ato &f{price} &aeach."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  removed:
+    - "{prefix} &f{item} &eno longer sells."
+    - "[sound] ui.button.click 1.25"
+  invalid-price:
+    - "{prefix} &cThe price must be a number such as &f2.50&c; a negative price stops the item selling."
+    - "[sound] block.note_block.bass 0.75"
+  save-failed:
+    - "{prefix} &cCould not save worth.yml: {reason}"
+    - "[sound] block.note_block.bass 0.75"
+sell:
+  named:
+    - "{prefix} &cRenamed items cannot be sold."
+    - "[sound] block.note_block.bass 0.75"
+  custom:
+    - "{prefix} &f{item} &cis a custom item and cannot be sold."
+    - "[sound] block.note_block.bass 0.75"
+  creative-item:
+    - "{prefix} &cItems taken in creative mode cannot be sold."
+    - "[sound] block.note_block.bass 0.75"
+  container:
+    - "{prefix} &cEmpty the &f{item} &cfirst; what it holds would be lost."
+    - "[sound] block.note_block.bass 0.75"
+  not-enough:
+    - "{prefix} &cYou do not have that many &f{item}&c; you have &f{available}&c."
+    - "[sound] block.note_block.bass 0.75"
+  none:
+    - "{prefix} &cYou have no &f{item} &cto sell."
+    - "[sound] block.note_block.bass 0.75"
+  must-stack:
+    - "{prefix} &f{item} &csells only in whole stacks of &f{stack}&c: &f2s &cis two stacks."
+    - "[sound] block.note_block.bass 0.75"
+  nothing:
+    - "{prefix} &cNothing there can be sold."
+    - "[sound] block.note_block.bass 0.75"
+  gamemode:
+    - "{prefix} &cYou cannot sell in creative or spectator mode."
+    - "[sound] block.note_block.bass 0.75"
+  unavailable:
+    - "{prefix} &cSelling is unavailable while the economy is not running."
+    - "[sound] block.note_block.bass 0.75"
+  confirm:
+    - "{prefix} &eSell &f{items} &efor &a{total}&e? Type &f/{command} &eagain within &f{seconds}s &eto sell."
+    - "[sound] block.amethyst_block.chime 1.2"
+  sold:
+    - "{prefix} &aSold &f{amount} {item} &afor &f{total} &7({each} each)&a."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  sold-bulk:
+    - "{prefix} &aSold &f{items} &afor &f{total}&a."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  changed:
+    - "{prefix} &eYour inventory changed, so nothing was sold. Try again."
+    - "[sound] block.note_block.bass 0.75"
+  too-many:
+    - "{prefix} &cThat is too much to sell at once; sell fewer items."
+    - "[sound] block.note_block.bass 0.75"
+  returned:
+    - "{prefix} &eThe sale was refused, so your items were given back."
+  pending:
+    - "{prefix} &eYour sale &7({operation}) &eis saved; you are paid when you next join."
+  recovered-paid:
+    - "{prefix} &aAn interrupted sale finished: you were paid &f{total}&a."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  recovered-returned:
+    - "{prefix} &eAn interrupted sale was refused; its items were given back."
+voucher:
+  not-found:
+    - "{prefix} &cNo voucher named &f{voucher}&c. See &f/voucher list&c."
+    - "[sound] block.note_block.bass 0.85"
+  given:
+    - "{prefix} &aGave &f{amount}x {voucher} &ato &f{player}&a."
+    - "[sound] entity.item.pickup 1.2"
+  received:
+    - "{prefix} &aYou received &f{amount}x {voucher}&a."
+    - "[sound] entity.item.pickup 1.2"
+  list-header:
+    - "{prefix} &6Vouchers &7({count})&6:"
+  list-entry:
+    - "&e- {voucher}&7: &f{name}"
+  list-empty:
+    - "{prefix} &7No vouchers yet: import pre-recode ones with &f/allium import vouchers&7, or save a powertool as &f/pt save voucher_<name>&7."
+  reloaded:
+    - "{prefix} &aReloaded the powertools; &f{count} &avoucher(s) loaded."
+    - "[sound] block.note_block.chime 1.35"
+
+explosion:
+  regenerating:
+    - "[actionbar] &eThat spot is being rebuilt after an explosion."
+  no-target:
+    - "{prefix} &cNo block in sight."
+  antioch:
+    - "&f...lobbest thou thy Holy Hand Grenade of Antioch towards thy foe,"
+    - "&fwho being naughty in My sight, shall snuff it."
+  fireball:
+    unknown-type:
+      - "{prefix} &cUnknown projectile &f{type}&c. Projectiles: &f{types}"
+    no-permission:
+      - "{prefix} &cYou don't have permission to throw &f{type}&c."
+    invalid-speed:
+      - "{prefix} &cSpeed must be a number from &f0 &cto &f{max}&c."
+  nuke:
+    incoming:
+      - "{prefix} &5May death rain upon them."
+    sent:
+      - "{prefix} &5Nuked &f{players}&5."
+  explode:
+    self:
+      - "{prefix} &aExploding with power &e{power}&a."
+    other:
+      - "{prefix} &aExploding &e{player} &awith power &e{power}&a."
+    invalid-power:
+      - "{prefix} &cPower must be a whole number from &f{min} &cto &f{max}&c."
+    title-boom:
+      - "&c&l*BOOM*"
+    title-mega:
+      - "&4&lMEGA EXPLOSION"
+      - "&c&lIncoming!!!"
+    broadcast:
+      - "{prefix} &4&l[!] &cA massive explosion has been triggered by &6{player}&c!"
+    title-cataclysm:
+      - "&4&l⚠ CATACLYSM ⚠"
+      - "&c&lTriggered by {player}"
+
 alts:
   detected:
     - "{prefix} &e{player} &cis an alt account &7(shares an IP with &f{accounts}&7); parent group &f{group}&7."

@@ -1,5 +1,5 @@
 # Default starter kit (plugins/Allium/kits/starter.yml).
-# Access requires the false-default permission node allium.kits.starter (or parent allium.kits.*).
+# Access requires allium.kits.starter or its parent allium.kits.* (operators hold the parent by default).
 # Paid kits (cost > '0.00') are denied until M3 economy reservations exist.
 name: starter
 enabled: true

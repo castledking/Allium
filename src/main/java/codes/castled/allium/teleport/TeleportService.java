@@ -44,6 +44,8 @@ public final class TeleportService implements Listener {
     private final RequestTracker requests=new RequestTracker();
     private final Map<UUID,Session> sessions=new HashMap<>();
     private final Map<UUID,Operation> operations=new HashMap<>();
+    /** Per-player cooldowns (milliseconds; negative keeps teleport.cooldowns) for a command, e.g. random teleport tiers. */
+    private final Map<String,java.util.function.ToLongFunction<Player>> cooldownProviders=new HashMap<>();
     private final Map<UUID,HistoryWrite> pendingWrites=new ConcurrentHashMap<>();
     private final Set<HistoryWrite> queuedWrites=ConcurrentHashMap.newKeySet();
     private static final class OfflineLookup {
@@ -72,7 +74,7 @@ public final class TeleportService implements Listener {
     private record Operation(Session session,CommandSender actor,String command,Supplier<Location> destination,
                              @Nullable Player anchor,@Nullable RequestTracker.Request request,boolean force,
                              Location origin,long due,TeleportSettings rules,BooleanSupplier policy,boolean mayMove,
-                             long[] lastWarmupSecond) {}
+                             long[] lastWarmupSecond,@Nullable java.util.function.Consumer<Boolean> outcome) {}
     private record HistoryWrite(UUID owner,Session session,SavedLocation origin,String command,long until,
                                 Map<String,Long> cooldowns,Runnable success) {}
 
@@ -110,6 +112,7 @@ public final class TeleportService implements Listener {
         closed=true;
         if(timer!=null)timer.cancel();
         HandlerList.unregisterAll(this);
+        for(Operation operation:List.copyOf(operations.values()))finish(operation,false);
         requests.expire(Long.MAX_VALUE);operations.clear();offlineLookups.clear();selectorConfirmations.clear();sessions.clear();
         // Retry records that exhausted their live attempts before draining the worker. Retries
         // belong to the worker, so shutdown never depends on another server tick.
@@ -252,10 +255,28 @@ public final class TeleportService implements Listener {
             catch(SQLException e){onServer(()->send(player,Messages.TELEPORT_STORAGE_FAILED));}
         },()->send(player,Messages.TELEPORT_STORAGE_FAILED));
     }
+    /**
+     * Server thread: seconds left on {@code command}'s cooldown for {@code mover}, 0 when none runs or
+     * {@code actor} bypasses it. Lets a slow search (random teleport) be refused before it starts.
+     */
+    public long cooldownSeconds(CommandSender actor,UUID mover,String command){
+        if(cooldownBypass(actor,command))return 0;
+        Session s=sessions.get(mover);if(s==null)return 0;
+        long until=s.cooldowns.getOrDefault(command,0L),now=System.currentTimeMillis();
+        return until<=now?0:(until-now+999)/1000;
+    }
+    /** The safety rules a teleport of {@code mover} by {@code actor} is checked against now. */
+    public TeleportSettings safetyRulesFor(Player mover,CommandSender actor){return safetyRules(mover,actor,settings);}
     public void forceLocation(CommandSender actor,Player mover,Location destination,String command){
-        if(!actor.hasPermission(permission(command))||!visible(actor,mover)){send(actor,Messages.NO_PERMISSION);return;}
+        forceLocation(actor,mover,destination,command,arrived->{});
+    }
+    /** As {@link #forceLocation(CommandSender,Player,Location,String)}, reporting once whether the player arrived. */
+    public void forceLocation(CommandSender actor,Player mover,Location destination,String command,java.util.function.Consumer<Boolean> outcome){
+        if(!actor.hasPermission(permission(command))||!visible(actor,mover)){send(actor,Messages.NO_PERMISSION);outcome.accept(false);return;}
         boolean bypassToggle=overridesToggle(actor,command);
-        Location snapshot=destination.clone();begin(mover,actor,command,()->snapshot.clone(),null,null,false,()->visible(actor,mover)&&(actor==mover||!(actor instanceof Player p)||allowed(p,mover,actor,true,false,bypassToggle)&&allowed(mover,p,actor,true,false,bypassToggle)));
+        Location snapshot=destination.clone();
+        boolean begun=begin(mover,actor,command,()->snapshot.clone(),null,null,false,()->visible(actor,mover)&&(actor==mover||!(actor instanceof Player p)||allowed(p,mover,actor,true,false,bypassToggle)&&allowed(mover,p,actor,true,false,bypassToggle)),outcome);
+        if(!begun)outcome.accept(false);
     }
     public void force(CommandSender actor,Player mover,Player target,String command) {
         boolean bypassToggle=overridesToggle(actor,command);
@@ -348,6 +369,22 @@ public final class TeleportService implements Listener {
         Location snapshot=destination.clone();
         return begin(mover,mover,command,()->snapshot.clone(),null,null,false);
     }
+    /**
+     * As {@link #teleport(Player,Location,String)}, and reports once whether the player arrived: true when
+     * moved, false when refused, interrupted (moving, damage, quitting) or cancelled. Paid teleports
+     * capture or release their charge on it.
+     */
+    public boolean teleport(Player mover,Location destination,String command,java.util.function.Consumer<Boolean> outcome) {
+        if(!command.matches("[a-z]+"))throw new IllegalArgumentException("canonical teleport command required");
+        Location snapshot=destination.clone();
+        boolean begun=begin(mover,mover,command,()->snapshot.clone(),null,null,false,()->true,Objects.requireNonNull(outcome));
+        if(!begun)outcome.accept(false);
+        return begun;
+    }
+    /** Sets (or with null, removes) the per-player cooldown for {@code command}, in milliseconds; negative keeps the configured one. */
+    public void cooldownProvider(String command,@Nullable java.util.function.ToLongFunction<Player> provider){
+        if(provider==null)cooldownProviders.remove(command);else cooldownProviders.put(command,provider);
+    }
     /** Homes/warps supply a server-thread policy and destination rechecked at physical commit. */
     public boolean teleport(Player mover,Supplier<Location> destination,String command,BooleanSupplier policy) {
         if(!command.matches("[a-z]+"))throw new IllegalArgumentException("canonical teleport command required");
@@ -359,6 +396,11 @@ public final class TeleportService implements Listener {
     }
     private boolean begin(Player mover,CommandSender actor,String command,Supplier<Location> destination,@Nullable Player anchor,
                           @Nullable RequestTracker.Request request,boolean force,BooleanSupplier policy) {
+        return begin(mover,actor,command,destination,anchor,request,force,policy,null);
+    }
+    private boolean begin(Player mover,CommandSender actor,String command,Supplier<Location> destination,@Nullable Player anchor,
+                          @Nullable RequestTracker.Request request,boolean force,BooleanSupplier policy,
+                          @Nullable java.util.function.Consumer<Boolean> outcome) {
         if(!actor.hasPermission(permission(command))){send(actor,Messages.NO_PERMISSION);return false;}
         if(!available(mover))return false;
         if(!policy.getAsBoolean()){send(actor,Messages.TELEPORT_INTERRUPTED,"{reason}","destination is no longer available");return false;}
@@ -381,7 +423,7 @@ public final class TeleportService implements Listener {
         long warmup=command.equals("tpall")||actor.hasPermission("allium.teleport.bypass.warmup")||typed(actor,"timer.bypass",command)?0:rules.warmupMillis();
         long initialSeconds=warmup<=0?0:Math.max(1L,(warmup+999L)/1000L);
         var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy,
-                typed(mover,"timer.move",command),new long[]{initialSeconds});
+                typed(mover,"timer.move",command),new long[]{initialSeconds},outcome);
         operations.put(mover.getUniqueId(),operation);
         if(warmup==0)complete(operation);
         else send(mover,Messages.TELEPORT_WARMUP,"{warmup}",Long.toString(initialSeconds),"{time}",Long.toString(initialSeconds));
@@ -422,13 +464,13 @@ public final class TeleportService implements Listener {
         }
         Location targetLoc=operation.destination().get();
         if(targetLoc!=null&&targetLoc.getWorld()!=null&&!canEnterWorld(mover,targetLoc.getWorld())){
-            operations.remove(id);offlineLookups.remove(id);
+            operations.remove(id);offlineLookups.remove(id);finish(operation,false);
             send(operation.actor(),Messages.WORLD_ACCESS_DENIED,"{world}",targetLoc.getWorld().getName());
             if(operation.actor()!=mover)send(mover,Messages.WORLD_ACCESS_DENIED,"{world}",targetLoc.getWorld().getName());
             return;
         }
         var destination=safety.resolve(targetLoc,safetyRules(mover,operation.actor(),operation.rules()));
-        if(destination.isEmpty()){operations.remove(id);offlineLookups.remove(id);send(operation.actor(),Messages.TELEPORT_UNSAFE);return;}
+        if(destination.isEmpty()){operations.remove(id);offlineLookups.remove(id);finish(operation,false);send(operation.actor(),Messages.TELEPORT_UNSAFE);return;}
         OfflineLookup offline=operation.command().equals("tpoffline")?offlineLookups.get(id):null;
         Location origin=mover.getLocation().clone();
         operations.remove(id);offlineLookups.remove(id);committing.add(id);
@@ -436,15 +478,19 @@ public final class TeleportService implements Listener {
         boolean success;
         try{success=mover.teleport(destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN);}
         finally{committing.remove(id);}
-        if(!success){send(operation.actor(),Messages.TELEPORT_INTERRUPTED,"{reason}","cancelled by another plugin");return;}
+        if(!success){finish(operation,false);send(operation.actor(),Messages.TELEPORT_INTERRUPTED,"{reason}","cancelled by another plugin");return;}
+        finish(operation,true);
         if(operation.force())plugin.logger().info("Teleport audit completed actor="+operation.actor().getName()+" mover="+id
                 +" target="+operation.anchor().getUniqueId()+" command="+operation.command()+" result=completed reason=bukkit-teleport-success world="+mover.getWorld().getUID());
         if(offline!=null)plugin.logger().info("Offline teleport audit actor="+mover.getUniqueId()+" target="+offline.target+" result=completed world="+mover.getWorld().getUID());
         Session session=operation.session();session.back=saved(origin);
-        long until=System.currentTimeMillis()+(cooldownBypass(operation.actor(),operation.command())?0:operation.rules().cooldown(operation.command()));
+        long configured=operation.rules().cooldown(operation.command());
+        var provider=cooldownProviders.get(operation.command());
+        if(provider!=null){long custom=provider.applyAsLong(mover);if(custom>=0)configured=custom;}
+        long until=System.currentTimeMillis()+(cooldownBypass(operation.actor(),operation.command())?0:configured);
         session.cooldowns.put(operation.command(),until);
         Location landed=mover.getLocation();
-        boolean position=operation.anchor()==null&&java.util.Set.of("tp","tpo","tppos","top","bottom").contains(operation.command());
+        boolean position=operation.anchor()==null&&java.util.Set.of("tp","tpo","tppos","top","bottom","rtp").contains(operation.command());
         saveHistory(session,session.back,operation.command(),until,0,()->{
             if(position){send(mover,Messages.TELEPORT_POSITION,"{x}",coordinate(landed.getX()),"{y}",coordinate(landed.getY()),"{z}",coordinate(landed.getZ()),"{world}",landed.getWorld()==null?"?":landed.getWorld().getName());return;}
             send(mover,switch(operation.command()){case "back"->Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;case "tpoffline"->Messages.TELEPORT_OFFLINE_SUCCESS;default->Messages.TELEPORT_SUCCESS;},"{target}",offline!=null?offline.name:operation.anchor()==null?operation.command():operation.anchor().getName());
@@ -501,9 +547,16 @@ public final class TeleportService implements Listener {
         }
         return true;
     }
+    /** Tells the operation's caller how it ended; called exactly once per operation that has an outcome. */
+    private void finish(Operation operation,boolean arrived){
+        if(operation.outcome()==null)return;
+        try{operation.outcome().accept(arrived);}
+        catch(RuntimeException failure){plugin.logger().warning("Teleport outcome handler failed for "+operation.command()+": "+failure.getMessage());}
+    }
     private void interrupt(Operation operation,String reason) {
         if(operations.remove(operation.session().player.getUniqueId(),operation)){
             offlineLookups.remove(operation.session().player.getUniqueId());
+            finish(operation,false);
             if(operation.lastWarmupSecond()[0]>0&&samePlayer(operation.session().player))plugin.getMessageManager().clearActionBarIfPresent(operation.session().player,Messages.TELEPORT_WARMUP);
             send(operation.session().player,Messages.TELEPORT_INTERRUPTED,"{reason}",reason);
         }

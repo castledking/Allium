@@ -843,7 +843,7 @@ public final class KitService implements Listener {
         var manager = plugin.getServer().getPluginManager();
         Permission wildcard = manager.getPermission(PERMISSION_WILDCARD);
         if (wildcard == null) {
-            wildcard = new Permission(PERMISSION_WILDCARD, PermissionDefault.FALSE);
+            wildcard = new Permission(PERMISSION_WILDCARD, PermissionDefault.OP);
             manager.addPermission(wildcard);
         }
         return wildcard;

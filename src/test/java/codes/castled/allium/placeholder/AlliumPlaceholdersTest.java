@@ -102,6 +102,27 @@ class AlliumPlaceholdersTest {
     }
 
     @Test
+    void worthEntriesAreItemPricesForAnyoneOnAnyThread() {
+        when(scheduler.isServerThread()).thenReturn(false);
+        codes.castled.allium.module.WorthModule module = mock(codes.castled.allium.module.WorthModule.class);
+        codes.castled.allium.worth.WorthService worth = mock(codes.castled.allium.worth.WorthService.class);
+        when(module.isEnabled()).thenReturn(true);
+        when(module.worth()).thenReturn(worth);
+        when(plugin.getModuleManager().getModule("worth")).thenAnswer(inv -> module);
+        when(worth.material("diamond")).thenReturn(org.bukkit.Material.DIAMOND);
+        when(worth.material("stick")).thenReturn(org.bukkit.Material.STICK);
+        when(worth.price(org.bukkit.Material.DIAMOND)).thenReturn(java.util.Optional.of(new BigDecimal("200.00")));
+        when(worth.price(org.bukkit.Material.STICK)).thenReturn(java.util.Optional.empty());
+        when(worth.format(any(codes.castled.allium.economy.Money.class))).thenReturn("$200");
+        assertEquals("200.00", placeholders.request(null, "worth_diamond"));
+        assertEquals("200.00", placeholders.request(steve, "WORTH_DIAMOND"));
+        assertEquals("$200", placeholders.request(null, "worth_display_diamond"));
+        assertEquals("", placeholders.request(null, "worth_stick"), "an item that does not sell");
+        assertEquals("", placeholders.request(null, "worth_notanitem"));
+        assertEquals("", placeholders.request(null, "worth_display_"));
+    }
+
+    @Test
     void baltopEntriesComeFromTheEconomySnapshotOnAnyThread() {
         when(scheduler.isServerThread()).thenReturn(false);
         assertEquals("&aAlex", placeholders.request(null, "baltop_player_1"));

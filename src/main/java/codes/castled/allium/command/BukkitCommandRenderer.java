@@ -123,7 +123,17 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         if(handler instanceof codes.castled.allium.command.essentials.BroadcastCommand broadcast)return broadcast.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.SpawnMobCommand spawnMob)return spawnMob.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.GlowCommand glowCommand)return glowCommand.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.teleport.RtpCommand rtpCommand)return rtpCommand.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.teleport.SetTprCommand setTpr)return setTpr.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.worth.SellCommand sellCommand)return sellCommand.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.worth.WorthCommand worthCommand)return worthCommand.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.worth.SetWorthCommand setWorth)return setWorth.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.tools.VoucherCommand voucher)return voucher.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.explosion.FireballCommand fireball)return fireball.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.explosion.NukeCommand nuke)return nuke.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.explosion.ExplodeCommand explode)return explode.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.tools.PowerToolCommand powerToolCommand)return powerToolCommand.complete(sender,alias,args);
+        if(handler instanceof codes.castled.allium.command.creative.CreativeManageCommand creativeManage)return creativeManage.complete(sender,args);
         boolean tpSelfPosition=(spec.canonicalName().equals("tp")||spec.canonicalName().equals("tpo"))&&args.length>=2&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[0]);
         boolean tpTargetPosition=(spec.canonicalName().equals("tp")||spec.canonicalName().equals("tpo"))&&args.length>=3&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[1]);
         if(tpSelfPosition||tpTargetPosition||spec.canonicalName().equals("tppos")){
@@ -134,6 +144,11 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             int index=args.length-1-offset;String prefix=args.length==0?"":args[args.length-1];
             if(index<5)return "~".startsWith(prefix)?List.of("~"):List.of();
             if(index==5)return plugin.getServer().getWorlds().stream().map(org.bukkit.World::getName).filter(n->codes.castled.allium.teleport.CoordinateArgs.startsWithIgnoreCase(n,prefix)).sorted().limit(50).toList();
+            return List.of();
+        }
+        if(spec.canonicalName().equals("allium")&&args.length>=2&&args[0].equalsIgnoreCase("creativemanager")){
+            if(plugin.getModuleManager().getModule("creative") instanceof codes.castled.allium.module.CreativeModule creative&&creative.isEnabled()&&creative.manageCommand()!=null)
+                return creative.manageCommand().complete(sender,java.util.Arrays.copyOfRange(args,1,args.length));
             return List.of();
         }
         if(spec.canonicalName().equals("allium")&&args.length>=2&&args[0].equalsIgnoreCase("hide")){

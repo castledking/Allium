@@ -395,9 +395,10 @@ public final class PowerToolBehavior {
                 || (tool.bypassPermission() != null && player.hasPermission(tool.bypassPermission()));
         String instanceUuid = items.instanceUuid(item).orElse(null);
 
-        // Uses / charges pre-check
+        // Uses / charges pre-check; uses that are not bypassable are spent even by bypass holders.
         PowerToolUses usesSpec = tool.parameters().uses();
-        boolean spendUse = usesSpec.isLimited() && binding.consumeUse() && !bypass;
+        boolean usesBypass = bypass && usesSpec.bypassable();
+        boolean spendUse = usesSpec.isLimited() && binding.consumeUse() && !usesBypass;
         int currentUses = -1;
         long now = clock.getAsLong();
         if (usesSpec.isLimited()) {
@@ -412,7 +413,7 @@ public final class PowerToolBehavior {
             if (state.settled()) {
                 items.updateState(item, state.toMap());
             }
-            if (!bypass && state.recharging(now)) {
+            if (!usesBypass && state.recharging(now)) {
                 notifier.send(player, tool.message(PowerToolBehaviorType.MSG_RECHARGING, Messages.POWERTOOL_RECHARGING),
                         "{time}", PowerToolDurations.formatMillis(state.rechargeAt() - now));
                 if (cancellable != null && binding.cancelInteraction()) {
@@ -420,7 +421,7 @@ public final class PowerToolBehavior {
                 }
                 return true;
             }
-            if (!bypass && state.uses() <= 0) {
+            if (!usesBypass && state.uses() <= 0) {
                 notifier.send(player, tool.message(PowerToolBehaviorType.MSG_NO_USES, Messages.POWERTOOL_NO_USES));
                 if (cancellable != null && binding.cancelInteraction()) {
                     cancellable.setCancelled(true);
@@ -452,11 +453,16 @@ public final class PowerToolBehavior {
                 player, tool.id(), instanceUuid, item, hand, trigger, block, targetEntity, causeEvent);
 
         boolean anyRan = false;
+        boolean stopped = false;
         long longestActionCooldown = 0L;
         List<PowerToolAction> actionList = binding.actions();
         for (int i = 0; i < actionList.size(); i++) {
             PowerToolAction action = actionList.get(i);
             if (action.hasPermission() && !player.hasPermission(action.requirePermission())) {
+                if (action.required()) {
+                    stopped = true;
+                    break;
+                }
                 continue;
             }
             String slotId = "a" + i;
@@ -466,12 +472,20 @@ public final class PowerToolBehavior {
                         action.cooldownScope(), action.cooldownId());
                 if (rem > 0L) {
                     longestActionCooldown = Math.max(longestActionCooldown, rem);
+                    if (action.required()) {
+                        stopped = true;
+                        break;
+                    }
                     continue;
                 }
             }
             PowerToolActionHandler handler = actionRegistry.get(action.type());
             if (handler == null) {
                 diagnostics.accept("PowerTool '" + tool.id() + "' references unregistered action type '" + action.type() + "'");
+                if (action.required()) {
+                    stopped = true;
+                    break;
+                }
                 continue;
             }
             if (action.hasDelay()) {
@@ -494,15 +508,19 @@ public final class PowerToolBehavior {
                                 action.cooldownScope(), action.cooldownId(), action.cooldownMillis());
                     }
                     anyRan = true;
+                } else if (action.required()) {
+                    stopped = true;
+                    break;
                 }
             }
         }
 
-        if (!anyRan && longestActionCooldown > 0L) {
+        if ((!anyRan || stopped) && longestActionCooldown > 0L) {
             sendCooldownFeedback(player, tool, binding, longestActionCooldown);
             return true;
         }
-        if (!anyRan) {
+        // A required action that did not run stops the binding: no cooldown starts and no use is spent.
+        if (!anyRan || stopped) {
             return true;
         }
 

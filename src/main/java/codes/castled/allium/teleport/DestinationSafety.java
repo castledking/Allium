@@ -86,7 +86,11 @@ public final class DestinationSafety {
         return !world.isChunkLoaded(cx, cz) && !world.isChunkGenerated(cx, cz);
     }
 
-    boolean safe(Location point, TeleportSettings rules) {
+    /**
+     * Whether a player could stand at {@code point}: false unless its footprint's chunks are already
+     * loaded, so it never loads terrain itself.
+     */
+    public boolean safe(Location point, TeleportSettings rules) {
         if (point == null || point.getWorld() == null || !withinWorld(point)) return false;
         World world = point.getWorld();
         int minX = floor(point.getX() - HALF_WIDTH);
@@ -117,7 +121,7 @@ public final class DestinationSafety {
                 }
                 Block floor = world.getBlockAt(x, floorY, z);
                 if (rules.lava() && danger(floor.getType())) return false;
-                if (sturdy(floor)) continue;
+                if (sturdy(floor) || floor.getType() == Material.WATER) continue;
                 if (rules.falls()) return false;
                 if (rules.voids() && !landingBelow(world, x, floorY, z, floor, rules)) return false;
             }
@@ -131,7 +135,7 @@ public final class DestinationSafety {
         for (int depth = 0; depth < LANDING_SCAN && floorY - depth >= world.getMinHeight(); depth++) {
             Block below = depth == 0 ? floor : world.getBlockAt(x, floorY - depth, z);
             if (rules.lava() && danger(below.getType())) return false;
-            if (sturdy(below)) return true;
+            if (sturdy(below) || below.getType() == Material.WATER) return true;
             if (!below.isPassable()) return false; // Non-sturdy collision is not a proven landing.
         }
         return false;

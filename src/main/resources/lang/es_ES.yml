@@ -28,6 +28,21 @@ core:
     lang-failed:
       - "{prefix} &cLa importacion del idioma fallo: &f{reason}"
       - "[sound] block.note_block.bass 0.75"
+    vouchers-no-source:
+      - "{prefix} &cNo hay archivo de vales antiguo en &f{file}&c."
+      - "[sound] block.note_block.bass 0.8"
+    vouchers-report:
+      - "{prefix} &7{mode}: &f{write} &7herramienta(s) por escribir, &f{same} &7ya importadas, &f{kept} &7conservadas (otra herramienta tiene el nombre), &f{blocked} &7bloqueadas. Detalles en la consola."
+      - "[sound] item.book.page_turn 1.0"
+    vouchers-applied:
+      - "{prefix} &aSe escribieron &f{write} &aherramienta(s) en &ftools/ &ay se cargaron; da una con &f/pt give <player> <tool>&a."
+      - "[sound] entity.player.levelup 1.35"
+    vouchers-nothing:
+      - "{prefix} &aNada que importar; cada vale ya tiene su herramienta."
+      - "[sound] block.note_block.hat 1.15"
+    vouchers-failed:
+      - "{prefix} &cLa importacion de vales fallo: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
     legacy-started:
       - "{prefix} &7Leyendo la base de datos antigua de Allium para {mode}..."
       - "[sound] block.note_block.hat 1.15"
@@ -1473,6 +1488,24 @@ tool:
     selector-blocked:
       - "{prefix} &cLos selectores (@a, @e, ...) estan bloqueados en comandos de consola."
       - "[sound] entity.villager.no 0.9"
+    granted:
+      - "{prefix} &aHas recibido &6{permission}&a."
+      - "[sound] entity.player.levelup 1.2"
+    grant-nothing:
+      - "{prefix} &eYa tienes todo lo que esto da."
+      - "[sound] block.note_block.bass 0.85"
+    grant-unavailable:
+      - "{prefix} &cEsto no puede dar permisos ahora mismo; avisa al staff."
+      - "[sound] block.note_block.bass 0.85"
+    grant-failed:
+      - "{prefix} &f{permission} &cno se pudo guardar; avisa al staff."
+      - "[sound] block.note_block.bass 0.85"
+    grant-refunded:
+      - "{prefix} &f{permission} &cno se pudo guardar, asi que se te devolvio el objeto."
+      - "[sound] block.note_block.bass 0.85"
+    legacy-voucher:
+      - "{prefix} &eEste vale es de antes de la actualizacion de Allium; volvera a funcionar cuando el staff lo convierta."
+      - "[sound] block.note_block.bass 0.85"
     action-added:
       - "{prefix} &aSe agrego la accion #{index} en &f{trigger}&a: &7{action}"
       - "[sound] block.note_block.pling 1.2"
@@ -1550,8 +1583,6 @@ tool:
     reloaded:
       - "{prefix} &aSe recargaron &f{count} &adefinicion(es) de herramientas."
       - "[sound] entity.experience_orb.pickup 1.1"
-    help:
-      - "{prefix} &d/pt &fadd|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|enable|disable|get|give|list|toggle|reload\n&7Alias: &f/tool&7, &f/tools &7(listar). Usa &f/pt help triggers&7, &f/pt help actions&7 o &f/pt help placeholders&7."
     help-triggers:
       - "{prefix} &dDisparadores: &f{triggers}"
     help-actions:
@@ -1980,6 +2011,229 @@ creative:
   spectator-teleport-denied:
     - "{prefix} &cNo puedes teletransportarte desde el menu de espectador."
     - "[sound] entity.villager.no 0.9"
+  manage:
+    unavailable:
+      - "{prefix} &cCambiar los permisos de creativo necesita LuckPerms, o Vault con un plugin de permisos."
+      - "[sound] block.note_block.bass 0.75"
+    unknown-flag:
+      - "{prefix} &cPermiso de creativo desconocido &f{flag}&c. Permisos: &f{flags}"
+      - "[sound] block.note_block.bass 0.75"
+    unknown-group:
+      - "{prefix} &cNo existe el grupo de permisos &f{group}&c."
+      - "[sound] block.note_block.bass 0.75"
+    added:
+      - "{prefix} &aSe dio a &f{holder} &ael permiso de creativo &f{flag}&a."
+      - "[sound] entity.experience_orb.pickup 1.2"
+    removed:
+      - "{prefix} &eSe quito el permiso de creativo &f{flag} &ede &f{holder}&e."
+      - "[sound] ui.button.click 1.25"
+    already:
+      - "{prefix} &f{holder} &eya tiene &f{flag} &eestablecido."
+      - "[sound] block.note_block.bass 0.75"
+    not-set:
+      - "{prefix} &f{holder} &eno tiene &f{flag} &epropio que quitar."
+      - "[sound] block.note_block.bass 0.75"
+    list:
+      - "{prefix} &dPermisos de creativo en &f{holder} &7({backend})&d: &f{flags}"
+    list-empty:
+      - "{prefix} &7No hay permisos de creativo en &f{holder} &7({backend})."
+    check:
+      - "{prefix} &f{flag}&7: {state}"
+    failed:
+      - "{prefix} &cNo se pudo cambiar &f{holder}&c: {reason}"
+      - "[sound] block.note_block.bass 0.75"
+rtp:
+  searching:
+    - "{prefix} &7Buscando un lugar seguro en &f{world}&7..."
+    - "[sound] block.amethyst_block.chime 1.2"
+  not-found:
+    - "{prefix} &cNo se encontro un lugar seguro tras &f{attempts} &cintentos. Intentalo de nuevo."
+    - "[sound] block.note_block.bass 0.75"
+  busy:
+    - "{prefix} &cYa se esta buscando un lugar aleatorio."
+    - "[sound] block.note_block.bass 0.75"
+  unknown-location:
+    - "{prefix} &cNo hay ubicacion de teletransporte aleatorio ni mundo llamado &f{location}&c."
+    - "[sound] block.note_block.bass 0.75"
+  disabled-world:
+    - "{prefix} &cEl teletransporte aleatorio esta desactivado en &f{world}&c."
+    - "[sound] block.note_block.bass 0.75"
+  sent-other:
+    - "{prefix} &aEnviando a &f{player} &aa un lugar aleatorio en &f{world}&a."
+  set:
+    - "{prefix} &aSe establecio &f{key} &ade &f{location} &aen &f{value}&a."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  removed:
+    - "{prefix} &eSe elimino la ubicacion de teletransporte aleatorio &f{location}&e."
+    - "[sound] ui.button.click 1.25"
+  info:
+    - "{prefix} &d{location}&7: mundo &f{world}&7, centro &f{center}&7, rango &f{min}&7-&f{max}&7, forma &f{shape}&7, altura &f{height}"
+  locations:
+    - "{prefix} &dUbicaciones de teletransporte aleatorio: &f{locations}"
+  invalid-value:
+    - "{prefix} &c{reason}"
+    - "[sound] block.note_block.bass 0.75"
+  cost-unavailable:
+    - "{prefix} &cEl teletransporte aleatorio cuesta dinero aqui, pero la economia no esta disponible."
+    - "[sound] block.note_block.bass 0.75"
+  insufficient-funds:
+    - "{prefix} &cUn teletransporte aleatorio cuesta &f{price}&c; no te alcanza."
+    - "[sound] block.note_block.bass 0.75"
+  paid:
+    - "{prefix} &aPagaste &f{price} &apor el teletransporte aleatorio."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  unknown-biome:
+    - "{prefix} &cBioma desconocido &f{biome}&c."
+    - "[sound] block.note_block.bass 0.75"
+  save-failed:
+    - "{prefix} &cNo se pudo guardar rtp.yml: {reason}"
+    - "[sound] block.note_block.bass 0.75"
+worth:
+  each:
+    - "{prefix} &f{item} &7vale &a{each} &7cada uno."
+  amount:
+    - "{prefix} &f{amount} {item} &7se venden por &a{total} &7({each} cada uno)."
+  inventory:
+    - "{prefix} &7Tu inventario se vende por &a{total}&7: &f{items}"
+  blocks:
+    - "{prefix} &7Tus bloques se venden por &a{total}&7: &f{items}"
+  not-sellable:
+    - "{prefix} &f{item} &cno se puede vender."
+    - "[sound] block.note_block.bass 0.75"
+  worthless:
+    - "{prefix} &f{item} &cno vale nada, asi que no se vende."
+    - "[sound] block.note_block.bass 0.75"
+  unknown-item:
+    - "{prefix} &cObjeto desconocido &f{item}&c."
+    - "[sound] block.note_block.bass 0.75"
+  invalid-amount:
+    - "{prefix} &cLa cantidad debe ser un numero entero: &f10&c, &f-10 &c(todo menos diez) o &f2s &c(dos stacks)."
+    - "[sound] block.note_block.bass 0.75"
+  set:
+    - "{prefix} &aEl valor de &f{item} &aes ahora &f{price} &acada uno."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  removed:
+    - "{prefix} &f{item} &eya no se vende."
+    - "[sound] ui.button.click 1.25"
+  invalid-price:
+    - "{prefix} &cEl precio debe ser un numero como &f2.50&c; un precio negativo deja de venderlo."
+    - "[sound] block.note_block.bass 0.75"
+  save-failed:
+    - "{prefix} &cNo se pudo guardar worth.yml: {reason}"
+    - "[sound] block.note_block.bass 0.75"
+sell:
+  named:
+    - "{prefix} &cLos objetos renombrados no se pueden vender."
+    - "[sound] block.note_block.bass 0.75"
+  custom:
+    - "{prefix} &f{item} &ces un objeto personalizado y no se puede vender."
+    - "[sound] block.note_block.bass 0.75"
+  creative-item:
+    - "{prefix} &cLos objetos tomados en modo creativo no se pueden vender."
+    - "[sound] block.note_block.bass 0.75"
+  container:
+    - "{prefix} &cVacia &f{item} &cprimero; lo que contiene se perderia."
+    - "[sound] block.note_block.bass 0.75"
+  not-enough:
+    - "{prefix} &cNo tienes tantos &f{item}&c; tienes &f{available}&c."
+    - "[sound] block.note_block.bass 0.75"
+  none:
+    - "{prefix} &cNo tienes &f{item} &cpara vender."
+    - "[sound] block.note_block.bass 0.75"
+  must-stack:
+    - "{prefix} &f{item} &csolo se vende en stacks completos de &f{stack}&c: &f2s &cson dos stacks."
+    - "[sound] block.note_block.bass 0.75"
+  nothing:
+    - "{prefix} &cNada de eso se puede vender."
+    - "[sound] block.note_block.bass 0.75"
+  gamemode:
+    - "{prefix} &cNo puedes vender en modo creativo o espectador."
+    - "[sound] block.note_block.bass 0.75"
+  unavailable:
+    - "{prefix} &cNo se puede vender mientras la economia no esta funcionando."
+    - "[sound] block.note_block.bass 0.75"
+  confirm:
+    - "{prefix} &eVender &f{items} &epor &a{total}&e? Escribe &f/{command} &ede nuevo en &f{seconds}s &epara vender."
+    - "[sound] block.amethyst_block.chime 1.2"
+  sold:
+    - "{prefix} &aVendiste &f{amount} {item} &apor &f{total} &7({each} cada uno)&a."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  sold-bulk:
+    - "{prefix} &aVendiste &f{items} &apor &f{total}&a."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  changed:
+    - "{prefix} &eTu inventario cambio, asi que no se vendio nada. Intentalo de nuevo."
+    - "[sound] block.note_block.bass 0.75"
+  too-many:
+    - "{prefix} &cEs demasiado para vender de una vez; vende menos objetos."
+    - "[sound] block.note_block.bass 0.75"
+  returned:
+    - "{prefix} &eLa venta fue rechazada, asi que se te devolvieron los objetos."
+  pending:
+    - "{prefix} &eTu venta &7({operation}) &eesta guardada; se te pagara cuando vuelvas a entrar."
+  recovered-paid:
+    - "{prefix} &aUna venta interrumpida termino: se te pagaron &f{total}&a."
+    - "[sound] entity.experience_orb.pickup 1.1"
+  recovered-returned:
+    - "{prefix} &eUna venta interrumpida fue rechazada; se te devolvieron sus objetos."
+voucher:
+  not-found:
+    - "{prefix} &cNo hay ningun vale llamado &f{voucher}&c. Mira &f/voucher list&c."
+    - "[sound] block.note_block.bass 0.85"
+  given:
+    - "{prefix} &aSe dio &f{amount}x {voucher} &aa &f{player}&a."
+    - "[sound] entity.item.pickup 1.2"
+  received:
+    - "{prefix} &aHas recibido &f{amount}x {voucher}&a."
+    - "[sound] entity.item.pickup 1.2"
+  list-header:
+    - "{prefix} &6Vales &7({count})&6:"
+  list-entry:
+    - "&e- {voucher}&7: &f{name}"
+  list-empty:
+    - "{prefix} &7Aun no hay vales: importa los antiguos con &f/allium import vouchers&7, o guarda una herramienta como &f/pt save voucher_<name>&7."
+  reloaded:
+    - "{prefix} &aHerramientas recargadas; &f{count} &avale(s) cargados."
+    - "[sound] block.note_block.chime 1.35"
+
+explosion:
+  regenerating:
+    - "[actionbar] &eEse lugar se está reconstruyendo tras una explosión."
+  no-target:
+    - "{prefix} &cNo hay ningún bloque a la vista."
+  antioch:
+    - "&f...arroja tu Santa Granada de Mano de Antioquía hacia tu enemigo,"
+    - "&fque, siendo travieso ante Mis ojos, la palmará."
+  fireball:
+    unknown-type:
+      - "{prefix} &cProyectil desconocido &f{type}&c. Proyectiles: &f{types}"
+    no-permission:
+      - "{prefix} &cNo tienes permiso para lanzar &f{type}&c."
+    invalid-speed:
+      - "{prefix} &cLa velocidad debe ser un número de &f0 &ca &f{max}&c."
+  nuke:
+    incoming:
+      - "{prefix} &5Que la lluvia de la muerte caiga sobre ellos."
+    sent:
+      - "{prefix} &5Bombardeados: &f{players}&5."
+  explode:
+    self:
+      - "{prefix} &aExplotando con potencia &e{power}&a."
+    other:
+      - "{prefix} &aHaciendo explotar a &e{player} &acon potencia &e{power}&a."
+    invalid-power:
+      - "{prefix} &cLa potencia debe ser un número entero de &f{min} &ca &f{max}&c."
+    title-boom:
+      - "&c&l*BUM*"
+    title-mega:
+      - "&4&lMEGAEXPLOSIÓN"
+      - "&c&l¡¡¡Se acerca!!!"
+    broadcast:
+      - "{prefix} &4&l[!] &c¡&6{player} &cha provocado una explosión enorme!"
+    title-cataclysm:
+      - "&4&l⚠ CATACLISMO ⚠"
+      - "&c&lProvocado por {player}"
+
 alts:
   detected:
     - "{prefix} &e{player} &ces una cuenta alternativa &7(comparte IP con &f{accounts}&7); grupo padre &f{group}&7."

@@ -1,0 +1,221 @@
+# Item prices for /worth and /sell, each for one item. Items not listed, or priced below 0,
+# cannot be sold; an item priced 0 is worthless, and /sell keeps it. /setworth changes prices
+# in game.
+#
+# Keys are item names (diamond_pickaxe); Essentials' worth.yml keys work too (diamondpickaxe,
+# and a section such as {'0': 2.0, '*': 2.5}, where '*' is used), as do Allium item aliases.
+# Defaults ported from EssentialsX's worth.yml (EssentialsX f8724e26e, 2026-11-03) by
+# tools/port-essentials-worth, its old names translated to today's items.
+
+# Price multipliers: holders of allium.sell.multiplier.<name> sell at that multiple of the
+# price; the highest one held applies. "default" applies to everyone else.
+multipliers:
+  default: 1.0
+  double: 2.0
+  triple: 3.0
+
+# Sell items that have a custom name (renamed in an anvil, or given with a name).
+allow-named-items: false
+
+# Items that can only be sold in whole stacks (item names).
+trade-in-stacks: []
+
+# /sell inventory, /sell all and /sell blocks first show what would be sold and for how much;
+# the same command again within this many seconds sells it. 0 sells at once, as in Essentials.
+confirm-bulk-seconds: 15
+
+# Selling in creative or spectator mode, where items are free. When false, only holders of
+# allium.sell.creative can.
+allow-creative: false
+
+worth:
+  acacia_planks: 0.5
+  acacia_sapling: 2.5
+  apple: 10.0
+  arrow: 3.5
+  bedrock: 100.0
+  birch_log: 2.0
+  birch_planks: 0.5
+  birch_sapling: 2.5
+  black_bed: 68.0
+  blue_bed: 68.0
+  bone: 2.0
+  book: 45.0
+  bookshelf: 140.0
+  bow: 15.0
+  bowl: 0.5
+  bread: 30.0
+  brick: 5.0
+  bricks: 21.0
+  brick_slab: 1.5
+  brown_bed: 68.0
+  brown_mushroom: 2.0
+  bucket: 22.0
+  cactus: 10.0
+  cake: 180.0
+  chainmail_boots: 30.0
+  chainmail_chestplate: 40.0
+  chainmail_helmet: 40.0
+  chainmail_leggings: 50.0
+  chest: 4.0
+  chest_minecart: 30.0
+  clay: 12.0
+  clay_ball: 3.0
+  clock: 6.0
+  coal: 15.0
+  coal_ore: 15.0
+  cobblestone: 1.0
+  cobblestone_slab: 1.5
+  cobblestone_stairs: 1.5
+  cod: 5.0
+  compass: 22.0
+  cooked_cod: 7.0
+  cooked_porkchop: 7.0
+  crafting_table: 2.5
+  cyan_bed: 68.0
+  dandelion: 2.0
+  dark_oak_planks: 0.5
+  dark_oak_sapling: 2.5
+  diamond: 200.0
+  diamond_axe: 650.0
+  diamond_block: 2000.0
+  diamond_boots: 850.0
+  diamond_chestplate: 1750.0
+  diamond_helmet: 1000.0
+  diamond_hoe: 400.0
+  diamond_leggings: 1500.0
+  diamond_ore: 200.0
+  diamond_pickaxe: 650.0
+  diamond_shovel: 210.0
+  diamond_sword: 420.0
+  dirt: 1.0
+  dispenser: 58.0
+  egg: 1.0
+  feather: 3.0
+  fishing_rod: 10.0
+  furnace: 8.5
+  furnace_minecart: 32.0
+  glass: 3.0
+  glowstone_dust: 10.0
+  golden_apple: 100.0
+  golden_axe: 6.0
+  golden_boots: 6.0
+  golden_chestplate: 6.5
+  golden_helmet: 6.0
+  golden_hoe: 6.0
+  golden_leggings: 6.0
+  golden_pickaxe: 6.0
+  golden_shovel: 6.0
+  golden_sword: 6.0
+  gold_block: 450.0
+  gold_ingot: 105.0
+  gold_ore: 45.0
+  grass_block: 1.0
+  gravel: 1.0
+  gray_bed: 68.0
+  green_bed: 68.0
+  gunpowder: 20.0
+  ink_sac: 10.0
+  iron_axe: 22.0
+  iron_block: 190.0
+  iron_boots: 22.0
+  iron_chestplate: 22.0
+  iron_door: 22.0
+  iron_helmet: 22.0
+  iron_hoe: 22.0
+  iron_ingot: 22.0
+  iron_leggings: 22.0
+  iron_ore: 18.0
+  iron_pickaxe: 22.0
+  iron_shovel: 22.0
+  iron_sword: 22.0
+  jack_o_lantern: 56.0
+  jungle_log: 2.0
+  jungle_planks: 0.5
+  jungle_sapling: 2.5
+  ladder: 0.5
+  lapis_block: 950.0
+  lapis_ore: 100.0
+  lava_bucket: 40.0
+  leather: 10.0
+  leather_boots: 42.0
+  leather_chestplate: 85.0
+  leather_helmet: 52.0
+  leather_leggings: 75.0
+  lever: 1.0
+  light_blue_bed: 68.0
+  light_gray_bed: 68.0
+  lime_bed: 68.0
+  magenta_bed: 68.0
+  milk_bucket: 40.0
+  minecart: 23.0
+  mossy_cobblestone: 90.0
+  mushroom_stew: 4.5
+  music_disc_13: 100.0
+  music_disc_cat: 100.0
+  nether_brick_slab: 1.5
+  note_block: 36.0
+  oak_boat: 3.0
+  oak_door: 3.0
+  oak_fence: 1.0
+  oak_leaves: 1.0
+  oak_log: 2.0
+  oak_planks: 0.5
+  oak_pressure_plate: 1.0
+  oak_sapling: 2.0
+  oak_sign: 1.5
+  oak_stairs: 1.0
+  obsidian: 130.0
+  orange_bed: 68.0
+  painting: 25.0
+  paper: 10.0
+  pink_bed: 68.0
+  poppy: 2.0
+  pumpkin: 50.0
+  purple_bed: 68.0
+  quartz_slab: 1.5
+  rail: 22.0
+  redstone: 32.0
+  redstone_ore: 30.0
+  redstone_torch: 32.0
+  red_bed: 68.0
+  red_mushroom: 2.0
+  repeater: 110.0
+  saddle: 100.0
+  sand: 1.0
+  sandstone: 3.0
+  sandstone_slab: 1.5
+  slime_ball: 50.0
+  smooth_stone_slab: 1.5
+  snowball: 1.0
+  sponge: 80.0
+  spruce_leaves: 1.0
+  spruce_log: 2.0
+  spruce_planks: 0.5
+  spruce_sapling: 2.5
+  stick: 0.25
+  stone: 3.0
+  stone_axe: 3.0
+  stone_brick_slab: 1.5
+  stone_button: 6.0
+  stone_hoe: 2.5
+  stone_pickaxe: 4.0
+  stone_pressure_plate: 6.0
+  stone_shovel: 1.5
+  stone_sword: 2.5
+  string: 5.0
+  sugar: 10.0
+  sugar_cane: 10.0
+  tnt: 100.0
+  torch: 4.0
+  water_bucket: 40.0
+  wheat: 9.0
+  wheat_seeds: 2.0
+  white_bed: 68.0
+  white_wool: 20.0
+  wooden_axe: 2.0
+  wooden_hoe: 2.0
+  wooden_pickaxe: 2.0
+  wooden_shovel: 1.0
+  wooden_sword: 1.0
+  yellow_bed: 68.0

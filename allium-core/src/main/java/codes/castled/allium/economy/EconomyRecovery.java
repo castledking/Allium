@@ -54,6 +54,10 @@ public final class EconomyRecovery {
                         else
                             require(holds.capture(row.kind(),row.id(),c->cheques.markIssued(c,row.id(),captureOp)));
                     }else require(holds.release(row.kind(),row.id(),c->cheques.markVoided(c,row.id())));
+                }else if(identity.kind()==EconomyReservations.Kind.RTP){
+                    // A random teleport is captured only when the player arrived; a hold left by a
+                    // restart cannot prove that, so the charge is refunded.
+                    require(holds.release(row.kind(),row.id(),c->true));
                 }else if(identity.kind()==EconomyReservations.Kind.MAIL){
                     String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.MAIL_RECEIPTS);
                     var entries=MailReceipts.parse(raw);

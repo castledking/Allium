@@ -58,6 +58,12 @@ modules:
   alts: true
   # Inventory snapshots and /restore.
   restore: true
+  # Random teleport: /rtp (/tpr), /settpr and rtp.yml. Needs teleport.
+  rtp: true
+  # Item prices and selling: /worth (/price), /sell, /setworth and worth.yml. /sell needs economy.
+  worth: true
+  # Explosion regeneration and /antioch, /fireball, /beezooka, /kittycannon, /nuke, /explode; explosions.yml.
+  explosions: true
 
 # Log committed command and sign transactions to trade.log.
 economy-log-enabled: false
@@ -168,8 +174,8 @@ items:
 resource-pack:
   # Who delivers the pack to players. Changes need a restart.
   # none: Allium never sends or exports it (another plugin or server.properties can serve it).
-  # standalone: Allium exports it to plugins/Allium/pack/allium-core-pack.zip; you host that file
-  #   at standalone.url, and Allium sends the URL with the pack's SHA-1. Allium has no web server.
+  # standalone: Allium exports it to plugins/Allium/pack/allium-core-pack.zip and sends it with its
+  #   SHA-1, either from an external standalone.url or via the built-in standalone.self-host server.
   # rpm-export: Allium writes it into ResourcePackManager's mixer (below) before RPM starts; RPM
   #   merges and sends it. Allium never edits RPM's config or another pack.
   # Before 1.20.3 a player holds one server pack, so exactly one delivery owner is mandatory there.
@@ -182,9 +188,24 @@ resource-pack:
   pack-file: ""
   standalone:
     # Where you host plugins/Allium/pack/allium-core-pack.zip (http or https).
+    # Ignored when self-host.enabled is true.
     url: ""
     # Download the URL once at startup and send it only if its SHA-1 matches the bundled pack.
     verify-hosted-file: true
+    # Built-in HTTP server (no external web host needed). Disabled by default.
+    # Enable alongside owner: standalone to serve the pack directly from Allium.
+    self-host:
+      enabled: false
+      # Interface to bind: 0.0.0.0 listens on all interfaces; 127.0.0.1 for local-only testing.
+      bind-host: "0.0.0.0"
+      # TCP port to listen on (must be open in your firewall / host allocation for remote players).
+      port: 8080
+      # Public hostname or IP players connect to (e.g. play.example.com). Leave empty to use
+      # Bukkit's server-ip, or 127.0.0.1 for local testing when server-ip is blank.
+      public-host: ""
+      # Optional full URL override (e.g. https://packs.example.com/allium-core-pack.zip behind a
+      # reverse proxy). When empty, Allium advertises http://<public-host>:<port>/allium-core-pack.zip.
+      public-url: ""
   # Standalone only. true: players must load the pack; declining or a failed download kicks them
   # with kick-message. false: players who decline keep the named vanilla items.
   required: false
@@ -270,6 +291,8 @@ teleport:
     spawn: 0
     tp: 0
     tphere: 0
+    # Random teleport (/rtp): each one may generate new terrain, so keep this generous.
+    rtp: 300
   safety:
     enabled: true
     adjust: true

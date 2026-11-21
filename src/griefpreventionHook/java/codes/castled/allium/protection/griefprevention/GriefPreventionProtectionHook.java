@@ -22,7 +22,8 @@ import java.util.function.Supplier;
  * {@code Container} permission (the trust that governs creatures unless PvE trust is enabled).
  * Breaking blocks inside a claim requires build trust ({@link ClaimPermission#Build}).
  * GriefPrevention handles its own bypasses (ignoring claims, admin claims) and fires its
- * permission-check event for add-ons. Outside claims, this hook allows.
+ * permission-check event for add-ons. Outside claims, this hook allows. {@link #claimed} reports any
+ * claim, admin claims included, so explosion regeneration leaves claims to GriefPrevention's rules.
  */
 public final class GriefPreventionProtectionHook implements ProtectionHook {
 
@@ -46,6 +47,15 @@ public final class GriefPreventionProtectionHook implements ProtectionHook {
             return ProtectionDecision.allow();
         }
         return ProtectionDecision.deny(name(), denial.get());
+    }
+
+    @Override
+    public boolean claimed(Location location) {
+        GriefPrevention plugin = GriefPrevention.instance;
+        if (plugin == null || plugin.dataStore == null) {
+            throw new IllegalStateException("GriefPrevention is enabled but its data store is unavailable");
+        }
+        return plugin.dataStore.getClaimAt(location, false, null) != null;
     }
 
     @Override

@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Port EssentialsX's default worth.yml to Allium's src/main/resources/worth.yml.
+
+Essentials' defaults still use pre-1.13 names (diamondpickaxe, sulphur, inksack) and data values
+(wool '0', sapling '*'). Modern Essentials only matches a material's name without underscores, so
+many of them sell nothing there. This port names each one's modern material:
+
+  1. the key is a material name without underscores (as modern Essentials matches it)
+  2. else an Allium item alias (itemdb.yml.gz, which holds the old names)
+  3. else an EssentialsX items.json alias
+  4. else LEGACY below (old data-value sections and renamed blocks)
+
+Keys naming no item (water, lava, wall signs, door and wire blocks) are left out; where two keys
+reach one material, a direct name match wins. Prices are kept as Essentials sets them.
+
+  tools/port-essentials-worth WORTH_YML ITEMS_JSON --materials 1.20.1.txt --materials 26.3.txt [--write]
+"""
+import argparse, gzip, json, re
+from pathlib import Path
+import yaml
+
+# Sections and names the generic lookup cannot place, with their old meaning. A plain value applies to
+# '*': every data value the old item had (wood was all six planks, bed every colour, step every slab).
+PLANKS = ['OAK_PLANKS', 'SPRUCE_PLANKS', 'BIRCH_PLANKS', 'JUNGLE_PLANKS', 'ACACIA_PLANKS', 'DARK_OAK_PLANKS']
+BEDS = [c + '_BED' for c in ('WHITE', 'ORANGE', 'MAGENTA', 'LIGHT_BLUE', 'YELLOW', 'LIME', 'PINK', 'GRAY', 'LIGHT_GRAY',
+                             'CYAN', 'PURPLE', 'BLUE', 'BROWN', 'GREEN', 'RED', 'BLACK')]
+SLABS = ['SMOOTH_STONE_SLAB', 'SANDSTONE_SLAB', 'COBBLESTONE_SLAB', 'BRICK_SLAB', 'STONE_BRICK_SLAB',
+         'NETHER_BRICK_SLAB', 'QUARTZ_SLAB']
+LEGACY = {
+    'log': {'*': ['OAK_LOG', 'SPRUCE_LOG', 'BIRCH_LOG', 'JUNGLE_LOG']},   # item 17, any data
+    'wool': {'0': ['WHITE_WOOL']},
+    'leaves': {'0': ['OAK_LEAVES'], '1': ['SPRUCE_LEAVES']},
+    'sapling': {'0': ['OAK_SAPLING'], '*': ['SPRUCE_SAPLING', 'BIRCH_SAPLING', 'JUNGLE_SAPLING',
+                                             'ACACIA_SAPLING', 'DARK_OAK_SAPLING']},
+    'wood': {'*': PLANKS},
+    'bed': {'*': BEDS},
+    'step': {'*': SLABS},
+    'brick': {'*': ['BRICKS']},            # block 45; the item is claybrick
+    'claybrick': {'*': ['BRICK']},
+    'grass': {'*': ['GRASS_BLOCK']},       # block 2; today's GRASS is the plant
+    'mushroomsoup': {'*': ['MUSHROOM_STEW']},
+    'fence': {'*': ['OAK_FENCE']},
+    'wooddoor': {'*': ['OAK_DOOR']},
+    'redstonetorchon': {'*': ['REDSTONE_TORCH']},
+    'seeds': {'*': ['WHEAT_SEEDS']},
+    'woodplate': {'*': ['OAK_PRESSURE_PLATE']},
+    'stoneplate': {'*': ['STONE_PRESSURE_PLATE']},
+    'boat': {'*': ['OAK_BOAT']},
+    'sulphur': {'*': ['GUNPOWDER']},
+    'woodstairs': {'*': ['OAK_STAIRS']},
+    'watch': {'*': ['CLOCK']},
+    'diode': {'*': ['REPEATER']},
+    'inksack': {'*': ['INK_SAC']},         # data 0 only: the other data values were today's dyes and lapis
+}
+# Old names for blocks that never were items, or duplicates of an item priced on its own key.
+SKIP = {'stationarywater', 'water', 'stationarylava', 'lava', 'irondoorblock', 'wallsign', 'redstonewire',
+        'glowingredstoneore', 'sugarcaneblock', 'doublestep', 'soil'}
+
+p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+p.add_argument('worth_yml', type=Path)
+p.add_argument('items_json', type=Path)
+p.add_argument('--materials', type=Path, action='append', default=[])
+p.add_argument('--source', default='')
+p.add_argument('--write', action='store_true')
+a = p.parse_args()
+
+root = Path(__file__).resolve().parents[1]
+materials = set()
+for listing in a.materials:
+    materials |= {line.strip() for line in listing.read_text().splitlines() if line.strip()}
+by_norm = {m.lower().replace('_', ''): m for m in materials}
+itemdb = yaml.safe_load(gzip.decompress((root / 'src/main/resources/itemdb.yml.gz').read_bytes()).decode())
+aliases = {str(k).lower(): str(v) for k, v in itemdb['aliases'].items()}
+items = json.loads(''.join(l for l in a.items_json.read_text().splitlines(True) if not l.lstrip().startswith('#')))
+worth = yaml.safe_load(a.worth_yml.read_text())['worth']
+
+
+def head(spec):
+    return re.split(r'[; ]', spec, maxsplit=1)[0].upper()
+
+
+def resolve(key):
+    """(material, how) for a plain key, or (None, why)."""
+    if key in by_norm:
+        return by_norm[key], 'name'
+    if key in aliases and ';' not in aliases[key] and ' ' not in aliases[key]:
+        return head(aliases[key]), 'allium alias'
+    target = items.get(key)
+    if isinstance(target, str):
+        target = items.get(target)
+    if isinstance(target, dict) and set(target) <= {'material', 'fallbacks'}:
+        return target['material'], 'essentials alias'
+    return None, 'unknown'
+
+
+chosen, report = {}, []
+RANK = {'name': 0, 'legacy': 1, 'allium alias': 2, 'essentials alias': 3}
+for key, value in worth.items():
+    key = str(key).lower()
+    if key in SKIP:
+        report.append(f'skip {key}: not an item')
+        continue
+    pairs = []
+    if key in LEGACY:
+        section = value if isinstance(value, dict) else {'*': value}
+        for data, price in section.items():
+            for material in LEGACY[key].get(str(data), []):
+                pairs.append((material, price, 'legacy'))
+            if str(data) not in LEGACY[key]:
+                report.append(f'skip {key}.{data}: no modern item')
+    else:
+        material, how = resolve(key)
+        if material is None:
+            report.append(f'skip {key}: {how}')
+            continue
+        price = value if not isinstance(value, dict) else value.get('*', value.get('0'))
+        pairs.append((material, price, how))
+    for material, price, how in pairs:
+        if materials and material not in materials:
+            report.append(f'skip {key} -> {material}: not a material')
+            continue
+        previous = chosen.get(material)
+        if previous is None or RANK[how] < RANK[previous[2]]:
+            if previous:
+                report.append(f'{material}: {key} ({how}) replaces {previous[1]} ({previous[2]})')
+            chosen[material] = (float(price), key, how)
+        else:
+            report.append(f'{material}: kept {previous[1]} over {key}')
+
+print(f'{len(worth)} Essentials entries -> {len(chosen)} items')
+for line in report:
+    print('  ' + line)
+
+if a.write:
+    header = ('# Item prices for /worth and /sell, each for one item. Items not listed, or priced below 0,\n'
+              '# cannot be sold; an item priced 0 is worthless, and /sell keeps it. /setworth changes prices\n'
+              '# in game.\n'
+              '#\n'
+              '# Keys are item names (diamond_pickaxe); Essentials\' worth.yml keys work too (diamondpickaxe,\n'
+              '# and a section such as {\'0\': 2.0, \'*\': 2.5}, where \'*\' is used), as do Allium item aliases.\n'
+              f'# Defaults ported from EssentialsX\'s worth.yml{" (" + a.source + ")" if a.source else ""} by\n'
+              '# tools/port-essentials-worth, its old names translated to today\'s items.\n')
+    body = {m.lower(): round(price, 2) for m, (price, _, _) in sorted(chosen.items())}
+    settings = ('\n# Price multipliers: holders of allium.sell.multiplier.<name> sell at that multiple of the\n'
+                '# price; the highest one held applies. "default" applies to everyone else.\n'
+                'multipliers:\n  default: 1.0\n  double: 2.0\n  triple: 3.0\n'
+                '\n# Sell items that have a custom name (renamed in an anvil, or given with a name).\n'
+                'allow-named-items: false\n'
+                '\n# Items that can only be sold in whole stacks (item names).\n'
+                'trade-in-stacks: []\n'
+                '\n# /sell inventory, /sell all and /sell blocks first show what would be sold and for how much;\n'
+                '# the same command again within this many seconds sells it. 0 sells at once, as in Essentials.\n'
+                'confirm-bulk-seconds: 15\n'
+                '\n# Selling in creative or spectator mode, where items are free. When false, only holders of\n'
+                '# allium.sell.creative can.\n'
+                'allow-creative: false\n\n')
+    text = header + settings + yaml.safe_dump({'worth': body}, sort_keys=False, width=4096)
+    yaml.safe_load(text)
+    (root / 'src/main/resources/worth.yml').write_text(text)
+    print('wrote src/main/resources/worth.yml')

@@ -1,0 +1,101 @@
+# Random teleport: /rtp (/tpr, /tprandom) and /settpr.
+#
+# /rtp sends a player to a random safe spot of a location. A location is either a named area under
+# "locations" (made or changed in game with /settpr) or the name of a world, which uses the defaults
+# below. /rtp alone uses default-location; '{world}' is the player's current world.
+#
+# The teleport itself goes through Allium's teleport system: the warmup, the cooldown
+# (teleport.cooldowns.rtp in config.yml), world permissions (allium.worlds.<world>), the safety checks
+# (teleport.safety) and /back are the same as for every other teleport.
+default-location: '{world}'
+
+# Require allium.rtp.location.<name> for each location, including world names.
+per-location-permission: false
+
+# Random spots tried per /rtp before giving up. Each try may load or generate one chunk.
+find-attempts: 24
+
+# Spots found ahead of time per location (in the background, after a location is first used), so the
+# next /rtp is instant. 0 turns it off.
+cache-size: 3
+
+# The furthest a spot may be from the centre when a location sets no max-range (blocks).
+default-max-range: 5000
+
+# Price of a player's own /rtp (a location's own "cost" overrides it). The money is held during the
+# search and taken only when the player arrives; a failed search, moving during the warmup or any
+# other interruption gives it back, and so does a restart that cut one short. Sending another player,
+# first-join and death teleports are free. allium.rtp.bypass.cost skips it. Needs the economy module.
+cost: '0'
+
+# Cooldown tiers in seconds, instead of teleport.cooldowns.rtp for players holding
+# allium.rtp.cooldown.<tier>; with several tiers, the shortest applies. Example:
+#   vip: 120
+#   mvp: 30
+cooldown-tiers: {}
+
+# On Paper, the generated biome of up to this many random columns is read (without loading them) for
+# each try, so no chunk is generated just to find an excluded biome or, for /rtp biome, a wrong one.
+biome-scan: 256
+
+# Biomes never landed in (names as in /locate biome, with or without "minecraft:").
+excluded-biomes:
+  - cold_ocean
+  - deep_cold_ocean
+  - deep_frozen_ocean
+  - deep_lukewarm_ocean
+  - deep_ocean
+  - deep_warm_ocean
+  - frozen_ocean
+  - frozen_river
+  - lukewarm_ocean
+  - ocean
+  - river
+  - warm_ocean
+
+# Blocks never stood on. One * matches any part of a name, e.g. *_LEAVES.
+avoid-blocks:
+  - WATER
+  - LAVA
+  - MAGMA_BLOCK
+  - CACTUS
+  - POWDER_SNOW
+  - SWEET_BERRY_BUSH
+  - '*_LEAVES'
+
+# Skip spots in claims (GriefPrevention, and plugins that answer Allium's protection check) where the
+# player could not build. Their own and trusted claims are fine.
+avoid-claims: true
+
+# Worlds where /rtp is off. A player there who types /rtp alone is sent to disabled-world-redirect
+# instead (a location or world name), or refused when it is empty.
+disabled-worlds: []
+disabled-world-redirect: ''
+
+# Random teleport new players on their first join, to this location ('{world}': the world they joined).
+first-join:
+  enabled: false
+  location: '{world}'
+
+# Random teleport players who respawn after dying without a bed or respawn anchor ('{world}': the
+# world they respawn in). Jailed players are left where the jail puts them.
+on-death:
+  enabled: false
+  location: '{world}'
+
+# Named locations. Every setting is optional:
+#   world: the world (default: the location's name)
+#   center: {x: 0, z: 0} (default: the world border's centre)
+#   min-range / max-range: blocks from the centre (default 0 / default-max-range)
+#   shape: square or circle
+#   min-y / max-y: landing heights. A max-y searches upward from min-y below it (always so in the nether,
+#     where the defaults are 32 and 120, below the roof).
+#   cost: the price of /rtp to this location, instead of the global cost
+# Example:
+#   wild:
+#     world: world
+#     center: {x: 0, z: 0}
+#     min-range: 1000
+#     max-range: 10000
+#     shape: circle
+locations: {}

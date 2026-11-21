@@ -2,6 +2,7 @@ package codes.castled.allium.command.tools;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.BukkitCommandContext;
+import codes.castled.allium.command.CommandUsageCard;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
@@ -59,7 +60,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
 
     private static final List<String> FLAGS = List.of(
             "--t", "--trigger", "--as", "--cd", "--cooldown", "--scope", "--cdid",
-            "--delay", "--perm", "--sneak", "--hand", "--cancel", "--visualcd", "--param"
+            "--delay", "--perm", "--sneak", "--hand", "--cancel", "--visualcd", "--param", "--required"
     );
 
     private final PluginStart plugin;
@@ -101,7 +102,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             return;
         }
         if (args.length == 0) {
-            handleHelp(sender, behavior, new String[0]);
+            context.sendInvalidArgs(spec().selfUsage());
             return;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
@@ -136,7 +137,11 @@ public final class PowerToolCommand implements SpecCommandHandler {
             case "list" -> handleList(sender, behavior, subArgs);
             case "toggle" -> handleToggle(sender, behavior);
             case "reload" -> handleReload(sender, behavior);
-            case "help" -> handleHelp(sender, behavior, subArgs);
+            case "help" -> {
+                if (!handleHelpTopic(sender, behavior, subArgs)) {
+                    context.sendInvalidArgs(spec().selfUsage());
+                }
+            }
             default -> context.sendInvalidArgs(spec().selfUsage());
         }
     }
@@ -145,7 +150,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
 
     private void handleSet(CommandSender sender, PowerToolBehavior behavior, String[] args) {
         if (args.length < 2) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt set <index> [flags...] <action> [args...]");
+            usage(sender, "/pt set <index> [flags...] <action> [args...]");
             return;
         }
         int index;
@@ -183,6 +188,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         String hand = null;
         Boolean cancel = null;
         Boolean visualCd = null;
+        boolean required = false;
         Map<String, Object> params = new LinkedHashMap<>();
 
         int i = 0;
@@ -255,6 +261,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
                 }
                 case "--cancel" -> cancel = Boolean.parseBoolean(val);
                 case "--visualcd", "--visual-cooldown" -> visualCd = Boolean.parseBoolean(val);
+                case "--required" -> required = Boolean.parseBoolean(val);
                 case "--param" -> {
                     int eq = val.indexOf('=');
                     if (eq <= 0 || eq == val.length() - 1) {
@@ -272,7 +279,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         }
 
         if (i >= args.length) {
-            send(sender, Messages.INVALID_ARGS, "{usage}",
+            usage(sender,
                     "/pt add [--t <trigger>] [--cd <dur>] [--delay <dur>] [--perm <node>] <action> [args...]");
             return;
         }
@@ -304,8 +311,20 @@ public final class PowerToolCommand implements SpecCommandHandler {
         if ((PowerToolAction.TYPE_COMMAND.equals(type) || PowerToolAction.TYPE_CONSOLE.equals(type)
                 || PowerToolAction.TYPE_MESSAGE.equals(type) || PowerToolAction.TYPE_ACTIONBAR.equals(type)
                 || PowerToolAction.TYPE_SOUND.equals(type) || PowerToolAction.TYPE_PARTICLE.equals(type)
-                || PowerToolAction.TYPE_POTION.equals(type)) && (value == null || value.isBlank())) {
+                || PowerToolAction.TYPE_POTION.equals(type) || PowerToolAction.TYPE_GRANT.equals(type))
+                && (value == null || value.isBlank())) {
             send(sender, Messages.POWERTOOL_INVALID_VALUE, "{reason}", "action '" + type + "' requires an argument");
+            return;
+        }
+        if (PowerToolAction.TYPE_GRANT.equals(type)) {
+            String invalid = codes.castled.allium.tool.powertool.PowerToolGrants.firstInvalid(value);
+            if (invalid != null) {
+                send(sender, Messages.POWERTOOL_INVALID_VALUE, "{reason}", "'" + invalid + "' is not a permission node or weight:node");
+                return;
+            }
+        }
+        if (required && delayTicks > 0L) {
+            send(sender, Messages.POWERTOOL_INVALID_VALUE, "{reason}", "a required action cannot have a delay");
             return;
         }
 
@@ -325,7 +344,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         PowerToolTrigger trigger = explicitTrigger != null ? explicitTrigger : defaultTriggerFor(type);
 
         PowerToolAction action = new PowerToolAction(
-                type, value, asConsole, cooldownMillis, scope, cooldownId, delayTicks, actionPerm, params);
+                type, value, asConsole, cooldownMillis, scope, cooldownId, delayTicks, actionPerm, params, required);
 
         PowerToolCodec.DecodedInline current = behavior.readEditable(held);
         PowerToolBinding existing = current.parameters().binding(trigger);
@@ -463,7 +482,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             }
         }
         if (durationRaw == null) {
-            send(sender, Messages.INVALID_ARGS, "{usage}",
+            usage(sender,
                     "/pt cooldown [--t <trigger>] <duration> [--scope player|item|global] [--id <id>] [--visual true|false]");
             return;
         }
@@ -515,7 +534,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             }
         }
         if (permRaw == null) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt perm [--t <trigger>] <permission|none>");
+            usage(sender, "/pt perm [--t <trigger>] <permission|none>");
             return;
         }
         String node = ("none".equalsIgnoreCase(permRaw) || "clear".equalsIgnoreCase(permRaw))
@@ -552,8 +571,8 @@ public final class PowerToolCommand implements SpecCommandHandler {
         if (held == null) return;
 
         if (args.length == 0) {
-            send(sender, Messages.INVALID_ARGS, "{usage}",
-                    "/pt uses <max|unlimited> [--consume true|false] [--recharge <duration>]");
+            usage(sender,
+                    "/pt uses <max|unlimited> [--consume true|false] [--recharge <duration>] [--bypassable true|false]");
             return;
         }
         int max;
@@ -572,10 +591,13 @@ public final class PowerToolCommand implements SpecCommandHandler {
             }
         }
         boolean consume = false;
+        boolean bypassable = true;
         int rechargeSec = 0;
         for (int i = 1; i < args.length; i++) {
             if ("--consume".equalsIgnoreCase(args[i]) && i + 1 < args.length) {
                 consume = Boolean.parseBoolean(args[++i]);
+            } else if ("--bypassable".equalsIgnoreCase(args[i]) && i + 1 < args.length) {
+                bypassable = Boolean.parseBoolean(args[++i]);
             } else if ("--recharge".equalsIgnoreCase(args[i]) && i + 1 < args.length) {
                 try {
                     rechargeSec = (int) Math.min(86_400L, PowerToolDurations.parseMillis(args[++i]) / 1000L);
@@ -587,12 +609,13 @@ public final class PowerToolCommand implements SpecCommandHandler {
         }
         PowerToolUses uses = max < 0
                 ? PowerToolUses.UNLIMITED
-                : new PowerToolUses(max, consume, rechargeSec, !consume);
+                : new PowerToolUses(max, consume, rechargeSec, !consume, bypassable);
         PowerToolCodec.DecodedInline current = behavior.readEditable(held);
         behavior.writeInline(held, current.parameters().withUses(uses), current.usePermission());
         player.getInventory().setItemInMainHand(held);
         send(sender, Messages.POWERTOOL_UPDATED, "{setting}", "uses",
-                "{value}", uses.isLimited() ? (uses.max() + (consume ? " (consume)" : "") + (rechargeSec > 0 ? " (recharge " + rechargeSec + "s)" : "")) : "unlimited");
+                "{value}", uses.isLimited() ? (uses.max() + (consume ? " (consume)" : "") + (rechargeSec > 0 ? " (recharge " + rechargeSec + "s)" : "")
+                        + (bypassable ? "" : " (spent by everyone)")) : "unlimited");
     }
 
     private void handleCancel(CommandSender sender, PowerToolBehavior behavior, String[] args) {
@@ -620,7 +643,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             }
         }
         if (val == null) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt cancel [--t <trigger>] <true|false>");
+            usage(sender, "/pt cancel [--t <trigger>] <true|false>");
             return;
         }
         PowerToolCodec.DecodedInline current = behavior.readEditable(held);
@@ -660,7 +683,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             }
         }
         if (val == null || !Set.of("any", "require", "disallow").contains(val)) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt sneak [--t <trigger>] <any|require|disallow>");
+            usage(sender, "/pt sneak [--t <trigger>] <any|require|disallow>");
             return;
         }
         PowerToolCodec.DecodedInline current = behavior.readEditable(held);
@@ -699,7 +722,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             }
         }
         if (val == null || !Set.of("main", "off", "both").contains(val)) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt hand [--t <trigger>] <main|off|both>");
+            usage(sender, "/pt hand [--t <trigger>] <main|off|both>");
             return;
         }
         PowerToolCodec.DecodedInline current = behavior.readEditable(held);
@@ -725,7 +748,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         ItemStack held = requireHeldItem(player);
         if (held == null) return;
         if (args.length == 0) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt save <name> [--overwrite]");
+            usage(sender, "/pt save <name> [--overwrite]");
             return;
         }
         String name = args[0];
@@ -752,7 +775,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             return;
         }
         if (args.length != 1) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt delete <name>");
+            usage(sender, "/pt delete <name>");
             return;
         }
         PowerToolBehavior.SaveResult result = behavior.deleteSavedTool(args[0]);
@@ -773,7 +796,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         ItemStack held = requireHeldItem(player);
         if (held == null) return;
         if (args.length != 1) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt bind <name>");
+            usage(sender, "/pt bind <name>");
             return;
         }
         ToolDefinition def = behavior.registryTool(args[0]).orElse(null);
@@ -794,7 +817,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         Player player = requirePlayer(sender);
         if (player == null) return;
         if (args.length < 1 || args.length > 2) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt get <item> [amount]");
+            usage(sender, "/pt get <item> [amount]");
             return;
         }
         int amount = args.length == 2 ? parsePositiveAmount(args[1]) : 1;
@@ -811,7 +834,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             return;
         }
         if (args.length < 2 || args.length > 3) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt give <player> <item> [amount]");
+            usage(sender, "/pt give <player> <item> [amount]");
             return;
         }
         Player target = plugin.getServer().getPlayerExact(args[0]);
@@ -913,7 +936,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             return;
         }
         if (args.length != 1) {
-            send(sender, Messages.INVALID_ARGS, "{usage}", "/pt " + (enabled ? "enable" : "disable") + " <tool>");
+            usage(sender, "/pt " + (enabled ? "enable" : "disable") + " <tool>");
             return;
         }
         ToolsModule module = toolsModuleSupplier.get();
@@ -980,7 +1003,8 @@ public final class PowerToolCommand implements SpecCommandHandler {
         send(sender, Messages.POWERTOOL_RELOADED, "{count}", Integer.toString(loaded));
     }
 
-    private void handleHelp(CommandSender sender, PowerToolBehavior behavior, String[] args) {
+    /** {@code /pt help <topic>}; false when there is no such topic, so the usage card is shown instead. */
+    private boolean handleHelpTopic(CommandSender sender, PowerToolBehavior behavior, String[] args) {
         String topic = args.length >= 1 ? args[0].toLowerCase(Locale.ROOT) : "";
         switch (topic) {
             case "triggers" -> send(sender, Messages.POWERTOOL_HELP_TRIGGERS,
@@ -989,8 +1013,11 @@ public final class PowerToolCommand implements SpecCommandHandler {
                     "{actions}", String.join(", ", behavior.actions().actionIds()));
             case "placeholders" -> send(sender, Messages.POWERTOOL_HELP_PLACEHOLDERS,
                     "{placeholders}", String.join(", ", PowerToolSecurity.ALLOWED_PLACEHOLDERS.stream().map(p -> "{" + p + "}").sorted().toList()));
-            default -> send(sender, Messages.POWERTOOL_HELP);
+            default -> {
+                return false;
+            }
         }
+        return true;
     }
 
     // ---- Tab completion ----
@@ -1044,7 +1071,8 @@ public final class PowerToolCommand implements SpecCommandHandler {
         if ("--hand".equals(prev)) {
             return List.of("main", "off", "both").stream().filter(v -> v.startsWith(current)).toList();
         }
-        if ("--cancel".equals(prev) || "--visual".equals(prev) || "--visualcd".equals(prev) || "--consume".equals(prev)) {
+        if ("--cancel".equals(prev) || "--visual".equals(prev) || "--visualcd".equals(prev) || "--consume".equals(prev) || "--required".equals(prev)
+                || "--bypassable".equals(prev)) {
             return List.of("true", "false").stream().filter(v -> v.startsWith(current)).toList();
         }
         if ("--cd".equals(prev) || "--cooldown".equals(prev) || "--delay".equals(prev) || "--recharge".equals(prev)) {
@@ -1104,7 +1132,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
                     : List.of();
             case "uses" -> args.length == 2
                     ? List.of("1", "3", "10", "unlimited").stream().filter(v -> v.startsWith(current)).toList()
-                    : List.of("--consume", "--recharge").stream().filter(v -> v.startsWith(current)).toList();
+                    : List.of("--consume", "--recharge", "--bypassable").stream().filter(v -> v.startsWith(current)).toList();
             case "cooldown", "cd" -> List.of("--t", "--scope", "--id", "--visual", "5s", "10s", "0")
                     .stream().filter(v -> v.startsWith(current)).toList();
             case "sneak" -> List.of("--t", "any", "require", "disallow").stream().filter(v -> v.startsWith(current)).toList();
@@ -1174,5 +1202,10 @@ public final class PowerToolCommand implements SpecCommandHandler {
 
     private void send(CommandSender sender, Messages message, String... replacements) {
         plugin.getMessageManager().send(sender, message, replacements);
+    }
+
+    /** The shared usage card, narrowed to the subcommand {@code usage} names ({@code /pt set ...}). */
+    private void usage(CommandSender sender, String usage) {
+        CommandUsageCard.sendInvalid(plugin, sender, spec(), "pt", usage);
     }
 }

@@ -81,6 +81,21 @@ public final class EconomyEngine {
             catch(SQLException|RuntimeException error){return new Unavailable(error.getMessage());}
         }
     }
+    /** How an operation was decided: committed, or rejected with {@code code}. */
+    public record Outcome(boolean committed,String code,UUID source,Money amount){}
+    /**
+     * The recorded outcome of {@code operationId}, or empty when no such operation ran. Settles a replay
+     * the payload check refuses ({@code IDEMPOTENCY_CONFLICT}, as after an economy settings change).
+     */
+    public Optional<Outcome> outcome(UUID operationId)throws SQLException{
+        try(var c=connection();var s=c.prepareStatement("SELECT state,result_code,source_uuid,amount_minor FROM "+EconomySchema.OPERATIONS+" WHERE operation_id=?")){
+            s.setString(1,operationId.toString());
+            try(var r=s.executeQuery()){
+                if(!r.next())return Optional.empty();
+                return Optional.of(new Outcome(r.getString(1).equals("COMMITTED")&&r.getString(2).equals("OK"),r.getString(2),UUID.fromString(r.getString(3)),new Money(r.getLong(4))));
+            }
+        }
+    }
     public EconomyCoordinator coordinator(){return coordinator;}
     public <T> T coordinated(java.util.concurrent.Callable<T> work)throws SQLException{return coordinator.call(work);}
     public Mutation execute(EconomyRequest request){

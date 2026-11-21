@@ -284,13 +284,15 @@ public final class CoreCommandSpecs {
             "core",
             List.of("core"),
             "Allium administration",
-            "/allium <reload|version|sethomes|import lang [apply]|adopt-window [<duration>|off]|hide>",
-            "/allium <reload|version|sethomes|import lang [apply]|adopt-window [<duration>|off]|hide>",
+            "/allium <reload|version|sethomes|import lang [apply]|adopt-window [<duration>|off]|hide|creativemanager>",
+            "/allium <reload|version|sethomes|import lang [apply]|adopt-window [<duration>|off]|hide|creativemanager>",
             null,
             null,
             List.of(),
             List.of(
                     new CommandNodeSpec("hide", List.of(), "allium.hide.admin", "/allium hide <status|reload|enabled|group|resolve|fix|unfix>", List.of(), List.of()),
+                    new CommandNodeSpec("creativemanager", List.of(), "allium.gamemode.creative.manage",
+                            "/allium creativemanager [gui|active|player <player> [action]|group <group> [action]]", List.of(), List.of()),
                     new CommandNodeSpec("sethomes", List.of(), "allium.sethomes", "/allium sethomes <player> [number|+N|-N|-1]",
                             List.of(
                                     CommandArgSpec.required("player", "allium.sethomes", SuggestionSpec.knownPlayers("allium.sethomes")),
@@ -299,8 +301,11 @@ public final class CoreCommandSpecs {
                             List.of()),
                     new CommandNodeSpec("reload", List.of(), "allium.reload", "/allium reload", List.of(), List.of()),
                     new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of()),
-                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import <lang [apply]|legacy [apply <run>]>", List.of(), List.of(
+                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import <lang [apply]|vouchers [apply]|legacy [apply <run>]>", List.of(), List.of(
                             new CommandNodeSpec("lang", List.of(), "allium.import", "/allium import lang [apply]",
+                                    List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
+                                    List.of()),
+                            new CommandNodeSpec("vouchers", List.of(), "allium.import", "/allium import vouchers [apply]",
                                     List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
                                     List.of()),
                             new CommandNodeSpec("legacy", List.of(), "allium.import", "/allium import legacy [apply <run>]",
@@ -1346,7 +1351,139 @@ public final class CoreCommandSpecs {
             List.of(),
             CommandMessageKeys.ofOutcomes(Map.of()));
 
-    public static final List<CommandSpec> TOOLS_SPECS = List.of(POWERTOOL);
+    public static final CommandSpec VOUCHER = new CommandSpec(
+            "voucher", CommandSpec.DEFAULT_NAMESPACE, "tools", List.of("vouchers"),
+            "Give and list vouchers: powertools named voucher_<name>",
+            "/voucher <give|list|reload> [player] [voucher] [amount]",
+            "/voucher <give|list|reload> [player] [voucher] [amount]",
+            "allium.voucher.give", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> TOOLS_SPECS = List.of(POWERTOOL, VOUCHER);
+
+    public static final CommandSpec CREATIVEMANAGER = new CommandSpec(
+            "creativemanager", CommandSpec.DEFAULT_NAMESPACE, "creative", List.of("cm"),
+            "Manage creative-mode flags for players and permission groups",
+            "/creativemanager [gui|active|player <player> [action]|group <group> [action]]",
+            "/creativemanager <player|group> <name> <list|check|add|remove> [flag]",
+            "allium.gamemode.creative.manage", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> CREATIVE_SPECS = List.of(CREATIVEMANAGER);
+
+    public static final CommandSpec RTP = new CommandSpec(
+            "rtp", CommandSpec.DEFAULT_NAMESPACE, "rtp", List.of("tpr", "tprandom"),
+            "Teleport to a random safe spot",
+            "/rtp [location] [player]",
+            "/rtp [location] <player>",
+            "allium.rtp", "allium.rtp.others",
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec SETTPR = new CommandSpec(
+            "settpr", CommandSpec.DEFAULT_NAMESPACE, "rtp", List.of("settprandom"),
+            "Set a random teleport location's centre, range, shape and heights",
+            "/settpr <location> <center|minrange|maxrange|shape|miny|maxy|world|remove> [value]",
+            "/settpr <location> <minrange|maxrange|shape|miny|maxy|world|remove> [value]",
+            "allium.settpr", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> RTP_SPECS = List.of(RTP, SETTPR);
+
+    public static final CommandSpec WORTH = new CommandSpec(
+            "worth", CommandSpec.DEFAULT_NAMESPACE, "worth", List.of("price"),
+            "Show what items sell for",
+            "/worth [hand|inventory|blocks|item] [amount]",
+            "/worth <item> [amount]",
+            "allium.worth", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec SELL = new CommandSpec(
+            "sell", CommandSpec.DEFAULT_NAMESPACE, "worth", List.of(),
+            "Sell items for their worth",
+            "/sell <hand|inventory|all|blocks|item> [-][amount][s]",
+            "/sell <hand|inventory|all|blocks|item> [-][amount][s]",
+            "allium.sell", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec SETWORTH = new CommandSpec(
+            "setworth", CommandSpec.DEFAULT_NAMESPACE, "worth", List.of(),
+            "Set what an item sells for",
+            "/setworth [hand|item] <price>",
+            "/setworth <item> <price>",
+            "allium.setworth", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> WORTH_SPECS = List.of(WORTH, SELL, SETWORTH);
+
+    public static final CommandSpec ANTIOCH = new CommandSpec(
+            "antioch", CommandSpec.DEFAULT_NAMESPACE, "explosions", List.of("grenade", "tnt"),
+            "Throw primed TNT where you look",
+            "/antioch", "/antioch",
+            "allium.antioch", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec FIREBALL = new CommandSpec(
+            "fireball", CommandSpec.DEFAULT_NAMESPACE, "explosions", List.of("fireentity", "fireskull"),
+            "Throw a fireball or another projectile",
+            "/fireball [type] [speed] [ride]", "/fireball [type] [speed] [ride]",
+            "allium.fireball", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec BEEZOOKA = new CommandSpec(
+            "beezooka", CommandSpec.DEFAULT_NAMESPACE, "explosions", List.of("beecannon"),
+            "Throw an exploding bee",
+            "/beezooka", "/beezooka",
+            "allium.beezooka", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec KITTYCANNON = new CommandSpec(
+            "kittycannon", CommandSpec.DEFAULT_NAMESPACE, "explosions", List.of(),
+            "Throw an exploding kitten",
+            "/kittycannon", "/kittycannon",
+            "allium.kittycannon", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec NUKE = new CommandSpec(
+            "nuke", CommandSpec.DEFAULT_NAMESPACE, "explosions", List.of(),
+            "Rain TNT on players; it breaks no blocks",
+            "/nuke [player...]", "/nuke [player...]",
+            "allium.nuke", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec EXPLODE = new CommandSpec(
+            "explode", CommandSpec.DEFAULT_NAMESPACE, "explosions", List.of(),
+            "Drop an exploding fireball on yourself or a player",
+            "/explode [player] [power]", "/explode <player> [power]",
+            "allium.explode", "allium.explode.others",
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> EXPLOSION_SPECS = List.of(ANTIOCH, FIREBALL, BEEZOOKA, KITTYCANNON, NUKE, EXPLODE);
 
     private CoreCommandSpecs() {
     }

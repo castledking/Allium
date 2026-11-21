@@ -2,6 +2,7 @@ package codes.castled.allium.restore;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.gui.GuiIcons;
+import codes.castled.allium.item.library.SkullProfiles;
 import codes.castled.allium.mail.MailItemCodec;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.moderation.InspectionLayout;
@@ -22,6 +23,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * The {@code /restore} menus: a paged snapshot history, a restore panel per snapshot and its ender
@@ -53,10 +56,17 @@ public final class RestoreMenus implements Listener {
 
     private final PluginStart plugin;
     private final RestoreService restore;
+    private final Supplier<SkullProfiles> skulls;
 
     public RestoreMenus(PluginStart plugin, RestoreService restore) {
+        this(plugin, restore, () -> null);
+    }
+
+    /** {@code skulls} gives the "Restore everything" head the target's skin; null keeps the plain head. */
+    public RestoreMenus(PluginStart plugin, RestoreService restore, Supplier<SkullProfiles> skulls) {
         this.plugin = plugin;
         this.restore = restore;
+        this.skulls = skulls;
     }
 
     public void enable() {
@@ -235,6 +245,31 @@ public final class RestoreMenus implements Listener {
         inventory.setItem(INFO, named(Material.PAPER, "§e" + snapshot.reason(), info));
         inventory.setItem(BACK, named(Material.ARROW, "§cBack", List.of("§7Return to the history", "§8Discards panel edits")));
         viewer.openInventory(inventory);
+        if (!own) paintTargetSkin(session, list.targetName);
+    }
+
+    /**
+     * Gives the "Restore everything to &lt;player&gt;" head the target's skin once it is known: at once for
+     * an online target, otherwise after a cached, rate-limited lookup off the server thread. The panel
+     * opens with the plain head and keeps it when no skin can be found.
+     */
+    private void paintTargetSkin(SessionMenu session, String targetName) {
+        SkullProfiles profiles = skulls.get();
+        if (profiles == null) return;
+        java.util.concurrent.CompletableFuture<SkullProfiles.Resolved> lookup;
+        try {
+            lookup = profiles.resolve(targetName);
+        } catch (RuntimeException invalidName) {
+            return;
+        }
+        lookup.whenComplete((resolved, error) -> plugin.getScheduler().runOnServer(() -> {
+            if (error != null || resolved == null || resolved.degraded() || session.inventory == null) return;
+            ItemStack head = session.inventory.getItem(EVERYTHING);
+            if (head == null || head.getType() != Material.PLAYER_HEAD || !(head.getItemMeta() instanceof SkullMeta meta)) return;
+            meta.setOwnerProfile(resolved.profile());
+            head.setItemMeta(meta);
+            session.inventory.setItem(EVERYTHING, head);
+        }));
     }
 
     private void openEnder(Player viewer, SessionMenu session) {

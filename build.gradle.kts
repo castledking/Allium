@@ -110,6 +110,8 @@ dependencies {
     compileOnly("net.kyori:adventure-api:4.17.0")
     compileOnly("org.jetbrains:annotations:26.0.2")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
+    // /creativemanager reads and writes flags through LuckPerms when it is installed (never shaded).
+    compileOnly("net.luckperms:api:5.4")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("net.kyori:adventure-text-serializer-plain:4.17.0")
     compileOnly("com.discordsrv:discordsrv:1.30.3") { isTransitive = false }
@@ -141,6 +143,7 @@ dependencies {
     testImplementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
     testImplementation("net.kyori:adventure-text-serializer-gson:4.17.0")
     testImplementation("com.github.MilkBowl:VaultAPI:1.7.1")
+    testImplementation("net.luckperms:api:5.4")
     testImplementation("com.discordsrv:discordsrv:1.30.3") { isTransitive = false }
     testImplementation("com.github.retrooper:packetevents-api:2.12.1") { isTransitive = false }
     testImplementation("com.github.retrooper:packetevents-netty-common:2.12.1") { isTransitive = false }
@@ -166,6 +169,49 @@ val corePack = tasks.register<JavaExec>("corePack") {
     outputs.dir(corePackDir)
     doFirst { delete(corePackDir) }
     args("build", file("pack/manifest.json").absolutePath, file("pack").absolutePath, corePackDir.get().asFile.absolutePath)
+}
+
+// Optional local standalone pack: when SF's Nexo textures are available locally (and -PdistributablePack
+// is not set), build the complete SF + invsee merged pack into git-ignored build/standalone-pack/ so
+// standalone mode delivers it automatically as allium-core-pack.zip without committing non-distributable art.
+val distributablePack = providers.gradleProperty("distributablePack").map { it.equals("true", ignoreCase = true) }.getOrElse(false)
+val sfPluginsCandidate: File? = if (distributablePack) null else listOfNotNull(
+    providers.gradleProperty("sfPlugins").orNull?.let(::File),
+    System.getenv("SF")?.takeIf { it.isNotBlank() }?.let(::File),
+    File("/mnt/storage/backups/survivalfun/daily.0/survivalfun/var/lib/pterodactyl/volumes/db85ca1b-2fae-4f63-848f-2870a86f6ed7/plugins")
+).firstOrNull { File(it, "Nexo/pack/assets/sf/textures/items/tree_axe.png").isFile }
+val vanillaClientCandidate: File? = if (distributablePack) null else listOfNotNull(
+    providers.gradleProperty("vanillaClient").orNull?.let(::File),
+    File(System.getProperty("user.home"), ".minecraft/versions/26.4-snapshot-6/26.4-snapshot-6.jar")
+).firstOrNull { it.isFile }
+val standalonePackDir = layout.buildDirectory.dir("standalone-pack")
+val standalonePack = tasks.register<Exec>("standalonePack") {
+    group = "build"
+    description = "Builds the local SF + invsee merged pack for standalone delivery (skipped if SF art is absent or -PdistributablePack=true)."
+    dependsOn(":allium-core:jar")
+    onlyIf { sfPluginsCandidate != null }
+    inputs.file("pack/manifest.json")
+    inputs.file("pack/pack.png")
+    inputs.file("pack/tools/sf_export.py")
+    inputs.dir("pack/assets")
+    outputs.dir(standalonePackDir)
+    doFirst {
+        delete(standalonePackDir)
+        val coreJar = coreProject.tasks.named<Jar>("jar").get().archiveFile.get().asFile
+        val cmd = mutableListOf(
+            "python3",
+            file("pack/tools/sf_export.py").absolutePath,
+            "--plugins", sfPluginsCandidate!!.absolutePath,
+            "--allium-jar", coreJar.absolutePath,
+            "--out", standalonePackDir.get().asFile.absolutePath,
+            "--name", "allium-standalone-pack.zip",
+            "--include-lazy-axe"
+        )
+        if (vanillaClientCandidate != null) {
+            cmd += listOf("--vanilla-client", vanillaClientCandidate.absolutePath)
+        }
+        commandLine(cmd)
+    }
 }
 
 // The addon API jar: allium-api plus the allium-core types its signatures use (command specs and the
@@ -203,11 +249,19 @@ tasks {
     }
 
     processResources {
+        // A plain token replace, not expand(): Groovy templates cap literal text at 65535 characters,
+        // which plugin.yml has outgrown.
+        val pluginVersion = project.version.toString()
+        inputs.property("pluginVersion", pluginVersion)
         filesMatching("plugin.yml") {
-            expand("version" to project.version.toString())
+            filter { line -> line.replace("\${version}", pluginVersion) }
         }
         // The deterministic core pack and its manifest ship inside the plugin jar.
         from(corePack) { into("pack") }
+        from(standalonePack) {
+            into("pack")
+            include("allium-standalone-pack.zip", "allium-standalone-pack.zip.sha1", "allium-standalone-pack.zip.json")
+        }
         from("pack/manifest.json") { into("pack") }
     }
 

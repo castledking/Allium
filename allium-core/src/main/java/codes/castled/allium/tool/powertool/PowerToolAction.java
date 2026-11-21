@@ -16,6 +16,10 @@ import java.util.Set;
  * actions ({@code tree_fell}, {@code disarm}, {@code obliterate}). Unknown custom action IDs
  * matching {@code [a-z0-9_:-]+} are also permitted so addons or future Allium modules can plug
  * into the runtime action registry.
+ *
+ * <p>A {@code required} action that does not run (it did nothing, its permission is missing or it is
+ * cooling down) stops its binding: the actions after it are skipped and no use is spent. Put required
+ * actions first; they cannot be delayed.
  */
 public record PowerToolAction(
         String type,
@@ -26,7 +30,8 @@ public record PowerToolAction(
         @Nullable String cooldownId,
         long delayTicks,
         @Nullable String requirePermission,
-        Map<String, Object> params
+        Map<String, Object> params,
+        boolean required
 ) {
     public static final String TYPE_COMMAND = "command";
     public static final String TYPE_CONSOLE = "console";
@@ -38,12 +43,21 @@ public record PowerToolAction(
     public static final String TYPE_TREE_FELL = "tree_fell";
     public static final String TYPE_DISARM = "disarm";
     public static final String TYPE_OBLITERATE = "obliterate";
+    /** Gives the player permission nodes they lack, one at random by weight or all of them. */
+    public static final String TYPE_GRANT = "grant";
 
     public static final Set<String> BUILT_IN_TYPES = Set.of(
             TYPE_COMMAND, TYPE_CONSOLE, TYPE_MESSAGE, TYPE_ACTIONBAR,
             TYPE_SOUND, TYPE_PARTICLE, TYPE_POTION,
-            TYPE_TREE_FELL, TYPE_DISARM, TYPE_OBLITERATE
+            TYPE_TREE_FELL, TYPE_DISARM, TYPE_OBLITERATE, TYPE_GRANT
     );
+
+    /** An action that never stops its binding. */
+    public PowerToolAction(String type, @Nullable String value, boolean asConsole, long cooldownMillis,
+                           PowerToolCooldownScope cooldownScope, @Nullable String cooldownId, long delayTicks,
+                           @Nullable String requirePermission, Map<String, Object> params) {
+        this(type, value, asConsole, cooldownMillis, cooldownScope, cooldownId, delayTicks, requirePermission, params, false);
+    }
 
     public PowerToolAction {
         Objects.requireNonNull(type, "type");
@@ -76,6 +90,7 @@ public record PowerToolAction(
             case "fell_tree", "allium:fell_tree", "allium:tree_fell" -> TYPE_TREE_FELL;
             case "mob_disarm", "allium:disarm" -> TYPE_DISARM;
             case "obliterate_phantoms", "obliterate_entities", "area_kill", "allium:obliterate", "allium:obliterate_phantoms" -> TYPE_OBLITERATE;
+            case "permission", "grant_permission", "allium:grant" -> TYPE_GRANT;
             default -> lower;
         };
     }
@@ -118,6 +133,9 @@ public record PowerToolAction(
         }
         if (hasPermission()) {
             sb.append(" [perm=").append(requirePermission).append(']');
+        }
+        if (required) {
+            sb.append(" [required]");
         }
         return sb.toString();
     }

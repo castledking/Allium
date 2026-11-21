@@ -116,6 +116,18 @@ public final class NameCache {
         return byUuid.size();
     }
 
+    /** Up to {@code limit} known players, most recently seen first. */
+    public synchronized java.util.List<Entry> recent(int limit) {
+        java.util.List<Entry> out = new java.util.ArrayList<>(Math.min(Math.max(limit, 0), bySeen.size()));
+        for (Entry entry : bySeen.descendingSet()) {
+            if (out.size() >= limit) {
+                break;
+            }
+            out.add(entry);
+        }
+        return out;
+    }
+
     public synchronized void clear() {
         byUuid.clear();
         byName.clear();

@@ -123,6 +123,9 @@ public final class PowerToolCodec {
             usesMap.put("consume-on-empty", uses.consumeOnEmpty());
             usesMap.put("recharge-seconds", uses.rechargeSeconds());
             usesMap.put("require-single-item", uses.requireSingleItem());
+            if (!uses.bypassable()) {
+                usesMap.put("bypassable", false);
+            }
             target.put("uses", usesMap);
         }
 
@@ -195,6 +198,9 @@ public final class PowerToolCodec {
                 }
                 if (a.hasPermission()) {
                     am.put("require-permission", a.requirePermission());
+                }
+                if (a.required()) {
+                    am.put("required", true);
                 }
                 if (!a.params().isEmpty()) {
                     am.put("params", new LinkedHashMap<>(a.params()));

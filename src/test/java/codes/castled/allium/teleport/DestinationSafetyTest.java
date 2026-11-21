@@ -84,6 +84,8 @@ class DestinationSafetyTest {
         assertTrue(safety.resolve(boundary, settings).isEmpty(), "a falling block is not a stable landing");
         terrain.put(1, 63, 0, Material.OAK_FENCE);
         assertTrue(safety.resolve(boundary, settings).isEmpty(), "a solid material alone does not prove full top support");
+        terrain.put(1, 63, 0, Material.WATER);
+        assertTrue(safety.resolve(boundary, settings).isPresent(), "water surface breaks falls safely");
     }
 
     @Test

@@ -14,7 +14,8 @@ import java.util.Locale;
 
 /**
  * {@code /allium version}, {@code /allium reload} (see {@link PluginStart#reloadConfiguration}) and
- * {@code /allium import lang [apply]} (see {@link LegacyLangImporter}) and
+ * {@code /allium import lang [apply]} (see {@link LegacyLangImporter}), {@code /allium import vouchers
+ * [apply]} and
  * {@code /allium adopt-window [<duration>|off]}.
  */
 public final class AlliumCommand implements SpecCommandHandler {
@@ -58,16 +59,28 @@ public final class AlliumCommand implements SpecCommandHandler {
                     return;
                 }
                 boolean apply = args.length == 3 && args[2].equalsIgnoreCase("apply");
-                if (args.length < 2 || !args[1].equalsIgnoreCase("lang") || (args.length == 3 && !apply) || args.length > 3) {
-                    context.sendInvalidArgs("/allium import <lang [apply]|legacy [apply <run>]>");
+                boolean vouchers = args.length >= 2 && args[1].equalsIgnoreCase("vouchers");
+                if (args.length < 2 || !(vouchers || args[1].equalsIgnoreCase("lang")) || (args.length == 3 && !apply) || args.length > 3) {
+                    context.sendInvalidArgs("/allium import <lang [apply]|vouchers [apply]|legacy [apply <run>]>");
                     return;
                 }
-                importLang(sender, apply);
+                if (vouchers) importVouchers(sender, apply);
+                else importLang(sender, apply);
             }
             case "adopt-window" -> adoptWindow(context);
             case "sethomes" -> {
                 if (plugin.getModuleManager().getModule("travel") instanceof codes.castled.allium.module.TravelModule travel && travel.isEnabled()) {
                     travel.travel().sethomesAdmin(sender, java.util.Arrays.copyOfRange(context.args(), 1, context.args().length));
+                } else {
+                    plugin.getMessageManager().send(sender, Messages.MODULE_DISABLED);
+                }
+            }
+            case "creativemanager" -> {
+                if (plugin.getModuleManager().getModule("creative") instanceof codes.castled.allium.module.CreativeModule creative
+                        && creative.isEnabled() && creative.manageCommand() != null) {
+                    // /allium's card lists two creativemanager forms; any mistake shows both.
+                    creative.manageCommand().run(sender, java.util.Arrays.copyOfRange(context.args(), 1, context.args().length),
+                            "/allium creativemanager", ignored -> context.sendInvalidArgs("/allium creativemanager"));
                 } else {
                     plugin.getMessageManager().send(sender, Messages.MODULE_DISABLED);
                 }
@@ -151,6 +164,103 @@ public final class AlliumCommand implements SpecCommandHandler {
     static String formatDuration(long millis) {
         long seconds = (millis + 999) / 1000;
         return seconds >= 60 ? (seconds / 60) + "m " + (seconds % 60) + "s" : seconds + "s";
+    }
+
+    /**
+     * {@code /allium import vouchers [apply]}: makes a powertool of each voucher in pre-recode Allium's
+     * {@code vouchers.yml} (see {@link codes.castled.allium.importer.VoucherImport}). A dry run reports;
+     * {@code apply} writes the new {@code tools/voucher_<id>.yml} files (never replacing one) and
+     * reloads the tools.
+     */
+    private void importVouchers(CommandSender sender, boolean apply) {
+        java.io.File source = new java.io.File(plugin.getDataFolder(), codes.castled.allium.importer.VoucherImport.SOURCE);
+        String sourceName = "plugins/" + plugin.getDataFolder().getName() + "/" + codes.castled.allium.importer.VoucherImport.SOURCE;
+        if (!source.isFile()) {
+            plugin.getMessageManager().send(sender, Messages.IMPORT_VOUCHERS_NO_SOURCE, "{file}", sourceName);
+            return;
+        }
+        if (!(plugin.getModuleManager().getModule("tools") instanceof codes.castled.allium.module.ToolsModule tools)
+                || !tools.isEnabled() || tools.powerTools() == null) {
+            plugin.getMessageManager().send(sender, Messages.MODULE_DISABLED);
+            return;
+        }
+        try {
+            if (source.length() > 1_048_576L) throw new java.io.IOException(sourceName + " exceeds 1 MiB");
+            org.bukkit.configuration.file.YamlConfiguration yaml = new org.bukkit.configuration.file.YamlConfiguration();
+            yaml.load(source);
+            java.io.File toolsDir = new java.io.File(plugin.getDataFolder(), codes.castled.allium.tool.ToolDefinitionLoader.DIRECTORY);
+            java.util.Set<String> labels = new java.util.HashSet<>();
+            plugin.getDescription().getCommands().forEach((name, settings) -> {
+                labels.add(name.toLowerCase(Locale.ROOT));
+                if (settings.get("aliases") instanceof List<?> aliases) {
+                    aliases.forEach(alias -> labels.add(String.valueOf(alias).toLowerCase(Locale.ROOT)));
+                }
+            });
+            plugin.getCommandManager().getRenderedCommands().values().forEach(rendered -> labels.addAll(rendered.spec().bareLabels()));
+            var settings = tools.powerTools().settings();
+            codes.castled.allium.importer.VoucherImport.Plan plan = codes.castled.allium.importer.VoucherImport.plan(yaml,
+                    new codes.castled.allium.importer.VoucherImport.Context(labels, settings.consoleAllowlist(), settings.blockSelectors(),
+                            name -> existingTool(new java.io.File(toolsDir, name + ".yml")),
+                            document -> tools.validatePowerTool(String.valueOf(document.get("id")).replace("allium:", ""), document)));
+            plugin.logger().info((apply ? "Voucher import" : "Voucher import (dry run)") + " from " + sourceName + ":");
+            for (codes.castled.allium.importer.VoucherImport.Item item : plan.items()) {
+                plugin.logger().info("  " + item.status() + " " + item.legacyId() + " -> "
+                        + (item.toolName() == null ? "(no tool name)" : "tools/" + item.toolName() + ".yml"));
+                item.notes().forEach(note -> plugin.logger().info("    note: " + note));
+            }
+            long write = plan.count(codes.castled.allium.importer.VoucherImport.Status.WRITE);
+            plugin.getMessageManager().send(sender, Messages.IMPORT_VOUCHERS_REPORT, "{mode}", apply ? "Import" : "Dry run",
+                    "{write}", Long.toString(write),
+                    "{same}", Long.toString(plan.count(codes.castled.allium.importer.VoucherImport.Status.SAME)),
+                    "{kept}", Long.toString(plan.count(codes.castled.allium.importer.VoucherImport.Status.KEPT)),
+                    "{blocked}", Long.toString(plan.count(codes.castled.allium.importer.VoucherImport.Status.BLOCKED)));
+            if (!apply) {
+                return;
+            }
+            if (write == 0) {
+                plugin.getMessageManager().send(sender, Messages.IMPORT_VOUCHERS_NOTHING);
+                return;
+            }
+            java.nio.file.Files.createDirectories(toolsDir.toPath());
+            int written = 0;
+            for (codes.castled.allium.importer.VoucherImport.Item item : plan.items()) {
+                if (item.status() != codes.castled.allium.importer.VoucherImport.Status.WRITE || item.document() == null) continue;
+                java.nio.file.Path target = toolsDir.toPath().resolve(item.toolName() + ".yml");
+                java.nio.file.Path temp = java.nio.file.Files.createTempFile(toolsDir.toPath(), ".voucher-", ".tmp");
+                try {
+                    java.nio.file.Files.writeString(temp, codes.castled.allium.importer.VoucherImport.yaml(item.document()));
+                    // Never replaces a file: one that appeared since the plan stays.
+                    java.nio.file.Files.move(temp, target);
+                    written++;
+                    plugin.logger().info("  wrote tools/" + item.toolName() + ".yml (" + item.legacyId() + ")");
+                } catch (java.nio.file.FileAlreadyExistsException appeared) {
+                    plugin.logger().warning("  tools/" + item.toolName() + ".yml appeared since the plan; it is kept.");
+                } finally {
+                    java.nio.file.Files.deleteIfExists(temp);
+                }
+            }
+            tools.reloadPowerTools();
+            plugin.logger().info("Voucher import wrote " + written + " powertool(s). Give them with /pt give <player> <tool>; vouchers"
+                    + " players already hold become these tools when used while /allium adopt-window is open.");
+            plugin.getMessageManager().send(sender, Messages.IMPORT_VOUCHERS_APPLIED, "{write}", Integer.toString(written));
+        } catch (java.io.IOException | org.bukkit.configuration.InvalidConfigurationException | RuntimeException e) {
+            String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage().lines().findFirst().orElse("");
+            plugin.logger().warning("Voucher import failed: " + reason);
+            plugin.getMessageManager().send(sender, Messages.IMPORT_VOUCHERS_FAILED, "{reason}", reason);
+        }
+    }
+
+    /** A tool file's YAML after a round trip, to compare with a planned one; null when there is none. */
+    @org.jetbrains.annotations.Nullable
+    private static String existingTool(java.io.File file) {
+        if (!file.isFile()) return null;
+        org.bukkit.configuration.file.YamlConfiguration yaml = new org.bukkit.configuration.file.YamlConfiguration();
+        try {
+            yaml.load(file);
+        } catch (java.io.IOException | org.bukkit.configuration.InvalidConfigurationException unreadable) {
+            return "";
+        }
+        return yaml.saveToString();
     }
 
     private void importLang(CommandSender sender, boolean apply) {

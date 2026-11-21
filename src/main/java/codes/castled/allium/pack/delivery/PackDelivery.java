@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,8 +64,10 @@ public final class PackDelivery implements Listener {
 
     private final PluginStart plugin;
     private volatile ResourcePackSettings settings;
+    private volatile PackSource pack;
     private volatile String sha1;
     private volatile byte[] hash;
+    private volatile String activeUrl;
     private final TaskScheduler scheduler;
     private final @Nullable Method addResourcePack;
     private final @Nullable Method statusId;
@@ -74,12 +77,15 @@ public final class PackDelivery implements Listener {
     private final Set<UUID> sentTo = ConcurrentHashMap.newKeySet();
     private final Map<UUID, String> lastStatus = new ConcurrentHashMap<>();
     private ThreadPoolExecutor checkPool;
+    private @Nullable PackHttpServer httpServer;
 
     public PackDelivery(PluginStart plugin, ResourcePackSettings settings, PackSource pack) {
         this.plugin = plugin;
         this.settings = settings;
+        this.pack = pack;
         this.sha1 = pack.sha1();
         this.hash = HexFormat.of().parseHex(pack.sha1());
+        this.activeUrl = settings.url();
         this.scheduler = plugin.getScheduler();
         this.addResourcePack = method(Player.class, "addResourcePack", UUID.class, String.class, byte[].class, String.class, boolean.class);
         this.statusId = method(PlayerResourcePackStatusEvent.class, "getID");
@@ -109,15 +115,21 @@ public final class PackDelivery implements Listener {
             plugin.getServer().getPluginManager().registerEvents(this, plugin);
             listening = true;
         }
-        String serverPack = Bukkit.getResourcePack();
+        String serverPack = Bukkit.getServer() == null ? "" : Bukkit.getResourcePack();
         if (!multiplePacks() && serverPack != null && !serverPack.isBlank()) {
             plugin.logger().warning("This server version gives each player one server resource pack, so it needs exactly one delivery "
                     + "owner. server.properties also sets resource-pack, and Allium's pack replaces it for every player. Clear "
                     + "resource-pack in server.properties, or set resource-pack.owner to none.");
         }
+        if (settings.selfHost().enabled()) {
+            applySelfHost(settings, pack, message -> { });
+            return;
+        }
+        stopSelfHost();
+        activeUrl = settings.url();
         if (!settings.verifyHostedFile()) {
             hosted = Hosted.UNVERIFIED;
-            plugin.logger().info("Sending Allium's resource pack from " + settings.url() + " (SHA-1 " + sha1 + ", not verified: "
+            plugin.logger().info("Sending Allium's resource pack from " + activeUrl + " (SHA-1 " + sha1 + ", not verified: "
                     + "verify-hosted-file is off)" + mode() + ".");
             return;
         }
@@ -133,34 +145,108 @@ public final class PackDelivery implements Listener {
     }
 
     /**
-     * {@code /allium reload}: applies new URL, required, prompt and kick-message settings and the
-     * (possibly new) pack, then checks the hosted file again. Until the check finishes, joining
-     * players wait for its result. If it now matches, online players who do not have the pack yet
-     * are sent it.
+     * {@code /allium reload}: applies new URL, self-host, required, prompt and kick-message settings
+     * and the (possibly new) pack, then checks or serves it again. Until verification finishes,
+     * joining players wait for its result. If it now matches, online players who do not have the
+     * pack yet are sent it.
      */
-    public void reload(ResourcePackSettings next, PackSource pack, java.util.function.Consumer<String> reply) {
+    public void reload(ResourcePackSettings next, PackSource nextPack, java.util.function.Consumer<String> reply) {
+        String previousUrl = activeUrl;
         settings = next;
-        if (!pack.sha1().equals(sha1)) {
-            sentTo.clear(); // a different pack: everyone online gets it once it verifies
+        pack = nextPack;
+        if (!nextPack.sha1().equals(sha1)) {
+            sentTo.clear(); // a different pack: everyone online gets it once ready
         }
-        sha1 = pack.sha1();
-        hash = HexFormat.of().parseHex(pack.sha1());
+        sha1 = nextPack.sha1();
+        hash = HexFormat.of().parseHex(nextPack.sha1());
         if (!next.sendsUrl()) {
+            stopSelfHost();
+            activeUrl = "";
             hosted = Hosted.OFF;
-            reply.accept("resource-pack.standalone.url is not set; Allium sends no pack until it is.");
+            reply.accept("Neither resource-pack.standalone.url nor standalone.self-host is enabled; Allium sends no pack until one is configured.");
             return;
         }
         if (!listening) {
-            enable();
+            plugin.getServer().getPluginManager().registerEvents(this, plugin);
+            listening = true;
+        }
+        if (next.selfHost().enabled()) {
+            applySelfHost(next, nextPack, reply);
+            if (!Objects.equals(previousUrl, activeUrl)) {
+                sentTo.clear();
+            }
+            if (hosted == Hosted.VERIFIED) {
+                sendPendingOnline();
+            }
             return;
+        }
+        stopSelfHost();
+        activeUrl = next.url();
+        if (!Objects.equals(previousUrl, activeUrl)) {
+            sentTo.clear();
         }
         if (!next.verifyHostedFile()) {
             hosted = Hosted.UNVERIFIED;
-            reply.accept("Sending " + next.url() + " (SHA-1 " + sha1 + ") without checking it: verify-hosted-file is off.");
+            reply.accept("Sending " + activeUrl + " (SHA-1 " + sha1 + ") without checking it: verify-hosted-file is off.");
+            sendPendingOnline();
             return;
         }
-        reply.accept("Checking the hosted resource pack at " + next.url() + "...");
+        reply.accept("Checking the hosted resource pack at " + activeUrl + "...");
         startCheck(reply);
+    }
+
+    private void applySelfHost(ResourcePackSettings currentSettings, PackSource currentPack,
+                               java.util.function.Consumer<String> reply) {
+        ResourcePackSettings.SelfHost sh = currentSettings.selfHost();
+        try {
+            if (httpServer != null && httpServer.isRunning() && httpServer.matchesBinding(sh.bindHost(), sh.port())) {
+                httpServer.update(currentPack);
+            } else {
+                stopSelfHost();
+                ThreadPoolExecutor httpPool = scheduler == null ? null : scheduler.boundedPool("Allium-PackHttp", 2, 32);
+                PackHttpServer created = new PackHttpServer(sh.bindHost(), sh.port(), currentPack, httpPool);
+                created.start();
+                httpServer = created;
+            }
+            String serverIp = Bukkit.getServer() == null ? "" : Bukkit.getIp();
+            activeUrl = httpServer.packUrl(sh.publicHost(), sh.publicUrl(), serverIp);
+            hosted = Hosted.VERIFIED;
+            hostedDetail = "self-hosting at " + activeUrl + " (SHA-1 " + sha1 + ")";
+            plugin.logger().info("Self-hosting Allium's resource pack on " + sh.bindHost() + ":" + httpServer.port()
+                    + " -> " + activeUrl + " (SHA-1 " + sha1 + ")" + mode() + ".");
+            if (sh.publicUrl().isEmpty() && sh.publicHost().isEmpty()
+                    && "127.0.0.1".equals(httpServer.resolveHost(sh.publicHost(), serverIp))) {
+                plugin.logger().info("Self-host URL uses 127.0.0.1 (local testing only). For remote players, set "
+                        + "resource-pack.standalone.self-host.public-host or public-url.");
+            }
+            reply.accept("Self-hosting Allium's resource pack at " + activeUrl + " (SHA-1 " + sha1 + ").");
+        } catch (IOException | RuntimeException e) {
+            stopSelfHost();
+            activeUrl = "";
+            hosted = Hosted.UNREACHABLE;
+            hostedDetail = "could not bind self-host HTTP server on " + sh.bindHost() + ":" + sh.port() + " (" + e + ")";
+            plugin.logger().severe("Not sending Allium's resource pack: " + hostedDetail + ".");
+            reply.accept("Not sending the resource pack: " + hostedDetail + ".");
+        }
+    }
+
+    private void stopSelfHost() {
+        if (httpServer != null) {
+            httpServer.stop();
+            httpServer = null;
+        }
+    }
+
+    private void sendPendingOnline() {
+        if (Bukkit.getServer() == null) {
+            return;
+        }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (waiting.contains(player.getUniqueId()) || !sentTo.contains(player.getUniqueId())) {
+                send(player);
+            }
+        }
+        waiting.clear();
     }
 
     private String mode() {
@@ -265,15 +351,19 @@ public final class PackDelivery implements Listener {
 
     void send(Player player) {
         ResourcePackSettings settings = this.settings;
+        String url = this.activeUrl;
+        if (url == null || url.isBlank()) {
+            return;
+        }
         String prompt = settings.prompt() == null || settings.prompt().isBlank() ? null : TextFormatter.parse(settings.prompt()).toLegacy();
         try {
             if (addResourcePack != null) {
-                addResourcePack.invoke(player, PACK_ID, settings.url(), hash, prompt, settings.required());
+                addResourcePack.invoke(player, PACK_ID, url, hash, prompt, settings.required());
             } else {
-                player.setResourcePack(settings.url(), hash, prompt, settings.required());
+                player.setResourcePack(url, hash, prompt, settings.required());
             }
             sentTo.add(player.getUniqueId());
-            plugin.logger().debug("Sent Allium's resource pack to " + player.getName() + " (" + settings.url() + ", SHA-1 " + sha1 + ").");
+            plugin.logger().debug("Sent Allium's resource pack to " + player.getName() + " (" + url + ", SHA-1 " + sha1 + ").");
         } catch (ReflectiveOperationException | RuntimeException e) {
             plugin.logger().warning("Could not send Allium's resource pack to " + player.getName() + ": " + e);
         }
@@ -333,8 +423,17 @@ public final class PackDelivery implements Listener {
         return lastStatus.get(player);
     }
 
+    public String activeUrl() {
+        return activeUrl;
+    }
+
+    public int selfHostPort() {
+        return httpServer == null ? -1 : httpServer.port();
+    }
+
     public void disable() {
         HandlerList.unregisterAll(this);
+        stopSelfHost();
         if (checkPool != null) {
             checkPool.shutdownNow();
         }

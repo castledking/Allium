@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""Bring Allium's bundled item aliases up to date with EssentialsX's items.json.
+
+Reads EssentialsX's items.json (canonical entries plus aliases pointing at them) and the bundled
+src/main/resources/itemdb.yml.gz, and writes Allium's syntax:
+
+  plain item   ALIAS: MATERIAL
+  potion       ALIAS: POTION potion:strong_swiftness   (a vanilla base potion, like a brewed one)
+  spawner      ALIAS: SPAWNER;ENTITY
+
+Policy:
+  * Every Essentials alias Allium lacks is added (minecraft:-prefixed ones are skipped, since
+    Allium resolves namespaced and exact material names itself). The names of items Bukkit renamed
+    between supported versions (short_grass, turtle_scute, iron_chain) are kept as aliases too, so
+    they resolve on the versions where the material has the other name.
+  * Where both name an alias differently, Essentials' value wins (old custom-effect potions such as
+    POTION;SPEED;180 become the vanilla potion), except for the aliases in KEEP, where Allium's value
+    is the same item or better.
+  * Allium's own aliases that Essentials does not have are kept.
+  * The legacy-ids section and the header comments are kept byte for byte.
+
+Servers pick the new aliases up on their next start: Allium overlays a server's own itemdb.yml on
+the bundled aliases, so admins' edits still win. Changed aliases reach existing files through
+src/main/resources/itemdb-previous-aliases.yml, which records each alias's earlier bundled values:
+a server whose file still holds one of them (a copy, not the admin's choice) is upgraded on start.
+See docs/legacy-items-and-teleport.md.
+
+  tools/sync-essentials-itemdb ITEMS_JSON --materials 1.20.1.txt --materials 26.3.txt --report OUT.md [--write]
+"""
+import argparse, gzip, hashlib, json, re
+from collections import Counter
+from pathlib import Path
+import yaml
+
+p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+p.add_argument('items_json', type=Path, help="EssentialsX's Essentials/src/main/resources/items.json")
+p.add_argument('--materials', type=Path, action='append', default=[],
+               help='a list of Bukkit Material names, one per line (repeat per supported version)')
+p.add_argument('--source', default='', help='where items.json came from, for the header (e.g. a commit)')
+p.add_argument('--report', type=Path, help='write a Markdown report of what changed')
+p.add_argument('--write', action='store_true', help='rewrite src/main/resources/itemdb.yml.gz')
+a = p.parse_args()
+
+root = Path(__file__).resolve().parents[1]
+resource = root / 'src/main/resources/itemdb.yml.gz'
+history = root / 'src/main/resources/itemdb-previous-aliases.yml'
+original = gzip.decompress(resource.read_bytes()).decode().replace('\r\n', '\n')
+ours = {str(k).lower(): str(v) for k, v in (yaml.safe_load(original)['aliases'] or {}).items()}
+
+raw = ''.join(line for line in a.items_json.read_text().splitlines(True) if not line.lstrip().startswith('#'))
+essentials = json.loads(raw)
+known = set()
+for listing in a.materials:
+    known |= {line.strip() for line in listing.read_text().splitlines() if line.strip()}
+
+
+# Items Bukkit renamed between supported versions; Allium resolves either name on both.
+RENAMED = {'SHORT_GRASS', 'GRASS', 'TURTLE_SCUTE', 'SCUTE', 'IRON_CHAIN', 'CHAIN'}
+# Conflicts where Allium's value stays: a splash or lingering water potion, not Essentials' empty one.
+KEEP = {'lingeringpotion': 'a lingering water potion rather than an empty one',
+        'splashpotion': 'a splash water potion rather than an empty one'}
+
+def spec(entry):
+    material = entry['material']
+    if 'potionData' in entry:
+        data = entry['potionData']
+        kind = data['type'].lower()
+        prefix = 'strong_' if data.get('upgraded') else 'long_' if data.get('extended') else ''
+        return f'{material} potion:{prefix}{kind}'
+    if 'entity' in entry:
+        return f"SPAWNER;{entry['entity']}"
+    return material
+
+
+canonical = {k: v for k, v in essentials.items() if isinstance(v, dict)}
+theirs = {}
+for alias, target in essentials.items():
+    if ':' in alias:
+        continue
+    entry = target if isinstance(target, dict) else canonical.get(target)
+    if entry is None:
+        continue
+    value = spec(entry)
+    # An exact material name needs no alias (Allium resolves it before the database), unless the
+    # item was renamed, so the name still works where the material is called something else.
+    if isinstance(target, dict) and value == alias.upper() and value not in RENAMED:
+        continue
+    theirs[alias.lower()] = value
+
+OLD_POTION = re.compile(r'^(POTION|SPLASH_POTION|LINGERING_POTION|TIPPED_ARROW);[A-Z_]+;[0-9]+(;[0-9]+)?$')
+
+
+def material_of(value):
+    return re.split(r'[; ]', value, maxsplit=1)[0].upper()
+
+
+added, adopted, kept, same = {}, {}, {}, 0
+reasons = Counter()
+for alias, value in sorted(theirs.items()):
+    current = ours.get(alias)
+    if current is None:
+        added[alias] = value
+    elif current.lower() == value.lower():
+        same += 1
+    elif alias in KEEP:
+        kept[alias] = (current, value, KEEP[alias])
+    elif OLD_POTION.match(current) and ' potion:' in value:
+        adopted[alias] = (current, value, 'vanilla potion instead of a custom effect')
+        reasons['potion'] += 1
+    else:
+        adopted[alias] = (current, value, 'Essentials\' meaning')
+        reasons['meaning'] += 1
+
+merged = dict(ours)
+merged.update(added)
+merged.update({alias: new for alias, (_, new, _) in adopted.items()})
+unknown_new = sorted(alias for alias, value in added.items()
+                     if known and material_of(value) not in known and value.split(';')[0] != 'SPAWNER')
+
+print(f'Essentials aliases: {len(theirs)}; Allium aliases: {len(ours)}')
+print(f'same: {same}; added: {len(added)}; adopted Essentials value: {len(adopted)} {dict(reasons)}; kept Allium value: {len(kept)}')
+print(f'Allium-only aliases kept: {len(set(ours) - set(theirs))}; result: {len(merged)} aliases')
+if unknown_new:
+    print(f'warning: {len(unknown_new)} added aliases name materials in no --materials list, e.g. {unknown_new[:5]}')
+
+if a.report:
+    newest = Counter(material_of(v) for v in added.values())
+    lines = ['# itemdb sync with EssentialsX items.json', '',
+             f'Source: {a.source or a.items_json}', '',
+             f'- Essentials aliases read: {len(theirs)} (namespaced ones skipped)',
+             f'- Already identical: {same}',
+             f'- Added: {len(added)} aliases for {len(newest)} items',
+             f'- Changed to Essentials\' value: {len(adopted)} ({", ".join(f"{k}: {v}" for k, v in reasons.items()) or "none"})',
+             f'- Kept Allium\'s value where they differ: {len(kept)}',
+             f'- Allium-only aliases kept: {len(set(ours) - set(theirs))}',
+             f'- Total aliases now: {len(merged)}', '']
+    lines += ['## Changed to Essentials\' value', '', '| Alias | Was | Now | Why |', '| --- | --- | --- | --- |']
+    lines += [f'| `{k}` | `{old}` | `{new}` | {why} |' for k, (old, new, why) in sorted(adopted.items())]
+    lines += ['', '## Kept Allium\'s value', '', '| Alias | Allium | Essentials | Why |', '| --- | --- | --- | --- |']
+    lines += [f'| `{k}` | `{old}` | `{new}` | {why} |' for k, (old, new, why) in sorted(kept.items())]
+    lines += ['', '## Items that gained aliases', '', ', '.join(f'`{m}` ({n})' for m, n in sorted(newest.items())), '']
+    a.report.write_text('\n'.join(lines))
+    print(f'report: {a.report}')
+
+if a.write:
+    head, sep, legacy = original.partition('\nlegacy-ids:')
+    header = head.split('\naliases:', 1)[0].rstrip()
+    header = re.sub(r'\n# Aliases synced with EssentialsX items\.json[^\n]*', '', header)
+    note = f'\n# Aliases synced with EssentialsX items.json{" (" + a.source + ")" if a.source else ""}; see tools/sync-essentials-itemdb.'
+    body = header + note + '\n\n' + yaml.safe_dump({'aliases': dict(sorted(merged.items()))}, sort_keys=False,
+                                                    allow_unicode=False, width=4096).rstrip() + '\n' + sep.lstrip('\n')
+    if sep:
+        body = header + note + '\n\n' + yaml.safe_dump({'aliases': dict(sorted(merged.items()))}, sort_keys=False,
+                                                        allow_unicode=False, width=4096) + '\nlegacy-ids:' + legacy
+    check = yaml.safe_load(body)
+    if len(check['aliases']) != len(merged) or (sep and yaml.safe_load(original)['legacy-ids'] != check['legacy-ids']):
+        raise SystemExit('refusing to write: the result does not read back')
+    resource.write_bytes(gzip.compress(body.encode(), mtime=0))
+    print(f'wrote {resource} ({len(merged)} aliases), SHA256 {hashlib.sha256(resource.read_bytes()).hexdigest()}')
+    previous = {}
+    if history.exists():
+        previous = {k: list(v) for k, v in (yaml.safe_load(history.read_text()).get('aliases') or {}).items()}
+    for alias, (old, _, _) in adopted.items():
+        values = previous.setdefault(alias, [])
+        if old not in values:
+            values.append(old)
+    history.write_text('# Earlier bundled values of item aliases, used only during upgrade: an alias in a server\'s\n'
+                       '# itemdb.yml that still holds one of these (an unedited copy) takes the new bundled value.\n'
+                       '# Written by tools/sync-essentials-itemdb; do not edit.\n'
+                       + yaml.safe_dump({'aliases': dict(sorted(previous.items()))}, sort_keys=False, width=4096))
+    print(f'wrote {history} ({len(previous)} aliases with earlier values)')

@@ -25,4 +25,9 @@ public interface ProtectionHook {
     default ProtectionDecision checkBlockBreak(Player player, Location location, @Nullable Event cause) {
         return ProtectionDecision.allow();
     }
+
+    /** Whether a claim covers {@code location}, whoever owns it; explosion regeneration leaves claims alone. */
+    default boolean claimed(Location location) {
+        return false;
+    }
 }

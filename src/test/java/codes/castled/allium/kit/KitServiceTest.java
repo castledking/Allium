@@ -115,7 +115,7 @@ class KitServiceTest {
         when(scheduler.repeatOnServer(any(), anyLong(), anyLong())).thenReturn(TaskHandle.NONE);
 
         when(server.getPluginManager()).thenReturn(pluginManager);
-        Permission wildcardSpy = spy(new Permission("allium.kits.*", PermissionDefault.FALSE));
+        Permission wildcardSpy = spy(new Permission("allium.kits.*", PermissionDefault.OP));
         doNothing().when(wildcardSpy).recalculatePermissibles();
         permissions.put("allium.kits.*", wildcardSpy);
         when(pluginManager.getPermission(anyString())).thenAnswer(call -> permissions.get(call.getArgument(0)));
@@ -285,7 +285,7 @@ class KitServiceTest {
         KitService service = newService(Runnable::run, library, delivery);
         assertTrue(service.reloadDefinitions());
         service.onJoinEarly(new org.bukkit.event.player.PlayerJoinEvent(player, ""));
-        assertEquals(PermissionDefault.FALSE, permissions.get("allium.kits.*").getDefault());
+        assertEquals(PermissionDefault.OP, permissions.get("allium.kits.*").getDefault());
         assertEquals(PermissionDefault.FALSE, permissions.get("allium.kits.starter").getDefault());
         assertEquals(PermissionDefault.FALSE, permissions.get("allium.kits.vip").getDefault());
         assertTrue(Boolean.TRUE.equals(permissions.get("allium.kits.*").getChildren().get("allium.kits.starter")));

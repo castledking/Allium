@@ -68,9 +68,9 @@ import java.util.function.Supplier;
 /**
  * Runtime service for {@code /invsee} and {@code /enderchest} ({@code /echest}, {@code /ec}).
  *
- * <p>Enforces permission separation ({@code .edit} and {@code .offline} are explicit {@code false}
+ * <p>Enforces permission separation ({@code .edit} and {@code .offline} are separate op-default
  * nodes outside {@code allium.*}), vanish blindness parity for hidden targets, rank/exempt policy
- * via {@link DisciplineService}, mail/kit busy-lock exclusion, single mutable session locking per
+ * via {@link DisciplineService} for online targets, mail/kit busy-lock exclusion, single mutable session locking per
  * {@code (uuid, type)}, 1-tick post-click flush with snapshot verification and target event
  * guards, atomic CAS offline {@code .dat} updates with login fencing, and bounded SQL audit logging.
  */
@@ -162,6 +162,8 @@ public final class InspectionService implements Listener {
          * when unknown. Captures always use the layout that was displayed.
          */
         int held = -1;
+        /** Shown in {@link #BACK_BUTTON_SLOT} when the menu was opened from another menu. */
+        @Nullable BackButton back;
 
         ItemStack[] lastSyncedSlots;
         byte[] currentRawBytes;
@@ -207,6 +209,7 @@ public final class InspectionService implements Listener {
     private final Map<UUID, CopyOnWriteArrayList<InspectionSession>> sessionsByTarget = new ConcurrentHashMap<>();
     private final Map<UUID, CopyOnWriteArrayList<InspectionSession>> sessionsByViewer = new ConcurrentHashMap<>();
     private final Set<UUID> activeTargetGuards = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> resyncQueued = ConcurrentHashMap.newKeySet();
 
     private TaskHandle refreshHandle;
     private volatile boolean closed = true;
@@ -388,6 +391,21 @@ public final class InspectionService implements Listener {
     // ---------------------------------------------------------------------------------------------
 
     public void dispatchInvsee(CommandSender sender, String[] args) {
+        dispatchInvsee(sender, args, null);
+    }
+
+    /**
+     * A button in a menu's last locked cell that leaves the inspection for where it was opened from
+     * ({@code /creativemanager}). {@code lore} says where it goes.
+     */
+    public record BackButton(String lore, Runnable action) {
+    }
+
+    /** The cell the {@link BackButton} occupies: the last locked pane of the invsee layout. */
+    static final int BACK_BUTTON_SLOT = InspectionLayout.INVSEE_LOCKED_END;
+
+    /** {@code /invsee <player>}, with {@code back} (or none) in the menu's last locked cell. */
+    public void dispatchInvsee(CommandSender sender, String[] args, @Nullable BackButton back) {
         if (!(sender instanceof Player viewer)) {
             send(sender, Messages.PLAYER_ONLY);
             return;
@@ -409,7 +427,7 @@ public final class InspectionService implements Listener {
             send(viewer, Messages.INSPECT_SELF);
             return;
         }
-        resolveAndOpen(viewer, rawTarget, InspectionLayout.InspectionType.INVSEE);
+        resolveAndOpen(viewer, rawTarget, InspectionLayout.InspectionType.INVSEE, back);
     }
 
     public void dispatchEnderchest(CommandSender sender, String[] args) {
@@ -438,7 +456,7 @@ public final class InspectionService implements Listener {
             return;
         }
         String rawTarget = MessagingService.safeName(args[0]);
-        resolveAndOpen(viewer, rawTarget, InspectionLayout.InspectionType.ENDERCHEST);
+        resolveAndOpen(viewer, rawTarget, InspectionLayout.InspectionType.ENDERCHEST, null);
     }
 
     private void openSelfEnderchest(Player viewer) {
@@ -462,15 +480,15 @@ public final class InspectionService implements Listener {
         logInspection("ENDERCHEST_OPEN", viewerName, viewer.getUniqueId(), viewerName, detail);
     }
 
-    private void resolveAndOpen(Player viewer, String rawTarget, InspectionLayout.InspectionType type) {
+    private void resolveAndOpen(Player viewer, String rawTarget, InspectionLayout.InspectionType type, @Nullable BackButton back) {
         PlayerNameService names = nameService.get();
         if (names == null) {
             Player exact = findVisibleExactOnline(viewer, rawTarget);
             if (exact == null) {
-                handleTargetResolution(viewer, rawTarget, Optional.empty(), type);
+                handleTargetResolution(viewer, rawTarget, Optional.empty(), type, back);
             } else {
                 handleTargetResolution(viewer, rawTarget, Optional.of(
-                        new NameCache.Entry(exact.getUniqueId(), exact.getName(), System.currentTimeMillis())), type);
+                        new NameCache.Entry(exact.getUniqueId(), exact.getName(), System.currentTimeMillis())), type, back);
             }
             return;
         }
@@ -483,7 +501,7 @@ public final class InspectionService implements Listener {
                     send(viewer, Messages.INSPECT_UNAVAILABLE);
                     return;
                 }
-                handleTargetResolution(viewer, rawTarget, found == null ? Optional.empty() : found, type);
+                handleTargetResolution(viewer, rawTarget, found == null ? Optional.empty() : found, type, back);
             }));
         } catch (RejectedExecutionException rejected) {
             send(viewer, Messages.INSPECT_UNAVAILABLE);
@@ -502,7 +520,8 @@ public final class InspectionService implements Listener {
             Player viewer,
             String rawTarget,
             Optional<NameCache.Entry> resolved,
-            InspectionLayout.InspectionType type
+            InspectionLayout.InspectionType type,
+            @Nullable BackButton back
     ) {
         if (closed || !viewer.isOnline()) {
             return;
@@ -554,7 +573,7 @@ public final class InspectionService implements Listener {
                 send(viewer, Messages.INSPECT_OFFLINE_EDIT_DISABLED);
                 return;
             }
-            openOfflineSession(viewer, targetId, targetName, type, editable);
+            openOfflineSession(viewer, targetId, targetName, type, editable, back);
             return;
         }
 
@@ -571,17 +590,17 @@ public final class InspectionService implements Listener {
             send(viewer, Messages.INSPECT_BUSY);
             return;
         }
-        openOnlineSession(viewer, online, type, editable);
+        openOnlineSession(viewer, online, type, editable, back);
     }
 
+    /**
+     * Offline (and hidden) targets need only the {@code .offline} node. Their exempt status cannot be
+     * read while they are offline, so offline inspection does not apply the discipline policy.
+     */
     private boolean handleOfflineOrHiddenDenial(Player viewer, String targetName, InspectionLayout.InspectionType type) {
         String offlinePerm = offlinePermission(type);
         if (!viewer.hasPermission(offlinePerm)) {
             send(viewer, Messages.INSPECT_OFFLINE_REQUIRED, "{permission}", offlinePerm);
-            return false;
-        }
-        if (!viewer.hasPermission(PERMISSION_BYPASS)) {
-            send(viewer, Messages.DISCIPLINE_EXEMPT);
             return false;
         }
         return true;
@@ -595,7 +614,8 @@ public final class InspectionService implements Listener {
             Player viewer,
             Player target,
             InspectionLayout.InspectionType type,
-            boolean editable
+            boolean editable,
+            @Nullable BackButton back
     ) {
         InspectionSession session = new InspectionSession(
                 viewer,
@@ -605,6 +625,7 @@ public final class InspectionService implements Listener {
                 InspectionLayout.InspectionMode.ONLINE,
                 editable
         );
+        session.back = back;
         if (editable && activeMutableSessions.putIfAbsent(session.key(), session) != null) {
             send(viewer, Messages.INSPECT_BUSY);
             return;
@@ -632,7 +653,8 @@ public final class InspectionService implements Listener {
             UUID targetUuid,
             String targetName,
             InspectionLayout.InspectionType type,
-            boolean editable
+            boolean editable,
+            @Nullable BackButton back
     ) {
         if (offlineStore == null) {
             send(viewer, Messages.INSPECT_UNAVAILABLE);
@@ -650,6 +672,7 @@ public final class InspectionService implements Listener {
                 InspectionLayout.InspectionMode.OFFLINE,
                 editable
         );
+        session.back = back;
         if (editable && activeMutableSessions.putIfAbsent(session.key(), session) != null) {
             send(viewer, Messages.INSPECT_BUSY);
             return;
@@ -772,9 +795,27 @@ public final class InspectionService implements Listener {
             for (int slot = InspectionLayout.INVSEE_LOCKED_START; slot <= InspectionLayout.INVSEE_LOCKED_END; slot++) {
                 gui.setItem(slot, filler.clone());
             }
+            if (session.back != null) {
+                gui.setItem(BACK_BUTTON_SLOT, backButton(session.back));
+            }
         }
         applySlotsToGui(session.type, gui, playerSlots, session.held);
         return gui;
+    }
+
+    private static ItemStack backButton(BackButton back) {
+        ItemStack arrow = new ItemStack(org.bukkit.Material.ARROW);
+        try {
+            org.bukkit.inventory.meta.ItemMeta meta = arrow.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("\u00a7cBack");
+                meta.setLore(List.of("\u00a77" + back.lore()));
+                arrow.setItemMeta(meta);
+            }
+        } catch (RuntimeException noItemFactory) {
+            // Plain unit tests have no item factory: a bare arrow.
+        }
+        return arrow;
     }
 
     private static ItemStack createLockedPane() {
@@ -808,6 +849,7 @@ public final class InspectionService implements Listener {
             event.setCancelled(true);
             return;
         }
+        scheduleResync(clicker);
 
         int topSize = InspectionLayout.guiSize(session.type);
         int rawSlot = event.getRawSlot();
@@ -820,6 +862,15 @@ public final class InspectionService implements Listener {
 
         if (lockedSlot) {
             event.setCancelled(true);
+            if (rawSlot == BACK_BUTTON_SLOT && session.back != null && session.type == InspectionLayout.InspectionType.INVSEE) {
+                // Opening the other menu closes this one, which flushes and ends the session as usual.
+                Runnable back = session.back.action();
+                scheduleOnServer(() -> {
+                    if (clicker.isOnline()) {
+                        back.run();
+                    }
+                });
+            }
             return;
         }
         if (collectToCursor && session.type == InspectionLayout.InspectionType.INVSEE && matchesLockedPane(event, session.gui)) {
@@ -895,6 +946,7 @@ public final class InspectionService implements Listener {
             event.setCancelled(true);
             return;
         }
+        scheduleResync(clicker);
 
         int topSize = InspectionLayout.guiSize(session.type);
         boolean touchesLocked = false;
@@ -983,6 +1035,10 @@ public final class InspectionService implements Listener {
     public void onInventoryClose(InventoryCloseEvent event) {
         if (!(event.getInventory().getHolder() instanceof InspectionHolder holder)) {
             return;
+        }
+        if (event.getPlayer() instanceof Player viewer) {
+            // Clears any icon a mispredicting client still shows in the viewer's own inventory.
+            scheduleResync(viewer);
         }
         InspectionSession session = sessionsById.get(holder.sessionId());
         if (session == null || !session.active) {
@@ -1733,7 +1789,6 @@ public final class InspectionService implements Listener {
     private boolean hasOfflineOpenPermission(Player viewer, InspectionLayout.InspectionType type, boolean editable) {
         if (!hasOpenCommandPermission(viewer, type, true)) return false;
         if (!viewer.hasPermission(offlinePermission(type))) return false;
-        if (!viewer.hasPermission(PERMISSION_BYPASS)) return false;
         return !editable || viewer.hasPermission(editPermission(type));
     }
 
@@ -1778,6 +1833,26 @@ public final class InspectionService implements Listener {
         } catch (RejectedExecutionException rejected) {
             plugin.logger().warning("Inspection audit pool busy; skipped SQL audit for " + action + " (" + targetUuid + ")");
         }
+    }
+
+    /**
+     * Resends the viewer's open window and cursor on the next tick, once per tick. The server's own
+     * corrections go out in the same tick as the click; a client that predicts a click wrongly, such as
+     * one behind a protocol translator or an inventory mod, can keep showing an icon it never picked up
+     * (it cannot be clicked, and placing an item on it clears it). A full resend after the client's
+     * whole click sequence removes it.
+     */
+    private void scheduleResync(Player viewer) {
+        UUID id = viewer.getUniqueId();
+        if (!resyncQueued.add(id)) {
+            return;
+        }
+        scheduleOnServer(() -> {
+            resyncQueued.remove(id);
+            if (viewer.isOnline()) {
+                viewer.updateInventory();
+            }
+        });
     }
 
     private void scheduleOnServer(Runnable task) {

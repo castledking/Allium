@@ -255,14 +255,15 @@ class ItemLibraryTest {
     }
 
     @Test
-    void aProfileWithoutASkinIsDegradedAndCached() throws Exception {
+    void aProfileWithoutASkinIsDegradedAndCachedForAMinuteThenRetried() throws Exception {
         PlayerProfile textured = mock(PlayerProfile.class);
         PlayerProfile bare = mock(PlayerProfile.class);
         int[] calls = {0};
+        long[] now = {1_000_000L};
         try (SkullProfiles profiles = new SkullProfiles(name -> null, name -> mock(PlayerProfile.class), name -> {
             calls[0]++;
             return CompletableFuture.completedFuture(name.equals("Notch") ? textured : bare);
-        }, 1_000L, 600_000L, 8, System::currentTimeMillis, 0, profile -> profile == textured)) {
+        }, 1_000L, 600_000L, 8, () -> now[0], 0, profile -> profile == textured)) {
             assertFalse(profiles.resolve("Notch").get().degraded());
             SkullProfiles.Resolved offline = profiles.resolve("Offline").get();
             assertTrue(offline.degraded(), "an offline profile has no skin");
@@ -272,6 +273,14 @@ class ItemLibraryTest {
             assertEquals(2, calls[0]);
             assertEquals(1, profiles.stats().noSkin());
             assertEquals(1, profiles.stats().cacheHits());
+
+            // A skinless answer (often a refused session-server lookup) is retried after a minute...
+            now[0] += SkullProfiles.NO_SKIN_RETRY_MILLIS + 1;
+            profiles.resolve("Offline").get();
+            assertEquals(3, calls[0], "looked up again after a minute");
+            // ...while a real skin stays cached for the whole lifetime.
+            assertFalse(profiles.resolve("Notch").get().degraded());
+            assertEquals(3, calls[0], "the textured profile is still cached");
         }
     }
 }

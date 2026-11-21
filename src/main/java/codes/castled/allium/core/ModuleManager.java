@@ -47,6 +47,11 @@ public final class ModuleManager {
         registerModule(new codes.castled.allium.module.CreativeModule(plugin));
         registerModule(new codes.castled.allium.module.AltsModule(plugin));
         registerModule(new codes.castled.allium.module.RestoreModule(plugin));
+        // After teleport, which it needs.
+        registerModule(new codes.castled.allium.module.RtpModule(plugin));
+        // After economy and items, whose prices and payments it uses.
+        registerModule(new codes.castled.allium.module.WorthModule(plugin));
+        registerModule(new codes.castled.allium.module.ExplosionsModule(plugin));
         for (AbstractModule module : modules.values()) {
             String key = module.getName().toLowerCase();
             boolean enabled = plugin.getConfig().getBoolean("modules." + key, true);

@@ -1,5 +1,6 @@
 package codes.castled.allium.teleport;
 
+import org.bukkit.HeightMap;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -12,9 +13,11 @@ import java.util.Set;
 
 /**
  * Where {@code /top} and {@code /bottom} land in the player's own block column: the highest or the
- * lowest block a player can stand on, with two free blocks above it. In a world with a roof (the
- * Nether) {@code /top} stays under it unless the player may stand on the roof
- * ({@code allium.top.roof}). {@code /bottom} only looks below the player.
+ * lowest block a player can stand on, with two free blocks above it. For {@code /top}, a water
+ * surface (such as an ocean or lake above a cave) is also a valid surface landing when it has two
+ * free air blocks above it. In a world with a roof (the Nether) {@code /top} stays under it unless
+ * the player may stand on the roof ({@code allium.top.roof}). {@code /bottom} only looks below the
+ * player.
  */
 public final class VerticalTeleports {
 
@@ -32,12 +35,16 @@ public final class VerticalTeleports {
         boolean ground(int y);
 
         boolean space(int y);
+
+        default boolean water(int y) {
+            return false;
+        }
     }
 
-    /** The standing height (feet) of the highest ground at or below {@code from}, down to {@code min}. */
+    /** The standing height (feet) of the highest ground (or water surface) at or below {@code from}, down to {@code min}. */
     static OptionalInt highest(Column column, int from, int min) {
         for (int y = from; y >= min; y--) {
-            if (column.ground(y) && column.space(y + 1) && column.space(y + 2)) {
+            if ((column.ground(y) || column.water(y)) && column.space(y + 1) && column.space(y + 2)) {
                 return OptionalInt.of(y + 1);
             }
         }
@@ -66,7 +73,10 @@ public final class VerticalTeleports {
             // Feet and head must stay below the roof's top layer.
             from = Math.min(max, world.getLogicalHeight() - 3);
         } else {
-            from = Math.min(max, world.getHighestBlockYAt(here.getBlockX(), here.getBlockZ()));
+            int highest = Math.max(
+                    world.getHighestBlockYAt(here.getBlockX(), here.getBlockZ()),
+                    world.getHighestBlockYAt(here.getBlockX(), here.getBlockZ(), HeightMap.WORLD_SURFACE));
+            from = Math.min(max, highest);
         }
         return at(here, highest(column(world, here), from, world.getMinHeight()));
     }
@@ -91,6 +101,14 @@ public final class VerticalTeleports {
                 }
                 Material type = world.getBlockAt(x, y, z).getType();
                 return type.isSolid() && !HAZARDS.contains(type);
+            }
+
+            @Override
+            public boolean water(int y) {
+                if (y < world.getMinHeight() || y >= world.getMaxHeight()) {
+                    return false;
+                }
+                return world.getBlockAt(x, y, z).getType() == Material.WATER;
             }
 
             @Override

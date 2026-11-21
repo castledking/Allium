@@ -288,7 +288,7 @@ commands:
   allium:
     aliases: [core]
     description: "Allium administration: reload, version, imports"
-    usage: /<command> <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide>
+    usage: /<command> <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide|creativemanager>
   give:
     description: Give vanilla, provider or Allium items
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
@@ -456,6 +456,66 @@ commands:
     description: Show a player's UUID, names, status and staff details
     usage: /<command> <player>
     permission: allium.whois
+  rtp:
+    aliases: [tpr, tprandom]
+    description: Teleport to a random safe spot
+    usage: /<command> [location] [player]
+    permission: allium.rtp
+  settpr:
+    aliases: [settprandom]
+    description: Set a random teleport location's centre, range, shape and heights
+    usage: /<command> <location> <center|minrange|maxrange|shape|miny|maxy|world|remove> [value]
+    permission: allium.settpr
+  worth:
+    aliases: [price]
+    description: Show what items sell for
+    usage: /<command> [hand|inventory|blocks|item] [amount]
+    permission: allium.worth
+  sell:
+    description: Sell items for their worth
+    usage: /<command> <hand|inventory|all|blocks|item> [-][amount][s]
+    permission: allium.sell
+  setworth:
+    description: Set what an item sells for
+    usage: /<command> [hand|item] <price>
+    permission: allium.setworth
+  voucher:
+    aliases: [vouchers]
+    description: Give and list vouchers (powertools named voucher_<name>)
+    usage: /<command> <give|list|reload> [player] [voucher] [amount]
+    permission: allium.voucher.give
+  antioch:
+    aliases: [grenade, tnt]
+    description: Throw primed TNT where you look
+    usage: /<command>
+    permission: allium.antioch
+  fireball:
+    aliases: [fireentity, fireskull]
+    description: Throw a fireball or another projectile
+    usage: /<command> [fireball|small|large|arrow|skull|egg|snowball|expbottle|dragon|splashpotion|lingeringpotion|trident|windcharge] [speed] [ride]
+    permission: allium.fireball
+  beezooka:
+    aliases: [beecannon]
+    description: Throw an exploding bee
+    usage: /<command>
+    permission: allium.beezooka
+  kittycannon:
+    description: Throw an exploding kitten
+    usage: /<command>
+    permission: allium.kittycannon
+  nuke:
+    description: Rain TNT on players; it breaks no blocks
+    usage: /<command> [player...]
+    permission: allium.nuke
+  explode:
+    description: Drop an exploding fireball on yourself or a player
+    usage: /<command> [player] [power]
+    permission: allium.explode
+  creativemanager:
+    aliases: [cm]
+    description: Manage creative-mode flags for players and permission groups
+    usage: /<command> [gui|active|player <player> [edit|list|check|add|remove] [flag]|group <group> [edit|list|check|add|remove] [flag]]
+    permission: allium.gamemode.creative.manage
   restore:
     description: Browse inventory snapshots and restore them
     usage: /<command> [player]
@@ -621,6 +681,27 @@ permissions:
       allium.gamemode.creative.own-glow: true
       allium.gamemode.creative.bypass: true
       allium.gamemode.creative.inventory: true
+      allium.gamemode.creative.manage: true
+      allium.rtp: true
+      allium.rtp.others: true
+      allium.settpr: true
+      allium.rtp.biome: true
+      allium.rtp.bypass.cost: true
+      allium.worth: true
+      allium.sell: true
+      allium.sell.hand: true
+      allium.sell.bulk: true
+      allium.setworth: true
+      allium.voucher.give: true
+      allium.voucher.reload: true
+      allium.antioch: true
+      allium.fireball: true
+      allium.fireball.*: true
+      allium.beezooka: true
+      allium.kittycannon: true
+      allium.nuke: true
+      allium.explode: true
+      allium.explode.others: true
       allium.gamemode.spectator.teleport: true
       allium.alerts: true
       allium.economy.*: true
@@ -1005,6 +1086,141 @@ permissions:
   allium.gamemode.creative.inventory:
     description: Keep one shared inventory across gamemodes (no separate creative inventory)
     default: op
+  allium.rtp:
+    description: Teleport yourself to a random safe spot with /rtp (/tpr)
+    default: true
+  allium.rtp.others:
+    description: Send another player to a random spot with /rtp <location> <player>
+    default: op
+  allium.settpr:
+    description: Change random teleport locations with /settpr
+    default: op
+  allium.rtp.biome:
+    description: Random teleport into chosen biomes with /rtp biome
+    default: op
+  allium.rtp.bypass.cost:
+    description: Random teleport for free when rtp.yml sets a cost
+    default: op
+  allium.worth:
+    description: See what items sell for with /worth (/price)
+    default: true
+  allium.sell:
+    description: Sell items with /sell <item>; includes selling the held item and the whole inventory
+    default: op
+    children:
+      allium.sell.hand: true
+      allium.sell.bulk: true
+  allium.sell.hand:
+    description: Sell the held item with /sell hand
+    default: op
+  allium.sell.bulk:
+    description: Sell the whole inventory or its blocks with /sell inventory, /sell all and /sell blocks
+    default: op
+  allium.sell.creative:
+    description: Sell while in creative or spectator mode
+    default: false
+  allium.setworth:
+    description: Change item prices with /setworth
+    default: op
+  allium.voucher.give:
+    description: Give and list vouchers with /voucher give and /voucher list
+    default: op
+  allium.voucher.reload:
+    description: Reload the powertools, vouchers included, with /voucher reload
+    default: op
+  allium.antioch:
+    description: Throw primed TNT with /antioch (/grenade, /tnt)
+    default: op
+  allium.fireball:
+    description: Use /fireball (/fireentity, /fireskull); each projectile also needs allium.fireball.<type>
+    default: op
+  allium.fireball.*:
+    description: Throw every /fireball projectile and ride them
+    default: op
+    children:
+      allium.fireball.fireball: true
+      allium.fireball.small: true
+      allium.fireball.large: true
+      allium.fireball.arrow: true
+      allium.fireball.skull: true
+      allium.fireball.egg: true
+      allium.fireball.snowball: true
+      allium.fireball.expbottle: true
+      allium.fireball.dragon: true
+      allium.fireball.splashpotion: true
+      allium.fireball.lingeringpotion: true
+      allium.fireball.trident: true
+      allium.fireball.windcharge: true
+      allium.fireball.ride: true
+  allium.fireball.fireball:
+    description: Throw a fireball with /fireball
+    default: op
+  allium.fireball.small:
+    description: Throw a small fireball with /fireball
+    default: op
+  allium.fireball.large:
+    description: Throw a large fireball with /fireball
+    default: op
+  allium.fireball.arrow:
+    description: Throw an arrow with /fireball
+    default: op
+  allium.fireball.skull:
+    description: Throw a wither skull with /fireball
+    default: op
+  allium.fireball.egg:
+    description: Throw an egg with /fireball
+    default: op
+  allium.fireball.snowball:
+    description: Throw a snowball with /fireball
+    default: op
+  allium.fireball.expbottle:
+    description: Throw a bottle o' enchanting with /fireball
+    default: op
+  allium.fireball.dragon:
+    description: Throw a dragon fireball with /fireball
+    default: op
+  allium.fireball.splashpotion:
+    description: Throw a splash potion with /fireball
+    default: op
+  allium.fireball.lingeringpotion:
+    description: Throw a lingering potion with /fireball
+    default: op
+  allium.fireball.trident:
+    description: Throw a trident with /fireball
+    default: op
+  allium.fireball.windcharge:
+    description: Throw a wind charge (1.21+) with /fireball
+    default: op
+  allium.fireball.ride:
+    description: Ride the projectile with /fireball <type> <speed> ride
+    default: op
+  allium.beezooka:
+    description: Throw an exploding bee with /beezooka (/beecannon)
+    default: op
+  allium.kittycannon:
+    description: Throw an exploding kitten with /kittycannon
+    default: op
+  allium.nuke:
+    description: Rain TNT on players with /nuke
+    default: op
+  allium.explode:
+    description: Drop an exploding fireball on yourself with /explode
+    default: op
+  allium.explode.others:
+    description: Drop an exploding fireball on another player with /explode <player>
+    default: op
+  allium.teleport.cooldown.bypass.rtp:
+    description: Skip the teleport cooldown for random teleports
+    default: op
+  allium.teleport.timer.bypass.rtp:
+    description: Skip the teleport warmup timer for random teleports
+    default: op
+  allium.teleport.timer.move.rtp:
+    description: Move during a random teleport's warmup without cancelling it
+    default: false
+  allium.gamemode.creative.manage:
+    description: Use /creativemanager (/cm) to view and change players' and groups' creative flags through LuckPerms or Vault
+    default: op
   allium.gamemode.spectator.teleport:
     description: Teleport to players from the spectator menu
     default: op
@@ -1072,14 +1288,14 @@ permissions:
     description: Explicit teleport ignore bypass (never granted implicitly to operators)
     default: false
   allium.teleport.bypass.warmup:
-    description: Explicit teleport warmup bypass (never granted implicitly to operators)
-    default: false
+    description: Skip the teleport warmup timer for all teleport types
+    default: op
   allium.teleport.bypass.cooldown:
-    description: Explicit teleport cooldown bypass (never granted implicitly to operators)
-    default: false
+    description: Skip the teleport cooldown for all teleport types
+    default: op
   allium.teleport.cooldown.bypass.*:
     description: Skip the teleport cooldown for every teleport type
-    default: false
+    default: op
     children:
       allium.teleport.cooldown.bypass.home: true
       allium.teleport.cooldown.bypass.warp: true
@@ -1097,24 +1313,25 @@ permissions:
       allium.teleport.cooldown.bypass.homes: true
       allium.teleport.cooldown.bypass.warps: true
       allium.teleport.cooldown.bypass.requests: true
+      allium.teleport.cooldown.bypass.rtp: true
   allium.teleport.cooldown.bypass.home:
     description: Skip the teleport cooldown for home teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.warp:
     description: Skip the teleport cooldown for warp teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.tpa:
     description: Skip the teleport cooldown for tpa teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.tpahere:
     description: Skip the teleport cooldown for tpahere teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.back:
     description: Skip the teleport cooldown for back teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.spawn:
     description: Skip the teleport cooldown for spawn teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.tp:
     description: Skip the teleport cooldown for tp teleports
     default: op
@@ -1138,16 +1355,16 @@ permissions:
     default: op
   allium.teleport.cooldown.bypass.homes:
     description: Skip the teleport cooldown for homes teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.warps:
     description: Skip the teleport cooldown for warps teleports
-    default: false
+    default: op
   allium.teleport.cooldown.bypass.requests:
     description: Skip the teleport cooldown for requests teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.*:
     description: Skip the teleport warmup timer for every teleport type
-    default: false
+    default: op
     children:
       allium.teleport.timer.bypass.home: true
       allium.teleport.timer.bypass.warp: true
@@ -1165,24 +1382,25 @@ permissions:
       allium.teleport.timer.bypass.homes: true
       allium.teleport.timer.bypass.warps: true
       allium.teleport.timer.bypass.requests: true
+      allium.teleport.timer.bypass.rtp: true
   allium.teleport.timer.bypass.home:
     description: Skip the teleport warmup timer for home teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.warp:
     description: Skip the teleport warmup timer for warp teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.tpa:
     description: Skip the teleport warmup timer for tpa teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.tpahere:
     description: Skip the teleport warmup timer for tpahere teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.back:
     description: Skip the teleport warmup timer for back teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.spawn:
     description: Skip the teleport warmup timer for spawn teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.tp:
     description: Skip the teleport warmup timer for tp teleports
     default: op
@@ -1206,13 +1424,13 @@ permissions:
     default: op
   allium.teleport.timer.bypass.homes:
     description: Skip the teleport warmup timer for homes teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.warps:
     description: Skip the teleport warmup timer for warps teleports
-    default: false
+    default: op
   allium.teleport.timer.bypass.requests:
     description: Skip the teleport warmup timer for requests teleports
-    default: false
+    default: op
   allium.teleport.timer.move.*:
     description: Move during the teleport warmup without cancelling it for every teleport type
     default: false
@@ -1233,6 +1451,7 @@ permissions:
       allium.teleport.timer.move.homes: true
       allium.teleport.timer.move.warps: true
       allium.teleport.timer.move.requests: true
+      allium.teleport.timer.move.rtp: true
   allium.teleport.timer.move.home:
     description: Move during the teleport warmup without cancelling it for home teleports
     default: false
@@ -1384,7 +1603,7 @@ permissions:
 
   allium.sethome.unlimited:
     description: Permit up to the hard cap of 1000 homes
-    default: false
+    default: op
 
   allium.kit:
     description: Allows /kit
@@ -1394,7 +1613,7 @@ permissions:
     default: true
   allium.kits.*:
     description: Parent wildcard permission granting access to all kits
-    default: false
+    default: op
   allium.kit.others:
     description: Allows /kit <name> <player>
     default: op
@@ -1448,7 +1667,7 @@ permissions:
     default: op
   allium.restore.edit:
     description: Edit restore panels (move items in and out) and save MANUAL snapshots. Items in a panel are copies, so this can create items. Not in allium.*
-    default: false
+    default: op
   allium.near:
     description: Allows /near
     default: true
@@ -1505,17 +1724,17 @@ permissions:
     description: Protects a player from discipline actions without an explicit bypass
     default: false
   allium.moderation.bypass:
-    description: Explicitly bypass moderation hierarchy and exempt policy; also authorizes offline actions
+    description: Explicitly bypass moderation hierarchy and exempt policy; also authorizes offline discipline actions
     default: false
   allium.invsee:
     description: Allows /invsee (read-only by default)
     default: op
   allium.invsee.edit:
-    description: Allows modifying another player's inventory in /invsee. Explicit only; not in allium.*
-    default: false
+    description: Allows modifying another player's inventory in /invsee (online, or offline with allium.invsee.offline). Not in allium.*
+    default: op
   allium.invsee.offline:
-    description: Allows offline /invsee when combined with allium.moderation.bypass. Explicit only; not in allium.*
-    default: false
+    description: Allows /invsee on offline players (read-only unless allium.invsee.edit). Offline players skip the exempt check. Not in allium.*
+    default: op
   allium.enderchest:
     description: Allows /enderchest (/echest, /ec) for yourself
     default: op
@@ -1523,11 +1742,11 @@ permissions:
     description: Allows inspecting another player's ender chest (read-only by default)
     default: op
   allium.enderchest.edit:
-    description: Allows modifying another player's ender chest in /enderchest. Explicit only; not in allium.*
-    default: false
+    description: Allows modifying another player's ender chest in /enderchest (online, or offline with allium.enderchest.offline). Not in allium.*
+    default: op
   allium.enderchest.offline:
-    description: Allows offline /enderchest when combined with allium.moderation.bypass. Explicit only; not in allium.*
-    default: false
+    description: Allows /enderchest on offline players (read-only unless allium.enderchest.edit). Offline players skip the exempt check. Not in allium.*
+    default: op
 
   allium.balance:
     default: true
@@ -1708,73 +1927,73 @@ permissions:
     description: Allows applying unsafe or incompatible enchantments and above-max vanilla levels. Explicit only; not in allium.*
     default: false
   allium.signs.create.warp.public:
-    default: false
+    default: op
   allium.signs.create.color:
-    default: false
+    default: op
   allium.signs.create.warp:
-    default: false
+    default: op
   allium.signs.create.kit:
-    default: false
+    default: op
   allium.signs.create.balance:
-    default: false
+    default: op
   allium.signs.create.heal:
-    default: false
+    default: op
   allium.signs.create.repair:
-    default: false
+    default: op
   allium.signs.create.disposal:
-    default: false
+    default: op
   allium.signs.create.workbench:
-    default: false
+    default: op
   allium.signs.create.anvil:
-    default: false
+    default: op
   allium.signs.create.mail:
-    default: false
+    default: op
   allium.signs.create.info:
-    default: false
+    default: op
   allium.signs.use.color:
-    default: false
+    default: op
   allium.signs.use.warp:
-    default: false
+    default: op
   allium.signs.use.kit:
-    default: false
+    default: op
   allium.signs.use.balance:
-    default: false
+    default: op
   allium.signs.use.heal:
-    default: false
+    default: op
   allium.signs.use.repair:
-    default: false
+    default: op
   allium.signs.use.disposal:
-    default: false
+    default: op
   allium.signs.use.workbench:
-    default: false
+    default: op
   allium.signs.use.anvil:
-    default: false
+    default: op
   allium.signs.use.mail:
-    default: false
+    default: op
   allium.signs.use.info:
-    default: false
+    default: op
   allium.signs.break.color:
-    default: false
+    default: op
   allium.signs.break.warp:
-    default: false
+    default: op
   allium.signs.break.kit:
-    default: false
+    default: op
   allium.signs.break.balance:
-    default: false
+    default: op
   allium.signs.break.heal:
-    default: false
+    default: op
   allium.signs.break.repair:
-    default: false
+    default: op
   allium.signs.break.disposal:
-    default: false
+    default: op
   allium.signs.break.workbench:
-    default: false
+    default: op
   allium.signs.break.anvil:
-    default: false
+    default: op
   allium.signs.break.mail:
-    default: false
+    default: op
   allium.signs.break.info:
-    default: false
+    default: op
 
   allium.nick:
     default: op
@@ -1795,13 +2014,13 @@ permissions:
   allium.deletemsg:
     default: op
   allium.gradientname:
-    default: false
+    default: op
   allium.chat.color:
-    default: false
+    default: op
   allium.chat.hex:
-    default: false
+    default: op
   allium.chat.gradient:
-    default: false
+    default: op
   allium.chat.shout:
     description: Allows /g <message> and /shout <message>, one message to global chat
     default: true

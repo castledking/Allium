@@ -20,6 +20,11 @@ public final class PaidWorkflowSupport {
         if(!ready(plugin))throw new SQLException("paid workflow economy unavailable");
         return ((EconomyModule)plugin.getModuleManager().getModule("economy")).runtime().reservations();
     }
+    /** The economy engine and its runtime (for the trade log); fails when the economy is not ready. */
+    public static EconomyRuntime runtime(PluginStart plugin)throws SQLException{
+        if(!ready(plugin))throw new SQLException("paid workflow economy unavailable");
+        return ((EconomyModule)plugin.getModuleManager().getModule("economy")).runtime();
+    }
     public static boolean committed(Mutation result)throws SQLException{
         if(result instanceof Committed)return true;
         if(result instanceof Rejected refused&&refused.reason().equals("WORKFLOW_REFUSED"))return false;

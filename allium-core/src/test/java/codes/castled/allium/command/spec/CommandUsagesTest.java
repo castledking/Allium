@@ -38,8 +38,35 @@ class CommandUsagesTest {
         assertEquals(6, group.size());
         assertTrue(group.stream().allMatch(u -> u.syntax().startsWith("hide group <name> ")));
 
-        assertEquals(List.of("import lang [apply]", "import legacy [apply <run>]"),
-                syntaxes(CommandUsages.select(CoreCommandSpecs.ALLIUM, "/allium import <lang [apply]|legacy [apply <run>]>")));
+        assertEquals(List.of("import lang [apply]", "import vouchers [apply]", "import legacy [apply <run>]"),
+                syntaxes(CommandUsages.select(CoreCommandSpecs.ALLIUM, "/allium import <lang [apply]|vouchers [apply]|legacy [apply <run>]>")));
+    }
+
+    @Test
+    void powertoolUsesTheSharedCardWithEveryFormAndNarrowsToTheMistypedSubcommand() {
+        List<CommandUsage> all = CommandUsages.select(CoreCommandSpecs.POWERTOOL, CoreCommandSpecs.POWERTOOL.selfUsage());
+        assertEquals(CommandUsages.of("powertool").size(), all.size());
+        assertEquals(22, all.size());
+        assertTrue(all.stream().noneMatch(u -> u.description().isBlank()));
+
+        assertEquals(List.of("set <index> [flags...] <action> [args...]"),
+                syntaxes(CommandUsages.select(CoreCommandSpecs.POWERTOOL, "/pt set <index> [flags...] <action> [args...]")));
+        assertEquals(List.of("add [flags...] <action> [args...]"),
+                syntaxes(CommandUsages.select(CoreCommandSpecs.POWERTOOL,
+                        "/pt add [--t <trigger>] [--cd <dur>] [--delay <dur>] [--perm <node>] <action> [args...]")));
+        assertEquals(List.of("enable <tool>"), syntaxes(CommandUsages.select(CoreCommandSpecs.POWERTOOL, "/pt enable <tool>")));
+    }
+
+    @Test
+    void creativeManagerCardNarrowsToTheMistypedHolderForm() {
+        assertEquals(13, CommandUsages.select(CoreCommandSpecs.CREATIVEMANAGER, CoreCommandSpecs.CREATIVEMANAGER.selfUsage()).size());
+        assertEquals(List.of("player <player> add <flag>"),
+                syntaxes(CommandUsages.select(CoreCommandSpecs.CREATIVEMANAGER, "/creativemanager player <player> add <flag>")));
+        List<CommandUsage> group = CommandUsages.select(CoreCommandSpecs.CREATIVEMANAGER, "/creativemanager group");
+        assertEquals(5, group.size());
+        assertTrue(group.stream().allMatch(u -> u.syntax().startsWith("group ")));
+        assertTrue(CommandUsages.of("creativemanager").stream().allMatch(u -> "allium.gamemode.creative.manage".equals(u.permission())));
+        assertEquals(2, CommandUsages.select(CoreCommandSpecs.ALLIUM, "/allium creativemanager").size());
     }
 
     @Test

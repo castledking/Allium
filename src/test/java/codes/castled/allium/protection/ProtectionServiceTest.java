@@ -127,6 +127,28 @@ class ProtectionServiceTest {
         assertFalse(service.checkEntityInteraction(player, target, "allium:mob_disarmer", cause).allowed());
     }
 
+    @Test
+    void claimsAreReportedByAnyHookAndABrokenHookCountsAsAClaim() {
+        GriefPrevention gp = mock(GriefPrevention.class);
+        DataStore dataStore = mock(DataStore.class);
+        gp.dataStore = dataStore;
+        GriefPrevention.instance = gp;
+        Location inClaim = mock(Location.class);
+        Location wild = mock(Location.class);
+        when(dataStore.getClaimAt(eq(inClaim), eq(false), isNull())).thenReturn(mock(Claim.class));
+        when(dataStore.getClaimAt(eq(wild), eq(false), isNull())).thenReturn(null);
+        ProtectionService service = new ProtectionService(List.of(new GriefPreventionProtectionHook()), null, warnings::add);
+        assertTrue(service.claimed(inClaim));
+        assertFalse(service.claimed(wild));
+        assertFalse(new ProtectionService(List.of(), null, warnings::add).claimed(wild));
+
+        GriefPrevention.instance = null;
+        assertTrue(service.claimed(wild));
+        assertTrue(service.claimed(wild));
+        assertEquals(1, warnings.size(), warnings.toString());
+        assertTrue(new ProtectionHookBootstrap.DenyingHook("GriefPrevention").claimed(wild));
+    }
+
     private record ProtectionBootstrapHook(ProtectionDecision decision) implements ProtectionHook {
         public String name() { return decision.source(); }
         public ProtectionDecision checkEntityInteraction(Player p, org.bukkit.entity.Entity t, Event c) { return decision; }

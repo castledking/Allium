@@ -69,5 +69,10 @@ public final class ProtectionHookBootstrap {
         public ProtectionDecision checkEntityInteraction(Player player, Entity target, @Nullable Event cause) {
             return ProtectionDecision.deny(name, null);
         }
+
+        @Override
+        public boolean claimed(org.bukkit.Location location) {
+            return true;
+        }
     }
 }

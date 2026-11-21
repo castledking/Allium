@@ -233,6 +233,8 @@ public enum Messages {
     TELEPORT_DENIED("teleport.denied", "{prefix} &cTeleport request denied."),
     TELEPORT_CANCELLED("teleport.cancelled", "{prefix} &cTeleport request expired."),
     TELEPORT_BACK("teleport.back", "{prefix} &aReturned to your previous location."),
+    TELEPORT_BACK_DEATH("teleport.back-death", "{prefix} &aReturned to your death location."),
+    TELEPORT_BACK_ON_DEATH("teleport.back-on-death", "{prefix} &eUse &f/back &eto return to your death location."),
     TELEPORT_NO_BACK("teleport.no-back", "{prefix} &cNo previous location to return to."),
     TELEPORT_NO_PENDING("teleport.no-pending", "{prefix} &cYou have no pending teleport requests."),
 

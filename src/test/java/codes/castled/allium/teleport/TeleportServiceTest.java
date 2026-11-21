@@ -383,6 +383,47 @@ class TeleportServiceTest {
         verify(plugin.getMessageManager(),never()).send(eq(mover),eq(codes.castled.allium.message.Messages.TELEPORT_BACK),any(String[].class));
         drainWorker();verify(plugin.getMessageManager()).send(eq(mover),eq(codes.castled.allium.message.Messages.TELEPORT_BACK),any(String[].class));
     }
+
+    @Test
+    void backOnDeathPermissionReportsBackOnDeathAndUsesDeathReturnMessage() throws Exception {
+        enable();
+        Location deathSpot = new Location(world, 42, 70, -18, 90, 0);
+        Location respawnSpot = new Location(world, 0, 64, 0, 0, 0);
+        when(mover.getLocation()).thenReturn(deathSpot, respawnSpot, deathSpot);
+        org.bukkit.event.entity.PlayerDeathEvent deathEvent = mock(org.bukkit.event.entity.PlayerDeathEvent.class);
+        when(deathEvent.getEntity()).thenReturn(mover);
+
+        service.death(deathEvent);
+        drainWorker();
+        verify(plugin.getMessageManager()).send(eq(mover), eq(codes.castled.allium.message.Messages.TELEPORT_BACK_ON_DEATH), any(String[].class));
+
+        // First /back returns to death location with TELEPORT_BACK_DEATH
+        service.back(mover);
+        drainWorker();
+        verify(mover).teleport(eq(deathSpot), eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+        verify(plugin.getMessageManager()).send(eq(mover), eq(codes.castled.allium.message.Messages.TELEPORT_BACK_DEATH), any(String[].class));
+
+        // Second /back returns to respawn spot with ordinary TELEPORT_BACK
+        service.back(mover);
+        drainWorker();
+        verify(plugin.getMessageManager()).send(eq(mover), eq(codes.castled.allium.message.Messages.TELEPORT_BACK), any(String[].class));
+    }
+
+    @Test
+    void deathWithoutBackOnDeathPermissionDoesNotSaveOrNotifyWhenConfigDisabled() throws Exception {
+        when(mover.hasPermission(TeleportService.PERMISSION_BACK_ON_DEATH)).thenReturn(false);
+        enable();
+        org.bukkit.event.entity.PlayerDeathEvent deathEvent = mock(org.bukkit.event.entity.PlayerDeathEvent.class);
+        when(deathEvent.getEntity()).thenReturn(mover);
+
+        service.death(deathEvent);
+        drainWorker();
+        verify(plugin.getMessageManager(), never()).send(eq(mover), eq(codes.castled.allium.message.Messages.TELEPORT_BACK_ON_DEATH), any(String[].class));
+        verify(repository, never()).saveHistory(any(), any(), anyMap());
+
+        service.back(mover);
+        verify(plugin.getMessageManager()).send(eq(mover), eq(codes.castled.allium.message.Messages.TELEPORT_NO_BACK), any(String[].class));
+    }
     @Test
     void spawnUsesDedicatedSuccessKey()throws Exception{
         when(server.getWorlds()).thenReturn(List.of(world));when(world.getSpawnLocation()).thenReturn(destination());enable();service.spawn(mover);drainWorker();

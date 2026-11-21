@@ -931,6 +931,7 @@ permissions:
       allium.tpo: true
       allium.tpohere: true
       allium.tpall: true
+      allium.back.ondeath: true
       allium.spawnmob: true
       allium.spawnmob.*: true
       allium.spawnmob.stack: true
@@ -1375,6 +1376,9 @@ permissions:
     default: true
   allium.back:
     default: true
+  allium.back.ondeath:
+    description: Save your death location for /back and notify you on death
+    default: op
   allium.spawn:
     default: true
   allium.setspawn:

@@ -133,6 +133,12 @@ teleport:
   back:
     - "{prefix} &aRegresaste a tu ubicacion anterior."
     - "[sound] entity.enderman.teleport 0.95"
+  back-death:
+    - "{prefix} &aRegresaste a tu ubicacion de muerte."
+    - "[sound] entity.enderman.teleport 0.95"
+  back-on-death:
+    - "{prefix} &eUsa &f/back &epara regresar a tu ubicacion de muerte."
+    - "[sound] block.note_block.bell 1.0"
   no-back:
     - "{prefix} &cNo hay ubicacion anterior."
     - "[sound] block.note_block.bass 0.8"

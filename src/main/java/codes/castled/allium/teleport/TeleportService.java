@@ -63,9 +63,12 @@ public final class TeleportService implements Listener {
 
     private record SelectorConfirmation(String command,String signature,long expiresAt) {}
 
+    public static final String PERMISSION_BACK_ON_DEATH = "allium.back.ondeath";
+
     private static final class Session {
         final Player player;
         SavedLocation back;
+        boolean backIsDeath;
         final Map<String,Long> cooldowns=new HashMap<>();
         boolean loaded;
         long historyRevision;
@@ -74,7 +77,8 @@ public final class TeleportService implements Listener {
     private record Operation(Session session,CommandSender actor,String command,Supplier<Location> destination,
                              @Nullable Player anchor,@Nullable RequestTracker.Request request,boolean force,
                              Location origin,long due,TeleportSettings rules,BooleanSupplier policy,boolean mayMove,
-                             long[] lastWarmupSecond,@Nullable java.util.function.Consumer<Boolean> outcome) {}
+                             long[] lastWarmupSecond,@Nullable java.util.function.Consumer<Boolean> outcome,
+                             boolean backDeath) {}
     private record HistoryWrite(UUID owner,Session session,SavedLocation origin,String command,long until,
                                 Map<String,Long> cooldowns,Runnable success) {}
 
@@ -423,7 +427,7 @@ public final class TeleportService implements Listener {
         long warmup=command.equals("tpall")||actor.hasPermission("allium.teleport.bypass.warmup")||typed(actor,"timer.bypass",command)?0:rules.warmupMillis();
         long initialSeconds=warmup<=0?0:Math.max(1L,(warmup+999L)/1000L);
         var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy,
-                typed(mover,"timer.move",command),new long[]{initialSeconds},outcome);
+                typed(mover,"timer.move",command),new long[]{initialSeconds},outcome,command.equals("back")&&session.backIsDeath);
         operations.put(mover.getUniqueId(),operation);
         if(warmup==0)complete(operation);
         else send(mover,Messages.TELEPORT_WARMUP,"{warmup}",Long.toString(initialSeconds),"{time}",Long.toString(initialSeconds));
@@ -483,7 +487,7 @@ public final class TeleportService implements Listener {
         if(operation.force())plugin.logger().info("Teleport audit completed actor="+operation.actor().getName()+" mover="+id
                 +" target="+operation.anchor().getUniqueId()+" command="+operation.command()+" result=completed reason=bukkit-teleport-success world="+mover.getWorld().getUID());
         if(offline!=null)plugin.logger().info("Offline teleport audit actor="+mover.getUniqueId()+" target="+offline.target+" result=completed world="+mover.getWorld().getUID());
-        Session session=operation.session();session.back=saved(origin);
+        Session session=operation.session();session.back=saved(origin);session.backIsDeath=false;
         long configured=operation.rules().cooldown(operation.command());
         var provider=cooldownProviders.get(operation.command());
         if(provider!=null){long custom=provider.applyAsLong(mover);if(custom>=0)configured=custom;}
@@ -493,7 +497,7 @@ public final class TeleportService implements Listener {
         boolean position=operation.anchor()==null&&java.util.Set.of("tp","tpo","tppos","top","bottom","rtp").contains(operation.command());
         saveHistory(session,session.back,operation.command(),until,0,()->{
             if(position){send(mover,Messages.TELEPORT_POSITION,"{x}",coordinate(landed.getX()),"{y}",coordinate(landed.getY()),"{z}",coordinate(landed.getZ()),"{world}",landed.getWorld()==null?"?":landed.getWorld().getName());return;}
-            send(mover,switch(operation.command()){case "back"->Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;case "tpoffline"->Messages.TELEPORT_OFFLINE_SUCCESS;default->Messages.TELEPORT_SUCCESS;},"{target}",offline!=null?offline.name:operation.anchor()==null?operation.command():operation.anchor().getName());
+            send(mover,switch(operation.command()){case "back"->operation.backDeath()?Messages.TELEPORT_BACK_DEATH:Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;case "tpoffline"->Messages.TELEPORT_OFFLINE_SUCCESS;default->Messages.TELEPORT_SUCCESS;},"{target}",offline!=null?offline.name:operation.anchor()==null?operation.command():operation.anchor().getName());
         });
     }
     private static String coordinate(double value){return String.format(Locale.ROOT,"%.1f",value);}
@@ -698,9 +702,15 @@ public final class TeleportService implements Listener {
     }
     @EventHandler(priority=EventPriority.MONITOR) public void death(PlayerDeathEvent e){
         Player p=e.getEntity();var op=operations.get(p.getUniqueId());if(op!=null)interrupt(op,"death");
-        if(settings.deathBack()){
+        boolean hasDeathPerm=p.hasPermission(PERMISSION_BACK_ON_DEATH);
+        if(settings.deathBack()||hasDeathPerm){
             Session s=sessions.get(p.getUniqueId());if(s!=null){
-                s.back=saved(p.getLocation());saveHistory(s,s.back,"death",0,0,()->{});
+                s.back=saved(p.getLocation());
+                s.backIsDeath=true;
+                saveHistory(s,s.back,"death",0,0,()->{});
+                if(hasDeathPerm&&p.hasPermission("allium.back")){
+                    send(p,Messages.TELEPORT_BACK_ON_DEATH);
+                }
             }
         }
     }

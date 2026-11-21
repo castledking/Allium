@@ -1226,9 +1226,19 @@ public final class CoreCommandSpecs {
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    /** {@code /recipe [item|hand] [number]}: the read-only recipe window. */
+    public static final CommandSpec RECIPE = new CommandSpec(
+            "recipe", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("formula", "method", "recipes"),
+            "Show how an item is made",
+            "/recipe [item] [number]", "/recipe <item> [number]",
+            "allium.recipe", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, COORDS, COMPASS, GLOW, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS, SPAWNMOB
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS, SPAWNMOB,
+            RECIPE
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

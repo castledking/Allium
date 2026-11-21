@@ -108,6 +108,11 @@ commands:
     description: Set a player on fire
     usage: /<command> <player> [seconds]
     permission: allium.burn
+  recipe:
+    aliases: [formula, method, recipes]
+    description: Show how an item is made
+    usage: /<command> [item] [number]
+    permission: allium.recipe
   smite:
     description: Strike a player or where you are looking with harmless lightning
     usage: /<command> [player]
@@ -797,6 +802,7 @@ permissions:
       allium.ext.others: true
       allium.burn: true
       allium.smite: true
+      allium.recipe: true
       allium.nv: true
       allium.nv.others: true
       allium.clearinventory: true
@@ -1853,6 +1859,9 @@ permissions:
     default: op
   allium.burn:
     default: op
+  allium.recipe:
+    description: See how items are made with /recipe (/formula, /method, /recipes)
+    default: true
   allium.smite:
     default: op
   allium.nv:

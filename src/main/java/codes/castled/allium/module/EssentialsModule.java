@@ -40,6 +40,7 @@ public final class EssentialsModule extends AbstractModule {
     private codes.castled.allium.command.essentials.MotdOnJoin motdOnJoin;
     private codes.castled.allium.player.TimedFlight timedFlight;
     private codes.castled.allium.glow.GlowService glow;
+    private codes.castled.allium.recipe.RecipeViewer recipes;
 
     /** Glow colours (/glow, spectator and restricted-creative glow). */
     public codes.castled.allium.glow.GlowService glow() {
@@ -124,6 +125,9 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new ExtCommand(plugin));
         plugin.getCommandManager().register(new BurnCommand(plugin));
         plugin.getCommandManager().register(new SmiteCommand(plugin));
+        recipes = new codes.castled.allium.recipe.RecipeViewer(plugin);
+        if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) recipes.enable();
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.RecipeCommand(plugin, () -> recipes));
         plugin.getCommandManager().register(new NvCommand(plugin));
         var clearInventory = new ClearInventoryCommand(plugin);
         plugin.getCommandManager().register(clearInventory);
@@ -195,6 +199,7 @@ public final class EssentialsModule extends AbstractModule {
         // Timed flight hands landing fliers to the flight restoration, so it stops first.
         if(timedFlight!=null){timedFlight.close();timedFlight=null;}
         if(glow!=null){glow.close();glow=null;}
+        if(recipes!=null){recipes.close();recipes=null;}
         if(flights!=null){flights.close();flights=null;}
         if (disposalListener != null) {
             HandlerList.unregisterAll(disposalListener);

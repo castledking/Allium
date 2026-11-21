@@ -1218,6 +1218,16 @@ utility:
   burn-invalid:
     - "{prefix} &cBurn duration must be between 1 and 300 seconds."
     - "[sound] block.note_block.bass 0.8"
+  recipe:
+    unknown-item:
+      - "{prefix} &cUnknown item &f{item}&c."
+      - "[sound] block.note_block.bass 0.85"
+    none:
+      - "{prefix} &cNo recipe makes &f{item}&c."
+      - "[sound] block.note_block.bass 0.85"
+    bad-number:
+      - "{prefix} &f{item} &chas &f{count} &crecipe(s)."
+      - "[sound] block.note_block.bass 0.85"
   smite:
     - "{prefix} &eStruck &f{player} &ewith lightning."
     - "[sound] entity.lightning_bolt.thunder 1.1"

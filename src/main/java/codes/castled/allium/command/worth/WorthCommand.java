@@ -146,7 +146,8 @@ public final class WorthCommand implements SpecCommandHandler {
         return values.stream().distinct().limit(64).toList();
     }
 
-    static List<String> items(PluginStart plugin, String prefix) {
+    /** Item names and aliases as {@code /i} completes them, without multi-item forms. */
+    public static List<String> items(PluginStart plugin, String prefix) {
         if (prefix.isEmpty()) return List.of();
         return plugin.getModuleManager().getModule("items") instanceof ItemsModule items && items.isEnabled()
                 ? items.complete(prefix).stream().filter(name -> !name.contains(";") && !name.contains(",")).toList()

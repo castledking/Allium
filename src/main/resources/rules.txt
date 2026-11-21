@@ -1,8 +1,9 @@
 ## Allium server rules: shown by /rules. /rules <chapter> shows a #chapter, and when there are no
 ## lines before the first chapter, /rules lists the chapters (each one clickable).
 ##
-## The layout, formatting, placeholders and click/hover tags are customtext.txt's: see the notes at
-## the top of that file. An Essentials rules.txt can be copied over as it is.
+## The layout, formatting, placeholders and click/hover tags are custom.txt's: see the notes at the
+## top of that file, or /info in game. A player sees rules_<name>.txt or rules_<group>.txt instead
+## when one exists. An Essentials rules.txt can be copied over as it is.
 &6&lServer rules
 &f1. &7Be kind to other players.
 &f2. &7No griefing or stealing. <click:run_command:/rules griefing><hover:show_text:'&eClick for what counts as griefing'>&e&n(details)</hover></click>

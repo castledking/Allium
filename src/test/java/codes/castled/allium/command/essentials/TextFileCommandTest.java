@@ -37,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -176,13 +177,142 @@ class TextFileCommandTest {
 
     @Test
     void theBundledFilesHaveAnIndexAndTheRulesHaveTheGriefingChapter() throws Exception {
-        for (String name : List.of("motd.txt", "rules.txt", "customtext.txt")) {
+        for (String name : List.of("info.txt", "motd.txt", "rules.txt", "custom.txt")) {
             try (InputStream in = getClass().getClassLoader().getResourceAsStream(name)) {
                 CustomTextDocument doc = CustomTextDocument.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().toList());
                 assertFalse(doc.index().isEmpty(), name);
                 if (name.equals("rules.txt")) assertEquals("griefing", doc.primaryName("grief").orElseThrow());
-                if (name.equals("customtext.txt")) assertTrue(doc.section("rules").isEmpty(), "the rules live in rules.txt now");
+                if (name.equals("custom.txt")) assertTrue(doc.section("rules").isEmpty(), "the rules live in rules.txt now");
+                if (name.equals("info.txt")) {
+                    for (String chapter : List.of("colors", "formatting", "clicks", "tags", "files")) {
+                        assertFalse(doc.section(chapter).orElse(List.of()).isEmpty(), chapter);
+                    }
+                }
             }
         }
+    }
+
+    private void bundled(String name) throws Exception {
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(name)) {
+            Files.write(dir.resolve(name), in.readAllBytes());
+        }
+    }
+
+    @Test
+    void theBundledInfoShowsTheOldOnlineLineAndItsChaptersShowCodesAsWritten() throws Exception {
+        bundled("info.txt");
+        TextFileCommand info = TextFileCommand.info(plugin);
+        run(info);
+        assertEquals("Paper \u2014 0 player(s) online.", lines.get(0));
+        assertTrue(lines.get(2).startsWith("Chapters: colors, formatting, clicks, tags, files"), lines.toString());
+        lines.clear();
+        run(info, "colours");
+        assertEquals("&0 &1 &2 &3 &4 &5 &6 &7", lines.get(1));
+        assertTrue(lines.contains("A colour turns styles off, so put styles after it: &e&l bold yellow"), lines.toString());
+        lines.clear();
+        run(info, "formatting");
+        assertTrue(lines.contains("<gradient:#ff5f6d:#ffc371>Sunset</gradient>"), lines.toString());
+        assertTrue(lines.contains("&#ff7a00 orange  #33ccff sky blue  <#9b59b6> purple"), lines.toString());
+        lines.clear();
+        run(info, "tags");
+        assertEquals("{player} CONSOLE  {displayname} CONSOLE  {nickname} CONSOLE", lines.get(1));
+        lines.clear();
+        run(info, "nope");
+        verify(messages).send(console, Messages.INFO_MISSING, "{section}", "nope");
+    }
+
+    private Player player(String name, List<String> shown) {
+        Player player = mock(Player.class);
+        Player.Spigot spigot = mock(Player.Spigot.class);
+        when(player.spigot()).thenReturn(spigot);
+        when(player.getName()).thenReturn(name);
+        when(player.getDisplayName()).thenReturn(name);
+        when(player.getUniqueId()).thenReturn(java.util.UUID.randomUUID());
+        doAnswer(inv -> {
+            Object[] raw = inv.getArguments();
+            BaseComponent[] parts = raw.length == 1 && raw[0] instanceof BaseComponent[] array ? array
+                    : java.util.Arrays.copyOf(raw, raw.length, BaseComponent[].class);
+            shown.add(BaseComponent.toPlainText(parts));
+            return null;
+        }).when(spigot).sendMessage(any(BaseComponent[].class));
+        return player;
+    }
+
+    @Test
+    void aPlayersOwnFileThenTheirGroupsFileWinOverTheSharedOne() throws Exception {
+        write("info.txt", "Shared for {player}\n");
+        write("info_steve.txt", "Steve's own page\n");
+        write("info_vip.txt", "For the {group} group\n");
+        PluginManager plugins = plugin.getServer().getPluginManager();
+        when(plugins.isPluginEnabled("Vault")).thenReturn(true);
+        org.bukkit.plugin.ServicesManager services = mock(org.bukkit.plugin.ServicesManager.class);
+        when(plugin.getServer().getServicesManager()).thenReturn(services);
+        net.milkbowl.vault.permission.Permission permissions = mock(net.milkbowl.vault.permission.Permission.class);
+        when(services.load(net.milkbowl.vault.permission.Permission.class)).thenReturn(permissions);
+        when(permissions.hasGroupSupport()).thenReturn(true);
+        TextFileCommand info = TextFileCommand.info(plugin);
+
+        List<String> shown = new ArrayList<>();
+        Player steve = player("Steve", shown);
+        when(permissions.getPrimaryGroup(steve)).thenReturn("VIP");
+        Player alex = player("Alex", shown);
+        when(permissions.getPrimaryGroup(alex)).thenReturn("VIP");
+        Player sam = player("Sam", shown);
+        when(permissions.getPrimaryGroup(sam)).thenReturn("default");
+        for (Player reader : List.of(steve, alex, sam)) {
+            info.execute(new BukkitCommandContext(plugin, info.spec(), reader, "info", new String[0]));
+        }
+        assertEquals(List.of("Steve's own page", "For the VIP group", "Shared for Sam"), shown);
+        run(info);
+        assertEquals(List.of("Shared for CONSOLE"), lines);
+    }
+
+    @Test
+    void informShowsTheTargetTheirOwnPagesAndReportsToTheSender() throws Exception {
+        write("info.txt", "Shared for {player}\n#vote\nVote, {player}!\n");
+        write("info_steve.txt", "Steve's own page\n#vote\nSteve votes\n");
+        TextFileCommand info = TextFileCommand.info(plugin);
+        InformCommand inform = new InformCommand(plugin, info);
+        List<String> shown = new ArrayList<>();
+        Player steve = player("Steve", shown);
+        Player alex = player("Alex", shown);
+        when(plugin.getServer().getPlayer("Steve")).thenReturn(steve);
+        when(plugin.getServer().getPlayer("Alex")).thenReturn(alex);
+        Server server = plugin.getServer();
+        doReturn(List.of(steve, alex)).when(server).getOnlinePlayers();
+        when(plugin.getServer().getPlayerExact("Steve")).thenReturn(steve);
+
+        inform.execute(new BukkitCommandContext(plugin, inform.spec(), console, "inform", new String[]{"Steve"}));
+        inform.execute(new BukkitCommandContext(plugin, inform.spec(), console, "inform", new String[]{"Alex", "vote"}));
+        assertEquals(List.of("Steve's own page", "Vote, Alex!"), shown);
+        verify(messages).send(console, Messages.INFORM_SENT, "{player}", "Steve", "{section}", "");
+        verify(messages).send(console, Messages.INFORM_SENT_CHAPTER, "{player}", "Alex", "{section}", "vote");
+
+        inform.execute(new BukkitCommandContext(plugin, inform.spec(), console, "inform", new String[]{"Alex", "nope"}));
+        verify(messages).send(console, Messages.INFO_MISSING, "{section}", "nope");
+        inform.execute(new BukkitCommandContext(plugin, inform.spec(), console, "inform", new String[]{"Nobody"}));
+        verify(messages).send(console, Messages.PLAYER_NOT_FOUND, "{player}", "Nobody");
+        assertEquals(2, shown.size(), "nothing more reached a player");
+
+        inform.execute(new BukkitCommandContext(plugin, inform.spec(), steve, "inform", new String[0]));
+        assertEquals("Steve's own page", shown.get(2));
+        assertEquals(List.of("Steve"), inform.complete(console, new String[]{"st"}));
+        assertEquals(List.of("vote"), inform.complete(console, new String[]{"Steve", "v"}));
+    }
+
+    @Test
+    void anOldCustomtextFileIsRenamedOnceAndNeverOverAnExistingCustomFile() throws Exception {
+        write("customtext.txt", "old text\n");
+        TextFileCommand custom = TextFileCommand.customText(plugin);
+        custom.installDefault();
+        assertFalse(Files.exists(dir.resolve("customtext.txt")));
+        assertEquals("old text\n", Files.readString(dir.resolve("custom.txt")));
+        run(custom);
+        assertEquals(List.of("old text"), lines);
+
+        write("customtext.txt", "stale copy\n");
+        TextFileCommand.customText(plugin).installDefault();
+        assertEquals("old text\n", Files.readString(dir.resolve("custom.txt")));
+        assertTrue(Files.exists(dir.resolve("customtext.txt")), "a second file is left for the admin");
     }
 }

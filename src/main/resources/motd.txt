@@ -1,8 +1,9 @@
 ## Allium message of the day: shown by /motd and, for holders of allium.motd (everyone by default),
 ## on join. Turn the join message off or change its delay under "motd" in config.yml.
 ##
-## The layout, formatting, placeholders and click/hover tags are customtext.txt's: see the notes at
-## the top of that file. Only the lines before the first #section are shown on join; sections are
+## The layout, formatting, placeholders and click/hover tags are custom.txt's: see the notes at the
+## top of that file, or /info in game. A player sees motd_<name>.txt or motd_<group>.txt instead
+## when one exists. Only the lines before the first #section are shown on join; sections are
 ## for /motd <section>. An Essentials motd.txt can be copied over as it is.
 &6Welcome to {server}, &f{displayname}&6!
 &7There are &f{online}&7 of &f{max}&7 players online.

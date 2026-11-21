@@ -5,7 +5,6 @@ import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.message.Messages;
-import codes.castled.allium.naming.PlayerNameVisibility;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -47,18 +46,6 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
 
     @Override
     public void execute(BukkitCommandContext context) {
-        if ("info".equals(spec.canonicalName())) {
-            if (context.args().length != 0) {
-                context.sendInvalidArgs(spec.selfUsage());
-                return;
-            }
-            long count = plugin.getServer().getOnlinePlayers().stream()
-                    .filter(target -> !(context.sender() instanceof Player viewer) || PlayerNameVisibility.canSee(viewer, target))
-                    .count();
-            UtilitySupport.send(plugin,context.sender(),Messages.UTILITY_SERVER_INFO,"{server}",plugin.getServer().getName(),"{count}",Long.toString(count));
-            return;
-        }
-
         if (!(context.sender() instanceof Player player)) {
             UtilitySupport.send(plugin, context.sender(), Messages.PLAYER_ONLY);
             return;

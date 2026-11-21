@@ -9,7 +9,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * {@code customtext.txt}, in Essentials' {@code custom.txt} layout so existing files carry over:
+ * Allium's text files ({@code info.txt}, {@code custom.txt}, {@code motd.txt}, {@code rules.txt}), in
+ * Essentials' layout so existing files carry over:
  * a line {@code #vote,voting} starts the section {@code vote} (also reachable as {@code voting}),
  * lines before the first section are the index, and {@code ##} starts a comment line. Section
  * names are case-insensitive and spaces in them become underscores, as in Essentials.

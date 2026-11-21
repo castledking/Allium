@@ -239,6 +239,40 @@ class BukkitCommandRendererAndMapTest {
         );
     }
 
+    @Test
+    void infoTakesAboutFromTheServersVersionCommandOnly() {
+        Command info = dummyCommand("info", List.of("about"));
+        Map<String, Command> known = new LinkedHashMap<>();
+        Command version = dummyCommand("version", List.of("ver", "about"));
+        known.put("about", version);
+        assertTrue(CommandMapBridge.claimServerAlias(known, info, "about"));
+        assertSame(info, known.get("about"));
+        assertFalse(CommandMapBridge.claimServerAlias(known, info, "About"), "already Allium's");
+
+        known.put("about", dummyCommand("credits", List.of("about")));
+        assertFalse(CommandMapBridge.claimServerAlias(known, info, "about"), "another server command keeps it");
+        Plugin owner = org.mockito.Mockito.mock(Plugin.class);
+        class OtherPluginsCommand extends Command implements org.bukkit.command.PluginIdentifiableCommand {
+            OtherPluginsCommand() {
+                super("version");
+            }
+
+            @Override
+            public boolean execute(@NotNull CommandSender sender, @NotNull String label, @NotNull String[] args) {
+                return true;
+            }
+
+            @Override
+            public @NotNull Plugin getPlugin() {
+                return owner;
+            }
+        }
+        known.put("about", new OtherPluginsCommand());
+        assertFalse(CommandMapBridge.claimServerAlias(known, info, "about"), "another plugin's command keeps it");
+        known.remove("about");
+        assertTrue(CommandMapBridge.claimServerAlias(known, info, "about"), "a free label is taken");
+    }
+
     private static Command dummyCommand(String name, List<String> aliases) {
         return new Command(name, "", "/" + name, aliases) {
             @Override

@@ -40,7 +40,7 @@ final class LanguageColors {
             new Replacement("utility.repair-held","{prefix} &aRepaired the held item.","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aRepaired &f{count} &adamaged item(s).","{prefix} &aRepaired &f{items}&a."),
             new Replacement("utility.repair-all","{prefix} &aReparado(s) &f{count} &aobjeto(s) danado(s).","{prefix} &aReparaste &f{items}&a."),
-            // The text-file reader names the file that failed (motd.txt, rules.txt or customtext.txt).
+            // The text-file reader names the file that failed (info.txt, motd.txt, rules.txt or custom.txt).
             new Replacement("customtext.failed","{prefix} &cThe custom text could not be read. Check the console.","{prefix} &f{file} &ccould not be read. Check the console."),
             new Replacement("customtext.failed","{prefix} &cNo se pudo leer el texto personalizado. Revisa la consola.","{prefix} &f{file} &cno se pudo leer. Revisa la consola."),
             // /whois shows one field per line.

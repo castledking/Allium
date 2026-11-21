@@ -472,7 +472,8 @@ playtime:
   date-format: 'MMM d, yyyy'
 
 # The message of the day: plugins/Allium/motd.txt, shown by /motd and on join to holders of
-# allium.motd (default true). /rules shows rules.txt. Both use customtext.txt's layout and tags.
+# allium.motd (default true). /rules shows rules.txt and /info info.txt. All use custom.txt's layout
+# and tags (see docs/customtext.md).
 motd:
   show-on-join: true
   # Ticks to wait after joining (0-200), so the MOTD follows the join messages.

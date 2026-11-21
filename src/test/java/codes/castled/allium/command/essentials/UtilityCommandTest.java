@@ -50,27 +50,6 @@ class UtilityCommandTest {
     }
 
     @Test
-    void infoCountsOnlyVisiblePlayers() {
-        var plugin = mock(PluginStart.class);
-        when(plugin.getModuleManager()).thenReturn(mock(ModuleManager.class));
-        var server = mock(Server.class);
-        when(plugin.getServer()).thenReturn(server);
-        when(server.getName()).thenReturn("TestServer");
-        var p = mock(Player.class);
-        var hidden = mock(Player.class);
-        doReturn(java.util.List.of(p, hidden)).when(server).getOnlinePlayers();
-        when(p.canSee(hidden)).thenReturn(false);
-        var context = mock(BukkitCommandContext.class);
-        when(context.sender()).thenReturn(p);
-        when(context.args()).thenReturn(new String[0]);
-
-        new UtilityCommand(plugin, CoreCommandSpecs.UTILITY_SPECS.stream()
-                .filter(spec -> spec.canonicalName().equals("info")).findFirst().orElseThrow()).execute(context);
-
-        verify(p).sendMessage("§7[§dAllium§7] §fTestServer §7— §f1 §7player(s) online.");
-    }
-
-    @Test
     void inventoryRecoveryBlocksRepairBeforeReadingAnyItem() {
         var plugin = mock(PluginStart.class);
         var modules = mock(ModuleManager.class);

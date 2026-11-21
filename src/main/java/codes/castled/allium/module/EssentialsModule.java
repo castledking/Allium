@@ -150,11 +150,14 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.LORE, loreClipboard));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.XpCommand(plugin));
         var motd = codes.castled.allium.command.essentials.TextFileCommand.motd(plugin);
-        for (var textFile : java.util.List.of(codes.castled.allium.command.essentials.TextFileCommand.customText(plugin), motd,
+        var info = codes.castled.allium.command.essentials.TextFileCommand.info(plugin);
+        for (var textFile : java.util.List.of(info, codes.castled.allium.command.essentials.TextFileCommand.customText(plugin), motd,
                 codes.castled.allium.command.essentials.TextFileCommand.rules(plugin))) {
             textFile.installDefault();
             plugin.getCommandManager().register(textFile);
         }
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.InformCommand(plugin, info));
+        claimAbout();
         broadcasts = new codes.castled.allium.broadcast.BroadcastService(plugin);
         broadcasts.start();
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.BroadcastCommand(plugin, CoreCommandSpecs.BROADCAST, broadcasts));
@@ -163,6 +166,17 @@ public final class EssentialsModule extends AbstractModule {
         motdOnJoin = new codes.castled.allium.command.essentials.MotdOnJoin(plugin, motd);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
             plugin.getServer().getPluginManager().registerEvents(motdOnJoin, plugin);
+        }
+    }
+
+    /** Bukkit's {@code /version} holds {@code /about} as an alias, which would hide {@code /info}'s. */
+    private void claimAbout() {
+        if (plugin.getServer() == null || !plugin.getCommandManager().getRenderedCommands().containsKey("info")) {
+            return;
+        }
+        var command = plugin.getCommand("info");
+        if (command != null && codes.castled.allium.command.CommandMapBridge.claimServerAlias(plugin.getServer(), command, "about")) {
+            plugin.logger().info("/about now shows /info; /version and /ver still show the server version.");
         }
     }
 

@@ -89,6 +89,16 @@ public final class GcCommand implements SpecCommandHandler {
         }
     }
 
+    /** The last minute's TPS, as {@code /gc} shows it first; {@code N/A} on servers without Paper's {@code getTPS}. */
+    public static String tps() {
+        String all = readTps();
+        if (all.startsWith("N/A")) {
+            return "N/A";
+        }
+        int comma = all.indexOf(',');
+        return comma < 0 ? all : all.substring(0, comma);
+    }
+
     static String readTps() {
         try {
             if (Bukkit.getServer() == null) {
@@ -112,7 +122,7 @@ public final class GcCommand implements SpecCommandHandler {
         return "N/A (Spigot)";
     }
 
-    static String formatDuration(long millis) {
+    public static String formatDuration(long millis) {
         long seconds = Math.max(0L, millis / 1000L);
         long days = seconds / 86400L;
         seconds %= 86400L;

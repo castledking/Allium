@@ -344,6 +344,16 @@ rules:
   missing:
     - "{prefix} &cNo hay un capitulo de reglas llamado &f{section}&c."
     - "[sound] block.note_block.bass 0.8"
+info-pages:
+  missing:
+    - "{prefix} &cNo hay un capitulo de info llamado &f{section}&c."
+    - "[sound] block.note_block.bass 0.8"
+  inform-sent:
+    - "{prefix} &7Se mostraron a &f{player} &7sus paginas de info."
+    - "[sound] item.book.page_turn 1.1"
+  inform-sent-chapter:
+    - "{prefix} &7Se mostro a &f{player} &7el capitulo de info &f{section}&7."
+    - "[sound] item.book.page_turn 1.1"
 broadcasts:
   status:
     - "{prefix} &7Los anuncios programados estan {state}&7: cada &f{interval}s&7, &f{order}&7, con al menos &f{minimum} &7conectados. Anuncios: &f{broadcasts}"
@@ -1122,8 +1132,6 @@ utility:
     - "{prefix} &fItem: &e{item} &7(&f{key}&7), amount &f{amount}/{max} &7(held by &f{player}&7)"
   itemdb-item:
     - "{prefix} &fItem: &e{item} &7(&f{key}&7), amount &f{amount}/{max}"
-  server-info:
-    - "{prefix} &f{server} &7\u2014 &f{count} &7player(s) online."
   repair-held:
     - "{prefix} &aReparaste &f{items}&a."
     - "[sound] block.anvil.use 1.2"

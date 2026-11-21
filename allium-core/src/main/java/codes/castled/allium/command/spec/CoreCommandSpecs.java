@@ -847,16 +847,8 @@ public final class CoreCommandSpecs {
             List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
-    public static final CommandSpec INFO = new CommandSpec(
-            "info", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
-            "Show server info and visible online player count",
-            "/info", "/info",
-            "allium.info", null,
-            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
-    );
-
     public static final List<CommandSpec> UTILITY_SPECS = List.of(
-            REPAIR, DISPOSAL, WORKBENCH, ANVIL, INFO
+            REPAIR, DISPOSAL, WORKBENCH, ANVIL
     );
 
     public static final CommandSpec SPEED = new CommandSpec(
@@ -1159,7 +1151,7 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
-    /** {@code /customtext [section] [page]}: pages of {@code customtext.txt}, with click and hover tags. */
+    /** {@code /customtext [section] [page]}: pages of {@code custom.txt}, with click and hover tags. */
     public static final CommandSpec CUSTOMTEXT = new CommandSpec(
             "customtext", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
             "Show a page of the server's custom text",
@@ -1186,6 +1178,26 @@ public final class CoreCommandSpecs {
             "/rules [chapter] [page]", "/rules [chapter] [page]",
             "allium.rules", null,
             List.of(CommandArgSpec.optional("chapter", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /info [chapter] [page]}: {@code info.txt}, or the player's or their group's own file. */
+    public static final CommandSpec INFO = new CommandSpec(
+            "info", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("about", "ifo", "news"),
+            "Show the server info pages",
+            "/info [chapter] [page]", "/info [chapter] [page]",
+            "allium.info", null,
+            List.of(CommandArgSpec.optional("chapter", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    /** {@code /inform [player] [chapter] [page]}: staff show a player their info pages. */
+    public static final CommandSpec INFORM = new CommandSpec(
+            "inform", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Show a player the info pages",
+            "/inform [player] [chapter] [page]", "/inform <player> [chapter] [page]",
+            "allium.inform", null,
+            List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null))),
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
@@ -1237,8 +1249,8 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, COORDS, COMPASS, GLOW, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS, SPAWNMOB,
-            RECIPE
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, ENCHANT, RENAME, LORE, XP, INFO, INFORM, CUSTOMTEXT, MOTD, RULES, BROADCAST, BROADCASTS,
+            SPAWNMOB, RECIPE
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

@@ -1721,7 +1721,7 @@ def usage_items_homes(lane):
     m = player.cmd('customtext vote')
     copy = player.chat(m, 'Click here to copy the server address')
     require(copy['interactive'] and 'copy_to_clipboard' in raw(copy) and 'play.example.com' in raw(copy),
-            lane.name + ': a JSON line in customtext.txt is sent as vanilla text', copy)
+            lane.name + ': a JSON line in custom.txt is sent as vanilla text', copy)
     player.command('customtext nothing', 'There is no custom text called nothing.')
 
     lane.fixture('tp StaffBot 0.5 -61 0.5 0 0')

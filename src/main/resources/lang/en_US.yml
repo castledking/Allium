@@ -344,6 +344,16 @@ rules:
   missing:
     - "{prefix} &cThere is no rules chapter called &f{section}&c."
     - "[sound] block.note_block.bass 0.8"
+info-pages:
+  missing:
+    - "{prefix} &cThere is no info chapter called &f{section}&c."
+    - "[sound] block.note_block.bass 0.8"
+  inform-sent:
+    - "{prefix} &7Showed &f{player} &7their info pages."
+    - "[sound] item.book.page_turn 1.1"
+  inform-sent-chapter:
+    - "{prefix} &7Showed &f{player} &7the info chapter &f{section}&7."
+    - "[sound] item.book.page_turn 1.1"
 broadcasts:
   status:
     - "{prefix} &7Timed broadcasts are {state}&7: every &f{interval}s&7, &f{order}&7, with at least &f{minimum} &7online. Broadcasts: &f{broadcasts}"
@@ -1122,8 +1132,6 @@ utility:
     - "{prefix} &fItem: &e{item} &7(&f{key}&7), amount &f{amount}/{max} &7(held by &f{player}&7)"
   itemdb-item:
     - "{prefix} &fItem: &e{item} &7(&f{key}&7), amount &f{amount}/{max}"
-  server-info:
-    - "{prefix} &f{server} &7\u2014 &f{count} &7player(s) online."
   repair-held:
     - "{prefix} &aRepaired &f{items}&a."
     - "[sound] block.anvil.use 1.2"

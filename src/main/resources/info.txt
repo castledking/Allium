@@ -1,0 +1,74 @@
+## Allium info pages: /info [chapter] [page], also /about, /ifo and /news. Staff can show them to a
+## player with /inform <player> [chapter]. Lines starting with ## are comments and are never shown.
+##
+## /info shows the lines before the first chapter; /info <chapter> [page] shows a chapter. A line
+## "#colors,colours" starts the chapter "colors", also reachable as "colours". Chapters longer than
+## 9 lines get pages with clickable arrows. The file is read again whenever it changes, so edits
+## show without a reload. Players need allium.info (everyone by default).
+##
+## A player sees info_<name>.txt instead when it exists (info_steve.txt), else info_<group>.txt for
+## their primary permission group from LuckPerms or Vault (info_vip.txt). File names are lower
+## case. custom.txt, motd.txt and rules.txt work the same way. An Essentials info.txt can be copied
+## over as it is.
+##
+## The chapters below show Allium's formatting in game; replace them with your own. A backslash
+## shows a code as written instead of using it: \&a, \&#ff7a00, \#ff7a00, \<rainbow>, \{player},
+## \%player_name%, and \\ for a backslash.
+&f{server} &7— &f{online} &7player(s) online.
+&7Welcome, &f{displayname}&7! Edit &fplugins/Allium/info.txt &7to change this page.
+&7Chapters: <click:run_command:/info colors><hover:show_text:'&7Colour and style codes'>&e&ncolors</hover></click>&7, <click:run_command:/info formatting><hover:show_text:'&7Hex colours, gradients and rainbows'>&e&nformatting</hover></click>&7, <click:run_command:/info clicks><hover:show_text:'&7Click and hover events'>&e&nclicks</hover></click>&7, <click:run_command:/info tags><hover:show_text:'&7Placeholders that fill in for each reader'>&e&ntags</hover></click>&7, <click:run_command:/info files><hover:show_text:'&7Pages for one player or group'>&e&nfiles</hover></click>
+
+#colors,colours,color,colour
+&6Colour codes &7go before the text they colour:
+&0\&0 &1\&1 &2\&2 &3\&3 &4\&4 &5\&5 &6\&6 &7\&7
+&8\&8 &9\&9 &a\&a &b\&b &c\&c &d\&d &e\&e &f\&f
+&6Styles:
+&f\&l &lbold&r  &f\&o &oitalic&r  &f\&n &nunderline&r  &f\&m &mstrike&r
+&f\&k &kmagic&r  &f\&r &7resets everything
+&7A colour turns styles off, so put styles after it: &f\&e\&l &e&lbold yellow
+
+#formatting,hex,gradient,gradients,rainbow
+&6Hex colours:
+&f\&#ff7a00 &#ff7a00orange  &f\#33ccff #33ccffsky blue  &f\<#9b59b6> <#9b59b6>purple
+&6Gradients &7take two or more colours:
+&f\<gradient:#ff5f6d:#ffc371>Sunset\</gradient>
+&8→ <gradient:#ff5f6d:#ffc371>Sunset over the spawn island</gradient>
+&f\<gradient:#00c6ff:#0072ff:#a8ff78>Sea\</gradient>
+&8→ <gradient:#00c6ff:#0072ff:#a8ff78>Three colours, one after another</gradient>
+&6Rainbows: &f\<rainbow>Party\</rainbow> &8→ <rainbow>Party time on the server</rainbow>
+
+#clicks,click,hover,events
+&6Click events &7make the text between the tags clickable:
+&f\<click:run_command:/rules>Rules\</click> &8→ <click:run_command:/rules>&e&nRuns /rules</click>
+&f\<click:suggest_command:/msg >Msg\</click> &8→ <click:suggest_command:/msg >&e&nTypes /msg in your chat box</click>
+&f\<click:open_url:https://example.com>Site\</click> &8→ <click:open_url:https://example.com>&e&nOpens a link</click>
+&f\<click:copy_to_clipboard:Hello>Copy\</click> &8→ <click:copy_to_clipboard:Hello from {server}!>&e&nCopies text</click>
+&6Hover text:
+&f\<hover:show_text:'&aHi\n&7there'>Hover\</hover> &8→ <hover:show_text:'&aHello, {player}!\n&7A second line'>&e&nHover here</hover>
+&7Tags nest, values may be quoted with &f' &7or &f"&7, and a whole line of
+&7/tellraw JSON is sent as it is.
+
+#tags,tag,placeholders,keywords
+&6Tags &7fill in for whoever reads the page. Yours:
+&e\{player} &f{player}  &e\{displayname} &f{displayname}  &e\{nickname} &f{nickname}
+&e\{group} &f{group}  &e\{prefix} &f{prefix}&r  &e\{suffix} &f{suffix}
+&e\{balance} &f{balance}  &e\{mails} &f{mails}  &e\{playtime} &f{playtime}
+&e\{world} &f{world}  &e\{coords} &f{coords}
+&e\{worldtime12} &f{worldtime12}  &e\{worldtime24} &f{worldtime24}  &e\{worlddate} &f{worlddate}
+&e\{online} &f{online}  &e\{max} &f{max}  &e\{unique} &f{unique}
+&e\{worlds} &f{worlds}
+&e\{playerlist} &f{playerlist}
+&e\{playerlist:admin:nobody} &f{playerlist:admin:nobody} &7(one group; the text after it when empty)
+&e\{time} &f{time}  &e\{date} &f{date}
+&e\{tps} &f{tps}  &e\{uptime} &f{uptime}  &e\{server} &f{server}
+&e\{version} &7the server version  &e\{plugins} &7the plugin list
+&e\{ip} &7and &e\{address} &7the reader's IP address
+&7PlaceholderAPI's &e\%placeholders% &7work too when it is installed.
+
+#files,file,players,groups
+&6Pages for one player or group:
+&7A player sees &finfo_\<name>.txt &7instead of this file when it exists, say &finfo_steve.txt&7.
+&7Otherwise they see &finfo_\<group>.txt &7for their primary group from LuckPerms or Vault,
+&7say &finfo_vip.txt&7. File names are lower case.
+&fcustom.txt&7, &fmotd.txt &7and &frules.txt &7work the same way.
+&7Staff can show a player their pages with &f/inform \<player> [chapter]&7.

@@ -65,9 +65,14 @@ commands:
     usage: /<command>
     permission: allium.anvil
   info:
-    description: Show server information and the online count
-    usage: /<command>
+    description: Show the server info pages
+    usage: /<command> [chapter] [page]
+    aliases: [about, ifo, news]
     permission: allium.info
+  inform:
+    description: Show a player the info pages
+    usage: /<command> [player] [chapter] [page]
+    permission: allium.inform
   speed:
     description: Set your walk or fly speed
     usage: /<command> [walk|fly] <0..10|reset> [player]
@@ -792,6 +797,7 @@ permissions:
       allium.workbench: true
       allium.anvil: true
       allium.info: true
+      allium.inform: true
       allium.speed: true
       allium.speed.others: true
       allium.scale: true
@@ -1840,6 +1846,10 @@ permissions:
   allium.anvil:
     default: op
   allium.info:
+    description: Allows /info (/about, /ifo, /news), the info pages of info.txt
+    default: true
+  allium.inform:
+    description: Allows /inform <player> [chapter], to show a player their info pages
     default: op
   allium.speed:
     default: op

@@ -4,7 +4,9 @@
 ## section. A line "#vote,voting" starts the section "vote", also reachable as "voting". Sections
 ## longer than 9 lines get pages with clickable arrows. The file is read again whenever it
 ## changes, so edits show without a reload. Players need allium.customtext (everyone by default).
-## /motd and /rules read motd.txt and rules.txt the same way.
+## A player sees custom_<name>.txt instead when it exists (custom_steve.txt), else
+## custom_<group>.txt for their primary permission group (custom_vip.txt). /info, /motd and /rules
+## read info.txt, motd.txt and rules.txt the same way.
 ##
 ## To make a section its own command, add an alias to the server's commands.yml:
 ##   aliases:
@@ -12,8 +14,10 @@
 ##     - customtext vote $1-
 ##
 ## Formatting: &-colour codes, &#RRGGBB hex colours, <gradient:#ff0000:#0000ff>...</gradient>
-## and <rainbow>...</rainbow>, as in Allium's messages. Placeholders: {player}, {displayname},
-## {world}, {online}, {max} and {server}, plus PlaceholderAPI's %placeholders% when it is installed.
+## and <rainbow>...</rainbow>, as in Allium's messages; /info colors and /info formatting show them
+## in game. Placeholders: {player}, {displayname}, {online}, {balance}, {playerlist} and the rest of
+## Essentials' keywords (/info tags lists them), plus PlaceholderAPI's %placeholders% when it is
+## installed. A backslash shows a code as written: \&a, \<rainbow>, \{player}, \%player_name%.
 ##
 ## Click and hover events, as the Essentials fork's text files take them:
 ##   <click:run_command:/spawn>text</click>            runs a command

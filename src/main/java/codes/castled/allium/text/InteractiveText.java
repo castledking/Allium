@@ -12,7 +12,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Operator-written text with click and hover events, for {@code customtext.txt}. Two forms:
+ * Operator-written text with click and hover events, for the text files ({@code info.txt},
+ * {@code custom.txt}, ...). Two forms:
  * <ul>
  *   <li>MiniMessage-style tags inside ordinary Allium formatting, as the Essentials fork's text
  *       files take them: {@code <click:run_command:/spawn>}, {@code suggest_command},
@@ -23,13 +24,16 @@ import java.util.Locale;
  *   <li>A whole line of vanilla JSON text, as {@code /tellraw} takes it
  *       ({@code {"text":"Vote","clickEvent":{...}}} or a {@code [...]} array).</li>
  * </ul>
- * Anything else, including unknown tags, is formatted as usual.
+ * Anything else, including unknown tags, is formatted as usual. Text files may also escape what
+ * should show as written ({@link #escape}).
  */
 public final class InteractiveText {
 
     /** Region boundaries become supplementary private-use code points the formatter keeps as glyphs. */
     private static final int MARKER_BASE = 0xF0000;
     private static final int MAX_TAGS = 0xFFFD;
+    /** An escaped character becomes this plus the character, a glyph the formatter leaves alone. */
+    private static final int ESCAPE_BASE = 0x100000;
 
     private InteractiveText() {
     }
@@ -55,7 +59,7 @@ public final class InteractiveText {
         for (FormattedText.StyledGlyph glyph : text.glyphs()) {
             int index = glyph.codePoint() - MARKER_BASE;
             if (index < 0 || index >= scan.tags().size()) {
-                run.add(glyph);
+                run.add(restore(glyph));
                 continue;
             }
             flush(out, run, clicks.peek(), hovers.peek());
@@ -87,7 +91,7 @@ public final class InteractiveText {
         for (FormattedText.StyledGlyph glyph : TextFormatter.parse(scan.marked()).glyphs()) {
             int index = glyph.codePoint() - MARKER_BASE;
             if (index < 0 || index >= scan.tags().size()) {
-                kept.add(glyph);
+                kept.add(restore(glyph));
             }
         }
         return new FormattedText(kept);
@@ -103,6 +107,84 @@ public final class InteractiveText {
             out.add(component);
         }
         run.clear();
+    }
+
+    /**
+     * Text-file escapes: a backslash shows what follows as written, so a file can show its own
+     * codes. {@code \&a} and {@code \&#RRGGBB} show a colour code, {@code \#RRGGBB} a hex colour,
+     * {@code \<...>} a whole tag, <code>\{...}</code> a placeholder, {@code \%...%} a
+     * PlaceholderAPI placeholder and {@code \\} a backslash. Anything else after a backslash, such
+     * as hover text's {@code \n}, is left alone, and so is a JSON line. Escape a line before its
+     * placeholders are filled; {@link #components} and {@link #formatted} then show the escaped
+     * characters.
+     */
+    public static String escape(String line) {
+        if (line == null || line.indexOf('\\') < 0 || json(line) != null) {
+            return line;
+        }
+        StringBuilder out = new StringBuilder(line.length());
+        int i = 0;
+        while (i < line.length()) {
+            char c = line.charAt(i);
+            int end = c == '\\' && i + 1 < line.length() ? escapedEnd(line, i + 1) : i + 1;
+            if (end > i + 1) {
+                for (int k = i + 1; k < end; k++) {
+                    out.appendCodePoint(ESCAPE_BASE + line.charAt(k));
+                }
+                i = end;
+                continue;
+            }
+            out.append(c);
+            i++;
+        }
+        return out.toString();
+    }
+
+    /** The end (exclusive) of the escaped run starting at {@code start}, or {@code start} when nothing there escapes. */
+    private static int escapedEnd(String line, int start) {
+        int length = line.length();
+        char c = line.charAt(start);
+        if (c == '&' || c == '\u00a7') {
+            boolean hex = start + 8 <= length && line.charAt(start + 1) == '#' && hexRun(line, start + 2);
+            return hex ? start + 8 : Math.min(length, start + 2);
+        }
+        if (c == '#') {
+            return start + 7 <= length && hexRun(line, start + 1) ? start + 7 : start + 1;
+        }
+        if (c == '<' || c == '{' || c == '%') {
+            int close = line.indexOf(c == '<' ? '>' : c == '{' ? '}' : '%', start + 1);
+            return close < 0 ? start + 1 : close + 1;
+        }
+        return c == '\\' ? start + 1 : start;
+    }
+
+    private static boolean hexRun(String text, int start) {
+        for (int i = start; i < start + 6; i++) {
+            if (Character.digit(text.charAt(i), 16) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static FormattedText.StyledGlyph restore(FormattedText.StyledGlyph glyph) {
+        int original = glyph.codePoint() - ESCAPE_BASE;
+        return original < 0 || original > 0xFFFF ? glyph
+                : new FormattedText.StyledGlyph(original, glyph.rgb(), glyph.legacyColorChar(), glyph.decorations());
+    }
+
+    private static FormattedText restore(FormattedText text) {
+        List<FormattedText.StyledGlyph> glyphs = new ArrayList<>(text.length());
+        for (FormattedText.StyledGlyph glyph : text.glyphs()) {
+            glyphs.add(restore(glyph));
+        }
+        return new FormattedText(glyphs);
+    }
+
+    private static String restore(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        value.codePoints().forEach(cp -> out.appendCodePoint(cp >= ESCAPE_BASE && cp <= ESCAPE_BASE + 0xFFFF ? cp - ESCAPE_BASE : cp));
+        return out.toString();
     }
 
     private static BaseComponent[] json(String line) {
@@ -199,7 +281,7 @@ public final class InteractiveText {
             if (kind == null || kind == ClickEvent.Action.OPEN_URL && !value.matches("(?i)https?://\\S+")) {
                 return 0;
             }
-            tags.add(new Tag(true, true, new ClickEvent(kind, value), null));
+            tags.add(new Tag(true, true, new ClickEvent(kind, restore(value)), null));
             return end;
         }
         if (!action.equals("show_text")) {
@@ -207,7 +289,7 @@ public final class InteractiveText {
         }
         @SuppressWarnings("deprecation")
         HoverEvent event = new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                SpigotComponents.of(TextFormatter.parse(value.replace("\\n", "\n"))));
+                SpigotComponents.of(restore(TextFormatter.parse(value.replace("\\n", "\n")))));
         tags.add(new Tag(true, false, null, event));
         return end;
     }

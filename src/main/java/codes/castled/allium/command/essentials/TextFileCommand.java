@@ -17,13 +17,13 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * {@code /customtext}, {@code /motd} and {@code /rules}: pages of {@code customtext.txt},
- * {@code motd.txt} and {@code rules.txt} in {@code plugins/Allium} ({@link CustomTextDocument}, the
- * layout of Essentials' text files), with click and hover events ({@link InteractiveText}) and the
- * {@code {player}}, {@code {displayname}}, {@code {world}}, {@code {online}}, {@code {max}} and
- * {@code {server}} placeholders (plus PlaceholderAPI's when it is installed). With no section the
- * lines before the first section are shown, or the list of sections when there are none. A file is
- * read again whenever it changes on disk, so edits show without a reload.
+ * {@code /info}, {@code /customtext}, {@code /motd} and {@code /rules}: pages of {@code info.txt},
+ * {@code custom.txt}, {@code motd.txt} and {@code rules.txt} in {@code plugins/Allium}
+ * ({@link CustomTextDocument}, the layout of Essentials' text files), with click and hover events
+ * and placeholders ({@link TextFile}). A player reads their own or their group's file when there is
+ * one ({@code info_steve.txt}, {@code info_vip.txt}). With no section the lines before the first
+ * section are shown, or the list of sections when there are none. A file is read again whenever it
+ * changes on disk, so edits show without a reload.
  */
 public final class TextFileCommand implements SpecCommandHandler {
 
@@ -33,14 +33,25 @@ public final class TextFileCommand implements SpecCommandHandler {
     private final Messages missing;
 
     public TextFileCommand(PluginStart plugin, CommandSpec spec, String fileName, Messages missing) {
+        this(plugin, spec, new TextFile(plugin, fileName), missing);
+    }
+
+    private TextFileCommand(PluginStart plugin, CommandSpec spec, TextFile file, Messages missing) {
         this.plugin = plugin;
         this.spec = spec;
-        this.file = new TextFile(plugin, fileName);
+        this.file = file;
         this.missing = missing;
     }
 
+    /** {@code /info}: {@code info.txt}. */
+    public static TextFileCommand info(PluginStart plugin) {
+        return new TextFileCommand(plugin, CoreCommandSpecs.INFO, "info.txt", Messages.INFO_MISSING);
+    }
+
+    /** {@code /customtext}: {@code custom.txt}, Essentials' name; a pre-recode {@code customtext.txt} is moved to it. */
     public static TextFileCommand customText(PluginStart plugin) {
-        return new TextFileCommand(plugin, CoreCommandSpecs.CUSTOMTEXT, "customtext.txt", Messages.CUSTOMTEXT_MISSING);
+        return new TextFileCommand(plugin, CoreCommandSpecs.CUSTOMTEXT, new TextFile(plugin, "custom.txt", "customtext.txt"),
+                Messages.CUSTOMTEXT_MISSING);
     }
 
     public static TextFileCommand motd(PluginStart plugin) {
@@ -67,16 +78,26 @@ public final class TextFileCommand implements SpecCommandHandler {
 
     @Override
     public void execute(BukkitCommandContext context) {
-        CommandSender sender = context.sender();
-        String[] args = context.args();
-        if (args.length > 2) {
+        if (context.args().length > 2) {
             context.sendInvalidArgs(spec.selfUsage());
             return;
         }
-        CustomTextDocument text = file.document();
+        show(context.sender(), context.sender(), context.args(), () -> context.sendInvalidArgs(spec.selfUsage()));
+    }
+
+    /**
+     * Shows {@code viewer} the page {@code args} ({@code [section] [page]}) names, from the file
+     * {@code viewer} reads and with their placeholders. Problems (a missing section, a file that
+     * cannot be read) go to {@code reportTo}; {@code usage} runs for a page that is not a number.
+     *
+     * @return whether anything was shown
+     */
+    public boolean show(CommandSender viewer, CommandSender reportTo, String[] args, Runnable usage) {
+        String fileName = file.fileNameFor(viewer);
+        CustomTextDocument text = file.document(viewer);
         if (text == null) {
-            UtilitySupport.send(plugin, sender, Messages.CUSTOMTEXT_FAILED, "{file}", file.fileName());
-            return;
+            UtilitySupport.send(plugin, reportTo, Messages.CUSTOMTEXT_FAILED, "{file}", fileName);
+            return false;
         }
         String section = null;
         int page = 1;
@@ -85,39 +106,40 @@ public final class TextFileCommand implements SpecCommandHandler {
                 page = parsePage(args[0]);
             } else {
                 section = args[0];
-                if (args.length == 2) {
+                if (args.length >= 2) {
                     if (!isPage(args[1])) {
-                        context.sendInvalidArgs(spec.selfUsage());
-                        return;
+                        usage.run();
+                        return false;
                     }
                     page = parsePage(args[1]);
                 }
             }
         }
         if (section == null && text.index().isEmpty() && !text.sectionNames().isEmpty()) {
-            sendSections(sender, text);
-            return;
+            sendSections(viewer, text);
+            return true;
         }
         List<String> lines = section == null ? text.index() : text.section(section).orElse(null);
         if (section == null && lines.isEmpty()) {
-            UtilitySupport.send(plugin, sender, Messages.CUSTOMTEXT_EMPTY, "{file}", file.fileName());
-            return;
+            UtilitySupport.send(plugin, reportTo, Messages.CUSTOMTEXT_EMPTY, "{file}", fileName);
+            return false;
         }
         if (lines == null || lines.isEmpty()) {
-            UtilitySupport.send(plugin, sender, missing, "{section}", section);
-            return;
+            UtilitySupport.send(plugin, reportTo, missing, "{section}", section);
+            return false;
         }
         CustomTextDocument.Page shown = CustomTextDocument.page(lines, page);
-        send(sender, shown.lines());
+        send(viewer, shown.lines());
         if (shown.pages() > 1) {
             String name = section == null ? "" : text.primaryName(section).orElse(section) + " ";
-            HelpCommand.sendFooter(plugin, sender, shown.page(), shown.pages(), "/" + spec.canonicalName() + " " + name);
+            HelpCommand.sendFooter(plugin, viewer, shown.page(), shown.pages(), "/" + spec.canonicalName() + " " + name);
         }
+        return true;
     }
 
     /** The first page of the file's index, as {@code /<command>} shows it; nothing when the file has none. */
     public void sendIndex(Player player) {
-        CustomTextDocument text = file.document();
+        CustomTextDocument text = file.document(player);
         if (text == null || text.index().isEmpty()) {
             return;
         }
@@ -133,7 +155,7 @@ public final class TextFileCommand implements SpecCommandHandler {
         if (spec.basePermission() != null && !sender.hasPermission(spec.basePermission()) || args.length != 1) {
             return List.of();
         }
-        CustomTextDocument text = file.document();
+        CustomTextDocument text = file.document(sender);
         String prefix = args[0].toLowerCase(Locale.ROOT);
         return text == null ? List.of() : text.sectionNames().stream().filter(n -> n.startsWith(prefix)).limit(64).toList();
     }
@@ -162,10 +184,17 @@ public final class TextFileCommand implements SpecCommandHandler {
         file.send(sender, lines, placeholders);
     }
 
-    /** The parsed file (tests). */
+    /** The parsed shared file (tests). */
     @Nullable
     CustomTextDocument document() {
         return file.document();
+    }
+
+    /** Section names and aliases of the file {@code viewer} reads, for {@code /inform <player> <tab>}. */
+    List<String> sections(CommandSender viewer, String prefix) {
+        CustomTextDocument text = file.document(viewer);
+        String lower = prefix.toLowerCase(Locale.ROOT);
+        return text == null ? List.of() : text.sectionNames().stream().filter(n -> n.startsWith(lower)).limit(64).toList();
     }
 
     private static boolean isPage(String raw) {

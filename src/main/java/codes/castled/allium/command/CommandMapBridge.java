@@ -217,6 +217,39 @@ public final class CommandMapBridge {
     }
 
     /**
+     * Gives {@code command} the bare {@code label} when the server's own {@code /version} holds it
+     * as an alias, as Bukkit's does {@code /about}, or when nothing holds it. Another plugin's
+     * command keeps the label, and so does any other server command.
+     *
+     * @return whether the label was taken over just now
+     */
+    public static boolean claimServerAlias(Server server, PluginCommand command, String label) {
+        CommandMap map = resolveCommandMapDirect(server);
+        Map<String, Command> known = map == null ? null : resolveKnownCommands(map);
+        if (known == null || !claimServerAlias(known, command, label)) {
+            return false;
+        }
+        GuardedAccessor.syncAndRefreshPlayerCommands(server, message -> {
+            if (command.getPlugin() != null && command.getPlugin().getLogger() != null) {
+                command.getPlugin().getLogger().warning(message);
+            }
+        });
+        return true;
+    }
+
+    /** Map-level {@link #claimServerAlias(Server, PluginCommand, String)} (directly testable). */
+    public static boolean claimServerAlias(Map<String, Command> knownCommands, Command command, String label) {
+        String key = label.toLowerCase(Locale.ROOT);
+        Command current = knownCommands.get(key);
+        if (current == command || current instanceof PluginIdentifiableCommand
+                || current != null && !"version".equalsIgnoreCase(current.getName())) {
+            return false;
+        }
+        knownCommands.put(key, command);
+        return true;
+    }
+
+    /**
      * Pure map-level implementation of label yielding and fallback promotion (directly testable).
      */
     public static void yieldFromKnownCommands(

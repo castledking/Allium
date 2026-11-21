@@ -76,4 +76,28 @@ class InteractiveTextTest {
         assertEquals("Vote", InteractiveText.formatted("{\"text\":\"Vote\",\"color\":\"gold\"}").toPlainText());
         assertEquals(List.of(), InteractiveText.formatted("").glyphs());
     }
+
+    @Test
+    void backslashEscapesShowCodesTagsAndPlaceholdersAsWritten() {
+        String line = InteractiveText.escape("&a\\&c red? \\&#ff7a00 \\#33ccff \\<rainbow>x\\</rainbow> \\{player} \\%name% \\\\ \\q");
+        BaseComponent[] parts = InteractiveText.components(line);
+        assertEquals("&c red? &#ff7a00 #33ccff <rainbow>x</rainbow> {player} %name% \\ \\q", plain(parts));
+        for (BaseComponent part : parts) {
+            assertEquals(ChatColor.GREEN, part.getColor(), "an escaped code changes nothing: " + part.toPlainText());
+        }
+        assertEquals("&c red? &#ff7a00 #33ccff <rainbow>x</rainbow> {player} %name% \\ \\q", InteractiveText.formatted(line).toPlainText());
+
+        BaseComponent[] tag = InteractiveText.components(InteractiveText.escape("\\<click:run_command:/spawn>Spawn\\</click>"));
+        assertEquals("<click:run_command:/spawn>Spawn</click>", plain(tag));
+        assertNull(tag[0].getClickEvent());
+
+        BaseComponent[] inside = InteractiveText.components(InteractiveText.escape(
+                "<click:suggest_command:/say \\&a><hover:show_text:'Type \\&a\\nnext line'>Go</hover></click>"));
+        assertEquals("/say &a", part(inside, "Go").getClickEvent().getValue());
+        Object hover = ((net.md_5.bungee.api.chat.hover.content.Text) part(inside, "Go").getHoverEvent().getContents().get(0)).getValue();
+        assertEquals("Type &a\nnext line", plain((BaseComponent[]) hover));
+
+        String json = "{\"text\":\"a \\\\ b\"}";
+        assertEquals(json, InteractiveText.escape(json), "JSON lines are left alone");
+    }
 }

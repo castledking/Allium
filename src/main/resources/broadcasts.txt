@@ -2,7 +2,7 @@
 ## turn comes. Turn them on and set the interval, order and minimum players under "broadcasts" in
 ## config.yml (off by default). /broadcasts lists them and /broadcasts send <name> sends one now.
 ##
-## The layout, formatting, placeholders and click/hover tags are customtext.txt's: see the notes at
+## The layout, formatting, placeholders and click/hover tags are custom.txt's: see the notes at
 ## the top of that file. Placeholders are filled for each player, so {player} greets everyone by
 ## name. Lines before the first section are not sent. Edits apply from the next broadcast.
 #rules

@@ -68,6 +68,24 @@ public final class AlliumCommand implements SpecCommandHandler {
                 else importLang(sender, apply);
             }
             case "adopt-window" -> adoptWindow(context);
+            case "escalate" -> {
+                // Pre-recode Allium's /core escalate <staffmember> <target> <reason>, for the console and scripts.
+                if (!(sender instanceof org.bukkit.command.ConsoleCommandSender)) {
+                    plugin.getMessageManager().send(sender, Messages.CONSOLE_ONLY);
+                    return;
+                }
+                String[] args = context.args();
+                if (args.length < 4) {
+                    context.sendInvalidArgs("/allium escalate <staffmember> <target> <reason>");
+                    return;
+                }
+                if (plugin.getModuleManager().getModule("moderation") instanceof codes.castled.allium.module.ModerationModule moderation
+                        && moderation.isEnabled() && moderation.reports() != null) {
+                    moderation.reports().escalate(sender, args[1], args[2], String.join(" ", java.util.Arrays.copyOfRange(args, 3, args.length)));
+                } else {
+                    plugin.getMessageManager().send(sender, Messages.MODULE_DISABLED);
+                }
+            }
             case "sethomes" -> {
                 if (plugin.getModuleManager().getModule("travel") instanceof codes.castled.allium.module.TravelModule travel && travel.isEnabled()) {
                     travel.travel().sethomesAdmin(sender, java.util.Arrays.copyOfRange(context.args(), 1, context.args().length));

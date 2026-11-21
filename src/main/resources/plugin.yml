@@ -288,7 +288,7 @@ commands:
   allium:
     aliases: [core]
     description: "Allium administration: reload, version, imports"
-    usage: /<command> <reload|version|import lang [apply]|adopt-window [<duration>|off]|hide|creativemanager>
+    usage: /<command> <reload|version|import <lang|vouchers|legacy>|escalate|adopt-window [<duration>|off]|hide|creativemanager>
   give:
     description: Give vanilla, provider or Allium items
     usage: /<command> <player> <item[,item...]> [amount] [key:value...] [-e] [--overflow=drop|refuse|partial]
@@ -479,6 +479,14 @@ commands:
     description: Set what an item sells for
     usage: /<command> [hand|item] <price>
     permission: allium.setworth
+  report:
+    description: Report a player, or anything else, to staff
+    usage: /<command> <player> <what happened> | /<command> <message>
+    permission: allium.report
+  escalate:
+    description: Hand an issue up to senior staff
+    usage: /<command> <target> <reason>
+    permission: allium.escalate
   voucher:
     aliases: [vouchers]
     description: Give and list vouchers (powertools named voucher_<name>)
@@ -694,6 +702,10 @@ permissions:
       allium.setworth: true
       allium.voucher.give: true
       allium.voucher.reload: true
+      allium.report.receive: true
+      allium.report.cooldown.bypass: true
+      allium.escalate: true
+      allium.escalate.receive: true
       allium.antioch: true
       allium.fireball: true
       allium.fireball.*: true
@@ -1121,6 +1133,21 @@ permissions:
     default: false
   allium.setworth:
     description: Change item prices with /setworth
+    default: op
+  allium.report:
+    description: Report players, or anything else, to staff with /report
+    default: true
+  allium.report.receive:
+    description: See /report reports in chat
+    default: op
+  allium.report.cooldown.bypass:
+    description: Report without waiting for moderation.reports.cooldown-seconds
+    default: op
+  allium.escalate:
+    description: Escalate an issue to senior staff with /escalate
+    default: op
+  allium.escalate.receive:
+    description: See escalations in chat
     default: op
   allium.voucher.give:
     description: Give and list vouchers with /voucher give and /voucher list

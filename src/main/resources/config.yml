@@ -331,6 +331,42 @@ homes:
 warps:
   overwrite-confirm-seconds: 30
 
+# Staff feeds in Discord: moderation actions, staff notes, /report and /escalate.
+# Each feed posts to its "channel" through DiscordSRV when DiscordSRV is running (a channel ID, or
+# the name of a channel in DiscordSRV's own Channels setting, such as "staff"), else to its
+# "webhook" (a Discord webhook URL). A feed with neither is off. "mentions" are role IDs pinged
+# with each post; nothing a player or staff member types can ping anyone.
+discord:
+  # Shown under each post; empty for none.
+  server-name: ''
+  # The name and avatar of webhook posts.
+  webhook-name: Allium
+  webhook-avatar: ''
+  channels:
+    # Bans, temporary and IP bans, unbans, mutes, unmutes, kicks, warnings, jails, freezes.
+    moderation:
+      channel: ''
+      webhook: ''
+      mentions: []
+      # Which actions post: ban, tempban, ipban, unban, mute, unmute, kick, warn, jail, unjail,
+      # freeze, unfreeze.
+      actions: [ban, tempban, ipban, unban, mute, unmute, kick, warn, jail, unjail, freeze, unfreeze]
+    # /notes <player> add <note>
+    notes:
+      channel: ''
+      webhook: ''
+      mentions: []
+    # /report
+    reports:
+      channel: ''
+      webhook: ''
+      mentions: []
+    # /escalate and /allium escalate
+    escalations:
+      channel: ''
+      webhook: ''
+      mentions: []
+
 # Vanish and mute settings (S17).
 moderation:
   discipline:
@@ -349,6 +385,11 @@ moderation:
       - allium.freeze,allium.kick
       - allium.jail,allium.tempban
       - allium.ban,allium.ipban
+  # /report: staff online with allium.report.receive see each report; it also goes to the reports
+  # feed (discord.channels.reports). A player may report once per cooldown
+  # (allium.report.cooldown.bypass skips it).
+  reports:
+    cooldown-seconds: 60
   # How long login waits (off the server thread) for vanish and mute state to load (0-10000 ms).
   preload-wait-millis: 2000
   load-retry:

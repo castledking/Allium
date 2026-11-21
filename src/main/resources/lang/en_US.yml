@@ -2176,6 +2176,29 @@ sell:
     - "[sound] entity.experience_orb.pickup 1.1"
   recovered-returned:
     - "{prefix} &eAn interrupted sale was refused; its items were given back."
+report:
+  sent:
+    - "{prefix} &aThanks; your report was sent to staff."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  cooldown:
+    - "{prefix} &cYou can report again in &f{time}&c."
+    - "[sound] block.note_block.bass 0.85"
+  self:
+    - "{prefix} &cYou can't report yourself."
+    - "[sound] block.note_block.bass 0.85"
+  staff:
+    - "&c[Report] &f{reporter} &7reported &f{player}&7: &f{message} &8{where}"
+    - "[sound] block.note_block.bell 1.4"
+  staff-general:
+    - "&c[Report] &f{reporter}&7: &f{message} &8{where}"
+    - "[sound] block.note_block.bell 1.4"
+  escalate-sent:
+    - "{prefix} &aEscalation sent to staff."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  escalate-staff:
+    - "&4[Escalation] &f{staff} &7escalated &f{target}&7: &f{message}"
+    - "[sound] block.note_block.bell 0.8"
+
 voucher:
   not-found:
     - "{prefix} &cNo voucher named &f{voucher}&c. See &f/voucher list&c."

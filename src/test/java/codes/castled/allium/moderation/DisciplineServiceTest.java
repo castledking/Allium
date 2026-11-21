@@ -184,6 +184,25 @@ class DisciplineServiceTest {
         verify(messages).send(console, Messages.DISCIPLINE_SUCCESS, "{action}", "ban", "{player}", "Target");
     }
 
+    @Test void discordHearsOfActionsOnlyOnceTheyAreSavedAndNotesGoAsNotes() throws Exception {
+        List<codes.castled.allium.discord.StaffPosts.Notice> heard = new ArrayList<>();
+        service.setNotices(heard::add);
+        enable(); Player p = player("Target", Set.of()); joined(p);
+        service.dispatch(console, "tempban", new String[]{"Target", "2h", "griefing"});
+        assertEquals(List.of(), heard, "nothing before storage");
+        io.drain();
+        assertEquals(1, heard.size());
+        assertEquals("tempban", heard.get(0).action());
+        assertEquals("Target", heard.get(0).player());
+        assertEquals("griefing", heard.get(0).reason());
+        assertEquals(clock.get() + 7_200_000L, heard.get(0).expiresAt());
+
+        heard.clear();
+        doThrow(new SQLException("disk full")).when(repository).saveBan(any());
+        service.dispatch(console, "ban", new String[]{"Target"}); io.drain();
+        assertEquals(List.of(), heard, "a ban that was not saved is not posted");
+    }
+
     @Test void preloginRefreshesExternallyAddedAndRemovedBans() throws Exception {
         service = new DisciplineService(plugin, repository, Runnable::run, clock::get);
         service.enable();

@@ -137,6 +137,7 @@ public final class DisciplineService implements Listener {
     private final Map<UUID, Object> pending = new ConcurrentHashMap<>();
     private final Map<UUID, Long> revisions = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastActions = new HashMap<>();
+    private volatile java.util.function.Consumer<codes.castled.allium.discord.StaffPosts.Notice> notices = notice -> { };
     private final Map<UUID, ScopedMove> scopedMoves = new HashMap<>();
     private final Map<UUID, PendingRelease> releases = new ConcurrentHashMap<>();
     private final AtomicInteger writes = new AtomicInteger();
@@ -218,6 +219,16 @@ public final class DisciplineService implements Listener {
         Connection c = connections.get(id);
         return !closed && c != null && c.loaded && !pending.containsKey(id) && !releases.containsKey(id);
     }
+    /** Receives each saved action (and staff note) for the Discord feeds. */
+    public void setNotices(java.util.function.Consumer<codes.castled.allium.discord.StaffPosts.Notice> notices) {
+        this.notices = notices == null ? notice -> { } : notices;
+    }
+
+    private static codes.castled.allium.discord.StaffPosts.Notice notice(String action, String staff, String player, String reason,
+                                                                         Long expiresAt, String jail) {
+        return new codes.castled.allium.discord.StaffPosts.Notice(action, staff, player, reason, expiresAt, jail);
+    }
+
     public boolean isFrozen(UUID id) { return frozen.containsKey(id); }
     public boolean jailed(UUID id) { return prisoners.containsKey(id); }
     public boolean isBanned(UUID id) {
@@ -586,7 +597,7 @@ public final class DisciplineService implements Listener {
                     if (sameSession(online)) online.kickPlayer(text(Messages.DISCIPLINE_KICK_NOTICE, reason));
                     else return false;
                     return true;
-                }, action, target.name());
+                }, action, target.name(), notice("kick", actorName, target.name(), reason, null, null));
             }
             case "ban", "tempban", "ipban" -> {
                 if (action.equals("ipban") && (visible == null || visible.getAddress() == null)) {
@@ -601,13 +612,13 @@ public final class DisciplineService implements Listener {
                 }, result -> {
                     if (sameSession(online)) online.kickPlayer(text(Messages.DISCIPLINE_BAN_DENIED, result.reason()));
                     return true;
-                }, action, target.name());
+                }, action, target.name(), notice(action, actorName, target.name(), reason, ban.expiresAt(), null));
             }
             case "unban" -> write(actor, id, online, () -> {
                 boolean removed = repository.removeBan(id, actorName);
                 publish(() -> { Map<UUID, BanRecord> next = new HashMap<>(bans); next.remove(id); bans = Map.copyOf(next); });
                 return removed;
-            }, removed -> removed, action, target.name());
+            }, removed -> removed, action, target.name(), notice("unban", actorName, target.name(), null, null, null));
             case "freeze" -> {
                 boolean freeze = !isFrozen(id);
                 int offset = 1;
@@ -621,7 +632,8 @@ public final class DisciplineService implements Listener {
                     publish(() -> { if (next) frozen.put(id, record); else frozen.remove(id); });
                     return next;
                 }, result -> { if (result && sameSession(online)) online.leaveVehicle(); return true; },
-                        next ? "freeze" : "unfreeze", target.name());
+                        next ? "freeze" : "unfreeze", target.name(),
+                        notice(next ? "freeze" : "unfreeze", actorName, target.name(), record.reason(), null, null));
             }
             case "jail" -> jail(actor, target, online, args[1], reason);
             case "unjail" -> unjail(actor, target, online);
@@ -630,7 +642,7 @@ public final class DisciplineService implements Listener {
                             : repository.addNote(id, target.name(), actorName, reason), entry -> {
                         if (action.equals("warn") && sameSession(online)) literal(online, Messages.DISCIPLINE_WARNING_NOTICE, entry.reason());
                         return true;
-                    }, action, target.name());
+                    }, action, target.name(), notice(action.equals("warn") ? "warn" : "note", actorName, target.name(), reason, null, null));
             default -> throw new IllegalArgumentException(action);
         }
     }
@@ -674,7 +686,7 @@ public final class DisciplineService implements Listener {
                 return destination != null && move(online, destination);
             }
             return true;
-        }, "jail", target.name());
+        }, "jail", target.name(), notice("jail", actor.name(), target.name(), reason, null, jail.name()));
     }
 
     private void unjail(Actor actor, NameCache.Entry target, Player online) {
@@ -707,7 +719,7 @@ public final class DisciplineService implements Listener {
         }, "unjail", target.name(), () -> {
             releases.remove(target.uuid(), release);
             if (sameSession(online)) enforceLoaded(online);
-        });
+        }, notice("unjail", actor.name(), target.name(), null, null, null));
     }
 
     private void restoreRelease(UUID id, PendingRelease release, int attempt) {
@@ -731,10 +743,17 @@ public final class DisciplineService implements Listener {
     }
 
     private <T> void write(Actor actor, UUID id, Player expectedTarget, SqlWork<T> sql, Commit<T> commit, String action, String name) {
-        write(actor, id, expectedTarget, sql, commit, action, name, () -> {});
+        write(actor, id, expectedTarget, sql, commit, action, name, () -> {}, null);
     }
 
-    private <T> void write(Actor actor, UUID id, Player expectedTarget, SqlWork<T> sql, Commit<T> commit, String action, String name, Runnable failed) {
+    private <T> void write(Actor actor, UUID id, Player expectedTarget, SqlWork<T> sql, Commit<T> commit, String action, String name,
+                           codes.castled.allium.discord.StaffPosts.Notice notice) {
+        write(actor, id, expectedTarget, sql, commit, action, name, () -> {}, notice);
+    }
+
+    /** {@code notice}, when not null, goes to the Discord feeds once the action is saved and applied. */
+    private <T> void write(Actor actor, UUID id, Player expectedTarget, SqlWork<T> sql, Commit<T> commit, String action, String name,
+                           Runnable failed, codes.castled.allium.discord.StaffPosts.Notice notice) {
         Object token = new Object();
         if (writes.get() >= 256) { failed.run(); send(actor.sender(), Messages.DISCIPLINE_BUSY); return; }
         if (pending.putIfAbsent(id, token) != null) { failed.run(); send(actor.sender(), Messages.DISCIPLINE_BUSY); return; }
@@ -759,6 +778,7 @@ public final class DisciplineService implements Listener {
                             // Durable actions must reach the captured target session even when the
                             // actor leaves during SQL. Authorization here gates feedback only.
                             boolean changed = commit.apply(result);
+                            if (changed && notice != null) notices.accept(notice);
                             if (permitted) {
                                 if (changed) send(actor.sender(), Messages.DISCIPLINE_SUCCESS, "{action}", action, "{player}", name);
                                 else send(actor.sender(), Messages.DISCIPLINE_NOT_ACTIVE, "{player}", name);

@@ -284,8 +284,8 @@ public final class CoreCommandSpecs {
             "core",
             List.of("core"),
             "Allium administration",
-            "/allium <reload|version|sethomes|import lang [apply]|adopt-window [<duration>|off]|hide|creativemanager>",
-            "/allium <reload|version|sethomes|import lang [apply]|adopt-window [<duration>|off]|hide|creativemanager>",
+            "/allium <reload|version|sethomes|import <lang|vouchers|legacy>|escalate|adopt-window [<duration>|off]|hide|creativemanager>",
+            "/allium <reload|version|sethomes|import <lang|vouchers|legacy>|escalate|adopt-window [<duration>|off]|hide|creativemanager>",
             null,
             null,
             List.of(),
@@ -312,6 +312,8 @@ public final class CoreCommandSpecs {
                                     List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null)),
                                             CommandArgSpec.optional("run", "allium.import", SuggestionSpec.none())),
                                     List.of()))),
+                    new CommandNodeSpec("escalate", List.of(), "allium.escalate", "/allium escalate <staffmember> <target> <reason>",
+                            List.of(), List.of()),
                     new CommandNodeSpec("adopt-window", List.of(), "allium.adoptwindow", "/allium adopt-window [<duration>|off]",
                             List.of(CommandArgSpec.optional("duration", "allium.adoptwindow", SuggestionSpec.literals(List.of("10m", "off"), null))),
                             List.of())
@@ -630,8 +632,29 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    public static final CommandSpec REPORT = new CommandSpec(
+            "report", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
+            "Report a player, or anything else, to staff",
+            "/report <player> <what happened> | /report <message>",
+            "/report <player> <what happened> | /report <message>",
+            "allium.report", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec ESCALATE = new CommandSpec(
+            "escalate", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of(),
+            "Hand an issue up to senior staff",
+            "/escalate <target> <reason>",
+            "/escalate <target> <reason>",
+            "allium.escalate", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
     public static final List<CommandSpec> MODERATION_SPECS = java.util.stream.Stream.concat(
-            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES, INVSEE, ENDERCHEST, COMMANDSPY, SPY, SPECTATE), DISCIPLINE_SPECS.stream()).toList();
+            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES, INVSEE, ENDERCHEST, COMMANDSPY, SPY, SPECTATE, REPORT, ESCALATE),
+            DISCIPLINE_SPECS.stream()).toList();
 
     public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg","action")
         .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"chat",

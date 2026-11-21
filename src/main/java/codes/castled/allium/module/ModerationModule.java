@@ -34,6 +34,8 @@ public final class ModerationModule extends AbstractModule {
     private DisciplineService discipline;
     private InspectionService inspection;
     private StaffSpyService spy;
+    private codes.castled.allium.discord.StaffFeeds feeds;
+    private codes.castled.allium.moderation.ReportService reports;
 
     public ModerationModule(PluginStart plugin) {
         super(plugin);
@@ -82,6 +84,10 @@ public final class ModerationModule extends AbstractModule {
             throw new IllegalStateException("discipline enforcement could not initialize", failure);
         }
         moderation.setActionPolicy(discipline::authorizeAction);
+        feeds = new codes.castled.allium.discord.StaffFeeds(plugin);
+        moderation.setNotices(feeds::moderation);
+        discipline.setNotices(feeds::moderation);
+        reports = new codes.castled.allium.moderation.ReportService(plugin, repository, feeds, storagePool, System::currentTimeMillis);
         for (var spec : CoreCommandSpecs.DISCIPLINE_SPECS) {
             plugin.getCommandManager().register(new DisciplineCommand(plugin, discipline, spec));
         }
@@ -102,7 +108,17 @@ public final class ModerationModule extends AbstractModule {
         plugin.getCommandManager().register(new CommandSpyCommand(plugin, spy));
         plugin.getCommandManager().register(new SpyCommand(plugin, spy));
         plugin.getCommandManager().register(new SpectateCommand(plugin, spy));
-        plugin.logger().info("Moderation enabled: /vanish, /mute, /unmute, /mutes, /invsee, /enderchest, /commandspy, /spy, /spectate.");
+        plugin.getCommandManager().register(codes.castled.allium.command.moderation.ReportCommand.report(plugin, reports));
+        plugin.getCommandManager().register(codes.castled.allium.command.moderation.ReportCommand.escalate(plugin, reports));
+        plugin.logger().info("Moderation enabled: /vanish, /mute, /unmute, /mutes, /invsee, /enderchest, /commandspy, /spy, /spectate,"
+                + " /report, /escalate.");
+        java.util.List<String> discordFeeds = new java.util.ArrayList<>();
+        for (var feed : codes.castled.allium.discord.DiscordFeeds.Feed.values()) {
+            var route = feeds.settings().route(feed);
+            if (route.enabled()) discordFeeds.add(feed.key() + (route.channel().isEmpty() ? " (webhook)" : " (" + route.channel() + ")"));
+        }
+        plugin.logger().info(discordFeeds.isEmpty() ? "No Discord staff feeds are set up (discord.channels in config.yml)."
+                : "Discord staff feeds: " + String.join(", ", discordFeeds) + ".");
     }
 
     @Override
@@ -119,11 +135,27 @@ public final class ModerationModule extends AbstractModule {
             inspection.disable();
         }
         if (discipline != null) {
+            discipline.setNotices(null);
             discipline.disable();
         }
         if (moderation != null) {
+            moderation.setNotices(null);
             moderation.disable();
         }
+    }
+
+    public codes.castled.allium.discord.StaffFeeds feeds() {
+        return feeds;
+    }
+
+    public codes.castled.allium.moderation.ReportService reports() {
+        return reports;
+    }
+
+    /** Re-reads {@code discord:} and {@code moderation.reports}. */
+    public void reloadFeeds() {
+        if (feeds != null) feeds.reload();
+        if (reports != null) reports.reloadSettings();
     }
 
     public ModerationService moderation() {

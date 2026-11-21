@@ -216,6 +216,13 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
     private java.util.function.BiPredicate<CommandSender, UUID> actionPolicy = (actor, target) -> true;
 
     /** The discipline module installs the shared staff hierarchy and action-rate policy. */
+    private volatile java.util.function.Consumer<codes.castled.allium.discord.StaffPosts.Notice> notices = notice -> { };
+
+    /** Receives each saved mute and unmute for the Discord feeds; called on the storage thread. */
+    public void setNotices(java.util.function.Consumer<codes.castled.allium.discord.StaffPosts.Notice> notices) {
+        this.notices = notices == null ? notice -> { } : notices;
+    }
+
     public void setActionPolicy(java.util.function.BiPredicate<CommandSender, UUID> policy) {
         actionPolicy = Objects.requireNonNull(policy, "policy");
     }
@@ -815,6 +822,8 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             try {
                 repository.saveMute(record);
                 repository.recordAudit("MUTE", actorName, targetUuid, record.playerName(), detail);
+                notices.accept(new codes.castled.allium.discord.StaffPosts.Notice("mute", actorName, record.playerName(), record.reason(),
+                        record.expiresAt(), null));
             } catch (SQLException ex) {
                 plugin.logger().warning("Failed to persist mute for " + record.playerName() + ": " + ex.getMessage());
                 runOnServer(() -> {
@@ -869,6 +878,8 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             try {
                 repository.removeMute(targetUuid);
                 repository.recordAudit("UNMUTE", actorName, targetUuid, removed.playerName(), detail);
+                notices.accept(new codes.castled.allium.discord.StaffPosts.Notice("unmute", actorName, removed.playerName(),
+                        rawReason == null || rawReason.isBlank() ? null : reason, null, null));
             } catch (SQLException ex) {
                 plugin.logger().warning("Failed to persist unmute for " + removed.playerName() + ": " + ex.getMessage());
                 runOnServer(() -> {

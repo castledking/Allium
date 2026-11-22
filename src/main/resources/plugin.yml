@@ -2058,6 +2058,26 @@ permissions:
     default: op
   allium.remove.world:
     default: op
+  allium.book:
+    default: op
+  allium.book.others:
+    default: op
+  allium.book.title:
+    default: op
+  allium.book.author:
+    default: op
+  allium.editsign:
+    default: op
+  allium.editsign.color:
+    default: op
+  allium.condense:
+    default: op
+  allium.unlimited:
+    default: op
+  allium.unlimited.others:
+    default: op
+  allium.unlimited.item.*:
+    default: op
   allium.depth:
     default: true
   allium.ice:

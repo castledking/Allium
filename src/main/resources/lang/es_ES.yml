@@ -1209,6 +1209,34 @@ utility:
     - "{prefix} &aLa respuesta ahora va a la última persona a la que escribiste."
   reply-last-sender:
     - "{prefix} &aLa respuesta ahora va a la última persona que te escribió."
+  book-hold:
+    - "{prefix} &cSostén un libro y pluma o un libro escrito."
+  book-updated:
+    - "{prefix} &aLibro actualizado."
+  edit-sign-target:
+    - "{prefix} &cMira un cartel cercano."
+  edit-sign-copied:
+    - "{prefix} &aTexto del cartel copiado."
+  edit-sign-locked:
+    - "{prefix} &cEsa cara está encerada o gestionada por Allium."
+  edit-sign-no-copy:
+    - "{prefix} &cCopia primero un cartel."
+  edit-sign-changed:
+    - "{prefix} &aTexto del cartel actualizado."
+  condense-none:
+    - "{prefix} &7No se pudo compactar ningún objeto."
+  condense-done:
+    - "{prefix} &aCompactaste tus objetos en &f{count} &abloques."
+  unlimited-list:
+    - "{prefix} &7Bloques ilimitados de &f{player}&7: &f{items}"
+  unlimited-cleared:
+    - "{prefix} &aQuitaste los bloques ilimitados de &f{player}&a."
+  unlimited-invalid:
+    - "{prefix} &cElige un bloque que se pueda colocar."
+  unlimited-on:
+    - "{prefix} &aActivaste &f{item} &ailimitado para &f{player}&a."
+  unlimited-off:
+    - "{prefix} &aDesactivaste &f{item} &ailimitado para &f{player}&a."
   tree-failed:
     - "{prefix} &cNo puede crecer un árbol ahí."
   tree-grown:

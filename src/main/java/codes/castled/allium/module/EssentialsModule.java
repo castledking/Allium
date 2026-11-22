@@ -3,6 +3,10 @@ package codes.castled.allium.module;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.essentials.BlockToolCommand;
 import codes.castled.allium.command.essentials.BurnCommand;
+import codes.castled.allium.command.essentials.BookCommand;
+import codes.castled.allium.command.essentials.CondenseCommand;
+import codes.castled.allium.command.essentials.EditSignCommand;
+import codes.castled.allium.command.essentials.UnlimitedCommand;
 import codes.castled.allium.command.essentials.ClearInventoryCommand;
 import codes.castled.allium.command.essentials.EnchantCommand;
 import codes.castled.allium.command.essentials.ExtCommand;
@@ -38,6 +42,7 @@ public final class EssentialsModule extends AbstractModule {
     public codes.castled.allium.player.FlightRestoration flights(){return flights;}
     private TimePauseCoordinator timePauseCoordinator;
     private UtilityCommand.DisposalListener disposalListener;
+    private UnlimitedCommand unlimited;
     private codes.castled.allium.command.essentials.LoreClipboard loreClipboard;
     private codes.castled.allium.command.essentials.MotdOnJoin motdOnJoin;
     private codes.castled.allium.player.TimedFlight timedFlight;
@@ -136,6 +141,14 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.TreeCommand(plugin,
                 codes.castled.allium.command.essentials.TreeCommand.BIG_TREE));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.RemoveCommand(plugin));
+        plugin.getCommandManager().register(new CondenseCommand(plugin));
+        plugin.getCommandManager().register(new BookCommand(plugin));
+        plugin.getCommandManager().register(new EditSignCommand(plugin));
+        unlimited = new UnlimitedCommand(plugin);
+        plugin.getCommandManager().register(unlimited);
+        if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
+            plugin.getServer().getPluginManager().registerEvents(unlimited, plugin);
+        }
         plugin.getCommandManager().register(new SmiteCommand(plugin));
         recipes = new codes.castled.allium.recipe.RecipeViewer(plugin);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) recipes.enable();
@@ -228,6 +241,10 @@ public final class EssentialsModule extends AbstractModule {
 
     @Override
     public void onDisable() {
+        if (unlimited != null) {
+            unlimited.close();
+            unlimited = null;
+        }
         // Timed flight hands landing fliers to the flight restoration, so it stops first.
         if(timedFlight!=null){timedFlight.close();timedFlight=null;}
         if(glow!=null){glow.close();glow=null;}

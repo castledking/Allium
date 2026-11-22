@@ -1209,6 +1209,34 @@ utility:
     - "{prefix} &aReply now targets the last player you messaged."
   reply-last-sender:
     - "{prefix} &aReply now targets the last player who messaged you."
+  book-hold:
+    - "{prefix} &cHold a regular book and quill or written book."
+  book-updated:
+    - "{prefix} &aBook updated."
+  edit-sign-target:
+    - "{prefix} &cLook at a nearby sign."
+  edit-sign-copied:
+    - "{prefix} &aSign text copied."
+  edit-sign-locked:
+    - "{prefix} &cThat sign face is waxed or managed by Allium."
+  edit-sign-no-copy:
+    - "{prefix} &cCopy a sign first."
+  edit-sign-changed:
+    - "{prefix} &aSign text updated."
+  condense-none:
+    - "{prefix} &7No items could be condensed."
+  condense-done:
+    - "{prefix} &aCondensed your items into &f{count} &ablocks."
+  unlimited-list:
+    - "{prefix} &7Unlimited blocks for &f{player}&7: &f{items}"
+  unlimited-cleared:
+    - "{prefix} &aCleared unlimited blocks for &f{player}&a."
+  unlimited-invalid:
+    - "{prefix} &cChoose a placeable block item."
+  unlimited-on:
+    - "{prefix} &aEnabled unlimited &f{item} &afor &f{player}&a."
+  unlimited-off:
+    - "{prefix} &aDisabled unlimited &f{item} &afor &f{player}&a."
   tree-failed:
     - "{prefix} &cA tree cannot grow there."
   tree-grown:

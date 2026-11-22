@@ -19,7 +19,7 @@ import java.util.Map;
 public final class BookCommand implements SpecCommandHandler {
 
     private static final String USAGE = "/book [author|title|sign|unsign] [value]";
-    private static final CommandSpec SPEC = new CommandSpec(
+    public static final CommandSpec SPEC = new CommandSpec(
             "book", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(), "Edit or sign the book you are holding",
             USAGE, USAGE, "allium.book", null,
             List.of(CommandArgSpec.optional("action", null, SuggestionSpec.literals(List.of("author", "title", "sign", "unsign"), null))),

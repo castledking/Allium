@@ -23,7 +23,7 @@ import java.util.WeakHashMap;
 public final class EditSignCommand implements SpecCommandHandler {
 
     private static final String USAGE = "/editsign <set|clear|copy|paste> [line] [text]";
-    private static final CommandSpec SPEC = new CommandSpec(
+    public static final CommandSpec SPEC = new CommandSpec(
             "editsign", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("sign"),
             "Edit or copy text on the sign face you are looking at", USAGE, USAGE, "allium.editsign", null,
             List.of(CommandArgSpec.required("action", null, SuggestionSpec.literals(List.of("set", "clear", "copy", "paste"), null)),

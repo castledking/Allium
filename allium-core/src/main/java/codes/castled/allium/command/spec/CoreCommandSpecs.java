@@ -418,7 +418,7 @@ public final class CoreCommandSpecs {
             List.of(), CommandMessageKeys.ofOutcomes(Map.of(
                     "on", "messaging.socialspy.on", "off", "messaging.socialspy.off")));
 
-    public static final List<CommandSpec> MESSAGING_SPECS = List.of(MSG, REPLY, IGNORE, UNIGNORE, MSGTOGGLE, MESSAGESOUNDS, SOCIALSPY);
+    public static final List<CommandSpec> MESSAGING_SPECS = List.of(MSG, REPLY, REPLY_TOGGLE, IGNORE, UNIGNORE, MSGTOGGLE, MESSAGESOUNDS, SOCIALSPY);
 
     /**
      * {@code /mail}: text mail and gifts, to online and offline players. Targets complete from the
@@ -1423,7 +1423,7 @@ public final class CoreCommandSpecs {
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, COORDS, COMPASS, GLOW, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
             ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, PTIME, PWEATHER, ENCHANT, RENAME, LORE, XP, INFO, INFORM, CUSTOMTEXT, MOTD, RULES,
-            BROADCAST, BROADCASTS, SPAWNMOB, RECIPE, POTION, FIREWORK
+            BROADCAST, BROADCASTWORLD, BROADCASTS, REALNAME, SPAWNMOB, RECIPE, POTION, FIREWORK
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

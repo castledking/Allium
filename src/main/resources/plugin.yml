@@ -7,6 +7,80 @@ authors: [castledking]
 softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
 
 commands:
+  grindstone:
+    description: Open a virtual grindstone
+    permission: allium.grindstone
+  cartographytable:
+    description: Open a virtual cartography table
+    permission: allium.cartographytable
+    aliases: [carttable]
+  stonecutter:
+    description: Open a virtual stonecutter
+    permission: allium.stonecutter
+  loom:
+    description: Open a virtual loom
+    permission: allium.loom
+  smithing:
+    description: Open a virtual smithing table
+    permission: allium.smithing
+    aliases: [smithingtable]
+  depth:
+    description: Show your height above sea level
+    permission: allium.depth
+    aliases: [height]
+  ice:
+    description: Apply the frost overlay
+    permission: allium.ice
+  rest:
+    description: Reset time since rest
+    permission: allium.rest
+  thunder:
+    description: Set thunder in the current world
+    permission: allium.thunder
+  broadcastworld:
+    description: Broadcast to a world
+    permission: allium.broadcastworld
+    aliases: [bcw, bcastw, shoutworld]
+  realname:
+    description: Look up a visible online player by nickname
+    permission: allium.realname
+  rtoggle:
+    description: Switch the reply target mode
+    permission: allium.rtoggle
+    aliases: [replytoggle]
+  break:
+    description: Break the block you are looking at
+    permission: allium.break
+  spawner:
+    description: Change the spawner you are looking at
+    permission: allium.spawner
+    aliases: [changems, mobspawner]
+  tree:
+    description: Grow a tree
+    permission: allium.tree
+  bigtree:
+    description: Grow a large tree
+    permission: allium.bigtree
+    aliases: [largetree]
+  remove:
+    description: Remove entities from loaded chunks
+    permission: allium.remove
+    aliases: [butcher, killall, mobkill]
+  condense:
+    description: Craft items into blocks
+    permission: allium.condense
+    aliases: [compact, blocks, toblocks]
+  book:
+    description: Edit or sign the held book
+    permission: allium.book
+  editsign:
+    description: Edit or copy sign text
+    permission: allium.editsign
+    aliases: [sign]
+  unlimited:
+    description: Manage replenished block items
+    permission: allium.unlimited
+    aliases: [ul, unl]
   top:
     description: Teleport to the highest block above you
     usage: /top
@@ -41,7 +115,7 @@ commands:
   action:
     description: Describe what you are doing in chat
     usage: /<command> <message>
-    aliases: [me]
+    aliases: [me, describe]
     permission: allium.me
   delmsg:
     description: Delete a chat message for everyone
@@ -50,6 +124,7 @@ commands:
     description: Repair the held item, or your whole inventory
     usage: /<command> [hand|all]
     permission: allium.repair
+    aliases: [fix]
   disposal:
     description: Open a trash bin that deletes what you put in
     usage: /<command>
@@ -76,7 +151,7 @@ commands:
   speed:
     description: Set your walk or fly speed
     usage: /<command> [walk|fly] <0..10|reset> [player]
-    aliases: [wspeed, walkspeed]
+    aliases: [wspeed, walkspeed, flyspeed, fspeed]
     permission: allium.speed
   scale:
     description: Set the scale of a player or selected mobs
@@ -86,10 +161,11 @@ commands:
     description: Show your (or a player's) connection latency
     usage: /<command> [player]
     permission: allium.ping
+    aliases: [pong]
   coords:
     description: Show your (or a player's) position
     usage: /<command> [player]
-    aliases: [getpos, whereami]
+    aliases: [getpos, whereami, getloc, getlocation, position]
     permission: allium.getpos
   glow:
     description: Set your glow colour, or another player's
@@ -98,12 +174,13 @@ commands:
   powertool:
     description: Create, edit, save, bind, enable/disable and give interactive powertool items
     usage: /<command> <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|enable|disable|get|give|list|toggle|reload|help> [args...]
-    aliases: [pt, tool, tools, powertools, ptt, powertooltoggle]
+    aliases: [pt, tool, tools, powertools, ptt, powertooltoggle, pttoggle, powertoollist, ptlist]
     permission: allium.powertool
   compass:
     description: Show the direction you are facing
     usage: /<command>
     permission: allium.compass
+    aliases: [direction]
   ext:
     description: Put out a burning player
     usage: /<command> [player]
@@ -130,7 +207,7 @@ commands:
   smite:
     description: Strike a player or where you are looking with harmless lightning
     usage: /<command> [player]
-    aliases: [lightning, strike]
+    aliases: [lightning, strike, shock, thor]
     permission: allium.smite
   nv:
     description: Toggle night vision
@@ -140,12 +217,13 @@ commands:
   clearinventory:
     description: Clear your (or a player's) inventory
     usage: /<command> [player|*|**] [item] [maxCount]
-    aliases: [clear, ci]
+    aliases: [clear, ci, clean, clearinvent]
     permission: allium.clearinventory
   clearinventoryconfirmtoggle:
     description: Toggle inventory clear confirmation
     usage: /<command>
     permission: allium.clearinventoryconfirmtoggle
+    aliases: [clearconfirm, clearconfirmon, clearconfirmoff, clearinventoryconfirmoff]
   more:
     description: Fill the held stack to its maximum
     usage: /<command> [amount] [player]
@@ -157,17 +235,17 @@ commands:
   skull:
     description: Get a player's head
     usage: /<command> [owner] [player]
-    aliases: [head, playerhead]
+    aliases: [head, playerhead, playerskull]
     permission: allium.skull
   itemdb:
     description: Show the held item's ID and metadata
     usage: /<command> [player]
-    aliases: [iteminfo]
+    aliases: [iteminfo, itemno]
     permission: allium.itemdb
   gc:
     description: Show TPS, memory, uptime and loaded worlds
     usage: /<command>
-    aliases: [uptime, lag, tps]
+    aliases: [uptime, lag, tps, mem, memory]
     permission: allium.gc
   time:
     description: View, set, add to or pause world time
@@ -185,6 +263,7 @@ commands:
     description: Set the weather to clear, rain or thunder
     usage: /<command> <clear|sun|rain|storm|thunder> [duration] [world|*]
     permission: allium.weather
+    aliases: [rain, storm, sun, sky]
   ptime:
     description: View, set, freeze, or reset a player's client time
     usage: /<command> [list|reset|@<time>|<time>] [player|*]
@@ -202,12 +281,12 @@ commands:
   rename:
     description: Rename the item in your hand
     usage: /<command> <name|clear>
-    aliases: [itemname]
+    aliases: [itemname, iname, itemrename, irename]
     permission: allium.rename
   lore:
     description: Edit the lore of the item in your hand
     usage: /<command> <add|set|insert|remove|clear|copy|paste>
-    aliases: [itemlore]
+    aliases: [itemlore, ilore]
     permission: allium.lore
   xp:
     description: Show or change experience
@@ -264,12 +343,12 @@ commands:
   gamemode:
     description: Change gamemode (per-mode permission)
     usage: /<command> <mode> [player]
-    aliases: [gm, gmc, gma, gms, gmsp, creative, survival, spectator, adventure, creativemode, survivalmode, spectatormode, adventuremode]
+    aliases: [gm, gmc, gma, gms, gmsp, creative, survival, spectator, adventure, creativemode, survivalmode, spectatormode, adventuremode, gmt]
     permission: allium.gamemode
   msg:
     description: Send a private message
     usage: /<command> <player> <message>
-    aliases: [tell, w, whisper, m, t]
+    aliases: [tell, w, whisper, m, t, pm]
     permission: allium.msg
   reply:
     description: Reply to your last private message
@@ -284,6 +363,7 @@ commands:
     description: Stop ignoring a player
     usage: /<command> <player>
     permission: allium.ignore
+    aliases: [delignore, remignore, rmignore]
   msgtoggle:
     description: Turn incoming private messages on or off
     usage: /<command> [on|off] [player]
@@ -292,6 +372,7 @@ commands:
     description: Read and send mail, and send or claim item gifts
     usage: /<command> <read|send|gift|claim|delete|clear>
     permission: allium.mail
+    aliases: [memo]
   socialspy:
     description: See private messages between other players
     usage: /<command> [on|off]
@@ -331,6 +412,7 @@ commands:
   tpa:
     description: Ask to teleport to a player
     permission: allium.tpa
+    aliases: [call, tpask]
   tpahere:
     description: Ask a player to teleport to you
     permission: allium.tpahere
@@ -359,6 +441,7 @@ commands:
   back:
     description: Return to your previous location
     permission: allium.back
+    aliases: [return]
   spawn:
     description: Teleport to spawn
     permission: allium.spawn
@@ -402,6 +485,7 @@ commands:
   sethome:
     description: Set a home here
     usage: /sethome
+    aliases: [createhome]
 
   home:
     description: Teleport to one of your homes
@@ -410,6 +494,7 @@ commands:
   delhome:
     description: Delete one of your homes
     usage: /delhome [name|player:home]
+    aliases: [remhome, rmhome]
 
   renamehome:
     description: Rename one of your homes
@@ -428,6 +513,7 @@ commands:
   setwarp:
     description: Create or move a warp here
     usage: /setwarp
+    aliases: [createwarp]
 
   warp:
     description: Teleport to a warp, or send a player to a warp
@@ -441,6 +527,7 @@ commands:
   delwarp:
     description: Delete a warp
     usage: /delwarp
+    aliases: [remwarp, rmwarp]
 
   warps:
     description: List the warps you can use
@@ -458,10 +545,12 @@ commands:
     description: Save your inventory as a kit
     usage: /<command> <name> [cooldown] [once]
     permission: allium.createkit
+    aliases: [ck, kc, createk, kitcreate]
   delkit:
     description: Delete a kit
     usage: /<command> <name>
     permission: allium.delkit
+    aliases: [deletekit, remkit, rmkit]
   showkit:
     description: Preview the items in a kit
     usage: /<command> <kit>
@@ -501,7 +590,7 @@ commands:
   list:
     description: List online players by group
     usage: /<command>
-    aliases: [online, who]
+    aliases: [online, who, playerlist, plist]
     permission: allium.list
   seen:
     description: Show when a player was last online
@@ -596,6 +685,7 @@ commands:
     description: List players near you
     usage: /<command> [radius]
     permission: allium.near
+    aliases: [nearby]
   playtime:
     description: Show how long you (or another player) have played
     usage: /<command> [player]
@@ -662,6 +752,7 @@ commands:
     description: Create or move a jail here
     usage: /<command> <name>
     permission: allium.setjail
+    aliases: [createjail]
 
   deljail:
     description: Delete an empty jail

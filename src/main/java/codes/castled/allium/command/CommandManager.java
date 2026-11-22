@@ -1,5 +1,14 @@
 package codes.castled.allium.command;
 
+import codes.castled.allium.command.essentials.PlayerUtilityCommand;
+import codes.castled.allium.command.essentials.UnlimitedCommand;
+import codes.castled.allium.command.essentials.EditSignCommand;
+import codes.castled.allium.command.essentials.BookCommand;
+import codes.castled.allium.command.essentials.CondenseCommand;
+import codes.castled.allium.command.essentials.RemoveCommand;
+import codes.castled.allium.command.essentials.ThunderCommand;
+import codes.castled.allium.command.essentials.TreeCommand;
+import codes.castled.allium.command.essentials.BlockToolCommand;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.spec.CommandFamilyPolicy;
 import codes.castled.allium.command.spec.CommandSpec;
@@ -43,6 +52,12 @@ public final class CommandManager {
         this.familyPolicy.registerSpecs(CoreCommandSpecs.TRAVEL_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.KIT_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.CORE_SPECS);
+        familyPolicy.registerSpecs(List.of(BlockToolCommand.BREAK, BlockToolCommand.SPAWNER,
+                TreeCommand.TREE, TreeCommand.BIG_TREE, ThunderCommand.SPEC, RemoveCommand.SPEC,
+                CondenseCommand.SPEC, BookCommand.SPEC, EditSignCommand.SPEC, UnlimitedCommand.SPEC));
+        for (var action : PlayerUtilityCommand.Action.values()) {
+            familyPolicy.registerSpec(action.spec());
+        }
         initializePolicyFromConfig();
     }
 

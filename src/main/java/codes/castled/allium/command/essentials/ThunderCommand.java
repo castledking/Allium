@@ -16,7 +16,7 @@ import java.util.Map;
 public final class ThunderCommand implements SpecCommandHandler {
 
     private static final String USAGE = "/thunder <true|false> [duration]";
-    private static final CommandSpec SPEC = new CommandSpec(
+    public static final CommandSpec SPEC = new CommandSpec(
             "thunder", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
             "Set thunder in your world, optionally for a number of seconds",
             USAGE, USAGE, "allium.thunder", null,

@@ -21,7 +21,7 @@ public final class RemoveCommand implements SpecCommandHandler {
     private static final List<String> GROUPS = List.of("all", "tamed", "named", "drops", "arrows", "boats",
             "minecarts", "xp", "paintings", "itemframes", "endercrystals", "monsters", "animals", "ambient", "mobs");
     private static final String USAGE = "/remove <type> [radius] [world]";
-    private static final CommandSpec SPEC = new CommandSpec(
+    public static final CommandSpec SPEC = new CommandSpec(
             "remove", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("butcher", "killall", "mobkill"),
             "Remove matching entities from loaded chunks", USAGE, "/remove <type> <world>",
             "allium.remove", null, List.of(CommandArgSpec.required("type", null, SuggestionSpec.none()),

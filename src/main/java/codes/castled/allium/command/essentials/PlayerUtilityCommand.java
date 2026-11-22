@@ -23,6 +23,10 @@ public final class PlayerUtilityCommand implements SpecCommandHandler {
 
         private final CommandSpec spec;
 
+        public CommandSpec spec() {
+            return spec;
+        }
+
         Action(String label, String description, List<String> aliases) {
             boolean targeted = !label.equals("depth");
             String permission = "allium." + label;

@@ -15,7 +15,7 @@ import java.util.*;
 
 public final class CondenseCommand implements SpecCommandHandler {
 
-    private static final CommandSpec SPEC = new CommandSpec(
+    public static final CommandSpec SPEC = new CommandSpec(
             "condense", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("compact", "blocks", "toblocks"),
             "Craft items into blocks using the server's recipes", "/condense [item]", "/condense [item]",
             "allium.condense", null, List.of(CommandArgSpec.optional("item", null, SuggestionSpec.none())),

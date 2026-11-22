@@ -30,7 +30,7 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
     private static final String USAGE = "/unlimited <list|item|clear> [player]";
     private static final String BASE = "allium.unlimited";
     private static final String OTHERS = BASE + ".others";
-    private static final CommandSpec SPEC = new CommandSpec(
+    public static final CommandSpec SPEC = new CommandSpec(
             "unlimited", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("ul", "unl"),
             "Manage blocks that are replenished after placement", USAGE, USAGE, BASE, OTHERS,
             List.of(CommandArgSpec.required("item", null, SuggestionSpec.none()),
@@ -113,7 +113,8 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
         Player player = event.getPlayer();
         ItemStack held = event.getItemInHand();
         Material material = held.getType();
-        if (player.getGameMode() != GameMode.SURVIVAL || !event.canBuild()
+        if (plugin.getCommandManager().getFamilyPolicy().isDisabled(SPEC.canonicalName())
+                || player.getGameMode() != GameMode.SURVIVAL || !event.canBuild()
                 || !player.hasPermission(BASE) || !eligible(material) || held.hasItemMeta()) return;
         String name = material.getKey().getKey();
         if (!blocks(player).contains(name)) return;
@@ -121,7 +122,8 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
         int slot = player.getInventory().getHeldItemSlot();
         int expectedAmount = held.getAmount() - 1;
         plugin.getScheduler().runOnServerLater(() -> {
-            if (closed || event.isCancelled() || !event.canBuild() || !player.isOnline()
+            if (closed || plugin.getCommandManager().getFamilyPolicy().isDisabled(SPEC.canonicalName())
+                    || event.isCancelled() || !event.canBuild() || !player.isOnline()
                     || player.getGameMode() != GameMode.SURVIVAL || !player.hasPermission(BASE)
                     || !blocks(player).contains(name) || UtilitySupport.isInventoryBusy(plugin, player)
                     || plugin.getServer().getPlayer(player.getUniqueId()) != player) return;

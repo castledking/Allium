@@ -199,6 +199,11 @@ public final class TextFormatter {
                 popMatchingFrame(stack, "hex");
                 return true;
             }
+            char closingLegacy = namedColorLegacyChar(closingName);
+            if (closingLegacy != '\0') {
+                popMatchingFrame(stack, "color:" + closingLegacy);
+                return true;
+            }
             byte dec = tagDecorationFlag(closingName);
             if (dec != 0) {
                 SpanFrame top = stack.peek();
@@ -206,6 +211,17 @@ public final class TextFormatter {
                 return true;
             }
             return false;
+        }
+
+        // Negated decoration tags (<!italic>, <!i>, <italic:false>, etc.)
+        if (lower.startsWith("!") || lower.endsWith(":false")) {
+            String target = lower.startsWith("!") ? lower.substring(1) : lower.substring(0, lower.length() - ":false".length());
+            byte dec = tagDecorationFlag(target);
+            if (dec != 0) {
+                SpanFrame top = stack.peek();
+                top.decorations &= ~dec;
+                return true;
+            }
         }
 
         // Opening <gradient:#c1:#c2[:#c3...]>
@@ -258,6 +274,15 @@ public final class TextFormatter {
             int rgb = Integer.parseInt(lower.substring(1, 7), 16);
             SpanFrame parent = stack.peek();
             stack.push(new SpanFrame("hex", GlyphColorSource.solid(rgb), -1, '\0', parent.decorations));
+            return true;
+        }
+
+        // Opening named MiniMessage colors (<red>, <gray>, <white>, etc.)
+        char namedLegacy = namedColorLegacyChar(lower);
+        if (namedLegacy != '\0') {
+            SpanFrame parent = stack.peek();
+            int rgb = LEGACY_RGB[legacyColorIndex(namedLegacy)];
+            stack.push(new SpanFrame("color:" + namedLegacy, null, rgb, namedLegacy, parent.decorations));
             return true;
         }
 
@@ -360,6 +385,28 @@ public final class TextFormatter {
             case 'n' -> FormattedText.DEC_UNDERLINED;
             case 'o' -> FormattedText.DEC_ITALIC;
             default -> 0;
+        };
+    }
+
+    private static char namedColorLegacyChar(String lowerTag) {
+        return switch (lowerTag) {
+            case "black" -> '0';
+            case "dark_blue" -> '1';
+            case "dark_green" -> '2';
+            case "dark_aqua" -> '3';
+            case "dark_red" -> '4';
+            case "dark_purple" -> '5';
+            case "gold" -> '6';
+            case "gray", "grey" -> '7';
+            case "dark_gray", "dark_grey" -> '8';
+            case "blue" -> '9';
+            case "green" -> 'a';
+            case "aqua" -> 'b';
+            case "red" -> 'c';
+            case "light_purple" -> 'd';
+            case "yellow" -> 'e';
+            case "white" -> 'f';
+            default -> '\0';
         };
     }
 

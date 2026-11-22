@@ -213,4 +213,15 @@ class TextFormatterTest {
         mm.playNotificationSound(player, new MessageSoundSpec("minecraft:block.note_block.pling", 1.0, 1.0), 0.0);
         verify(player, never()).playSound(eq(loc), eq("minecraft:block.note_block.pling"), anyFloat(), anyFloat());
     }
+
+    @Test
+    void namedMiniMessageColorsAndNegatedDecorationsWorkOnBothPaths() {
+        assertBothPathsMatch("<#f0a040>Apple Pie <gray>(Baked)", "§x§f§0§a§0§4§0Apple Pie §7(Baked)");
+        assertBothPathsMatch("<red>Banana</red> Plain", "§cBanana§r Plain");
+        assertBothPathsMatch("<white>Banana", "§fBanana");
+        assertBothPathsMatch("<!italic>Banana", "Banana");
+        assertBothPathsMatch("<italic>Hi<!italic>There", "§oHi§rThere");
+        assertEquals("Banana", TextFormatter.stripFormatting("<red>Banana"));
+        assertEquals("Apple Pie (Baked)", TextFormatter.stripFormatting("<#f0a040>Apple Pie <gray>(Baked)"));
+    }
 }

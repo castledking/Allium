@@ -138,7 +138,7 @@ public final class SellService implements Listener {
     public SalePlan plan(Player player, SalePlan.Scope scope, @Nullable ItemStack target, SaleQuantity quantity) {
         var inventory = player.getInventory();
         SalePlan.Outcome outcome = SalePlan.plan(inventory.getStorageContents(), inventory.getHeldItemSlot(), scope, target,
-                quantity, worth.settings(), worth.multiplier(player), worth::refusal);
+                quantity, worth.settings(), worth.multiplier(player), worth::refusal, worth::price);
         if (outcome instanceof SalePlan.Planned planned) {
             return planned.plan();
         }

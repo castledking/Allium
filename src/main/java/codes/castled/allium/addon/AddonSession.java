@@ -53,6 +53,7 @@ final class AddonSession implements AddonConnection {
     private final CommandFamilyPolicy commandPolicy = new CommandFamilyPolicy();
     private final List<String> definedItems = new ArrayList<>();
     private final List<PluginCommand> commands = new ArrayList<>();
+    private final List<org.bukkit.NamespacedKey> recipes = new ArrayList<>();
     private final List<Runnable> powerToolCleanup = new ArrayList<>();
     private volatile boolean closed;
     private final codes.castled.allium.api.AddonEconomy economy;
@@ -145,10 +146,15 @@ final class AddonSession implements AddonConnection {
 
         @Override
         public boolean mayModify(Player player, Block block, String action, @Nullable Event cause) {
-            requireOpen();
-            return allium.getProtectionService().checkBlockBreak(player, block.getLocation(), namespace + ":" + action, cause).allowed();
+            return AddonSession.this.mayModify(player, block, action, cause);
         }
     };
+
+    @Override
+    public boolean mayModify(Player player, Block block, String action, @Nullable Event cause) {
+        requireOpen();
+        return allium.getProtectionService().checkBlockBreak(player, block.getLocation(), namespace + ":" + action, cause).allowed();
+    }
 
     private final AddonItems items = new AddonItems() {
         @Override
@@ -167,6 +173,37 @@ final class AddonSession implements AddonConnection {
             requireOpen();
             if (!definedItems.contains(id)) throw new IllegalArgumentException("Define your item before its variants: " + id);
             allium.getItemService().registerVariants(id, names, initialize);
+        }
+
+        @Override
+        public void decorate(String id, java.util.function.Consumer<ItemStack> decoration) {
+            requireOwnedItem(id);
+            allium.getItemService().decorate(id, decoration);
+        }
+
+        @Override
+        public void registerRecipe(org.bukkit.inventory.Recipe recipe) {
+            requireOpen();
+            if (!(recipe instanceof org.bukkit.Keyed keyed) || !keyed.getKey().getNamespace().equals(namespace)) {
+                throw new IllegalArgumentException("Addon recipes must be keyed in " + namespace);
+            }
+            if (!allium.getServer().addRecipe(recipe)) {
+                throw new IllegalArgumentException("Recipe registration failed: " + keyed.getKey());
+            }
+            allium.getItemService().registerRecipe(keyed.getKey(), recipe);
+            recipes.add(keyed.getKey());
+        }
+
+        @Override
+        public void setWorth(String id, java.math.BigDecimal price) {
+            requireOwnedItem(id);
+            if (allium.getModuleManager().getModule("worth") instanceof codes.castled.allium.module.WorthModule module
+                    && module.worth() != null) module.worth().setAddonWorth(namespace + ":" + id, price);
+        }
+
+        private void requireOwnedItem(String id) {
+            requireOpen();
+            if (!definedItems.contains(id)) throw new IllegalArgumentException("Define your item first: " + id);
         }
 
         private void define(ItemDefinition definition, boolean stackable) {
@@ -322,6 +359,15 @@ final class AddonSession implements AddonConnection {
         }
         for (int i = powerToolCleanup.size() - 1; i >= 0; i--) powerToolCleanup.get(i).run();
         powerToolCleanup.clear();
+        if (allium.getModuleManager().getModule("worth") instanceof codes.castled.allium.module.WorthModule module
+                && module.worth() != null) {
+            definedItems.forEach(id -> module.worth().removeAddonWorth(namespace + ":" + id));
+        }
+        for (org.bukkit.NamespacedKey recipe : recipes) {
+            allium.getItemService().removeRecipe(recipe);
+            allium.getServer().removeRecipe(recipe);
+        }
+        recipes.clear();
         definedItems.forEach(allium.getItemService()::unregisterAlliumItem);
         for (PluginCommand command : commands) {
             command.setExecutor(null);

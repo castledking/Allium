@@ -47,6 +47,7 @@ public final class WorthService {
     private final NamespacedKey creativeKey;
     private final List<String> multiplierNodes = new ArrayList<>();
     private volatile WorthSettings settings;
+    private final java.util.Map<String, BigDecimal> addonPrices = new java.util.HashMap<>();
 
     public WorthService(PluginStart plugin) {
         this.plugin = plugin;
@@ -143,19 +144,55 @@ public final class WorthService {
         return UtilitySupport.itemName(item);
     }
 
+    public void setAddonWorth(String behavior, BigDecimal price) {
+        if (price.signum() < 0 || price.compareTo(WorthSettings.MAX_PRICE) > 0) {
+            throw new IllegalArgumentException("Invalid addon item price for " + behavior);
+        }
+        addonPrices.put(behavior, price.setScale(2, java.math.RoundingMode.HALF_UP));
+    }
+
+    public void removeAddonWorth(String behavior) {
+        addonPrices.remove(behavior);
+    }
+
+    /** A verified, registered custom item is priced by its owner instead of its vanilla carrier. */
+    public Optional<BigDecimal> price(ItemStack item) {
+        var ref = plugin.getItemService() == null ? null : plugin.getItemService().identify(item).orElse(null);
+        if (ref != null && (!ref.appearance().isVanilla() || ref.behaviorId().isPresent())) {
+            return ref.behaviorId().map(addonPrices::get);
+        }
+        return price(item.getType());
+    }
+
+    @Nullable
+    public ItemStack item(String reference) {
+        if (reference.toLowerCase(Locale.ROOT).startsWith("allium:") && plugin.getItemService() != null) {
+            try {
+                return plugin.getItemService().create(plugin.getItemService().parseRef(reference)).itemStack().orElse(null);
+            } catch (IllegalArgumentException invalid) {
+                return null;
+            }
+        }
+        Material material = material(reference);
+        return material == null ? null : new ItemStack(material);
+    }
+
+    public String reference(ItemStack item) {
+        var ref = plugin.getItemService() == null ? null : plugin.getItemService().identify(item).orElse(null);
+        return ref == null || ref.appearance().isVanilla()
+                ? item.getType().name().toLowerCase(Locale.ROOT) : ref.appearance().asString();
+    }
+
     /** Why {@code item} may not be sold whatever its price, or null. */
     @Nullable
     public SalePlan.Refusal refusal(ItemStack item) {
-        if (plugin.getItemService() != null) {
-            var identified = plugin.getItemService().identify(item);
-            if (identified.isPresent() && (!identified.get().appearance().isVanilla() || identified.get().behaviorId().isPresent())) {
-                return SalePlan.Refusal.CUSTOM;
-            }
-        }
+        var identified = plugin.getItemService() == null ? null : plugin.getItemService().identify(item).orElse(null);
+        boolean custom = identified != null && (!identified.appearance().isVanilla() || identified.behaviorId().isPresent());
+        if (custom && identified.behaviorId().filter(addonPrices::containsKey).isEmpty()) return SalePlan.Refusal.CUSTOM;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return null;
         if (meta.getPersistentDataContainer().has(creativeKey, PersistentDataType.STRING)) return SalePlan.Refusal.CREATIVE;
-        if (meta.hasDisplayName() && !settings.allowNamedItems()) return SalePlan.Refusal.NAMED;
+        if (!custom && meta.hasDisplayName() && !settings.allowNamedItems()) return SalePlan.Refusal.NAMED;
         if (meta instanceof BlockStateMeta block && block.hasBlockState() && block.getBlockState() instanceof Container container
                 && !container.getInventory().isEmpty()) {
             return SalePlan.Refusal.CONTAINER;

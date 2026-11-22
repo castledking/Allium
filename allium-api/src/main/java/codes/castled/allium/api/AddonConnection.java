@@ -3,6 +3,9 @@ package codes.castled.allium.api;
 import codes.castled.allium.scheduler.TaskScheduler;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.entity.Player;
+import org.bukkit.block.Block;
+import org.bukkit.event.Event;
+import org.jetbrains.annotations.Nullable;
 
 /** One addon's connection to Allium, from {@link AlliumApi#connect} or {@link AlliumAddon#allium()}. */
 public interface AddonConnection {
@@ -11,6 +14,11 @@ public interface AddonConnection {
 
     /** Whether a synchronous inventory edit may proceed while Allium deliveries are active. */
     default boolean canEditInventory(Player player) {
+        return false;
+    }
+
+    /** Checks Allium's protection integration before an addon mutates a world cell. */
+    default boolean mayModify(Player player, Block block, String action, @Nullable Event cause) {
         return false;
     }
 

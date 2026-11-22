@@ -12,7 +12,6 @@ import codes.castled.allium.worth.SalePlan;
 import codes.castled.allium.worth.SaleQuantity;
 import codes.castled.allium.worth.SellService;
 import codes.castled.allium.worth.WorthService;
-import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -91,19 +90,18 @@ public final class WorthCommand implements SpecCommandHandler {
                 return;
             }
         } else {
-            Material material = worth.material(args[0]);
-            if (material == null) {
+            item = worth.item(args[0]);
+            if (item == null) {
                 plugin.getMessageManager().send(sender, Messages.WORTH_UNKNOWN_ITEM, "{item}", args[0]);
                 return;
             }
-            item = new ItemStack(material);
             amount = 1;
         }
         if (quantity.count() > 0) {
             amount = quantity.stacks() ? quantity.count() * item.getMaxStackSize() : quantity.count();
         }
         String name = WorthService.name(item);
-        BigDecimal base = worth.price(item.getType()).orElse(null);
+        BigDecimal base = worth.price(item).orElse(null);
         if (base == null) {
             plugin.getMessageManager().send(sender, Messages.WORTH_NOT_SELLABLE, "{item}", name);
             return;

@@ -4,6 +4,12 @@ import codes.castled.allium.core.FaultInjection;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.CookingRecipe;
+import org.bukkit.inventory.Recipe;
+import org.bukkit.inventory.RecipeChoice;
+import org.bukkit.inventory.ShapedRecipe;
+import org.bukkit.inventory.ShapelessRecipe;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -46,6 +52,8 @@ public final class ItemService {
     private record ItemVariants(Set<String> names, BiConsumer<ItemStack, String> initialize) {}
 
     private final Map<String, ItemVariants> variantsByItem = new ConcurrentHashMap<>();
+    private final Map<NamespacedKey, Recipe> addonRecipes = new ConcurrentHashMap<>();
+    private final Map<String, Consumer<ItemStack>> decorations = new ConcurrentHashMap<>();
     private final Map<String, AlliumItemDefinition> alliumDefinitions = new ConcurrentHashMap<>();
     private final Map<ProviderKey, String> appearanceToBehavior = new ConcurrentHashMap<>();
     private final Set<String> stackableSignedBehaviors = ConcurrentHashMap.newKeySet();
@@ -136,11 +144,52 @@ public final class ItemService {
             return;
         }
         variantsByItem.remove(definition.id());
+        decorations.remove(definition.id());
         appearanceToBehavior.remove(definition.providerKey(), definition.behaviorId());
         behaviorPreferredAppearance.remove(definition.behaviorId(), definition.providerKey());
         signedBehaviors.remove(definition.behaviorId());
         stackableSignedBehaviors.remove(definition.behaviorId());
         privilegedBehaviors.remove(definition.behaviorId());
+    }
+
+    public void registerRecipe(NamespacedKey key, Recipe recipe) {
+        addonRecipes.put(key, recipe);
+    }
+
+    public void removeRecipe(NamespacedKey key) {
+        addonRecipes.remove(key);
+    }
+
+    public boolean isAddonCraftIngredient(ItemStack stack, @Nullable Recipe actual) {
+        if (!(actual instanceof org.bukkit.Keyed keyed)) return false;
+        Recipe recipe = addonRecipes.get(keyed.getKey());
+        if (recipe == null || identifyBehavior(stack).isEmpty()) return false;
+        Collection<RecipeChoice> choices;
+        if (recipe instanceof ShapedRecipe shaped) choices = shaped.getChoiceMap().values();
+        else if (recipe instanceof ShapelessRecipe shapeless) choices = shapeless.getChoiceList();
+        else return false;
+        return choices.stream().anyMatch(choice -> choice instanceof RecipeChoice.ExactChoice exact && exact.test(stack));
+    }
+
+    public boolean isAddonCookingIngredient(ItemStack stack, InventoryType type, @Nullable ItemStack result) {
+        if (identifyBehavior(stack).isEmpty()) return false;
+        for (Recipe recipe : addonRecipes.values()) {
+            if (!(recipe instanceof CookingRecipe<?> cooking)
+                    || !(cooking.getInputChoice() instanceof RecipeChoice.ExactChoice exact)
+                    || result != null && !recipe.getResult().isSimilar(result)) continue;
+            boolean station = switch (type) {
+                case FURNACE -> recipe instanceof org.bukkit.inventory.FurnaceRecipe;
+                case BLAST_FURNACE -> recipe instanceof org.bukkit.inventory.BlastingRecipe;
+                case SMOKER -> recipe instanceof org.bukkit.inventory.SmokingRecipe;
+                default -> false;
+            };
+            if (station && exact.test(stack)) return true;
+        }
+        return false;
+    }
+
+    public void decorate(String id, Consumer<ItemStack> decoration) {
+        decorations.put(id, decoration);
     }
 
     public void registerVariants(String id, Collection<String> names,
@@ -451,6 +500,8 @@ public final class ItemService {
 
         stampMetadata(stack, ref.schemaVersion(), appearance, effectiveBehaviorId, mergedState,
                 preservedInstanceUuid, preserveSignature);
+        Consumer<ItemStack> decoration = appearance.isAllium() ? decorations.get(appearance.id()) : null;
+        if (decoration != null) decoration.accept(stack);
         return ResolutionResult.resolved(appearance, stack);
     }
 

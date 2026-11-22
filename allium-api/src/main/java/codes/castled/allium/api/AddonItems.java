@@ -1,12 +1,15 @@
 package codes.castled.allium.api;
 
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Recipe;
 import org.jetbrains.annotations.Nullable;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /** Item definitions and Allium's item create/identify. */
 public interface AddonItems {
@@ -27,6 +30,21 @@ public interface AddonItems {
     /** Registers the accepted names and initializer for {@code allium:<id>;<variant>} in /give and /i. */
     default void defineVariants(String id, Collection<String> names, BiConsumer<ItemStack, String> initialize) {
         throw new UnsupportedOperationException("Item variants are unavailable");
+    }
+
+    /** Adds presentation metadata to newly created copies of an item owned by this addon. */
+    default void decorate(String id, Consumer<ItemStack> decoration) {
+        throw new UnsupportedOperationException("Item decoration is unavailable");
+    }
+
+    /** Registers a namespaced native recipe. Exact custom ingredients keep their signed identity. */
+    default void registerRecipe(Recipe recipe) {
+        throw new UnsupportedOperationException("Addon recipes are unavailable");
+    }
+
+    /** Makes an owned item sellable through Allium Worth at this unit price. */
+    default void setWorth(String id, BigDecimal price) {
+        throw new UnsupportedOperationException("Addon prices are unavailable");
     }
 
     /**

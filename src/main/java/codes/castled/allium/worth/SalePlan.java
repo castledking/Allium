@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -59,7 +60,8 @@ public record SalePlan(List<Line> lines, Map<Integer, ItemStack> before, Map<Int
      * @param multiplier the seller's price multiplier
      */
     public static Outcome plan(ItemStack[] storage, int heldSlot, Scope scope, @Nullable ItemStack target, SaleQuantity quantity,
-                               WorthSettings settings, BigDecimal multiplier, Function<ItemStack, Refusal> refusal) {
+                               WorthSettings settings, BigDecimal multiplier, Function<ItemStack, Refusal> refusal,
+                               Function<ItemStack, Optional<BigDecimal>> prices) {
         boolean bulk = scope == Scope.INVENTORY || scope == Scope.BLOCKS;
         // Kinds in slot order; the held slot leads when selling the held item.
         Map<ItemStack, List<Integer>> kinds = new LinkedHashMap<>();
@@ -99,7 +101,7 @@ public record SalePlan(List<Line> lines, Map<Integer, ItemStack> before, Map<Int
         for (var kind : kinds.entrySet()) {
             ItemStack sample = kind.getKey();
             Refusal refused = refusal.apply(sample);
-            BigDecimal base = settings.price(sample.getType()).orElse(null);
+            BigDecimal base = prices.apply(sample).orElse(null);
             if (refused == null && base == null) refused = Refusal.NOT_SELLABLE;
             if (refused == null && base.signum() == 0) refused = Refusal.WORTHLESS;
             if (refused != null) {

@@ -10,7 +10,6 @@ import codes.castled.allium.worth.SalePlan;
 import codes.castled.allium.worth.SaleQuantity;
 import codes.castled.allium.worth.SellService;
 import codes.castled.allium.worth.WorthService;
-import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -88,12 +87,12 @@ public final class SellCommand implements SpecCommandHandler {
             sell.sell(player, SalePlan.Scope.HAND, held.clone(), quantity, command, false);
             return;
         }
-        Material material = worth.material(args[0]);
-        if (material == null) {
+        ItemStack item = worth.item(args[0]);
+        if (item == null) {
             plugin.getMessageManager().send(player, Messages.WORTH_UNKNOWN_ITEM, "{item}", args[0]);
             return;
         }
-        sell.sell(player, SalePlan.Scope.ITEM, new ItemStack(material), quantity, command, false);
+        sell.sell(player, SalePlan.Scope.ITEM, item, quantity, command, false);
     }
 
     public List<String> complete(CommandSender sender, String[] args) {
@@ -107,8 +106,8 @@ public final class SellCommand implements SpecCommandHandler {
             if (player.hasPermission(WorthService.PERMISSION_SELL_BULK)) values.addAll(List.of("inventory", "all", "blocks"));
             Set<String> held = new LinkedHashSet<>();
             for (ItemStack stack : player.getInventory().getStorageContents()) {
-                if (stack != null && !stack.getType().isAir() && worth.price(stack.getType()).isPresent()) {
-                    held.add(stack.getType().name().toLowerCase(Locale.ROOT));
+                if (stack != null && !stack.getType().isAir() && worth.price(stack).isPresent()) {
+                    held.add(worth.reference(stack));
                 }
             }
             values.addAll(held);

@@ -46,6 +46,19 @@ public final class BroadcastCommand implements SpecCommandHandler {
             service.announce(sender, message);
             return;
         }
+        if (spec.canonicalName().equals("broadcastworld")) {
+            if (args.length < 2) {
+                context.sendInvalidArgs(spec.selfUsage());
+                return;
+            }
+            var world = plugin.getServer().getWorld(args[0]);
+            if (world == null) {
+                UtilitySupport.send(plugin, sender, Messages.WORLD_NOT_FOUND, "{world}", args[0]);
+                return;
+            }
+            service.announce(sender, String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)), world);
+            return;
+        }
         if (args.length == 0) {
             status(sender);
             return;
@@ -93,7 +106,15 @@ public final class BroadcastCommand implements SpecCommandHandler {
 
     /** Broadcast names for {@code /broadcasts send <tab>}. */
     public List<String> complete(CommandSender sender, String[] args) {
-        if (!spec.canonicalName().equals("broadcasts") || !sender.hasPermission(spec.basePermission())) {
+        if (!sender.hasPermission(spec.basePermission())) {
+            return List.of();
+        }
+        if (spec.canonicalName().equals("broadcastworld") && args.length == 1) {
+            String prefix = args[0].toLowerCase(Locale.ROOT);
+            return plugin.getServer().getWorlds().stream().map(org.bukkit.World::getName)
+                    .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(prefix)).sorted().toList();
+        }
+        if (!spec.canonicalName().equals("broadcasts")) {
             return List.of();
         }
         if (args.length == 1) {

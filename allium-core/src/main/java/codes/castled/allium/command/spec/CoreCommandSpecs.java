@@ -1312,6 +1312,15 @@ public final class CoreCommandSpecs {
     );
 
     /** {@code /broadcasts [send <name>|next]}: the timed broadcasts of {@code broadcasts.txt}. */
+    public static final CommandSpec BROADCASTWORLD = new CommandSpec(
+            "broadcastworld", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("bcw", "bcastw", "shoutworld"),
+            "Broadcast a message to a world",
+            "/broadcastworld <world> <message>", "/broadcastworld <world> <message>",
+            "allium.broadcastworld", null,
+            List.of(CommandArgSpec.required("world", null, SuggestionSpec.none()),
+                    CommandArgSpec.required("message", null, SuggestionSpec.none())),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
     public static final CommandSpec BROADCASTS = new CommandSpec(
             "broadcasts", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
             "Show the timed broadcasts, or send one now",

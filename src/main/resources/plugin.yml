@@ -2030,6 +2030,20 @@ permissions:
     description: Refund an imposed tax entry from the tax account
     default: op
 
+  allium.depth:
+    default: true
+  allium.ice:
+    default: op
+  allium.ice.others:
+    default: op
+  allium.rest:
+    default: op
+  allium.rest.others:
+    default: op
+  allium.thunder:
+    default: op
+  allium.broadcastworld:
+    default: op
   allium.repair:
     default: op
   allium.repair.all:

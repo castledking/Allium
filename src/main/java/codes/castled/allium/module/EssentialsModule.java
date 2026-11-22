@@ -16,6 +16,7 @@ import codes.castled.allium.command.essentials.ItemDbCommand;
 import codes.castled.allium.command.essentials.MoreCommand;
 import codes.castled.allium.command.essentials.NvCommand;
 import codes.castled.allium.command.essentials.PingCommand;
+import codes.castled.allium.command.essentials.PlayerUtilityCommand;
 import codes.castled.allium.command.essentials.SkullCommand;
 import codes.castled.allium.command.essentials.SmiteCommand;
 import codes.castled.allium.command.essentials.SpeedCommand;
@@ -117,6 +118,9 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new SpeedCommand(plugin));
         plugin.getCommandManager().register(new ScaleCommand(plugin));
         plugin.getCommandManager().register(new PingCommand(plugin));
+        for (var action : PlayerUtilityCommand.Action.values()) {
+            plugin.getCommandManager().register(new PlayerUtilityCommand(plugin, action));
+        }
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.CoordsCommand(plugin));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.CompassCommand(plugin));
         glow = new codes.castled.allium.glow.GlowService(plugin);
@@ -165,6 +169,8 @@ public final class EssentialsModule extends AbstractModule {
         broadcasts = new codes.castled.allium.broadcast.BroadcastService(plugin);
         broadcasts.start();
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.BroadcastCommand(plugin, CoreCommandSpecs.BROADCAST, broadcasts));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.BroadcastCommand(plugin, CoreCommandSpecs.BROADCASTWORLD, broadcasts));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ThunderCommand(plugin));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.BroadcastCommand(plugin, CoreCommandSpecs.BROADCASTS, broadcasts));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.SpawnMobCommand(plugin));
         motdOnJoin = new codes.castled.allium.command.essentials.MotdOnJoin(plugin, motd);

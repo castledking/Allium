@@ -1201,6 +1201,28 @@ player:
     - "{prefix} &cYou don't have permission to use &f{mode} &cmode."
     - "[sound] entity.villager.no 0.9"
 utility:
+  depth:
+    "above":
+      - "{prefix} &7You are &f{blocks} &7block(s) above sea level."
+    "below":
+      - "{prefix} &7You are &f{blocks} &7block(s) below sea level."
+    "level":
+      - "{prefix} &7You are at sea level."
+  ice:
+    "self":
+      - "{prefix} &bYou feel a sudden chill."
+    "other":
+      - "{prefix} &bApplied frost to &f{player}&b."
+  rest:
+    "self":
+      - "{prefix} &aYou feel rested."
+    "other":
+      - "{prefix} &aReset the time since rest for &f{player}&a."
+  thunder:
+    "on":
+      - "{prefix} &aThunder enabled in &f{world}&a."
+    "off":
+      - "{prefix} &aThunder disabled in &f{world}&a."
   itemdb-behavior:
     - "{prefix} &fAllium ID: &d{id} &7(behavior=&f{behavior}&7)"
   itemdb-id:

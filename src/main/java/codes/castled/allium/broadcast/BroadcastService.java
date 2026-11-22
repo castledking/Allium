@@ -136,8 +136,12 @@ public final class BroadcastService {
 
     /** {@code /broadcast <message>}: the {@code chat.broadcast} line to everyone, with click and hover tags. */
     public void announce(CommandSender sender, String message) {
+        announce(sender, message, null);
+    }
+
+    public void announce(CommandSender sender, String message, org.bukkit.World world) {
         String line = plugin.getMessageManager().resolve(Messages.BROADCAST_FORMAT, "{message}", message, "{sender}", sender.getName());
-        for (Player player : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+        for (Player player : List.copyOf(world == null ? plugin.getServer().getOnlinePlayers() : world.getPlayers())) {
             if (player.spigot() != null) {
                 player.spigot().sendMessage(InteractiveText.components(line));
             } else {
@@ -146,6 +150,6 @@ public final class BroadcastService {
             plugin.getMessageManager().playSoundIfPresent(player, Messages.BROADCAST_FORMAT);
         }
         // The console gets it as a log line that names who sent it.
-        plugin.logger().info("Broadcast by " + sender.getName() + ": " + InteractiveText.formatted(line).toPlainText());
+        plugin.logger().info("Broadcast" + (world == null ? "" : " in " + world.getName()) + " by " + sender.getName() + ": " + InteractiveText.formatted(line).toPlainText());
     }
 }

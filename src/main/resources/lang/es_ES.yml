@@ -1201,6 +1201,28 @@ player:
     - "{prefix} &cNo tienes permiso para usar el modo &f{mode}&c."
     - "[sound] entity.villager.no 0.9"
 utility:
+  depth:
+    "above":
+      - "{prefix} &7Estás &f{blocks} &7bloque(s) sobre el nivel del mar."
+    "below":
+      - "{prefix} &7Estás &f{blocks} &7bloque(s) bajo el nivel del mar."
+    "level":
+      - "{prefix} &7Estás al nivel del mar."
+  ice:
+    "self":
+      - "{prefix} &bSientes un escalofrío."
+    "other":
+      - "{prefix} &bAplicaste escarcha a &f{player}&b."
+  rest:
+    "self":
+      - "{prefix} &aTe sientes descansado."
+    "other":
+      - "{prefix} &aReiniciaste el tiempo sin dormir de &f{player}&a."
+  thunder:
+    "on":
+      - "{prefix} &aTormenta eléctrica activada en &f{world}&a."
+    "off":
+      - "{prefix} &aTormenta eléctrica desactivada en &f{world}&a."
   itemdb-behavior:
     - "{prefix} &fAllium ID: &d{id} &7(behavior=&f{behavior}&7)"
   itemdb-id:

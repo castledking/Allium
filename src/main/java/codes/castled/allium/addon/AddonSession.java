@@ -109,6 +109,16 @@ final class AddonSession implements AddonConnection {
     }
 
     @Override
+    public boolean hiddenFrom(Player viewer, Player target) {
+        requireOpen();
+        if (allium.getModuleManager().getModule("moderation") instanceof codes.castled.allium.module.ModerationModule module
+                && module.isEnabled() && module.moderation() != null) {
+            return module.moderation().hiddenFrom(viewer, target);
+        }
+        return AddonConnection.super.hiddenFrom(viewer, target);
+    }
+
+    @Override
     public AddonPowerTools powerTools() {
         return powerTools;
     }

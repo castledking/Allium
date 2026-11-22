@@ -17,6 +17,20 @@ public interface AddonConnection {
         return false;
     }
 
+    /**
+     * Whether {@code target} is hidden from {@code viewer}: Bukkit's {@code hidePlayer}, Allium's
+     * vanish, or another plugin's {@code vanished} metadata. Addons that reveal where players are,
+     * such as a locator bar, must leave hidden pairs out.
+     */
+    default boolean hiddenFrom(Player viewer, Player target) {
+        if (viewer == null || target == null || viewer.equals(target)) return false;
+        if (!viewer.canSee(target)) return true;
+        for (var value : target.getMetadata("vanished")) {
+            if (value.asBoolean()) return true;
+        }
+        return false;
+    }
+
     /** Checks Allium's protection integration before an addon mutates a world cell. */
     default boolean mayModify(Player player, Block block, String action, @Nullable Event cause) {
         return false;

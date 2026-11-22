@@ -1201,6 +1201,15 @@ player:
     - "{prefix} &cNo tienes permiso para usar el modo &f{mode}&c."
     - "[sound] entity.villager.no 0.9"
 utility:
+  block-tool:
+    no-target:
+      - "{prefix} &cMira un bloque cercano primero."
+    denied:
+      - "{prefix} &cNo puedes modificar ese bloque."
+    spawner-target:
+      - "{prefix} &cMira un generador cercano primero."
+    spawner-set:
+      - "{prefix} &aGenerador configurado para &f{mob}&a."
   workstation-unavailable:
     - "{prefix} &cEsta versión del servidor no puede abrir &f{workstation} &cde forma virtual."
   depth:

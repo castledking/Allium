@@ -1,6 +1,7 @@
 package codes.castled.allium.module;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.BlockToolCommand;
 import codes.castled.allium.command.essentials.BurnCommand;
 import codes.castled.allium.command.essentials.ClearInventoryCommand;
 import codes.castled.allium.command.essentials.EnchantCommand;
@@ -128,6 +129,8 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.GlowCommand(plugin, () -> glow));
         plugin.getCommandManager().register(new ExtCommand(plugin));
         plugin.getCommandManager().register(new BurnCommand(plugin));
+        plugin.getCommandManager().register(new BlockToolCommand(plugin, BlockToolCommand.BREAK));
+        plugin.getCommandManager().register(new BlockToolCommand(plugin, BlockToolCommand.SPAWNER));
         plugin.getCommandManager().register(new SmiteCommand(plugin));
         recipes = new codes.castled.allium.recipe.RecipeViewer(plugin);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) recipes.enable();

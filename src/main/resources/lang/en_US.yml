@@ -1201,6 +1201,15 @@ player:
     - "{prefix} &cYou don't have permission to use &f{mode} &cmode."
     - "[sound] entity.villager.no 0.9"
 utility:
+  block-tool:
+    no-target:
+      - "{prefix} &cLook at a nearby block first."
+    denied:
+      - "{prefix} &cYou cannot change that block."
+    spawner-target:
+      - "{prefix} &cLook at a nearby spawner first."
+    spawner-set:
+      - "{prefix} &aSpawner set to &f{mob}&a."
   workstation-unavailable:
     - "{prefix} &cThis server version cannot open a virtual &f{workstation}&c."
   depth:

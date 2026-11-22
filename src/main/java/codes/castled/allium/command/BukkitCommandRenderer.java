@@ -127,6 +127,7 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         if(handler instanceof codes.castled.allium.command.essentials.InformCommand inform)return inform.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.tools.UnrestrainCommand unrestrain)return unrestrain.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.BroadcastCommand broadcast)return broadcast.complete(sender,args);
+        if (handler instanceof codes.castled.allium.command.essentials.BlockToolCommand blockTool) return blockTool.complete(sender, args);
         if(handler instanceof codes.castled.allium.command.essentials.SpawnMobCommand spawnMob)return spawnMob.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.GlowCommand glowCommand)return glowCommand.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.teleport.RtpCommand rtpCommand)return rtpCommand.complete(sender,args);

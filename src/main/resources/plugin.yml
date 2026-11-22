@@ -2040,6 +2040,12 @@ permissions:
     default: op
   allium.smithing:
     default: op
+  allium.break:
+    default: op
+  allium.spawner:
+    default: op
+  allium.spawner.*:
+    default: op
   allium.depth:
     default: true
   allium.ice:

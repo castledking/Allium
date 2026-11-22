@@ -35,6 +35,8 @@ final class ModelWorld implements Listener {
         String path;
         int stage;
         long due;
+        String fertilizer = "";
+        double growthSpeed = 1;
         long lastAttack;
         ItemDisplay display;
         Catalog.Visual visual;
@@ -75,6 +77,7 @@ final class ModelWorld implements Listener {
     }
 
     Placed at(Block block) { return cells.get(Cell.of(block.getLocation())); }
+    Placed at(Cell cell) { return cells.get(cell); }
     Placed get(Entity entity) { return hitboxes.get(entity.getUniqueId()); }
     Collection<Placed> active() { return List.copyOf(hitboxes.values()); }
 
@@ -98,7 +101,8 @@ final class ModelWorld implements Listener {
 
     void store(Placed placed) {
         String data = String.join("|", placed.kind, placed.type, placed.path,
-                Integer.toString(placed.stage), Long.toString(placed.due));
+                Integer.toString(placed.stage), Long.toString(placed.due), placed.fertilizer,
+                Double.toString(placed.growthSpeed));
         placed.hitbox.getPersistentDataContainer().set(key, PersistentDataType.STRING, data);
     }
 
@@ -223,8 +227,13 @@ final class ModelWorld implements Listener {
         if (raw == null || get(entity) != null) return;
         try {
             String[] data = raw.split("\\|", -1);
-            if (data.length != 5) throw new IllegalArgumentException();
+            if (data.length != 5 && data.length != 7) throw new IllegalArgumentException();
             var state = new Placed(entity, data[0], data[1], data[2], Integer.parseInt(data[3]), Long.parseLong(data[4]));
+            if (data.length == 7) {
+                state.fertilizer = data[5];
+                state.growthSpeed = Double.parseDouble(data[6]);
+                if (!Double.isFinite(state.growthSpeed) || state.growthSpeed <= 0) throw new IllegalArgumentException();
+            }
             if (at(state.cell()) != null) return;
             remember(state);
             onLoad.accept(state);

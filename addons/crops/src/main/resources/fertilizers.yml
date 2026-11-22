@@ -1,0 +1,113 @@
+fertilizers:
+  quality_fertilizer_1:
+    item: allium:quality_fertilizer_1
+    display-name: Basic Quality Fertilizer
+    quality:
+      regular: 0.8
+      silver: 1.3
+      golden-star: 1.4
+  quality_fertilizer_2:
+    item: allium:quality_fertilizer_2
+    display-name: Refined Quality Fertilizer
+    quality:
+      regular: 0.6
+      silver: 1.5
+      golden-star: 2.0
+  quality_fertilizer_3:
+    item: allium:quality_fertilizer_3
+    display-name: Deluxe Quality Fertilizer
+    quality:
+      regular: 0.35
+      silver: 1.6
+      golden-star: 3.2
+  yield_fertilizer_1:
+    item: allium:yield_fertilizer_1
+    display-name: Basic Yield Fertilizer
+    yield:
+      multiply: 1.25
+      bonus: 0
+      maximum: 0
+  yield_fertilizer_2:
+    item: allium:yield_fertilizer_2
+    display-name: Refined Yield Fertilizer
+    yield:
+      multiply: 1.5
+      bonus: 1
+      maximum: 12
+  yield_fertilizer_3:
+    item: allium:yield_fertilizer_3
+    display-name: Deluxe Yield Fertilizer
+    yield:
+      multiply: 2.0
+      bonus: 2
+      maximum: 16
+  speed_fertilizer_1:
+    item: allium:speed_fertilizer_1
+    display-name: Basic Growth Fertilizer
+    growth:
+      speed-multiplier: 0.85
+  speed_fertilizer_2:
+    item: allium:speed_fertilizer_2
+    display-name: Refined Growth Fertilizer
+    growth:
+      speed-multiplier: 0.65
+  speed_fertilizer_3:
+    item: allium:speed_fertilizer_3
+    display-name: Deluxe Growth Fertilizer
+    growth:
+      speed-multiplier: 0.45
+  variation_fertilizer_1:
+    item: allium:variation_fertilizer_1
+    display-name: Basic Variation Fertilizer
+    variation:
+      special-path-multiplier: 1.75
+  variation_fertilizer_2:
+    item: allium:variation_fertilizer_2
+    display-name: Refined Variation Fertilizer
+    variation:
+      special-path-multiplier: 3.0
+  variation_fertilizer_3:
+    item: allium:variation_fertilizer_3
+    display-name: Deluxe Variation Fertilizer
+    variation:
+      special-path-multiplier: 4.0
+      paths:
+        golden: 2.0
+  soil_retainer_1:
+    item: allium:soil_retainer_1
+    display-name: Basic Soil Retainer
+    soil:
+      retain-for: 2d
+  soil_retainer_2:
+    item: allium:soil_retainer_2
+    display-name: Refined Soil Retainer
+    soil:
+      retain-for: 5d
+  soil_retainer_3:
+    item: allium:soil_retainer_3
+    display-name: Deluxe Soil Retainer
+    soil:
+      retain-for: 14d
+  master_compost:
+    item: allium:master_compost
+    display-name: Master Compost
+    apply-to-soil: true
+    apply-to-crop: false
+    quality:
+      regular: 0.5
+      silver: 1.5
+      golden-star: 2.5
+    yield:
+      multiply: 1.5
+      bonus: 1
+    growth:
+      speed-multiplier: 0.7
+    variation:
+      special-path-multiplier: 2.5
+    soil:
+      retain-for: 7d
+soil:
+  enabled: false
+  lifetime: 7d
+  forget-exhausted-after: 14d
+  exhausted-message: This soil is exhausted — use a soil retainer to restore it.

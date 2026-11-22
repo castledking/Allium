@@ -179,7 +179,15 @@ def main():
 
     crops = [load(path) for path in sorted((harvest / "crops").glob("*.yml")) if path.stem != "weed"]
     kitchen = load(harvest / "kitchen.yml")
-    refs = set(references([crops, kitchen]))
+    fertilizers = load(harvest / "fertilizers.yml")
+    sprinklers = load(harvest / "sprinklers.yml")
+    farming = load(harvest / "config.yml")
+    fertilizers["soil"] = farming["soil"]
+    sprinklers["maximum-per-chunk"] = farming.get("sprinklers", {}).get("maximum-per-chunk", 64)
+    sprinkler_refs = {row["item"].split(":")[-1]: row for row in sprinklers["sprinklers"].values()}
+    fertilizer_names = {row["item"].split(":")[-1]: row["display-name"]
+                        for row in fertilizers["fertilizers"].values()}
+    refs = set(references([crops, kitchen, fertilizers, sprinklers]))
     pies = kitchen["pies"]
     for pie, row in pies["types"].items():
         for key, pattern in pies["models"].items():
@@ -235,6 +243,10 @@ def main():
                 texture = textures.get("layer0")
             if texture and ":" not in texture:
                 texture = "minecraft:" + texture if texture.startswith("item/") and texture.split("/")[-1] in {"paper", "stick"} else "sf:" + texture
+        if name in sprinkler_refs:
+            gui = f"sf:crops/sprinklers/{name}_item"
+        if name == "master_compost" and not model and not texture:
+            model = "sf:crops/fertilizers/quality_3"
         try:
             if name == "golden_cabbage":
                 model, texture = None, "ce:item/crops/cabbage/cabbage"
@@ -249,8 +261,11 @@ def main():
             else:
                 missing.append((name, "no item model"))
                 continue
-            raw_name = (displays.get(name) or (nr or {}).get("itemname")
+            raw_name = (displays.get(name) or fertilizer_names.get(name)
+                        or sprinkler_refs.get(name, {}).get("display-name") or (nr or {}).get("itemname")
                         or (nr or {}).get("item_name") or name.replace("_", " ").title())
+            if re.fullmatch(r".*_placed(?:_slice\d+)?", name):
+                raw_name = re.sub(r"\s+placed\s*$", "", raw_name, flags=re.IGNORECASE)
             row = {"model": target, "name": raw_name if name in displays else non_italic_name(raw_name)}
             if gui:
                 row["gui"] = assets.asset(gui, "models", ".json")
@@ -288,6 +303,8 @@ def main():
     write_yaml(RESOURCES / "crops.yml", {"crops": {row["id"]: clean(row) for row in crops}})
     write_yaml(RESOURCES / "kitchen.yml", clean(kitchen))
     write_yaml(RESOURCES / "recipes.yml", {"recipes": clean(recipes)})
+    write_yaml(RESOURCES / "fertilizers.yml", clean(fertilizers))
+    write_yaml(RESOURCES / "sprinklers.yml", clean(sprinklers))
     lang = PACK / "lang/en_us.json"
     lang.parent.mkdir(parents=True, exist_ok=True)
     lang.write_text('{"jade.modName.crops":"Crops"}\n')

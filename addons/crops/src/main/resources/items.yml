@@ -1089,6 +1089,10 @@ items:
     name: Lettuce
     gui: crops:sf/ce/item/crop_stage_icons/lettuce_stage_3
     cmd: 3107486
+  master_compost:
+    model: crops:sf/sf/crops/fertilizers/quality_3
+    name: '&fMaster Compost'
+    cmd: 3061260
   onion:
     model: crops:sf/sf/crops/onion/onion
     name: '&fOnion'
@@ -1350,6 +1354,18 @@ items:
     model: crops:sf/sf/block/pumpkin_pie_filled
     name: '&fPumpkin Pie Filled'
     cmd: 3882511
+  quality_fertilizer_1:
+    model: crops:sf/sf/crops/fertilizers/quality_1
+    name: '&fBasic Quality Fertilizer'
+    cmd: 3296955
+  quality_fertilizer_2:
+    model: crops:sf/sf/crops/fertilizers/quality_2
+    name: '&fRefined Quality Fertilizer'
+    cmd: 3326593
+  quality_fertilizer_3:
+    model: crops:sf/sf/crops/fertilizers/quality_3
+    name: '&fDeluxe Quality Fertilizer'
+    cmd: 3864791
   raspberries:
     model: crops:sf/sf/crops/raspberry/raspberries
     name: '&fRaspberries'
@@ -1390,6 +1406,18 @@ items:
     model: crops:item/salt
     name: '&fSalt'
     cmd: 3649015
+  soil_retainer_1:
+    model: crops:sf/sf/crops/fertilizers/soil_retain_1
+    name: '&fBasic Soil Retainer'
+    cmd: 3506901
+  soil_retainer_2:
+    model: crops:sf/sf/crops/fertilizers/soil_retain_2
+    name: '&fRefined Soil Retainer'
+    cmd: 3408303
+  soil_retainer_3:
+    model: crops:sf/sf/crops/fertilizers/soil_retain_3
+    name: '&fDeluxe Soil Retainer'
+    cmd: 3817337
   soybean:
     model: crops:sf/sf/crops/soybean/soybean
     name: '&fSoybean'
@@ -1426,6 +1454,18 @@ items:
     name: Soybean
     gui: crops:sf/ce/item/crop_stage_icons/soybean_stage_4
     cmd: 3621501
+  speed_fertilizer_1:
+    model: crops:sf/sf/crops/fertilizers/speed_grow_1
+    name: '&fBasic Growth Fertilizer'
+    cmd: 3666790
+  speed_fertilizer_2:
+    model: crops:sf/sf/crops/fertilizers/speed_grow_2
+    name: '&fRefined Growth Fertilizer'
+    cmd: 3664540
+  speed_fertilizer_3:
+    model: crops:sf/sf/crops/fertilizers/speed_grow_3
+    name: '&fDeluxe Growth Fertilizer'
+    cmd: 3525066
   spinach:
     model: crops:sf/sf/crops/spinach/spinach
     name: '&fSpinach'
@@ -1462,6 +1502,21 @@ items:
     name: Spinach
     gui: crops:sf/ce/item/crop_stage_icons/spinach_stage_4
     cmd: 3307017
+  sprinkler_1:
+    model: crops:sf/sf/crops/sprinklers/sprinkler_1
+    name: '&fBronze Sprinkler'
+    gui: crops:sf/sf/crops/sprinklers/sprinkler_1_item
+    cmd: 3552326
+  sprinkler_2:
+    model: crops:sf/sf/crops/sprinklers/sprinkler_2
+    name: '&fGold Sprinkler'
+    gui: crops:sf/sf/crops/sprinklers/sprinkler_2_item
+    cmd: 3044028
+  sprinkler_3:
+    model: crops:sf/sf/crops/sprinklers/sprinkler_3
+    name: '&fSilver Sprinkler'
+    gui: crops:sf/sf/crops/sprinklers/sprinkler_3_item
+    cmd: 3459242
   strawberry:
     model: crops:sf/sf/crops/strawberry/strawberry
     name: '&fStrawberry'
@@ -1537,3 +1592,27 @@ items:
     name: Tomato
     gui: crops:sf/ce/item/crop_stage_icons/tomato_stage_4
     cmd: 3757906
+  variation_fertilizer_1:
+    model: crops:sf/sf/crops/fertilizers/variation_1
+    name: '&fBasic Variation Fertilizer'
+    cmd: 3287229
+  variation_fertilizer_2:
+    model: crops:sf/sf/crops/fertilizers/variation_2
+    name: '&fRefined Variation Fertilizer'
+    cmd: 3196551
+  variation_fertilizer_3:
+    model: crops:sf/sf/crops/fertilizers/variation_3
+    name: '&fDeluxe Variation Fertilizer'
+    cmd: 3710993
+  yield_fertilizer_1:
+    model: crops:sf/sf/crops/fertilizers/yield_increase_1
+    name: '&fBasic Yield Fertilizer'
+    cmd: 3787046
+  yield_fertilizer_2:
+    model: crops:sf/sf/crops/fertilizers/yield_increase_2
+    name: '&fRefined Yield Fertilizer'
+    cmd: 3687964
+  yield_fertilizer_3:
+    model: crops:sf/sf/crops/fertilizers/yield_increase_3
+    name: '&fDeluxe Yield Fertilizer'
+    cmd: 3568714

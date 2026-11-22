@@ -18,6 +18,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.*;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.*;
 
@@ -58,7 +59,7 @@ final class Kitchen implements Listener {
         cooling = Catalog.duration(config.getString("pies.cooling.time", "10m"));
         bag = config.getString("bags.flour_bag.item", "");
         flour = config.getString("bags.flour_bag.stores", "");
-        capacity = config.getInt("bags.flour_bag.capacity", 256);
+        capacity = Math.max(1, config.getInt("bags.flour_bag.capacity", 256));
         hologram = config.getBoolean("pies.hologram.enabled", true);
         hologramHeight = config.getDouble("pies.hologram.height", 1.35);
         hologramCycle = Math.max(50, Catalog.duration(config.getString("pies.hologram.icon-cycle", "2s")));
@@ -200,26 +201,57 @@ final class Kitchen implements Listener {
     }
 
     private boolean knead(PlayerInteractEvent event, Block block, String held) {
+        String ingredient = config.getString("kneading.flour.item");
+        boolean fromBag = held.equals(bag) && !bag.isEmpty() && flour.equals(ingredient);
         if (!config.getBoolean("kneading.enabled", true) || block.getType() != Material.WATER_CAULDRON
-                || !held.equals(config.getString("kneading.flour.item"))) return false;
+                || !held.equals(ingredient) && !fromBag) return false;
         event.setCancelled(true);
         var player = event.getPlayer();
-        int water = config.getInt("kneading.water.required", 3), flour = config.getInt("kneading.flour.required", 3);
+        int water = Math.max(1, config.getInt("kneading.water.required", 3));
+        int required = Math.max(1, config.getInt("kneading.flour.required", 3));
         var hold = event.getItem();
-        if (!(block.getBlockData() instanceof Levelled cauldron) || cauldron.getLevel() < water || hold.getAmount() < flour
+        if (!(block.getBlockData() instanceof Levelled cauldron) || cauldron.getLevel() < water
                 || !plugin.connection().mayModify(player, block, "knead", event)) return true;
-        var dough = plugin.item(config.getString("kneading.result.item"), config.getInt("kneading.result.amount", 1));
-        if (dough == null) return true;
+        var data = block.getChunk().getPersistentDataContainer();
+        var key = BlockKeys.at(plugin, "kneading", block);
+        int prior = Math.max(0, Math.min(required - 1, data.getOrDefault(key, PersistentDataType.INTEGER, 0)));
+        int use = fromBag ? 1 : Math.min(hold.getAmount(), required - prior);
+        boolean complete = prior + use >= required;
+        ItemStack dough = complete
+                ? plugin.item(config.getString("kneading.result.item"), config.getInt("kneading.result.amount", 1))
+                : null;
+        if (complete && dough == null) return true;
+        if (fromBag) {
+            int stored = stored(hold);
+            if (hold.getAmount() != 1 || stored == 0 || !writeBag(hold, stored - 1)) {
+                player.sendMessage("§eThis flour bag is empty or stacked.");
+                return true;
+            }
+            player.getInventory().setItemInMainHand(hold);
+        } else CropsPlugin.spend(player, hold, use);
+        if (!complete) {
+            data.set(key, PersistentDataType.INTEGER, prior + use);
+            player.sendMessage("§7Flour: §f" + (prior + use) + "/" + required);
+            return true;
+        }
+        data.remove(key);
         int left = cauldron.getLevel() - water;
         if (left <= 0) block.setType(Material.CAULDRON);
         else {
             cauldron.setLevel(left);
             block.setBlockData(cauldron);
         }
-        CropsPlugin.spend(player, hold, flour);
         plugin.give(player, dough);
         block.getWorld().playSound(block.getLocation(), config.getString("kneading.sound", "block.mud.place"), 1, 1);
         return true;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void breakKneadingStation(BlockBreakEvent event) {
+        Block block = event.getBlock();
+        if (block.getType() == Material.WATER_CAULDRON || block.getType() == Material.CAULDRON) {
+            block.getChunk().getPersistentDataContainer().remove(BlockKeys.at(plugin, "kneading", block));
+        }
     }
 
     private void place(PlayerInteractEvent event, Block support, String type, String state) {
@@ -520,19 +552,48 @@ final class Kitchen implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void deposit(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player) || event.getClick() != org.bukkit.event.inventory.ClickType.LEFT
+    public void clickBag(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player) || bag.isEmpty() || flour.isEmpty()
                 || !config.getBoolean("enabled", true) || !plugin.reference(event.getCurrentItem()).equals(bag)
-                || !plugin.reference(event.getCursor()).equals(flour) || !plugin.connection().canEditInventory(player)) return;
+                || !player.hasPermission("crops.use") || !plugin.connection().canEditInventory(player)) return;
         ItemStack bagItem = event.getCurrentItem();
         if (bagItem.getAmount() != 1) return;
-        event.setCancelled(true);
         ItemStack cursor = event.getCursor();
-        int amount = stored(bagItem);
-        int take = Math.min(cursor.getAmount(), capacity - amount);
-        if (take <= 0 || !writeBag(bagItem, amount + take)) return;
-        event.setCurrentItem(bagItem);
-        cursor.setAmount(cursor.getAmount() - take);
+        boolean empty = cursor == null || cursor.getType().isAir();
+        boolean matching = !empty && plugin.reference(cursor).equals(flour);
+        int stored = stored(bagItem);
+        switch (event.getClick()) {
+            case LEFT -> {
+                if (!matching) return;
+                event.setCancelled(true);
+                int amount = Math.min(cursor.getAmount(), capacity - stored);
+                if (amount <= 0) {
+                    player.sendMessage("§eThe flour bag is full.");
+                    return;
+                }
+                ItemStack remainder = cursor.clone();
+                remainder.setAmount(cursor.getAmount() - amount);
+                setBagClick(event, player, bagItem, stored + amount, remainder.getAmount() > 0 ? remainder : null);
+            }
+            case RIGHT, SHIFT_LEFT -> {
+                boolean shift = event.isShiftClick();
+                if (shift && !empty || !shift && !empty && !matching || stored == 0 && !matching) return;
+                event.setCancelled(true);
+                if (stored == 0 || matching && cursor.getAmount() >= cursor.getMaxStackSize()) return;
+                ItemStack outgoing = matching ? cursor.clone() : plugin.item(flour, 1);
+                if (outgoing == null) return;
+                int amount = shift ? Math.min(stored, outgoing.getMaxStackSize()) : 1;
+                outgoing.setAmount(amount + (matching ? cursor.getAmount() : 0));
+                setBagClick(event, player, bagItem, stored - amount, outgoing);
+            }
+            default -> { }
+        }
+    }
+
+    private void setBagClick(InventoryClickEvent event, Player player, ItemStack original, int amount, ItemStack cursor) {
+        ItemStack changed = original.clone();
+        if (!writeBag(changed, amount)) return;
+        event.setCurrentItem(changed);
         player.setItemOnCursor(cursor);
     }
 
@@ -547,9 +608,9 @@ final class Kitchen implements Listener {
     }
 
     private int stored(ItemStack item) {
-        String value = plugin.connection().items().identify(item).orElseThrow().state().getOrDefault("flour", "0");
+        String value = plugin.connection().items().identify(item).map(identity -> identity.state().get("flour")).orElse("0");
         try {
-            return Math.max(0, Math.min(capacity, Integer.parseInt(value)));
+            return Math.max(0, Integer.parseInt(value));
         } catch (NumberFormatException invalid) {
             return 0;
         }
@@ -557,9 +618,17 @@ final class Kitchen implements Listener {
 
     private boolean writeBag(ItemStack item, int stored) {
         if (!plugin.connection().items().updateState(item, Map.of("flour", Integer.toString(stored)))) return false;
-        var meta = item.getItemMeta();
-        meta.setLore(List.of("§7Flour: §f" + stored + "/" + capacity));
-        item.setItemMeta(meta);
+        showBagAmount(plugin, config, item, stored);
         return true;
+    }
+
+    static void showBagAmount(CropsPlugin plugin, ConfigurationSection settings, ItemStack item, int stored) {
+        var meta = item.getItemMeta();
+        if (meta == null) return;
+        String lore = settings.getString("bags.flour_bag.lore", "&7Flour: &f<amount>/<capacity>")
+                .replace("<amount>", Integer.toString(stored))
+                .replace("<capacity>", Integer.toString(Math.max(1, settings.getInt("bags.flour_bag.capacity", 256))));
+        meta.setLore(List.of(plugin.connection().text().legacy(lore)));
+        item.setItemMeta(meta);
     }
 }

@@ -21,12 +21,14 @@ final class Planting implements Listener {
     private final CropsPlugin plugin;
     private final ModelWorld world;
     private final Map<String, Catalog.Crop> crops;
+    private final FarmInputs farm;
     private final Map<String, Catalog.Crop> seeds = new HashMap<>();
 
-    Planting(CropsPlugin plugin, ModelWorld world, Map<String, Catalog.Crop> crops) {
+    Planting(CropsPlugin plugin, ModelWorld world, Map<String, Catalog.Crop> crops, FarmInputs farm) {
         this.plugin = plugin;
         this.world = world;
         this.crops = crops;
+        this.farm = farm;
         crops.values().forEach(crop -> seeds.put(crop.seed(), crop));
     }
 
@@ -43,15 +45,16 @@ final class Planting implements Listener {
         if (!target.getType().isAir() || world.at(target) != null) {
             return "The block above that soil is already occupied.";
         }
+        long now = System.currentTimeMillis();
+        var fertilizer = farm.fertilizer(soil, now);
         Catalog.Path chosen = requestedPath == null || requestedPath.isBlank()
-                ? crop.rollPath()
+                ? fertilizer.choose(crop)
                 : crop.paths().get(requestedPath.toLowerCase(Locale.ROOT));
         if (chosen == null) {
             return "Unknown path '" + requestedPath + "' for " + crop.id() + " (available: "
                     + String.join(", ", crop.paths().keySet()) + ").";
         }
-        var stage = chosen.stages().get(0);
-        if (world.place(target, "crop", crop.id(), chosen.id(), 0, next(System.currentTimeMillis(), crop, stage), stage.visual()) == null) {
+        if (!place(crop, chosen, soil, now, fertilizer)) {
             return "Could not place crop visual at that location.";
         }
         soil.getWorld().playSound(soil.getLocation(), "item.crop.plant", 1, 1);
@@ -69,37 +72,62 @@ final class Planting implements Listener {
         if (!world.show(planted, stage.visual())) return 0;
         int advanced = targetStage - planted.stage;
         planted.stage = targetStage;
-        planted.due = targetStage >= maxIndex ? System.currentTimeMillis() : next(System.currentTimeMillis(), def, stage);
+        planted.due = targetStage >= maxIndex ? System.currentTimeMillis()
+                : next(System.currentTimeMillis(), def, stage, planted.growthSpeed);
         world.store(planted);
         return advanced;
     }
 
-    boolean isHydrated(Block soil) { return water(soil); }
+    boolean isHydrated(Block soil) { return water(soil) || farm.moist(soil.getRelative(BlockFace.UP)); }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void plant(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK
                 || event.getBlockFace() != BlockFace.UP || event.getClickedBlock() == null) return;
-        var crop = seeds.get(plugin.reference(event.getItem()));
         Block soil = event.getClickedBlock();
+        Block target = soil.getRelative(BlockFace.UP);
+        var existing = world.at(target);
+        if (existing != null && existing.kind.equals("crop")
+                && farm.applyCrop(event.getPlayer(), existing, growing(existing), event.getItem(), event)) {
+            event.setCancelled(true);
+            return;
+        }
+        var crop = seeds.get(plugin.reference(event.getItem()));
         if (crop == null || !crop.soils().contains(soil.getType())) return;
         event.setCancelled(true);
         var player = event.getPlayer();
         if (!player.hasPermission("crops.use") || !plugin.connection().canEditInventory(player)) return;
-        Block target = soil.getRelative(BlockFace.UP);
         if (!target.getType().isAir() || world.at(target) != null) return;
-        if (target.getLightLevel() < crop.light() || crop.water() && !water(soil)) {
+        if (!plugin.connection().mayModify(player, target, "plant", event)) return;
+        long now = System.currentTimeMillis();
+        if (farm.exhausted(soil, now)) {
+            player.sendMessage("§e" + farm.exhaustedMessage());
+            return;
+        }
+        if (target.getLightLevel() < crop.light() || crop.water() && !isHydrated(soil)) {
             player.sendMessage("§eThis crop needs hydrated soil and enough light.");
             return;
         }
-        if (!plugin.connection().mayModify(player, target, "plant", event)) return;
-        var path = crop.rollPath();
+        var fertilizer = farm.fertilizer(soil, now);
+        var path = fertilizer.choose(crop);
         if (path == null) return;
-        var stage = path.stages().get(0);
-        if (world.place(target, "crop", crop.id(), path.id(), 0, next(System.currentTimeMillis(), crop, stage), stage.visual()) != null) {
+        if (place(crop, path, soil, now, fertilizer)) {
             CropsPlugin.spend(player, event.getItem(), 1);
             soil.getWorld().playSound(soil.getLocation(), "item.crop.plant", 1, 1);
         }
+    }
+
+    private boolean place(Catalog.Crop crop, Catalog.Path path, Block soil, long now, FarmInputs.Fertilizer fertilizer) {
+        Block target = soil.getRelative(BlockFace.UP);
+        var stage = path.stages().get(0);
+        double speed = farm.speed(target, fertilizer);
+        var planted = world.place(target, "crop", crop.id(), path.id(), 0, next(now, crop, stage, speed), stage.visual());
+        if (planted == null) return false;
+        planted.fertilizer = fertilizer.id();
+        planted.growthSpeed = speed;
+        world.store(planted);
+        farm.planted(soil, now);
+        return true;
     }
 
     private static boolean water(Block soil) {
@@ -139,14 +167,22 @@ final class Planting implements Listener {
         }
         long now = System.currentTimeMillis();
         int previous = planted.stage;
+        if (growing(planted)) {
+            double speed = farm.speed(planted.cell(), farm.fertilizer(planted));
+            if (planted.growthSpeed != speed) {
+                if (planted.due > now) planted.due = now + Math.round((planted.due - now) / planted.growthSpeed * speed);
+                planted.growthSpeed = speed;
+                world.store(planted);
+            }
+        }
         if (planted.stage + 1 < path.stages().size() && planted.due <= now
-                && planted.cell().getLightLevel() >= crop.light() && (!crop.water() || water(soil))) {
+                && planted.cell().getLightLevel() >= crop.light() && (!crop.water() || isHydrated(soil))) {
             for (int steps = 0; steps < crop.catchUp() && planted.stage + 1 < path.stages().size()
                     && planted.due <= now; steps++) {
                 var stage = path.stages().get(planted.stage + 1);
                 if (!world.show(planted, stage.visual())) break;
                 planted.stage++;
-                planted.due = next(planted.due, crop, stage);
+                planted.due = next(planted.due, crop, stage, planted.growthSpeed);
             }
         }
         if (previous != planted.stage) world.store(planted);
@@ -158,9 +194,14 @@ final class Planting implements Listener {
         return crop == null ? null : crop.paths().get(planted.path);
     }
 
-    private static long next(long start, Catalog.Crop crop, Catalog.Stage stage) {
+    private boolean growing(ModelWorld.Placed placement) {
+        var path = path(placement);
+        return path != null && placement.stage + 1 < path.stages().size();
+    }
+
+    private static long next(long start, Catalog.Crop crop, Catalog.Stage stage, double speed) {
         double factor = 1 + (ThreadLocalRandom.current().nextDouble() * 2 - 1) * crop.randomness();
-        return start + Math.max(0, Math.round(stage.duration() * factor));
+        return start + Math.max(0, Math.round(stage.duration() * factor * speed));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -169,6 +210,8 @@ final class Planting implements Listener {
         var placement = world.get(event.getRightClicked());
         if (placement == null || !placement.kind.equals("crop")) return;
         event.setCancelled(true);
+        if (farm.applyCrop(event.getPlayer(), placement, growing(placement),
+                event.getPlayer().getInventory().getItemInMainHand(), event)) return;
         harvest(event.getPlayer(), placement, false, event);
     }
 
@@ -201,27 +244,37 @@ final class Planting implements Listener {
             }
             return;
         }
-        List<Catalog.Drop> loot = new ArrayList<>();
+        var fertilizer = farm.fertilizer(crop);
+        List<Catalog.Drop> primary = List.of();
+        List<Catalog.Drop> loot;
         if (pick) {
-            loot.addAll(path.primary().roll());
-            loot.addAll(path.additional().roll());
-        } else loot.addAll((mature ? path.mature() : path.immature()).roll());
+            primary = path.primary().roll(fertilizer.quality());
+            loot = path.additional().roll();
+        } else loot = (mature ? path.mature() : path.immature()).roll();
         int regrow = breaking ? path.breakRegrowth() : path.rightRegrowth();
         if (pick && regrow >= 0 && regrow < path.stages().size() && !(source instanceof BlockBreakEvent)) {
             var stage = path.stages().get(regrow);
             if (!world.show(crop, stage.visual())) return;
             crop.stage = regrow;
-            crop.due = next(System.currentTimeMillis(), def, stage);
+            crop.growthSpeed = farm.speed(crop.cell(), fertilizer);
+            crop.due = next(System.currentTimeMillis(), def, stage, crop.growthSpeed);
             world.store(crop);
         } else world.remove(crop);
-        drop(crop, player, loot, pick ? path.delivery() : "DROP_AT_CROP");
+        String delivery = pick ? path.delivery() : "DROP_AT_CROP";
+        drop(crop, player, primary, delivery, fertilizer);
+        drop(crop, player, loot, delivery);
         player.getWorld().playSound(crop.hitbox.getLocation(), "block.crop.break", 1, 1);
     }
 
     private void drop(ModelWorld.Placed crop, Player player, List<Catalog.Drop> loot, String delivery) {
+        drop(crop, player, loot, delivery, FarmInputs.Fertilizer.NONE);
+    }
+
+    private void drop(ModelWorld.Placed crop, Player player, List<Catalog.Drop> loot, String delivery,
+                      FarmInputs.Fertilizer fertilizer) {
         Location location = crop.hitbox.getLocation().add(0, .25, 0);
         for (Catalog.Drop reward : loot) {
-            int amount = ThreadLocalRandom.current().nextInt(reward.min(), reward.max() + 1);
+            int amount = fertilizer.amount(ThreadLocalRandom.current().nextInt(reward.min(), reward.max() + 1));
             if (amount <= 0) continue;
             var stack = plugin.item(reward.item(), amount);
             if (stack == null) continue;

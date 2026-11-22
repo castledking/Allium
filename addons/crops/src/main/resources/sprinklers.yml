@@ -1,0 +1,22 @@
+sprinklers:
+  sprinkler_1:
+    item: allium:sprinkler_1
+    display-name: Bronze Sprinkler
+    radius: 1
+    speed-multiplier: 0.9
+    keeps-soil-moist: true
+  sprinkler_3:
+    item: allium:sprinkler_3
+    display-name: Silver Sprinkler
+    radius: 2
+    speed-multiplier: 0.78
+    keeps-soil-moist: true
+    soil-retain: 6h
+  sprinkler_2:
+    item: allium:sprinkler_2
+    display-name: Gold Sprinkler
+    radius: 3
+    speed-multiplier: 0.65
+    keeps-soil-moist: true
+    soil-retain: 1d
+maximum-per-chunk: 64

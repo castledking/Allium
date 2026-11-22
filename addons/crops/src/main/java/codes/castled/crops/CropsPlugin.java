@@ -11,8 +11,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +45,16 @@ public final class CropsPlugin extends AlliumAddon {
                 }
             }
 
-            var items = definition("items.yml").getConfigurationSection("items");
+            var kitchenConfig = definition("kitchen.yml");
+            String bagId = stripNamespace(kitchenConfig.getString("bags.flour_bag.item", ""));
+            var itemData = definition("items.yml");
+            var bundledItems = new YamlConfiguration();
+            try (var reader = new InputStreamReader(getResource("items.yml"), StandardCharsets.UTF_8)) {
+                bundledItems.load(reader);
+            }
+            itemData.setDefaults(bundledItems);
+            itemData.options().copyDefaults(true);
+            var items = itemData.getConfigurationSection("items");
             java.util.List<String> itemIds = new java.util.ArrayList<>();
             for (String id : items.getKeys(false)) {
                 itemIds.add(id);
@@ -51,11 +62,13 @@ public final class CropsPlugin extends AlliumAddon {
                 boolean cropStage = cropStageIds.contains(id);
                 String displayName = normalizeDisplayName(placedName(id, row.getString("name")), cropStage);
                 int cmd = resolveCustomModelData(row.getInt("cmd"), cropStage, cropModelInJade);
-                core.items().defineStackableSigned(new ItemDefinition(id, Material.PAPER, displayName,
-                        cmd, Map.of(), true));
+                var item = new ItemDefinition(id, Material.PAPER, displayName, cmd, Map.of(), true);
+                if (id.equals(bagId)) core.items().define(item);
+                else core.items().defineStackableSigned(item);
                 core.items().decorate(id, stack -> {
                     ensureNotItalic(stack);
                     JadeLabel.apply(stack, "crops:" + id);
+                    if (id.equals(bagId)) Kitchen.showBagAmount(this, kitchenConfig, stack, 0);
                 });
             }
             java.util.Collections.sort(itemIds);
@@ -63,16 +76,21 @@ public final class CropsPlugin extends AlliumAddon {
             for (String id : prices.getKeys(false)) core.items().setWorth(id, new BigDecimal(prices.getString(id)));
 
             world = new ModelWorld(this);
-            var crops = new Planting(this, world, catalog);
-            var kitchen = new Kitchen(this, world, definition("kitchen.yml"));
+            var farm = new FarmInputs(this, world, catalog.values(), definition("fertilizers.yml"), definition("sprinklers.yml"));
+            var crops = new Planting(this, world, catalog, farm);
+            var kitchen = new Kitchen(this, world, kitchenConfig);
             kitchen.registerRecipes(definition("recipes.yml").getConfigurationSection("recipes"));
             var command = new CropsCommand(this, world, crops, kitchen, itemIds);
             core.commands().register(command.spec(), command::execute, command::complete);
             getServer().getPluginManager().registerEvents(crops, this);
             getServer().getPluginManager().registerEvents(kitchen, this);
+            getServer().getPluginManager().registerEvents(farm, this);
             world.start(placement -> {
-                if (placement.kind.equals("crop")) crops.restore(placement);
-                if (!placement.kind.equals("crop")) kitchen.restore(placement);
+                switch (placement.kind) {
+                    case "crop" -> crops.restore(placement);
+                    case "sprinkler" -> farm.restore(placement);
+                    default -> kitchen.restore(placement);
+                }
             });
             long interval = Math.max(1L, getConfig().getLong("growth.interval-ticks", 20)) * 50L;
             core.scheduler().repeatOnServer(() -> {
@@ -81,8 +99,11 @@ public final class CropsPlugin extends AlliumAddon {
                         world.remove(placement);
                         continue;
                     }
-                    if (placement.kind.equals("crop")) crops.tick(placement);
-                    else kitchen.tick(placement);
+                    switch (placement.kind) {
+                        case "crop" -> crops.tick(placement);
+                        case "sprinkler" -> farm.tick(placement);
+                        default -> kitchen.tick(placement);
+                    }
                 }
                 kitchen.coolDrops();
                 return true;

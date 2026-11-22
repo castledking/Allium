@@ -13,11 +13,14 @@ final class Catalog {
     record Visual(String item, ItemDisplayTransform transform, float scale, double offset, boolean align) {}
     record Stage(Visual visual, long duration) {}
     record Drop(String item, int min, int max) {}
-    record Entry(double weight, double chance, List<Drop> drops) {}
+    record Entry(String id, double weight, double chance, List<Drop> drops) {}
     record Table(String mode, List<Entry> entries) {
         List<Drop> roll() {
+            return roll(Map.of());
+        }
+        List<Drop> roll(Map<String, Double> quality) {
             if (mode.equals("WEIGHTED_ONE")) {
-                Entry chosen = weighted(entries, Entry::weight);
+                Entry chosen = weighted(entries, row -> row.weight() * quality.getOrDefault(row.id(), 1.0));
                 return chosen == null ? List.of() : chosen.drops();
             }
             var random = ThreadLocalRandom.current();
@@ -94,7 +97,7 @@ final class Catalog {
                 }
                 drops.add(new Drop(string(drop, "item", ""), min, max));
             }
-            entries.add(new Entry(row.getDouble("weight", 1), row.getDouble("chance", 1), List.copyOf(drops)));
+            entries.add(new Entry(name, row.getDouble("weight", 1), row.getDouble("chance", 1), List.copyOf(drops)));
         }
         return new Table(table == null ? "GUARANTEED_ALL" : table.getString("mode", "GUARANTEED_ALL"), List.copyOf(entries));
     }

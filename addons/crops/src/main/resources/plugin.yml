@@ -12,6 +12,9 @@ commands:
     description: Inspect, give, plant, grow, and manage custom crops and kitchen items
     permission: crops.use
 permissions:
+  crops.sprinkler.place:
+    description: Place Crops sprinklers
+    default: true
   crops.use:
     default: true
   crops.admin:

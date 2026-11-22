@@ -40,6 +40,20 @@ default to 5 for regular produce, 7.50 for silver star, 10 for golden star, 15 f
 and 25 for gigantic produce. Allium's configured sell multipliers apply. Remove a price entry
 and restart to stop selling that item. The same price is used for held and bulk sales.
 
+## Fertilizer and irrigation
+
+Apply fertilizer to bare crop soil before planting. Growth, yield and quality
+fertilizer can also be applied to a growing crop. Variation fertilizer changes
+the single path roll when planting, and yield boosts apply to the primary
+harvest. Soil retainers extend the soil lifetime when exhaustion is enabled in
+`fertilizers.yml`. Soil exhaustion defaults to off, as on SF.
+
+Place a sprinkler on a solid support at crop height. Covered farmland stays
+moist, and overlapping growth multipliers stack. Sprinkler tiers, coverage,
+soil retention and the placement cap are configurable in `sprinklers.yml`.
+Punch a sprinkler to recover it. Give the items with commands such as
+`/i allium:quality_fertilizer_1` and `/i allium:sprinkler_1`.
+
 ## Kitchen
 
 Kitchen's crop ingredient conversions and baking recipes work at vanilla stations. Knead flour
@@ -51,9 +65,11 @@ cycling through the accepted items (through one filling per pie before the pie h
 `pies.hologram.icon-cycle`; a finished pie shows the `done` lines until it is picked up. The
 hologram is drawn with text and item displays, so it needs no hologram plugin; turn it off with
 `pies.hologram.enabled: false`. Jade shows a placed pie or crust under its item's name and icon.
-A placed kitchen stove uses a native furnace with a Crops display. The flour bag stores
-flour when clicked with a flour stack on the cursor. Right-click the held bag to withdraw one,
-or sneak-right-click to withdraw a stack.
+A placed kitchen stove uses a native furnace with a Crops display. Left-click a flour bag
+with flour on the cursor to deposit it. Right-click the bag to take one flour, or shift-left-click
+with an empty cursor to take a stack. You can also right-click the held bag in the world to
+withdraw one, or sneak-right-click to withdraw a stack. Use a filled bag on a water cauldron
+to add one flour at a time to the dough.
 
 The source definitions came from SF's Harvest and Kitchen files and SF's CraftEngine and Nexo
 asset definitions. To refresh the snapshot, run `python3 addons/crops/tools/import_sf.py "$SF"`.

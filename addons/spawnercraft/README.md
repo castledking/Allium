@@ -41,7 +41,7 @@ requires its own signed heads for crafting and for opening the guide from an ite
 
 - Eight heads from one mob around its spawner core produce a spawner of that type.
 - Eight heads from one mob around paper produce a bound Curios card of that mob.
-  Rarity uses the Curios drop pool weights by default. Set `result.weights` for recipe-specific odds.
+  Eight mob heads around a Paper craft a Simple trading card of that mob with a random quality roll (1–100) by default (`result.weights: { SIMPLE: 1 }`). Set `result.weights: {}` to use the Curios drop pool weights or specify custom tier odds.
 - Right-click a SpawnerCraft head or core, or run `/spawnercraft guide <mob>`, to see recipes in the
   read-only crafting-table window. Pages rotate every three seconds. Left-click or right-click a
   recipe slot to go forward or back.

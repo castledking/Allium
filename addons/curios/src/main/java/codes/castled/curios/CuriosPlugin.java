@@ -113,7 +113,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
             @Override
             public Optional<ItemStack> craft(String mob, Map<String, Double> weights) {
                 Catalog.Entry entry = new Catalog.Pool(mob, 1, choices(mob, weights)).roll(ThreadLocalRandom.current().nextDouble());
-                return entry == null ? Optional.empty() : Optional.ofNullable(create(entry, Map.of("bound", "true")));
+                return entry == null ? Optional.empty() : Optional.ofNullable(create(entry, Map.of()));
             }
 
             private Map<Catalog.Entry, Double> choices(String mob, Map<String, Double> weights) {

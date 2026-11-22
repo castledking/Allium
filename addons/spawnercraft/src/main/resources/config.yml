@@ -35,8 +35,10 @@ recipes:
     result:
       card: true
       preview: PAPER
-      # Empty weights use the Curios mob pool.
-      weights: {}
+      # Crafts a Simple card of that mob type with a random quality roll (1..100).
+      # Set weights: {} to roll across Curios' configured mob drop pool instead.
+      weights:
+        SIMPLE: 1
 
 # Used by /spawnercraft import with no arguments. The directory can be the
 # plugins folder from an SF backup or a folder containing the Nexo mob catalog.

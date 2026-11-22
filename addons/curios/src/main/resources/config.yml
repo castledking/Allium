@@ -1,0 +1,2771 @@
+# How the Curios resource pack reaches players. Allium reads this when the server starts (restart to change).
+resource-pack:
+  # allium: merged into Allium's core pack, so Allium's standalone self-hosting or its rpm-export
+  #         to ResourcePackManager delivers it together with Allium's items.
+  # rspm:   written as its own Curios_resource_pack.zip into ResourcePackManager's mixer
+  #         (the directory from Allium's resource-pack.rpm-export.mixer-directory).
+  # none:   not delivered; host Curios-resource-pack.zip yourself.
+  delivery: allium
+
+# The layout of this file. Curios upgrades an older file on startup (keeping a copy beside it).
+config-version: 2
+# Chances are per kill or loot event (0..1). Set a chance to 0 to disable its roll.
+kill-xp: 5
+# true: frames, tier labels and menu backgrounds come from the Curios resource pack. Turn it off
+# only when players cannot get the pack; cards and menus then fall back to plain text.
+textured-menu: true
+migration-directory: config/relique/entities
+card-menu:
+  # Legacy's action bar: the held card's title above the hotbar while a card is in the main hand.
+  held-card-action-bar: true
+  allow-drop: true
+  drop-delivery: inventory
+  lore-separator: "───────────────"
+  xp-bar-width: 12
+  level-curve:
+    10: 25
+    25: 120
+    50: 600
+    75: 2400
+    100: 9000
+  # Rolling a bonus slot costs money from Allium's economy (the "economy" module), legacy's ladder:
+  # each roll of a slot costs more than the last, so rolling until satisfied is never free, and
+  # the bonus menu shows the next price before the player clicks. A slot's next roll costs
+  #   cost x escalation^(rolls of that slot so far) x the card tier's multiplier,
+  # rounded to round-to. On a Simple card: 500, 700, 900, 1,200, 1,700, 2,200, 3,000, ...
+  # Clearing a slot keeps its roll count, so it never resets the price. Set cost to 0 for free
+  # rolls (no economy needed), or enabled to false to turn rolling off.
+  bonus-slot-roll:
+    enabled: true
+    cost: 500.0
+    escalation: 1.35
+    round-to: 100
+    tier-multipliers:
+      SIMPLE: 1.0
+      ELITE: 1.5
+      ULTIMATE: 2.0
+      LEGENDARY: 3.0
+      FABLED: 5.0
+  quality-bands:
+    rotten:    { min: 1,   max: 5,   heads: 1, colour: dark_gray,  boost: [1, 2] }
+    damaged:   { min: 6,   max: 15,  heads: 1, colour: gray,       boost: [2, 3] }
+    torn:      { min: 16,  max: 25,  heads: 2, colour: dark_red,   boost: [3, 4] }
+    okay:      { min: 26,  max: 45,  heads: 3, colour: white,      boost: [4, 5] }
+    fine:      { min: 46,  max: 65,  heads: 5, colour: yellow,     boost: [5, 6] }
+    great:     { min: 66,  max: 85,  heads: 6, colour: green,      boost: [6, 7] }
+    mint:      { min: 86,  max: 99,  heads: 7, colour: aqua,       boost: [7, 9] }
+    emaculate: { min: 100, max: 100, heads: 8, colour: gold,       boost: [7, 11] }
+  mob-colours:
+    allay: aqua
+    axolotl: dark_aqua
+    bee: gold
+    blaze: gold
+    chicken: yellow
+    cow: gray
+    creeper: dark_green
+    dolphin: dark_aqua
+    enderman: dark_purple
+    fox: gold
+    ghast: white
+    goat: gray
+    hoglin: dark_purple
+    horse: gold
+    husk: dark_purple
+    magma_cube: gold
+    mooshroom: light_purple
+    ocelot: yellow
+    parrot: yellow
+    pig: light_purple
+    piglin: light_purple
+    piglin_brute: dark_purple
+    pillager: gold
+    pufferfish: gold
+    ravager: dark_purple
+    sheep: white
+    skeleton: gray
+    slime: green
+    stray: white
+    turtle: dark_green
+    vex: light_purple
+    villager: white
+    witch: dark_purple
+    wither_skeleton: dark_gray
+    wolf: gray
+    zombie: dark_green
+slots:
+  charm: 1
+  head: 1
+  chest: 1
+  belt: 1
+  ring: 2
+  card: 2
+items:
+  card_allay_simple:
+    name: Allay · Simple
+    slot: card
+    texture: card/vanilla/allay
+    model: 2680000
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: allay
+  card_allay_elite:
+    name: Allay · Elite
+    slot: card
+    texture: card/vanilla/allay
+    model: 2680001
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: allay
+  card_allay_ultimate:
+    name: Allay · Ultimate
+    slot: card
+    texture: card/vanilla/allay
+    model: 2680002
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: allay
+  card_allay_legendary:
+    name: Allay · Legendary
+    slot: card
+    texture: card/vanilla/allay
+    model: 2680003
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: allay
+  card_allay_fabled:
+    name: Allay · Fabled
+    slot: card
+    texture: card/vanilla/fabled_allay
+    model: 2680004
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: allay
+  card_axolotl_simple:
+    name: Axolotl · Simple
+    slot: card
+    texture: card/vanilla/axolotl
+    model: 2680005
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: axolotl
+  card_axolotl_elite:
+    name: Axolotl · Elite
+    slot: card
+    texture: card/vanilla/axolotl
+    model: 2680006
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: axolotl
+  card_axolotl_ultimate:
+    name: Axolotl · Ultimate
+    slot: card
+    texture: card/vanilla/axolotl
+    model: 2680007
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: axolotl
+  card_axolotl_legendary:
+    name: Axolotl · Legendary
+    slot: card
+    texture: card/vanilla/axolotl
+    model: 2680008
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: axolotl
+  card_axolotl_fabled:
+    name: Axolotl · Fabled
+    slot: card
+    texture: card/vanilla/fabled_axolotl
+    model: 2680009
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: axolotl
+  card_bee_simple:
+    name: Bee · Simple
+    slot: card
+    texture: card/vanilla/bee
+    model: 2680010
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: bee
+  card_bee_elite:
+    name: Bee · Elite
+    slot: card
+    texture: card/vanilla/bee
+    model: 2680011
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: bee
+  card_bee_ultimate:
+    name: Bee · Ultimate
+    slot: card
+    texture: card/vanilla/bee
+    model: 2680012
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: bee
+  card_bee_legendary:
+    name: Bee · Legendary
+    slot: card
+    texture: card/vanilla/bee
+    model: 2680013
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: bee
+  card_bee_fabled:
+    name: Bee · Fabled
+    slot: card
+    texture: card/vanilla/fabled_bee
+    model: 2680014
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: bee
+  card_blaze_simple:
+    name: Blaze · Simple
+    slot: card
+    texture: card/vanilla/blaze
+    model: 2680015
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: blaze
+  card_blaze_elite:
+    name: Blaze · Elite
+    slot: card
+    texture: card/vanilla/blaze
+    model: 2680016
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: blaze
+  card_blaze_ultimate:
+    name: Blaze · Ultimate
+    slot: card
+    texture: card/vanilla/blaze
+    model: 2680017
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: blaze
+  card_blaze_legendary:
+    name: Blaze · Legendary
+    slot: card
+    texture: card/vanilla/blaze
+    model: 2680018
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: blaze
+  card_blaze_fabled:
+    name: Blaze · Fabled
+    slot: card
+    texture: card/vanilla/fabled_blaze
+    model: 2680019
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: blaze
+  card_chicken_simple:
+    name: Chicken · Simple
+    slot: card
+    texture: card/vanilla/chicken
+    model: 2680020
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: chicken
+  card_chicken_elite:
+    name: Chicken · Elite
+    slot: card
+    texture: card/vanilla/chicken
+    model: 2680021
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: chicken
+  card_chicken_ultimate:
+    name: Chicken · Ultimate
+    slot: card
+    texture: card/vanilla/chicken
+    model: 2680022
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: chicken
+  card_chicken_legendary:
+    name: Chicken · Legendary
+    slot: card
+    texture: card/vanilla/chicken
+    model: 2680023
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: chicken
+  card_chicken_fabled:
+    name: Chicken · Fabled
+    slot: card
+    texture: card/vanilla/fabled_chicken
+    model: 2680024
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: chicken
+  card_cow_simple:
+    name: Cow · Simple
+    slot: card
+    texture: card/vanilla/cow
+    model: 2680025
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: cow
+  card_cow_elite:
+    name: Cow · Elite
+    slot: card
+    texture: card/vanilla/cow
+    model: 2680026
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: cow
+  card_cow_ultimate:
+    name: Cow · Ultimate
+    slot: card
+    texture: card/vanilla/cow
+    model: 2680027
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: cow
+  card_cow_legendary:
+    name: Cow · Legendary
+    slot: card
+    texture: card/vanilla/cow
+    model: 2680028
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: cow
+  card_cow_fabled:
+    name: Cow · Fabled
+    slot: card
+    texture: card/vanilla/fabled_cow
+    model: 2680029
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: cow
+  card_creeper_simple:
+    name: Creeper · Simple
+    slot: card
+    texture: card/vanilla/creeper
+    model: 2680030
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: creeper
+  card_creeper_elite:
+    name: Creeper · Elite
+    slot: card
+    texture: card/vanilla/creeper
+    model: 2680031
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: creeper
+  card_creeper_ultimate:
+    name: Creeper · Ultimate
+    slot: card
+    texture: card/vanilla/creeper
+    model: 2680032
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: creeper
+  card_creeper_legendary:
+    name: Creeper · Legendary
+    slot: card
+    texture: card/vanilla/creeper
+    model: 2680033
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: creeper
+  card_creeper_fabled:
+    name: Creeper · Fabled
+    slot: card
+    texture: card/vanilla/fabled_creeper
+    model: 2680034
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: creeper
+  card_dolphin_simple:
+    name: Dolphin · Simple
+    slot: card
+    texture: card/vanilla/dolphin
+    model: 2680035
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: dolphin
+  card_dolphin_elite:
+    name: Dolphin · Elite
+    slot: card
+    texture: card/vanilla/dolphin
+    model: 2680036
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: dolphin
+  card_dolphin_ultimate:
+    name: Dolphin · Ultimate
+    slot: card
+    texture: card/vanilla/dolphin
+    model: 2680037
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: dolphin
+  card_dolphin_legendary:
+    name: Dolphin · Legendary
+    slot: card
+    texture: card/vanilla/dolphin
+    model: 2680038
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: dolphin
+  card_dolphin_fabled:
+    name: Dolphin · Fabled
+    slot: card
+    texture: card/vanilla/fabled_dolphin
+    model: 2680039
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: dolphin
+  card_enderman_simple:
+    name: Enderman · Simple
+    slot: card
+    texture: card/vanilla/enderman
+    model: 2680040
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: enderman
+  card_enderman_elite:
+    name: Enderman · Elite
+    slot: card
+    texture: card/vanilla/enderman
+    model: 2680041
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: enderman
+  card_enderman_ultimate:
+    name: Enderman · Ultimate
+    slot: card
+    texture: card/vanilla/enderman
+    model: 2680042
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: enderman
+  card_enderman_legendary:
+    name: Enderman · Legendary
+    slot: card
+    texture: card/vanilla/enderman
+    model: 2680043
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: enderman
+  card_enderman_fabled:
+    name: Enderman · Fabled
+    slot: card
+    texture: card/vanilla/fabled_enderman
+    model: 2680044
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: enderman
+  card_fox_simple:
+    name: Fox · Simple
+    slot: card
+    texture: card/vanilla/fox
+    model: 2680045
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: fox
+  card_fox_elite:
+    name: Fox · Elite
+    slot: card
+    texture: card/vanilla/fox
+    model: 2680046
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: fox
+  card_fox_ultimate:
+    name: Fox · Ultimate
+    slot: card
+    texture: card/vanilla/fox
+    model: 2680047
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: fox
+  card_fox_legendary:
+    name: Fox · Legendary
+    slot: card
+    texture: card/vanilla/fox
+    model: 2680048
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: fox
+  card_fox_fabled:
+    name: Fox · Fabled
+    slot: card
+    texture: card/vanilla/fabled_fox
+    model: 2680049
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: fox
+  card_ghast_simple:
+    name: Ghast · Simple
+    slot: card
+    texture: card/vanilla/ghast
+    model: 2680050
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: ghast
+  card_ghast_elite:
+    name: Ghast · Elite
+    slot: card
+    texture: card/vanilla/ghast
+    model: 2680051
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: ghast
+  card_ghast_ultimate:
+    name: Ghast · Ultimate
+    slot: card
+    texture: card/vanilla/ghast
+    model: 2680052
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: ghast
+  card_ghast_legendary:
+    name: Ghast · Legendary
+    slot: card
+    texture: card/vanilla/ghast
+    model: 2680053
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: ghast
+  card_ghast_fabled:
+    name: Ghast · Fabled
+    slot: card
+    texture: card/vanilla/fabled_ghast
+    model: 2680054
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: ghast
+  card_goat_simple:
+    name: Goat · Simple
+    slot: card
+    texture: card/vanilla/goat
+    model: 2680055
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: goat
+  card_goat_elite:
+    name: Goat · Elite
+    slot: card
+    texture: card/vanilla/goat
+    model: 2680056
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: goat
+  card_goat_ultimate:
+    name: Goat · Ultimate
+    slot: card
+    texture: card/vanilla/goat
+    model: 2680057
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: goat
+  card_goat_legendary:
+    name: Goat · Legendary
+    slot: card
+    texture: card/vanilla/goat
+    model: 2680058
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: goat
+  card_goat_fabled:
+    name: Goat · Fabled
+    slot: card
+    texture: card/vanilla/fabled_goat
+    model: 2680059
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: goat
+  card_hoglin_simple:
+    name: Hoglin · Simple
+    slot: card
+    texture: card/vanilla/hoglin
+    model: 2680060
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: hoglin
+  card_hoglin_elite:
+    name: Hoglin · Elite
+    slot: card
+    texture: card/vanilla/hoglin
+    model: 2680061
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: hoglin
+  card_hoglin_ultimate:
+    name: Hoglin · Ultimate
+    slot: card
+    texture: card/vanilla/hoglin
+    model: 2680062
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: hoglin
+  card_hoglin_legendary:
+    name: Hoglin · Legendary
+    slot: card
+    texture: card/vanilla/hoglin
+    model: 2680063
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: hoglin
+  card_hoglin_fabled:
+    name: Hoglin · Fabled
+    slot: card
+    texture: card/vanilla/fabled_hoglin
+    model: 2680064
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: hoglin
+  card_horse_simple:
+    name: Horse · Simple
+    slot: card
+    texture: card/vanilla/horse
+    model: 2680065
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: horse
+  card_horse_elite:
+    name: Horse · Elite
+    slot: card
+    texture: card/vanilla/horse
+    model: 2680066
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: horse
+  card_horse_ultimate:
+    name: Horse · Ultimate
+    slot: card
+    texture: card/vanilla/horse
+    model: 2680067
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: horse
+  card_horse_legendary:
+    name: Horse · Legendary
+    slot: card
+    texture: card/vanilla/horse
+    model: 2680068
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: horse
+  card_horse_fabled:
+    name: Horse · Fabled
+    slot: card
+    texture: card/vanilla/fabled_horse
+    model: 2680069
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: horse
+  card_husk_simple:
+    name: Husk · Simple
+    slot: card
+    texture: card/vanilla/husk
+    model: 2680070
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: husk
+  card_husk_elite:
+    name: Husk · Elite
+    slot: card
+    texture: card/vanilla/husk
+    model: 2680071
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: husk
+  card_husk_ultimate:
+    name: Husk · Ultimate
+    slot: card
+    texture: card/vanilla/husk
+    model: 2680072
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: husk
+  card_husk_legendary:
+    name: Husk · Legendary
+    slot: card
+    texture: card/vanilla/husk
+    model: 2680073
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: husk
+  card_husk_fabled:
+    name: Husk · Fabled
+    slot: card
+    texture: card/vanilla/fabled_husk
+    model: 2680074
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: husk
+  card_magma_cube_simple:
+    name: Magma Cube · Simple
+    slot: card
+    texture: card/vanilla/magma_cube
+    model: 2680075
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: magma_cube
+  card_magma_cube_elite:
+    name: Magma Cube · Elite
+    slot: card
+    texture: card/vanilla/magma_cube
+    model: 2680076
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: magma_cube
+  card_magma_cube_ultimate:
+    name: Magma Cube · Ultimate
+    slot: card
+    texture: card/vanilla/magma_cube
+    model: 2680077
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: magma_cube
+  card_magma_cube_legendary:
+    name: Magma Cube · Legendary
+    slot: card
+    texture: card/vanilla/magma_cube
+    model: 2680078
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: magma_cube
+  card_magma_cube_fabled:
+    name: Magma Cube · Fabled
+    slot: card
+    texture: card/vanilla/fabled_magma_cube
+    model: 2680079
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: magma_cube
+  card_mooshroom_simple:
+    name: Mooshroom · Simple
+    slot: card
+    texture: card/vanilla/mooshroom
+    model: 2680080
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: mooshroom
+  card_mooshroom_elite:
+    name: Mooshroom · Elite
+    slot: card
+    texture: card/vanilla/mooshroom
+    model: 2680081
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: mooshroom
+  card_mooshroom_ultimate:
+    name: Mooshroom · Ultimate
+    slot: card
+    texture: card/vanilla/mooshroom
+    model: 2680082
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: mooshroom
+  card_mooshroom_legendary:
+    name: Mooshroom · Legendary
+    slot: card
+    texture: card/vanilla/mooshroom
+    model: 2680083
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: mooshroom
+  card_mooshroom_fabled:
+    name: Mooshroom · Fabled
+    slot: card
+    texture: card/vanilla/fabled_mooshroom
+    model: 2680084
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: mooshroom
+  card_ocelot_simple:
+    name: Ocelot · Simple
+    slot: card
+    texture: card/vanilla/ocelot
+    model: 2680085
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: ocelot
+  card_ocelot_elite:
+    name: Ocelot · Elite
+    slot: card
+    texture: card/vanilla/ocelot
+    model: 2680086
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: ocelot
+  card_ocelot_ultimate:
+    name: Ocelot · Ultimate
+    slot: card
+    texture: card/vanilla/ocelot
+    model: 2680087
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: ocelot
+  card_ocelot_legendary:
+    name: Ocelot · Legendary
+    slot: card
+    texture: card/vanilla/ocelot
+    model: 2680088
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: ocelot
+  card_ocelot_fabled:
+    name: Ocelot · Fabled
+    slot: card
+    texture: card/vanilla/fabled_ocelot
+    model: 2680089
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: ocelot
+  card_parrot_simple:
+    name: Parrot · Simple
+    slot: card
+    texture: card/vanilla/parrot
+    model: 2680090
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: parrot
+  card_parrot_elite:
+    name: Parrot · Elite
+    slot: card
+    texture: card/vanilla/parrot
+    model: 2680091
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: parrot
+  card_parrot_ultimate:
+    name: Parrot · Ultimate
+    slot: card
+    texture: card/vanilla/parrot
+    model: 2680092
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: parrot
+  card_parrot_legendary:
+    name: Parrot · Legendary
+    slot: card
+    texture: card/vanilla/parrot
+    model: 2680093
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: parrot
+  card_parrot_fabled:
+    name: Parrot · Fabled
+    slot: card
+    texture: card/vanilla/fabled_parrot
+    model: 2680094
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: parrot
+  card_pig_simple:
+    name: Pig · Simple
+    slot: card
+    texture: card/vanilla/pig
+    model: 2680095
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: pig
+  card_pig_elite:
+    name: Pig · Elite
+    slot: card
+    texture: card/vanilla/pig
+    model: 2680096
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: pig
+  card_pig_ultimate:
+    name: Pig · Ultimate
+    slot: card
+    texture: card/vanilla/pig
+    model: 2680097
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: pig
+  card_pig_legendary:
+    name: Pig · Legendary
+    slot: card
+    texture: card/vanilla/pig
+    model: 2680098
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: pig
+  card_pig_fabled:
+    name: Pig · Fabled
+    slot: card
+    texture: card/vanilla/fabled_pig
+    model: 2680099
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: pig
+  card_piglin_simple:
+    name: Piglin · Simple
+    slot: card
+    texture: card/vanilla/piglin
+    model: 2680100
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: piglin
+  card_piglin_elite:
+    name: Piglin · Elite
+    slot: card
+    texture: card/vanilla/piglin
+    model: 2680101
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: piglin
+  card_piglin_ultimate:
+    name: Piglin · Ultimate
+    slot: card
+    texture: card/vanilla/piglin
+    model: 2680102
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: piglin
+  card_piglin_legendary:
+    name: Piglin · Legendary
+    slot: card
+    texture: card/vanilla/piglin
+    model: 2680103
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: piglin
+  card_piglin_fabled:
+    name: Piglin · Fabled
+    slot: card
+    texture: card/vanilla/fabled_piglin
+    model: 2680104
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: piglin
+  card_piglin_brute_simple:
+    name: Piglin Brute · Simple
+    slot: card
+    texture: card/vanilla/piglin_brute
+    model: 2680105
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: piglin_brute
+  card_piglin_brute_elite:
+    name: Piglin Brute · Elite
+    slot: card
+    texture: card/vanilla/piglin_brute
+    model: 2680106
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: piglin_brute
+  card_piglin_brute_ultimate:
+    name: Piglin Brute · Ultimate
+    slot: card
+    texture: card/vanilla/piglin_brute
+    model: 2680107
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: piglin_brute
+  card_piglin_brute_legendary:
+    name: Piglin Brute · Legendary
+    slot: card
+    texture: card/vanilla/piglin_brute
+    model: 2680108
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: piglin_brute
+  card_piglin_brute_fabled:
+    name: Piglin Brute · Fabled
+    slot: card
+    texture: card/vanilla/fabled_piglin_brute
+    model: 2680109
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: piglin_brute
+  card_pillager_simple:
+    name: Pillager · Simple
+    slot: card
+    texture: card/vanilla/pillager
+    model: 2680110
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: pillager
+  card_pillager_elite:
+    name: Pillager · Elite
+    slot: card
+    texture: card/vanilla/pillager
+    model: 2680111
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: pillager
+  card_pillager_ultimate:
+    name: Pillager · Ultimate
+    slot: card
+    texture: card/vanilla/pillager
+    model: 2680112
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: pillager
+  card_pillager_legendary:
+    name: Pillager · Legendary
+    slot: card
+    texture: card/vanilla/pillager
+    model: 2680113
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: pillager
+  card_pillager_fabled:
+    name: Pillager · Fabled
+    slot: card
+    texture: card/vanilla/fabled_pillager
+    model: 2680114
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: pillager
+  card_pufferfish_simple:
+    name: Pufferfish · Simple
+    slot: card
+    texture: card/vanilla/pufferfish
+    model: 2680115
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: pufferfish
+  card_pufferfish_elite:
+    name: Pufferfish · Elite
+    slot: card
+    texture: card/vanilla/pufferfish
+    model: 2680116
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: pufferfish
+  card_pufferfish_ultimate:
+    name: Pufferfish · Ultimate
+    slot: card
+    texture: card/vanilla/pufferfish
+    model: 2680117
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: pufferfish
+  card_pufferfish_legendary:
+    name: Pufferfish · Legendary
+    slot: card
+    texture: card/vanilla/pufferfish
+    model: 2680118
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: pufferfish
+  card_pufferfish_fabled:
+    name: Pufferfish · Fabled
+    slot: card
+    texture: card/vanilla/fabled_pufferfish
+    model: 2680119
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: pufferfish
+  card_ravager_simple:
+    name: Ravager · Simple
+    slot: card
+    texture: card/vanilla/ravager
+    model: 2680120
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: ravager
+  card_ravager_elite:
+    name: Ravager · Elite
+    slot: card
+    texture: card/vanilla/ravager
+    model: 2680121
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: ravager
+  card_ravager_ultimate:
+    name: Ravager · Ultimate
+    slot: card
+    texture: card/vanilla/ravager
+    model: 2680122
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: ravager
+  card_ravager_legendary:
+    name: Ravager · Legendary
+    slot: card
+    texture: card/vanilla/ravager
+    model: 2680123
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: ravager
+  card_ravager_fabled:
+    name: Ravager · Fabled
+    slot: card
+    texture: card/vanilla/fabled_ravager
+    model: 2680124
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: ravager
+  card_sheep_simple:
+    name: Sheep · Simple
+    slot: card
+    texture: card/vanilla/sheep
+    model: 2680125
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: sheep
+  card_sheep_elite:
+    name: Sheep · Elite
+    slot: card
+    texture: card/vanilla/sheep
+    model: 2680126
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: sheep
+  card_sheep_ultimate:
+    name: Sheep · Ultimate
+    slot: card
+    texture: card/vanilla/sheep
+    model: 2680127
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: sheep
+  card_sheep_legendary:
+    name: Sheep · Legendary
+    slot: card
+    texture: card/vanilla/sheep
+    model: 2680128
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: sheep
+  card_sheep_fabled:
+    name: Sheep · Fabled
+    slot: card
+    texture: card/vanilla/fabled_sheep
+    model: 2680129
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: sheep
+  card_skeleton_simple:
+    name: Skeleton · Simple
+    slot: card
+    texture: card/vanilla/skeleton
+    model: 2680130
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: skeleton
+  card_skeleton_elite:
+    name: Skeleton · Elite
+    slot: card
+    texture: card/vanilla/skeleton
+    model: 2680131
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: skeleton
+  card_skeleton_ultimate:
+    name: Skeleton · Ultimate
+    slot: card
+    texture: card/vanilla/skeleton
+    model: 2680132
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: skeleton
+  card_skeleton_legendary:
+    name: Skeleton · Legendary
+    slot: card
+    texture: card/vanilla/skeleton
+    model: 2680133
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: skeleton
+  card_skeleton_fabled:
+    name: Skeleton · Fabled
+    slot: card
+    texture: card/vanilla/fabled_skeleton
+    model: 2680134
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: skeleton
+  card_slime_simple:
+    name: Slime · Simple
+    slot: card
+    texture: card/vanilla/slime
+    model: 2680135
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: slime
+  card_slime_elite:
+    name: Slime · Elite
+    slot: card
+    texture: card/vanilla/slime
+    model: 2680136
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: slime
+  card_slime_ultimate:
+    name: Slime · Ultimate
+    slot: card
+    texture: card/vanilla/slime
+    model: 2680137
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: slime
+  card_slime_legendary:
+    name: Slime · Legendary
+    slot: card
+    texture: card/vanilla/slime
+    model: 2680138
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: slime
+  card_slime_fabled:
+    name: Slime · Fabled
+    slot: card
+    texture: card/vanilla/fabled_slime
+    model: 2680139
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: slime
+  card_stray_simple:
+    name: Stray · Simple
+    slot: card
+    texture: card/vanilla/stray
+    model: 2680140
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: stray
+  card_stray_elite:
+    name: Stray · Elite
+    slot: card
+    texture: card/vanilla/stray
+    model: 2680141
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: stray
+  card_stray_ultimate:
+    name: Stray · Ultimate
+    slot: card
+    texture: card/vanilla/stray
+    model: 2680142
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: stray
+  card_stray_legendary:
+    name: Stray · Legendary
+    slot: card
+    texture: card/vanilla/stray
+    model: 2680143
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: stray
+  card_stray_fabled:
+    name: Stray · Fabled
+    slot: card
+    texture: card/vanilla/fabled_stray
+    model: 2680144
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: stray
+  card_turtle_simple:
+    name: Turtle · Simple
+    slot: card
+    texture: card/vanilla/turtle
+    model: 2680145
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: turtle
+  card_turtle_elite:
+    name: Turtle · Elite
+    slot: card
+    texture: card/vanilla/turtle
+    model: 2680146
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: turtle
+  card_turtle_ultimate:
+    name: Turtle · Ultimate
+    slot: card
+    texture: card/vanilla/turtle
+    model: 2680147
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: turtle
+  card_turtle_legendary:
+    name: Turtle · Legendary
+    slot: card
+    texture: card/vanilla/turtle
+    model: 2680148
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: turtle
+  card_turtle_fabled:
+    name: Turtle · Fabled
+    slot: card
+    texture: card/vanilla/fabled_turtle
+    model: 2680149
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: turtle
+  card_vex_simple:
+    name: Vex · Simple
+    slot: card
+    texture: card/vanilla/vex
+    model: 2680150
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: vex
+  card_vex_elite:
+    name: Vex · Elite
+    slot: card
+    texture: card/vanilla/vex
+    model: 2680151
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: vex
+  card_vex_ultimate:
+    name: Vex · Ultimate
+    slot: card
+    texture: card/vanilla/vex
+    model: 2680152
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: vex
+  card_vex_legendary:
+    name: Vex · Legendary
+    slot: card
+    texture: card/vanilla/vex
+    model: 2680153
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: vex
+  card_vex_fabled:
+    name: Vex · Fabled
+    slot: card
+    texture: card/vanilla/fabled_vex
+    model: 2680154
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: vex
+  card_villager_simple:
+    name: Villager · Simple
+    slot: card
+    texture: card/vanilla/villager
+    model: 2680155
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: villager
+  card_villager_elite:
+    name: Villager · Elite
+    slot: card
+    texture: card/vanilla/villager
+    model: 2680156
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: villager
+  card_villager_ultimate:
+    name: Villager · Ultimate
+    slot: card
+    texture: card/vanilla/villager
+    model: 2680157
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: villager
+  card_villager_legendary:
+    name: Villager · Legendary
+    slot: card
+    texture: card/vanilla/villager
+    model: 2680158
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: villager
+  card_villager_fabled:
+    name: Villager · Fabled
+    slot: card
+    texture: card/vanilla/fabled_villager
+    model: 2680159
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: villager
+  card_witch_simple:
+    name: Witch · Simple
+    slot: card
+    texture: card/vanilla/witch
+    model: 2680160
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: witch
+  card_witch_elite:
+    name: Witch · Elite
+    slot: card
+    texture: card/vanilla/witch
+    model: 2680161
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: witch
+  card_witch_ultimate:
+    name: Witch · Ultimate
+    slot: card
+    texture: card/vanilla/witch
+    model: 2680162
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: witch
+  card_witch_legendary:
+    name: Witch · Legendary
+    slot: card
+    texture: card/vanilla/witch
+    model: 2680163
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: witch
+  card_witch_fabled:
+    name: Witch · Fabled
+    slot: card
+    texture: card/vanilla/fabled_witch
+    model: 2680164
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: witch
+  card_wither_skeleton_simple:
+    name: Wither Skeleton · Simple
+    slot: card
+    texture: card/vanilla/wither_skeleton
+    model: 2680165
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: wither_skeleton
+  card_wither_skeleton_elite:
+    name: Wither Skeleton · Elite
+    slot: card
+    texture: card/vanilla/wither_skeleton
+    model: 2680166
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: wither_skeleton
+  card_wither_skeleton_ultimate:
+    name: Wither Skeleton · Ultimate
+    slot: card
+    texture: card/vanilla/wither_skeleton
+    model: 2680167
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: wither_skeleton
+  card_wither_skeleton_legendary:
+    name: Wither Skeleton · Legendary
+    slot: card
+    texture: card/vanilla/wither_skeleton
+    model: 2680168
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: wither_skeleton
+  card_wither_skeleton_fabled:
+    name: Wither Skeleton · Fabled
+    slot: card
+    texture: card/vanilla/fabled_wither_skeleton
+    model: 2680169
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: wither_skeleton
+  card_wolf_simple:
+    name: Wolf · Simple
+    slot: card
+    texture: card/vanilla/wolf
+    model: 2680170
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: wolf
+  card_wolf_elite:
+    name: Wolf · Elite
+    slot: card
+    texture: card/vanilla/wolf
+    model: 2680171
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: wolf
+  card_wolf_ultimate:
+    name: Wolf · Ultimate
+    slot: card
+    texture: card/vanilla/wolf
+    model: 2680172
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: wolf
+  card_wolf_legendary:
+    name: Wolf · Legendary
+    slot: card
+    texture: card/vanilla/wolf
+    model: 2680173
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: wolf
+  card_wolf_fabled:
+    name: Wolf · Fabled
+    slot: card
+    texture: card/vanilla/fabled_wolf
+    model: 2680174
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: wolf
+  card_zombie_simple:
+    name: Zombie · Simple
+    slot: card
+    texture: card/vanilla/zombie
+    model: 2680175
+    max-level: 100
+    xp-per-level: 100
+    frame: simple
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: SIMPLE
+    legacy-card: zombie
+  card_zombie_elite:
+    name: Zombie · Elite
+    slot: card
+    texture: card/vanilla/zombie
+    model: 2680176
+    max-level: 100
+    xp-per-level: 100
+    frame: elite
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ELITE
+    legacy-card: zombie
+  card_zombie_ultimate:
+    name: Zombie · Ultimate
+    slot: card
+    texture: card/vanilla/zombie
+    model: 2680177
+    max-level: 100
+    xp-per-level: 100
+    frame: ultimate
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: ULTIMATE
+    legacy-card: zombie
+  card_zombie_legendary:
+    name: Zombie · Legendary
+    slot: card
+    texture: card/vanilla/zombie
+    model: 2680178
+    max-level: 100
+    xp-per-level: 100
+    frame: legendary
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: LEGENDARY
+    legacy-card: zombie
+  card_zombie_fabled:
+    name: Zombie · Fabled
+    slot: card
+    texture: card/vanilla/fabled_zombie
+    model: 2680179
+    max-level: 100
+    xp-per-level: 100
+    frame: fabled
+    trade-item: PAPER
+    trade-amount: 2
+    legacy-tier: FABLED
+    legacy-card: zombie
+  piglin_signet:
+    name: Piglin Signet
+    slot: ring
+    texture: relic/piglin_signet
+    model: 2680180
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:piglin_signet
+    loot-table: minecraft:gameplay/piglin_bartering
+    drop-chance: 0.05
+    abilities:
+    - piglin_truce
+  echoing_circlet:
+    name: Echoing Circlet
+    slot: head
+    texture: relic/echoing_circlet
+    model: 2680181
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:echoing_circlet
+    drop-mob: WARDEN
+    drop-chance: 0.05
+    abilities:
+    - echo_strike
+  idol_of_depths:
+    name: Idol Of Depths
+    slot: charm
+    texture: relic/idol_of_depths
+    model: 2680182
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:idol_of_depths
+    loot-table: minecraft:gameplay/fishing/treasure
+    drop-chance: 0.05
+    abilities:
+    - water_retaliate
+  evokers_mantle:
+    name: Evokers Mantle
+    slot: chest
+    texture: relic/evokers_mantle
+    model: 2680183
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:evokers_mantle
+    drop-mob: EVOKER
+    drop-chance: 0.05
+    drop-condition: raid
+  strider_hide_girdle:
+    name: Strider Hide Girdle
+    slot: belt
+    texture: relic/strider_hide_girdle
+    model: 2680184
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:strider_hide_girdle
+    drop-mob: STRIDER
+    drop-chance: 0.05
+    drop-condition: freeze
+  membrane_cowl:
+    name: Membrane Cowl
+    slot: head
+    texture: relic/membrane_cowl
+    model: 2680185
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:membrane_cowl
+    recipe:
+      shape:
+      - mmm
+      - m m
+      ingredients:
+        m: PHANTOM_MEMBRANE
+    abilities:
+    - phantom_truce
+  chorus_buckle:
+    name: Chorus Buckle
+    slot: belt
+    texture: relic/chorus_buckle
+    model: 2680186
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:chorus_buckle
+    loot-table: minecraft:chests/end_city_treasure
+    drop-chance: 0.05
+  blaze_ember_ring:
+    name: Blaze Ember Ring
+    slot: ring
+    texture: relic/blaze_ember_ring
+    model: 2680187
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:blaze_ember_ring
+    drop-mob: BLAZE
+    drop-chance: 0.05
+    abilities:
+    - unarmed_ignite
+  witchs_brewstone:
+    name: Witchs Brewstone
+    slot: charm
+    texture: relic/witchs_brewstone
+    model: 2680188
+    max-level: 100
+    xp-per-level: 100
+    trade-item: AMETHYST_SHARD
+    trade-amount: 2
+    legacy-relic: antiquities:witchs_brewstone
+    drop-mob: WITCH
+    drop-chance: 0.05
+    abilities:
+    - purify
+card-pools:
+  allay:
+    mob: ALLAY
+    chance: 0.0015
+    weights:
+      card_allay_simple: 60.0
+      card_allay_elite: 25.0
+      card_allay_ultimate: 10.0
+      card_allay_legendary: 4.5
+      card_allay_fabled: 0.5
+  axolotl:
+    mob: AXOLOTL
+    chance: 0.0015
+    weights:
+      card_axolotl_simple: 60.0
+      card_axolotl_elite: 25.0
+      card_axolotl_ultimate: 10.0
+      card_axolotl_legendary: 4.5
+      card_axolotl_fabled: 0.5
+  bee:
+    mob: BEE
+    chance: 0.0015
+    weights:
+      card_bee_simple: 60.0
+      card_bee_elite: 25.0
+      card_bee_ultimate: 10.0
+      card_bee_legendary: 4.5
+      card_bee_fabled: 0.5
+  blaze:
+    mob: BLAZE
+    chance: 0.0015
+    weights:
+      card_blaze_simple: 60.0
+      card_blaze_elite: 25.0
+      card_blaze_ultimate: 10.0
+      card_blaze_legendary: 4.5
+      card_blaze_fabled: 0.5
+  chicken:
+    mob: CHICKEN
+    chance: 0.0015
+    weights:
+      card_chicken_simple: 60.0
+      card_chicken_elite: 25.0
+      card_chicken_ultimate: 10.0
+      card_chicken_legendary: 4.5
+      card_chicken_fabled: 0.5
+  cow:
+    mob: COW
+    chance: 0.0015
+    weights:
+      card_cow_simple: 60.0
+      card_cow_elite: 25.0
+      card_cow_ultimate: 10.0
+      card_cow_legendary: 4.5
+      card_cow_fabled: 0.5
+  creeper:
+    mob: CREEPER
+    chance: 0.0015
+    weights:
+      card_creeper_simple: 60.0
+      card_creeper_elite: 25.0
+      card_creeper_ultimate: 10.0
+      card_creeper_legendary: 4.5
+      card_creeper_fabled: 0.5
+  dolphin:
+    mob: DOLPHIN
+    chance: 0.0015
+    weights:
+      card_dolphin_simple: 60.0
+      card_dolphin_elite: 25.0
+      card_dolphin_ultimate: 10.0
+      card_dolphin_legendary: 4.5
+      card_dolphin_fabled: 0.5
+  enderman:
+    mob: ENDERMAN
+    chance: 0.0015
+    weights:
+      card_enderman_simple: 60.0
+      card_enderman_elite: 25.0
+      card_enderman_ultimate: 10.0
+      card_enderman_legendary: 4.5
+      card_enderman_fabled: 0.5
+  fox:
+    mob: FOX
+    chance: 0.0015
+    weights:
+      card_fox_simple: 60.0
+      card_fox_elite: 25.0
+      card_fox_ultimate: 10.0
+      card_fox_legendary: 4.5
+      card_fox_fabled: 0.5
+  ghast:
+    mob: GHAST
+    chance: 0.0015
+    weights:
+      card_ghast_simple: 60.0
+      card_ghast_elite: 25.0
+      card_ghast_ultimate: 10.0
+      card_ghast_legendary: 4.5
+      card_ghast_fabled: 0.5
+  goat:
+    mob: GOAT
+    chance: 0.0015
+    weights:
+      card_goat_simple: 60.0
+      card_goat_elite: 25.0
+      card_goat_ultimate: 10.0
+      card_goat_legendary: 4.5
+      card_goat_fabled: 0.5
+  hoglin:
+    mob: HOGLIN
+    chance: 0.0015
+    weights:
+      card_hoglin_simple: 60.0
+      card_hoglin_elite: 25.0
+      card_hoglin_ultimate: 10.0
+      card_hoglin_legendary: 4.5
+      card_hoglin_fabled: 0.5
+  horse:
+    mob: HORSE
+    chance: 0.0015
+    weights:
+      card_horse_simple: 60.0
+      card_horse_elite: 25.0
+      card_horse_ultimate: 10.0
+      card_horse_legendary: 4.5
+      card_horse_fabled: 0.5
+  husk:
+    mob: HUSK
+    chance: 0.0015
+    weights:
+      card_husk_simple: 60.0
+      card_husk_elite: 25.0
+      card_husk_ultimate: 10.0
+      card_husk_legendary: 4.5
+      card_husk_fabled: 0.5
+  magma_cube:
+    mob: MAGMA_CUBE
+    chance: 0.0015
+    weights:
+      card_magma_cube_simple: 60.0
+      card_magma_cube_elite: 25.0
+      card_magma_cube_ultimate: 10.0
+      card_magma_cube_legendary: 4.5
+      card_magma_cube_fabled: 0.5
+  mooshroom:
+    mob: MOOSHROOM
+    chance: 0.0015
+    weights:
+      card_mooshroom_simple: 60.0
+      card_mooshroom_elite: 25.0
+      card_mooshroom_ultimate: 10.0
+      card_mooshroom_legendary: 4.5
+      card_mooshroom_fabled: 0.5
+  ocelot:
+    mob: OCELOT
+    chance: 0.0015
+    weights:
+      card_ocelot_simple: 60.0
+      card_ocelot_elite: 25.0
+      card_ocelot_ultimate: 10.0
+      card_ocelot_legendary: 4.5
+      card_ocelot_fabled: 0.5
+  parrot:
+    mob: PARROT
+    chance: 0.0015
+    weights:
+      card_parrot_simple: 60.0
+      card_parrot_elite: 25.0
+      card_parrot_ultimate: 10.0
+      card_parrot_legendary: 4.5
+      card_parrot_fabled: 0.5
+  pig:
+    mob: PIG
+    chance: 0.0015
+    weights:
+      card_pig_simple: 60.0
+      card_pig_elite: 25.0
+      card_pig_ultimate: 10.0
+      card_pig_legendary: 4.5
+      card_pig_fabled: 0.5
+  piglin:
+    mob: PIGLIN
+    chance: 0.0015
+    weights:
+      card_piglin_simple: 60.0
+      card_piglin_elite: 25.0
+      card_piglin_ultimate: 10.0
+      card_piglin_legendary: 4.5
+      card_piglin_fabled: 0.5
+  piglin_brute:
+    mob: PIGLIN_BRUTE
+    chance: 0.0015
+    weights:
+      card_piglin_brute_simple: 60.0
+      card_piglin_brute_elite: 25.0
+      card_piglin_brute_ultimate: 10.0
+      card_piglin_brute_legendary: 4.5
+      card_piglin_brute_fabled: 0.5
+  pillager:
+    mob: PILLAGER
+    chance: 0.0015
+    weights:
+      card_pillager_simple: 60.0
+      card_pillager_elite: 25.0
+      card_pillager_ultimate: 10.0
+      card_pillager_legendary: 4.5
+      card_pillager_fabled: 0.5
+  pufferfish:
+    mob: PUFFERFISH
+    chance: 0.0015
+    weights:
+      card_pufferfish_simple: 60.0
+      card_pufferfish_elite: 25.0
+      card_pufferfish_ultimate: 10.0
+      card_pufferfish_legendary: 4.5
+      card_pufferfish_fabled: 0.5
+  ravager:
+    mob: RAVAGER
+    chance: 0.0015
+    weights:
+      card_ravager_simple: 60.0
+      card_ravager_elite: 25.0
+      card_ravager_ultimate: 10.0
+      card_ravager_legendary: 4.5
+      card_ravager_fabled: 0.5
+  sheep:
+    mob: SHEEP
+    chance: 0.0015
+    weights:
+      card_sheep_simple: 60.0
+      card_sheep_elite: 25.0
+      card_sheep_ultimate: 10.0
+      card_sheep_legendary: 4.5
+      card_sheep_fabled: 0.5
+  skeleton:
+    mob: SKELETON
+    chance: 0.0015
+    weights:
+      card_skeleton_simple: 60.0
+      card_skeleton_elite: 25.0
+      card_skeleton_ultimate: 10.0
+      card_skeleton_legendary: 4.5
+      card_skeleton_fabled: 0.5
+  slime:
+    mob: SLIME
+    chance: 0.0015
+    weights:
+      card_slime_simple: 60.0
+      card_slime_elite: 25.0
+      card_slime_ultimate: 10.0
+      card_slime_legendary: 4.5
+      card_slime_fabled: 0.5
+  stray:
+    mob: STRAY
+    chance: 0.0015
+    weights:
+      card_stray_simple: 60.0
+      card_stray_elite: 25.0
+      card_stray_ultimate: 10.0
+      card_stray_legendary: 4.5
+      card_stray_fabled: 0.5
+  turtle:
+    mob: TURTLE
+    chance: 0.0015
+    weights:
+      card_turtle_simple: 60.0
+      card_turtle_elite: 25.0
+      card_turtle_ultimate: 10.0
+      card_turtle_legendary: 4.5
+      card_turtle_fabled: 0.5
+  vex:
+    mob: VEX
+    chance: 0.0015
+    weights:
+      card_vex_simple: 60.0
+      card_vex_elite: 25.0
+      card_vex_ultimate: 10.0
+      card_vex_legendary: 4.5
+      card_vex_fabled: 0.5
+  villager:
+    mob: VILLAGER
+    chance: 0.0015
+    weights:
+      card_villager_simple: 60.0
+      card_villager_elite: 25.0
+      card_villager_ultimate: 10.0
+      card_villager_legendary: 4.5
+      card_villager_fabled: 0.5
+  witch:
+    mob: WITCH
+    chance: 0.0015
+    weights:
+      card_witch_simple: 60.0
+      card_witch_elite: 25.0
+      card_witch_ultimate: 10.0
+      card_witch_legendary: 4.5
+      card_witch_fabled: 0.5
+  wither_skeleton:
+    mob: WITHER_SKELETON
+    chance: 0.0015
+    weights:
+      card_wither_skeleton_simple: 60.0
+      card_wither_skeleton_elite: 25.0
+      card_wither_skeleton_ultimate: 10.0
+      card_wither_skeleton_legendary: 4.5
+      card_wither_skeleton_fabled: 0.5
+  wolf:
+    mob: WOLF
+    chance: 0.0015
+    weights:
+      card_wolf_simple: 60.0
+      card_wolf_elite: 25.0
+      card_wolf_ultimate: 10.0
+      card_wolf_legendary: 4.5
+      card_wolf_fabled: 0.5
+  zombie:
+    mob: ZOMBIE
+    chance: 0.0015
+    weights:
+      card_zombie_simple: 60.0
+      card_zombie_elite: 25.0
+      card_zombie_ultimate: 10.0
+      card_zombie_legendary: 4.5
+      card_zombie_fabled: 0.5
+frames:
+  simple: ''
+  elite: ''
+  ultimate: ''
+  legendary: ''
+  fabled: ''
+  anniversary_nxny: allium.frame.anniversary_nxny
+  aqua: allium.frame.aqua
+  artifact: allium.frame.artifact
+  black: allium.frame.black
+  blue: allium.frame.blue
+  chocolate: allium.frame.chocolate
+  christmas_1: allium.frame.christmas_1
+  christmas_2: allium.frame.christmas_2
+  christmas_3: allium.frame.christmas_3
+  coal: allium.frame.coal
+  common: allium.frame.common
+  copper: allium.frame.copper
+  dark_aqua: allium.frame.dark_aqua
+  dark_blue: allium.frame.dark_blue
+  dark_gray: allium.frame.dark_gray
+  dark_green: allium.frame.dark_green
+  dark_purple: allium.frame.dark_purple
+  dark_red: allium.frame.dark_red
+  diamond: allium.frame.diamond
+  easter: allium.frame.easter
+  emerald: allium.frame.emerald
+  epic: allium.frame.epic
+  gold: allium.frame.gold
+  golden: allium.frame.golden
+  gray: allium.frame.gray
+  green: allium.frame.green
+  halloween_1: allium.frame.halloween_1
+  halloween_2: allium.frame.halloween_2
+  heart: allium.frame.heart
+  iron: allium.frame.iron
+  legendary_tooltip: allium.frame.legendary_tooltip
+  light_purple: allium.frame.light_purple
+  love: allium.frame.love
+  netherite: allium.frame.netherite
+  rare: allium.frame.rare
+  red: allium.frame.red
+  spring: allium.frame.spring
+  star_wars_n: allium.frame.star_wars_n
+  star_wars_red_n: allium.frame.star_wars_red_n
+  uncommon: allium.frame.uncommon
+  valentines: allium.frame.valentines
+  white: allium.frame.white
+  yellow: allium.frame.yellow
+  nm_black: allium.frame.nm_black
+  nm_blue: allium.frame.nm_blue
+  nm_gray: allium.frame.nm_gray
+  nm_green: allium.frame.nm_green
+  nm_orange: allium.frame.nm_orange
+  nm_purple: allium.frame.nm_purple
+  nm_red: allium.frame.nm_red
+  nm_white: allium.frame.nm_white
+  nm_yellow: allium.frame.nm_yellow

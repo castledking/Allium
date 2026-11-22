@@ -22,15 +22,26 @@ public record AddonVerdict(String plugin, Status status, @Nullable String declar
         /** The declaration does not parse. */
         INVALID_DECLARATION,
         /** The plugin's jar contains its own copy of the API classes. */
-        SHADED_API
+        SHADED_API,
+        /** The addon requires {@code plugins/Allium/addons/} but was loaded from outside it. */
+        WRONG_DIRECTORY
     }
 
     public boolean refused() {
-        return status == Status.VERSION_MISMATCH || status == Status.INVALID_DECLARATION || status == Status.SHADED_API;
+        return status == Status.VERSION_MISMATCH
+                || status == Status.INVALID_DECLARATION
+                || status == Status.SHADED_API
+                || status == Status.WRONG_DIRECTORY;
     }
 
     /** Pure decision: shading wins, then the declaration. */
     public static AddonVerdict evaluate(String plugin, @Nullable String declared, ApiVersion provided, List<String> shadedClasses) {
+        return evaluate(plugin, declared, provided, shadedClasses, false);
+    }
+
+    /** Pure decision: shading wins, then declaration and range, then required addon-directory placement. */
+    public static AddonVerdict evaluate(String plugin, @Nullable String declared, ApiVersion provided,
+                                        List<String> shadedClasses, boolean wrongDirectory) {
         if (!shadedClasses.isEmpty()) {
             return new AddonVerdict(plugin, Status.SHADED_API, declared, plugin + " bundles its own copy of the Allium API ("
                     + String.join(", ", shadedClasses) + "). Allium refuses it: rebuild it with the Allium API as compileOnly, "
@@ -50,6 +61,11 @@ public record AddonVerdict(String plugin, Status status, @Nullable String declar
             return new AddonVerdict(plugin, Status.VERSION_MISMATCH, declared, plugin + " needs Allium API " + declared + " ("
                     + range.describe() + "), but this Allium provides API " + provided + ". Install an Allium whose API version "
                     + "is in that range, or a build of " + plugin + " made for API " + provided.major() + "." + provided.minor() + ".");
+        }
+        if (wrongDirectory) {
+            return new AddonVerdict(plugin, Status.WRONG_DIRECTORY, declared, plugin
+                    + " must be placed in plugins/Allium/addons/ instead of plugins/. "
+                    + "Move the jar into plugins/Allium/addons/ and restart the server.");
         }
         return new AddonVerdict(plugin, Status.ACCEPTED, declared, plugin + " uses Allium API " + declared + " (provided " + provided + ").");
     }

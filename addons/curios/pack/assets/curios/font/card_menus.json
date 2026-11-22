@@ -1,0 +1,46 @@
+{
+  "providers": [
+    {
+      "type": "space",
+      "advances": {
+        "\ue701": -10
+      }
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:uis/inventory/cards/card_menu.png",
+      "ascent": 19,
+      "height": 256,
+      "chars": [
+        "\ua508"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:uis/inventory/cards/card_merge_menu.png",
+      "ascent": 19,
+      "height": 256,
+      "chars": [
+        "\ua509"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:uis/inventory/cards/card_boost_menu.png",
+      "ascent": 19,
+      "height": 256,
+      "chars": [
+        "\ua50a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:uis/inventory/cards/card_trade_menu.png",
+      "ascent": 19,
+      "height": 256,
+      "chars": [
+        "\ua50b"
+      ]
+    }
+  ]
+}

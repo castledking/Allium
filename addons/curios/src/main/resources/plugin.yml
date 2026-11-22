@@ -1,0 +1,21 @@
+name: Curios
+main: codes.castled.curios.CuriosPlugin
+version: '1.0.0'
+api-version: '1.20'
+depend: [Allium]
+allium-api: '^1.1'
+allium-addon-dir: true
+allium-pack: curios-pack.zip
+commands:
+  curios:
+    aliases: [relics, reliques, tradingcards, cards]
+    description: Equip, level, merge, import and trade curios
+    permission: curios.use
+  frame:
+    description: List and preview Curios frames
+    permission: curios.use
+permissions:
+  curios.use:
+    default: true
+  curios.admin:
+    default: op

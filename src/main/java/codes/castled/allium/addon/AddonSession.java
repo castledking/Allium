@@ -46,11 +46,13 @@ final class AddonSession implements AddonConnection {
     private final List<String> definedItems = new ArrayList<>();
     private final List<PluginCommand> commands = new ArrayList<>();
     private volatile boolean closed;
+    private final codes.castled.allium.api.AddonEconomy economy;
 
     AddonSession(PluginStart allium, Plugin addon) {
         this.allium = allium;
         this.addon = addon;
         this.namespace = addon.getName().toLowerCase(Locale.ROOT);
+        this.economy = codes.castled.allium.economy.AddonMoney.of(allium, addon.getName());
         this.scheduler = new AlliumScheduler(new BukkitServerThread(addon), message -> addon.getLogger().severe(message));
     }
 
@@ -79,10 +81,21 @@ final class AddonSession implements AddonConnection {
         return text;
     }
 
+    @Override
+    public codes.castled.allium.api.AddonEconomy economy() {
+        return economy;
+    }
+
     private void requireOpen() {
         if (closed) {
             throw new IllegalStateException(addon.getName() + "'s Allium connection is closed (the addon was disabled)");
         }
+    }
+
+    @Override
+    public boolean canEditInventory(org.bukkit.entity.Player player) {
+        requireOpen();
+        return !codes.castled.allium.command.essentials.UtilitySupport.isInventoryBusy(allium, player);
     }
 
     private final AddonItems items = new AddonItems() {
@@ -126,6 +139,16 @@ final class AddonSession implements AddonConnection {
         }
 
         @Override
+        public boolean updateState(ItemStack stack, Map<String, String> changes) {
+            requireOpen();
+            ItemService service = allium.getItemService();
+            return service.identifyBehavior(stack)
+                    .filter(id -> id.startsWith(namespace + ":"))
+                    .map(id -> definedItems.contains(id.substring(namespace.length() + 1)))
+                    .orElse(false) && service.updateState(stack, changes);
+        }
+
+        @Override
         public Optional<ItemIdentity> identify(@Nullable ItemStack stack) {
             return allium.getItemService().identify(stack)
                     .map(ref -> new ItemIdentity(ref.appearance().toString(), ref.behaviorId(), Map.copyOf(ref.stateData())));
@@ -135,6 +158,11 @@ final class AddonSession implements AddonConnection {
     private final AddonCommands commandApi = new AddonCommands() {
         @Override
         public void register(CommandSpec spec, Handler handler) {
+            register(spec, handler, null);
+        }
+
+        @Override
+        public void register(CommandSpec spec, Handler handler, @Nullable Completer completer) {
             requireOpen();
             if (!namespace.equals(spec.namespace())) {
                 throw new IllegalArgumentException("command /" + spec.canonicalName() + " must use namespace '" + namespace
@@ -163,7 +191,26 @@ final class AddonSession implements AddonConnection {
                 }
             });
             command.setExecutor(renderer);
-            command.setTabCompleter(renderer);
+            if (completer == null) {
+                command.setTabCompleter(renderer);
+            } else {
+                command.setTabCompleter((sender, cmd, alias, args) -> {
+                    if (closed || commandPolicy.isDisabled(spec.canonicalName()) || commandPolicy.isDisabled(alias)) {
+                        return List.of();
+                    }
+                    String basePerm = spec.basePermission();
+                    if (basePerm != null && !basePerm.isEmpty() && !sender.hasPermission(basePerm)) {
+                        return List.of();
+                    }
+                    List<String> out = completer.complete(new Context() {
+                        @Override public CommandSender sender() { return sender; }
+                        @Override public String label() { return alias; }
+                        @Override public String[] args() { return args; }
+                        @Override public CommandSpec spec() { return spec; }
+                    });
+                    return out == null ? List.of() : out;
+                });
+            }
             commands.add(command);
             allium.logger().info(addon.getName() + " registered /" + spec.canonicalName() + " through Allium's command spec.");
         }

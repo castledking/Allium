@@ -9,3 +9,5 @@ rootProject.name = "Allium"
 
 include("allium-core")
 include("allium-api")
+
+include("addons:curios")

@@ -1,0 +1,6978 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e011.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e012.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e013.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e014.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e015.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e016.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e017.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e018.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e019.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/item/e01a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/hover/e01b.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/hover/e01c.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/hover/e01d.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/hover/e01e.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/hover/e01f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/hover/e020.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/hover/e021.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/anniversary_nxny/hover/e022.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e023.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e024.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e025.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e026.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e027.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e028.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e029.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e02a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e02b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/item/e02c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/hover/e02d.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/hover/e02e.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/hover/e02f.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/hover/e030.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/hover/e031.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/hover/e032.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/hover/e033.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/aqua/hover/e034.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e035.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e036.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e037.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e038.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e039.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e03a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e03b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e03c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e03d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/item/e03e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/hover/e03f.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/hover/e040.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/hover/e041.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/hover/e042.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/hover/e043.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/hover/e044.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/hover/e045.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/artifact/hover/e046.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e047.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e048.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e049.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e04a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e04b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e04c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e04d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e04e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e04f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/item/e050.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/hover/e051.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/hover/e052.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/hover/e053.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/hover/e054.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/hover/e055.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/hover/e056.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/hover/e057.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/black/hover/e058.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e059.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e05a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e05b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e05c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e05d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e05e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e05f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e060.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e061.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/item/e062.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/hover/e063.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/hover/e064.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/hover/e065.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/hover/e066.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/hover/e067.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/hover/e068.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/hover/e069.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/blue/hover/e06a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/chocolate/item/e06b.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/chocolate/item/e06c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/chocolate/item/e06d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/chocolate/hover/e06e.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/chocolate/hover/e06f.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/chocolate/hover/e070.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e071.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e072.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e073.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e074.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e075.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e076.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e077.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e078.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e079.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e07a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e07b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e07c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e07d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e07e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e07f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/item/e080.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e081.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e082.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e083.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e084.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e085.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e086.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e087.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e088.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e089.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e08a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e08b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e08c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e08d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_1/hover/e08e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e08f.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e090.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e091.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e092.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e093.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e094.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e095.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e096.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e097.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e098.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e099.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e09a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e09b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/item/e09c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e09d.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e09e.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e09f.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a0.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_2/hover/e0a8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0a9.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0aa.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0ab.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0ac.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0ad.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0ae.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0af.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0b0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0b1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/item/e0b2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/hover/e0b3.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/hover/e0b4.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/hover/e0b5.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/hover/e0b6.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/hover/e0b7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/hover/e0b8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/christmas_3/hover/e0b9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/coal/item/e0ba.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/coal/item/e0bb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/coal/item/e0bc.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/coal/hover/e0bd.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/coal/hover/e0be.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/coal/hover/e0bf.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c0.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/item/e0c9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/hover/e0ca.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/hover/e0cb.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/hover/e0cc.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/hover/e0cd.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/hover/e0ce.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/hover/e0cf.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/hover/e0d0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/common/hover/e0d1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/copper/item/e0d2.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/copper/item/e0d3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/copper/item/e0d4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/copper/hover/e0d5.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/copper/hover/e0d6.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/copper/hover/e0d7.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0d8.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0d9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0da.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0db.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0dc.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0dd.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0de.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0df.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0e0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/item/e0e1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/hover/e0e2.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/hover/e0e3.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/hover/e0e4.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/hover/e0e5.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/hover/e0e6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/hover/e0e7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/hover/e0e8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_aqua/hover/e0e9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0ea.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0eb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0ec.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0ed.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0ee.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0ef.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0f0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0f1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0f2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/item/e0f3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/hover/e0f4.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/hover/e0f5.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/hover/e0f6.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/hover/e0f7.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/hover/e0f8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/hover/e0f9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/hover/e0fa.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_blue/hover/e0fb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e0fc.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e0fd.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e0fe.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e0ff.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e100.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e101.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e102.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e103.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e104.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/item/e105.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/hover/e106.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/hover/e107.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/hover/e108.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/hover/e109.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/hover/e10a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/hover/e10b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/hover/e10c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_gray/hover/e10d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e10e.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e10f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e110.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e111.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e112.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e113.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e114.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e115.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e116.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/item/e117.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/hover/e118.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/hover/e119.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/hover/e11a.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/hover/e11b.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/hover/e11c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/hover/e11d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/hover/e11e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_green/hover/e11f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e120.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e121.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e122.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e123.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e124.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e125.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e126.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e127.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e128.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/item/e129.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/hover/e12a.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/hover/e12b.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/hover/e12c.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/hover/e12d.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/hover/e12e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/hover/e12f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/hover/e130.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_purple/hover/e131.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e132.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e133.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e134.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e135.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e136.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e137.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e138.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e139.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e13a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/item/e13b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/hover/e13c.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/hover/e13d.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/hover/e13e.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/hover/e13f.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/hover/e140.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/hover/e141.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/hover/e142.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/dark_red/hover/e143.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/diamond/item/e144.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/diamond/item/e145.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/diamond/item/e146.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/diamond/hover/e147.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/diamond/hover/e148.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/diamond/hover/e149.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e14a.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e14b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e14c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e14d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e14e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e14f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e150.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e151.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e152.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/item/e153.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/hover/e154.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/hover/e155.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/hover/e156.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/hover/e157.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/hover/e158.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/hover/e159.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/hover/e15a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/easter/hover/e15b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/emerald/item/e15c.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/emerald/item/e15d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/emerald/item/e15e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/emerald/hover/e15f.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/emerald/hover/e160.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/emerald/hover/e161.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e162.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e163.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e164.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e165.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e166.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e167.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e168.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e169.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e16a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/item/e16b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/hover/e16c.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/hover/e16d.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/hover/e16e.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/hover/e16f.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/hover/e170.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/hover/e171.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/hover/e172.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/epic/hover/e173.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e174.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e175.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e176.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e177.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e178.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e179.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e17a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e17b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e17c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/item/e17d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/hover/e17e.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/hover/e17f.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/hover/e180.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/hover/e181.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/hover/e182.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/hover/e183.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/hover/e184.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gold/hover/e185.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/golden/item/e186.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/golden/item/e187.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/golden/item/e188.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/golden/hover/e189.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/golden/hover/e18a.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/golden/hover/e18b.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e18c.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e18d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e18e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e18f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e190.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e191.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e192.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e193.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e194.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/item/e195.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/hover/e196.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/hover/e197.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/hover/e198.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/hover/e199.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/hover/e19a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/hover/e19b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/hover/e19c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/gray/hover/e19d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e19e.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e19f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e1a0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e1a1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e1a2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e1a3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e1a4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e1a5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e1a6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/item/e1a7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/hover/e1a8.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/hover/e1a9.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/hover/e1aa.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/hover/e1ab.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/hover/e1ac.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/hover/e1ad.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/hover/e1ae.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/green/hover/e1af.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b0.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1b9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1ba.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1bb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1bc.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1bd.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1be.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1bf.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1c0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/item/e1c1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1c2.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1c3.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1c4.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1c5.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1c6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1c7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1c8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1c9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1ca.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1cb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1cc.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1cd.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1ce.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1cf.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1d0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_1/hover/e1d1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1d2.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1d3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1d4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1d5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1d6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1d7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1d8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1d9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1da.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1db.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1dc.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1dd.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1de.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/item/e1df.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/hover/e1e0.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/hover/e1e1.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/hover/e1e2.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/halloween_2/hover/e1e3.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/heart/item/e1e4.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/heart/item/e1e5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/heart/item/e1e6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/heart/hover/e1e7.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/heart/hover/e1e8.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/heart/hover/e1e9.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/iron/item/e1ea.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/iron/item/e1eb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/iron/item/e1ec.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/iron/hover/e1ed.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/iron/hover/e1ee.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/iron/hover/e1ef.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f0.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/item/e1f9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/hover/e1fa.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/hover/e1fb.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/hover/e1fc.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/hover/e1fd.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/hover/e1fe.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/hover/e1ff.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/hover/e200.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/legendary_tooltip/hover/e201.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e202.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e203.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e204.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e205.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e206.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e207.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e208.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e209.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e20a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/item/e20b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/hover/e20c.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/hover/e20d.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/hover/e20e.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/hover/e20f.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/hover/e210.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/hover/e211.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/hover/e212.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/light_purple/hover/e213.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/love/item/e214.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/love/item/e215.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/love/item/e216.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/love/hover/e217.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/love/hover/e218.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/love/hover/e219.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/netherite/item/e21a.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/netherite/item/e21b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/netherite/item/e21c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/netherite/hover/e21d.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/netherite/hover/e21e.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/netherite/hover/e21f.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e220.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e221.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e222.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e223.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e224.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e225.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e226.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e227.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e228.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/item/e229.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/hover/e22a.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/hover/e22b.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/hover/e22c.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/hover/e22d.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/hover/e22e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/hover/e22f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/hover/e230.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/rare/hover/e231.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e232.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e233.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e234.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e235.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e236.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e237.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e238.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e239.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e23a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/item/e23b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/hover/e23c.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/hover/e23d.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/hover/e23e.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/hover/e23f.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/hover/e240.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/hover/e241.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/hover/e242.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/red/hover/e243.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e244.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e245.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e246.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e247.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e248.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e249.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e24a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e24b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e24c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e24d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e24e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e24f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/item/e250.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/hover/e251.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/hover/e252.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/hover/e253.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/spring/hover/e254.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e255.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e256.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e257.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e258.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e259.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e25a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e25b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e25c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e25d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e25e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e25f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e260.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e261.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e262.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e263.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e264.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e265.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/item/e266.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e267.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e268.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e269.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e26a.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e26b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e26c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e26d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e26e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e26f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e270.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e271.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e272.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e273.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e274.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e275.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_n/hover/e276.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e277.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e278.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e279.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e27a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e27b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e27c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e27d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e27e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e27f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e280.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e281.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e282.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e283.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e284.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e285.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e286.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e287.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/item/e288.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e289.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e28a.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e28b.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e28c.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e28d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e28e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e28f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e290.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e291.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e292.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e293.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e294.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e295.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e296.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e297.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/star_wars_red_n/hover/e298.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e299.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e29a.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e29b.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e29c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e29d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e29e.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e29f.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e2a0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e2a1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/item/e2a2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/hover/e2a3.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/hover/e2a4.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/hover/e2a5.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/hover/e2a6.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/hover/e2a7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/hover/e2a8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/hover/e2a9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/uncommon/hover/e2aa.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2ab.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2ac.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2ad.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2ae.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2af.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2b0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2b1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2b2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2b3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/item/e2b4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/hover/e2b5.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/hover/e2b6.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/hover/e2b7.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/hover/e2b8.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/hover/e2b9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/hover/e2ba.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/hover/e2bb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/valentines/hover/e2bc.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2bd.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2be.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2bf.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2c0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2c1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2c2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2c3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2c4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2c5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/item/e2c6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/hover/e2c7.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/hover/e2c8.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/hover/e2c9.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/hover/e2ca.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/hover/e2cb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/hover/e2cc.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/hover/e2cd.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/white/hover/e2ce.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2cf.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d1.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d6.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d7.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/item/e2d8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/hover/e2d9.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/hover/e2da.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/hover/e2db.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/hover/e2dc.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/hover/e2dd.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/hover/e2de.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/hover/e2df.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/yellow/hover/e2e0.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_black/item/e2e1.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_black/item/e2e2.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_black/item/e2e3.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_black/hover/e2e4.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_black/hover/e2e5.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_black/hover/e2e6.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_blue/item/e2e7.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_blue/item/e2e8.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_blue/item/e2e9.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_blue/hover/e2ea.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_blue/hover/e2eb.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_blue/hover/e2ec.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_gray/item/e2ed.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_gray/item/e2ee.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_gray/item/e2ef.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_gray/hover/e2f0.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_gray/hover/e2f1.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_gray/hover/e2f2.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_green/item/e2f3.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_green/item/e2f4.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_green/item/e2f5.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_green/hover/e2f6.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_green/hover/e2f7.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_green/hover/e2f8.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_orange/item/e2f9.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_orange/item/e2fa.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_orange/item/e2fb.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_orange/hover/e2fc.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_orange/hover/e2fd.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_orange/hover/e2fe.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_purple/item/e2ff.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_purple/item/e300.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_purple/item/e301.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_purple/hover/e302.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_purple/hover/e303.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_purple/hover/e304.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_red/item/e305.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_red/item/e306.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_red/item/e307.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_red/hover/e308.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_red/hover/e309.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_red/hover/e30a.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_white/item/e30b.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_white/item/e30c.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_white/item/e30d.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_white/hover/e30e.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_white/hover/e30f.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_white/hover/e310.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_yellow/item/e311.png",
+      "height": 14,
+      "ascent": 9,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_yellow/item/e312.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_yellow/item/e313.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_yellow/hover/e314.png",
+      "height": 32,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_yellow/hover/e315.png",
+      "height": 24,
+      "ascent": 19,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/frames/nm_yellow/hover/e316.png",
+      "height": 20,
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "space",
+      "advances": {
+        "": -3,
+        "": -12,
+        "": -189
+      }
+    }
+  ]
+}

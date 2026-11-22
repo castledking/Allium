@@ -2,11 +2,17 @@ package codes.castled.allium.api;
 
 import codes.castled.allium.scheduler.TaskScheduler;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.entity.Player;
 
 /** One addon's connection to Allium, from {@link AlliumApi#connect} or {@link AlliumAddon#allium()}. */
 public interface AddonConnection {
 
     Plugin plugin();
+
+    /** Whether a synchronous inventory edit may proceed while Allium deliveries are active. */
+    default boolean canEditInventory(Player player) {
+        return false;
+    }
 
     /** Item definitions owned by this addon, and Allium's item create/identify. */
     AddonItems items();
@@ -22,4 +28,9 @@ public interface AddonConnection {
 
     /** Allium's text formatting and delivery. */
     AddonText text();
+
+    /** Allium's economy, for charging and paying players; unavailable when its economy module is off. */
+    default AddonEconomy economy() {
+        return AddonEconomy.UNAVAILABLE;
+    }
 }

@@ -1059,18 +1059,52 @@ public final class ItemService {
         return createInternal(updatedRef, existingInstanceUuid, false, verifiedSignature);
     }
 
-    private static Map<String, String> extractStateMap(PersistentDataContainer pdc) {
+    private Map<String, String> extractStateMap(PersistentDataContainer pdc) {
         Map<String, String> state = new LinkedHashMap<>();
         for (NamespacedKey key : pdc.getKeys()) {
             if (NAMESPACE.equals(key.getNamespace()) && key.getKey().startsWith(STATE_KEY_PREFIX)) {
                 String stateName = key.getKey().substring(STATE_KEY_PREFIX.length());
-                String val = pdc.get(key, PersistentDataType.STRING);
-                if (!stateName.isEmpty() && val != null) {
+                if (stateName.isEmpty()) {
+                    continue;
+                }
+                if (!pdc.has(key, PersistentDataType.STRING)) {
+                    warnDiagnosticOnce("Item state tag " + key + " is not text; something outside Allium rewrote "
+                            + "this item's data. It is read as text and its signature still decides trust.");
+                }
+                String val = stateValue(pdc, key);
+                if (val != null) {
                     state.put(stateName, val);
                 }
             }
         }
         return state;
+    }
+
+    /**
+     * One state value as text. Allium writes state as text, but a client or plugin that round-trips
+     * item data through SNBT turns {@code "true"}/{@code "false"} into byte tags and bare numbers
+     * into numeric ones. Reading those back as the text they were, instead of throwing, keeps one
+     * such item from failing every listener that identifies items; the signature over the state
+     * still decides whether the item is trusted. Other tag types are skipped.
+     */
+    @Nullable
+    static String stateValue(PersistentDataContainer pdc, NamespacedKey key) {
+        if (pdc.has(key, PersistentDataType.STRING)) {
+            return pdc.get(key, PersistentDataType.STRING);
+        }
+        if (pdc.has(key, PersistentDataType.BYTE)) {
+            Byte value = pdc.get(key, PersistentDataType.BYTE);
+            return value == null ? null : value == 0 ? "false" : value == 1 ? "true" : Byte.toString(value);
+        }
+        if (pdc.has(key, PersistentDataType.INTEGER)) {
+            Integer value = pdc.get(key, PersistentDataType.INTEGER);
+            return value == null ? null : Integer.toString(value);
+        }
+        if (pdc.has(key, PersistentDataType.LONG)) {
+            Long value = pdc.get(key, PersistentDataType.LONG);
+            return value == null ? null : Long.toString(value);
+        }
+        return null;
     }
 
     private void stampMetadata(

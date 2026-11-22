@@ -1,0 +1,19 @@
+{
+  "providers": [
+    {
+      "type": "space",
+      "advances": {
+        "\ue701": -8
+      }
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:relique/gui/relic_ui.png",
+      "ascent": 13,
+      "height": 132,
+      "chars": [
+        "\ue702"
+      ]
+    }
+  ]
+}

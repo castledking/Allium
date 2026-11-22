@@ -3,6 +3,7 @@ package codes.castled.allium.api;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
 import java.util.Optional;
 
 /** Item definitions and Allium's item create/identify. */
@@ -22,6 +23,11 @@ public interface AddonItems {
      * {@code nexo:<id>}.
      */
     ItemResult create(String reference, int amount);
+
+    /** Updates an item owned by this addon after identity and signature verification. */
+    default boolean updateState(ItemStack stack, Map<String, String> changes) {
+        return false;
+    }
 
     /** What a stack is; empty for {@code null} or air. */
     Optional<ItemIdentity> identify(@Nullable ItemStack stack);

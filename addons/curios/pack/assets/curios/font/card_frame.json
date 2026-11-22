@@ -1,0 +1,193 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/simple_header.png",
+      "height": 22,
+      "ascent": 17,
+      "chars": [
+        "\ue100"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/simple_body.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        "\ue101"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/simple_bottom.png",
+      "height": 16,
+      "ascent": 7,
+      "chars": [
+        "\ue102"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/elite_header.png",
+      "height": 22,
+      "ascent": 17,
+      "chars": [
+        "\ue110"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/elite_body.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        "\ue111"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/elite_bottom.png",
+      "height": 16,
+      "ascent": 7,
+      "chars": [
+        "\ue112"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/ultimate_header.png",
+      "height": 22,
+      "ascent": 17,
+      "chars": [
+        "\ue120"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/ultimate_body.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        "\ue121"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/ultimate_bottom.png",
+      "height": 16,
+      "ascent": 7,
+      "chars": [
+        "\ue122"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/legendary_header.png",
+      "height": 22,
+      "ascent": 17,
+      "chars": [
+        "\ue130"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/legendary_body.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        "\ue131"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/legendary_bottom.png",
+      "height": 16,
+      "ascent": 7,
+      "chars": [
+        "\ue132"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/fabled_header.png",
+      "height": 22,
+      "ascent": 17,
+      "chars": [
+        "\ue140"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/fabled_body.png",
+      "height": 10,
+      "ascent": 7,
+      "chars": [
+        "\ue141"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:font/card_frame/fabled_bottom.png",
+      "height": 16,
+      "ascent": 7,
+      "chars": [
+        "\ue142"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:labels/simple.png",
+      "height": 8,
+      "ascent": 7,
+      "chars": [
+        "\ue150"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:labels/elite.png",
+      "height": 8,
+      "ascent": 7,
+      "chars": [
+        "\ue151"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:labels/ultimate.png",
+      "height": 8,
+      "ascent": 7,
+      "chars": [
+        "\ue152"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:labels/legendary.png",
+      "height": 8,
+      "ascent": 7,
+      "chars": [
+        "\ue153"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "curios:labels/fabled.png",
+      "height": 8,
+      "ascent": 7,
+      "chars": [
+        "\ue154"
+      ]
+    },
+    {
+      "type": "space",
+      "advances": {
+        "\ue000": -3,
+        "\ue001": -189,
+        "\ue002": -4,
+        "\ue003": -5
+      }
+    }
+  ]
+}

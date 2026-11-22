@@ -48,6 +48,14 @@ class AddonVerdictTest {
     }
 
     @Test
+    void wrongDirectoryIsRefusedWithActionableGuidance() {
+        AddonVerdict verdict = AddonVerdict.evaluate("Curios", "^1.0", PROVIDED, List.of(), true);
+        assertEquals(AddonVerdict.Status.WRONG_DIRECTORY, verdict.status());
+        assertTrue(verdict.refused());
+        assertTrue(verdict.message().contains("plugins/Allium/addons/"), verdict.message());
+    }
+
+    @Test
     void theProvidedApiVersionMatchesTheBuildsApiVersion() throws Exception {
         Properties gradle = new Properties();
         try (var in = Files.newInputStream(Path.of("gradle.properties"))) {

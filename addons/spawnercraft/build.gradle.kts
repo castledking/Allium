@@ -48,10 +48,16 @@ val resourcePack = tasks.register<Exec>("resourcePack") {
     sfPlugins.orNull?.let { args("--sf", file(it).absolutePath) }
 }
 
-val collectJar = tasks.register<Copy>("collectJar") {
-    from(tasks.jar)
-    into(rootProject.layout.buildDirectory.dir("libs/addons/spawnercraft"))
-    rename { "SpawnerCraft.jar" }
+// A copy beside Allium.jar, in the root build/libs/addons/, so every jar transfers from one place.
+// Only this jar is the task's output, so the addons can share that folder.
+val collectJar = tasks.register("collectJar") {
+    group = "build"
+    description = "Copies the addon jar to the root build/libs/addons/SpawnerCraft.jar"
+    val built = tasks.jar.flatMap { it.archiveFile }
+    val collected = rootProject.layout.buildDirectory.file("libs/addons/SpawnerCraft.jar")
+    inputs.file(built)
+    outputs.file(collected)
+    doLast { built.get().asFile.copyTo(collected.get().asFile, overwrite = true) }
 }
 
 tasks.jar {

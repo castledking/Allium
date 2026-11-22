@@ -10,7 +10,7 @@ and interaction entities above the soil. Jade clients read the display item meta
 ./gradlew :addons:crops:build shadowJar
 ```
 
-The jar is collected at `build/libs/addons/crops/Crops.jar`. The pack is bundled in the jar and
+The jar is collected at `build/libs/addons/Crops.jar`. The pack is bundled in the jar and
 also built at `addons/crops/build/Crops-resource-pack.zip`. In `plugins/Crops/config.yml`, set
 `resource-pack.delivery` to `allium` to merge into Allium's pack, or `rspm` to export
 `Crops_resource_pack.zip` to ResourcePackManager's mixer. `crop-model-in-jade` defaults to `false`

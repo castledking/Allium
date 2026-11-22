@@ -38,6 +38,8 @@ def make(output):
         "pack.mcmeta": {"pack": {"description": "§aCrops Resources §7v1.0", "pack_format": 15,
                                  "supported_formats": [15, 97], "min_format": 15, "max_format": [97, 1]}},
         "assets/crops/models/item/plain_paper.json": PAPER,
+        # The pack's icon: the Crops addon art from CASTLEDCODEX (castled.codes/assets/allium-crops-addon.png).
+        "pack.png": (ROOT / "pack.png").read_bytes(),
     })
     seed_models = stage_seed_models()
     routes = []

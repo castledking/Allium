@@ -36,16 +36,23 @@ val resourcePack = tasks.register<Exec>("resourcePack") {
     group = "build"
     inputs.file("pack/build.py")
     inputs.dir("pack/assets")
+    inputs.file("pack/pack.png")
     inputs.file("src/main/resources/items.yml")
     inputs.file("src/main/resources/crops.yml")
     outputs.file(packOutput)
     commandLine("python3", "pack/build.py", packOutput.get().asFile)
 }
 
-val collectJar = tasks.register<Copy>("collectJar") {
-    from(tasks.jar)
-    into(rootProject.layout.buildDirectory.dir("libs/addons/crops"))
-    rename { "Crops.jar" }
+// A copy beside Allium.jar, in the root build/libs/addons/, so every jar transfers from one place.
+// Only this jar is the task's output, so the addons can share that folder.
+val collectJar = tasks.register("collectJar") {
+    group = "build"
+    description = "Copies the addon jar to the root build/libs/addons/Crops.jar"
+    val built = tasks.jar.flatMap { it.archiveFile }
+    val collected = rootProject.layout.buildDirectory.file("libs/addons/Crops.jar")
+    inputs.file(built)
+    outputs.file(collected)
+    doLast { built.get().asFile.copyTo(collected.get().asFile, overwrite = true) }
 }
 
 tasks.jar {

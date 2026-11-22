@@ -23,7 +23,7 @@ Curios uses Allium for signed items, inventory admission and scheduling.
 
 The pack task requires Python and PyYAML. Outputs are under `addons/curios/build/`, and
 `Addon-Curios-*.jar` bundles `curios-pack.zip` automatically. Every build of the jar also copies it
-to `build/libs/addons/curios/Curios.jar` in the root project, beside `build/libs/Allium.jar`.
+to `build/libs/addons/Curios.jar` in the root project, beside `build/libs/Allium.jar`.
 
 ## Resource pack
 

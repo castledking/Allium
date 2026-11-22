@@ -2,7 +2,7 @@
 
 Build with `./gradlew shadowJar :addons:spawnercraft:build :addons:curios:build`.
 Install `build/libs/Allium.jar` in `plugins/` and
-`build/libs/addons/spawnercraft/SpawnerCraft.jar` in
+`build/libs/addons/SpawnerCraft.jar` in
 `plugins/Allium/addons/`. The bundled trading-card recipe uses the card crafting service
 in the Curios build from the same checkout. Curios is optional for every other recipe.
 

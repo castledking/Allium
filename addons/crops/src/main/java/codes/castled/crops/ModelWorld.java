@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.event.world.EntitiesUnloadEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Transformation;
 import org.joml.Quaternionf;
@@ -21,6 +22,12 @@ final class ModelWorld implements Listener {
         static Cell of(Location loc) { return new Cell(loc.getWorld().getUID(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()); }
     }
 
+    /** One look of a hologram: text lines above and below an item icon (null: no icon). */
+    record Frame(List<String> above, String icon, List<String> below) {}
+
+    /** Text display line height at scale 1, and the size the hologram icon is drawn at. */
+    private static final double LINE = .25, ICON = .5;
+
     static final class Placed {
         final Interaction hitbox;
         final String kind;
@@ -31,6 +38,10 @@ final class ModelWorld implements Listener {
         long lastAttack;
         ItemDisplay display;
         Catalog.Visual visual;
+        List<Frame> frames = List.of();
+        int frame = -1;
+        TextDisplay above, below;
+        ItemDisplay icon;
 
         Placed(Interaction hitbox, String kind, String type, String path, int stage, long due) {
             this.hitbox = hitbox;
@@ -115,6 +126,81 @@ final class ModelWorld implements Listener {
         return true;
     }
 
+    /**
+     * Shows {@code frames} as a hologram whose top is {@code height} above the cell's floor, one
+     * frame at a time, each for {@code cycle} milliseconds. No frames removes it.
+     */
+    void label(Placed placed, List<Frame> frames, double height, long cycle) {
+        if (frames.isEmpty()) {
+            clearLabel(placed);
+            return;
+        }
+        if (!frames.equals(placed.frames)) {
+            placed.frames = List.copyOf(frames);
+            placed.frame = -1;
+        }
+        int index = frames.size() == 1 ? 0 : (int) (System.currentTimeMillis() / Math.max(50, cycle) % frames.size());
+        if (index == placed.frame && labelShown(placed)) return;
+        Frame frame = frames.get(index);
+        var at = placed.cell().getLocation().add(.5, height, .5);
+        at.subtract(0, frame.above().size() * LINE, 0);
+        placed.above = text(placed.above, at, frame.above());
+        ItemStack item = frame.icon() == null ? null : plugin.item(frame.icon(), 1);
+        if (item != null) at.subtract(0, ICON, 0);
+        placed.icon = icon(placed.icon, at.clone().add(0, ICON / 2, 0), item);
+        at.subtract(0, frame.below().size() * LINE, 0);
+        placed.below = text(placed.below, at, frame.below());
+        placed.frame = index;
+    }
+
+    private static boolean labelShown(Placed placed) {
+        for (Display part : new Display[]{placed.above, placed.icon, placed.below}) {
+            if (part != null && !part.isValid()) return false;
+        }
+        return true;
+    }
+
+    private static TextDisplay text(TextDisplay shown, Location at, List<String> lines) {
+        if (lines.isEmpty()) {
+            if (shown != null) shown.remove();
+            return null;
+        }
+        TextDisplay display = shown != null && shown.isValid() ? shown : at.getWorld().spawn(at, TextDisplay.class, spawned -> {
+            spawned.setPersistent(false);
+            spawned.setBillboard(Display.Billboard.CENTER);
+            spawned.setAlignment(TextDisplay.TextAlignment.CENTER);
+        });
+        display.teleport(at);
+        display.setText(String.join("\n", lines));
+        return display;
+    }
+
+    private static ItemDisplay icon(ItemDisplay shown, Location at, ItemStack item) {
+        if (item == null) {
+            if (shown != null) shown.remove();
+            return null;
+        }
+        ItemDisplay display = shown != null && shown.isValid() ? shown : at.getWorld().spawn(at, ItemDisplay.class, spawned -> {
+            spawned.setPersistent(false);
+            spawned.setBillboard(Display.Billboard.CENTER);
+            // GUI: the item as it looks in an inventory, which is the icon the pack gives Kitchen models.
+            spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GUI);
+            spawned.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
+                    new Vector3f((float) ICON), new Quaternionf()));
+        });
+        display.teleport(at);
+        display.setItemStack(item);
+        return display;
+    }
+
+    private static void clearLabel(Placed placed) {
+        for (Display part : new Display[]{placed.above, placed.icon, placed.below}) if (part != null) part.remove();
+        placed.above = placed.below = null;
+        placed.icon = null;
+        placed.frames = List.of();
+        placed.frame = -1;
+    }
+
     void remove(Placed placed) {
         forget(placed);
         placed.hitbox.remove();
@@ -129,6 +215,7 @@ final class ModelWorld implements Listener {
         cells.remove(Cell.of(placed.hitbox.getLocation()), placed);
         hitboxes.remove(placed.hitbox.getUniqueId());
         if (placed.display != null) placed.display.remove();
+        clearLabel(placed);
     }
 
     private void attach(Interaction entity) {

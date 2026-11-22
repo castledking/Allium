@@ -69,7 +69,7 @@ public final class VoucherCommand implements SpecCommandHandler {
             send(sender, Messages.MODULE_DISABLED);
             return;
         }
-        String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+        String sub = listAlias(context.label()) ? "list" : args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
             case "give" -> give(context, behavior, args);
             case "list" -> list(sender, behavior);
@@ -168,8 +168,14 @@ public final class VoucherCommand implements SpecCommandHandler {
                 .orElse(tool);
     }
 
-    public List<String> complete(CommandSender sender, String[] args) {
-        if (args.length == 0) return List.of();
+    /** {@code /vouchers} (or {@code /allium:vouchers}) is {@code /voucher list}. */
+    static boolean listAlias(String label) {
+        if (label == null) return false;
+        return label.substring(label.indexOf(':') + 1).equalsIgnoreCase("vouchers");
+    }
+
+    public List<String> complete(CommandSender sender, String alias, String[] args) {
+        if (args.length == 0 || listAlias(alias)) return List.of();
         String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
         List<String> values = new ArrayList<>();
         if (args.length == 1) {

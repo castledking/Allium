@@ -49,7 +49,7 @@ public final class CropsPlugin extends AlliumAddon {
                 itemIds.add(id);
                 var row = items.getConfigurationSection(id);
                 boolean cropStage = cropStageIds.contains(id);
-                String displayName = normalizeDisplayName(row.getString("name"), cropStage);
+                String displayName = normalizeDisplayName(placedName(id, row.getString("name")), cropStage);
                 int cmd = resolveCustomModelData(row.getInt("cmd"), cropStage, cropModelInJade);
                 core.items().defineStackableSigned(new ItemDefinition(id, Material.PAPER, displayName,
                         cmd, Map.of(), true));
@@ -132,6 +132,15 @@ public final class CropsPlugin extends AlliumAddon {
             return rawName;
         }
         return "&f" + rawName;
+    }
+
+    /**
+     * A placed model's name without the " Placed" earlier catalogues gave it: Jade shows this name,
+     * and the item it stands for has none. Catalogues saved by those versions keep working.
+     */
+    static String placedName(String id, String name) {
+        if (name == null || !id.matches(".*_placed(_slice\\d+)?")) return name;
+        return name.replaceFirst("(?i)\\s+placed\\s*$", "");
     }
 
     static int resolveCustomModelData(int baseCmd, boolean cropStage, boolean cropModelInJade) {

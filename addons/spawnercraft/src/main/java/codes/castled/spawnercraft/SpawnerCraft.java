@@ -72,6 +72,13 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
         }
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new MobHeadDrops(heads, this::getConfig), this);
+        if (getServer().getPluginManager().isPluginEnabled("Curios")) {
+            try {
+                CuriosTradeHeads.register(this, heads);
+            } catch (LinkageError ignored) {
+                // Older versions of Curios do not take trade-in heads; they pay the card's trade-item.
+            }
+        }
         getLogger().info("Loaded " + heads.ids().size() + " signed head definitions across " + heads.mobs().size() + " mob families.");
     }
 

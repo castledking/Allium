@@ -635,7 +635,7 @@ commands:
     permission: allium.escalate
   voucher:
     aliases: [vouchers]
-    description: Give and list vouchers (powertools named voucher_<name>)
+    description: Give and list vouchers (powertools named voucher_<name>); /vouchers lists them
     usage: /<command> <give|list|reload> [player] [voucher] [amount]
     permission: allium.voucher.give
   unrestrain:

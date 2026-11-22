@@ -32,6 +32,35 @@ def stage_seed_models():
     return mapping
 
 
+def kitchen_icons():
+    """Kitchen's placed models -> the item each one stands for, so GUIs (Jade) show that item's icon."""
+    kitchen = yaml.safe_load((ROOT.parent / "src/main/resources/kitchen.yml").read_text())
+    pies = kitchen.get("pies") or {}
+    models = pies.get("models") or {}
+    bare = lambda ref: ref.split(":", 1)[-1]
+    slices = ("", "_slice1", "_slice2", "_slice3")
+    icons = {}
+    crust = pies.get("crust") or {}
+    if crust.get("model") and crust.get("item"):
+        icons[bare(crust["model"])] = bare(crust["item"])
+    for type_id, row in (pies.get("types") or {}).items():
+        row = row or {}
+        named = lambda key, state: row.get(key) or models.get("item", "").replace("{state}", state).replace("{type}", type_id)
+        cold, baked = bare(named("cold-item", "cold")), bare(named("baked-item", "baked"))
+        if row.get("crust-model") and row.get("crust-item"):
+            icons[bare(row["crust-model"])] = bare(row["crust-item"])
+        filled = row.get("filled-model") or models.get("filled", "").replace("{type}", type_id)
+        for ref in [filled, *(row.get("progress-models") or [])]:
+            icons[bare(ref)] = cold
+        for state, item in (("cold", cold), ("baked", baked)):
+            placed = row.get(state + "-models") or [
+                models.get("placed", "").replace("{state}", state).replace("{type}", type_id).replace("{slice}", s)
+                for s in slices]
+            for ref in placed:
+                icons[bare(ref)] = item
+    return {model: item for model, item in icons.items() if model in ITEMS and item in ITEMS}
+
+
 def make(output):
     files = {str(p.relative_to(ROOT)): p.read_bytes() for p in (ROOT / "assets").rglob("*") if p.is_file()}
     files.update({
@@ -42,10 +71,12 @@ def make(output):
         "pack.png": (ROOT / "pack.png").read_bytes(),
     })
     seed_models = stage_seed_models()
+    icons = kitchen_icons()
     routes = []
     for item_id, item in ITEMS.items():
         cmd, ref = item["cmd"], item["model"]
-        routes.append((cmd, ref, item.get("gui")))
+        gui = item.get("gui") or (ITEMS[icons[item_id]]["model"] if item_id in icons else None)
+        routes.append((cmd, ref, gui))
         if item_id in seed_models:
             # Used by default when crop-model-in-jade is false: renders the crop's 3D stage model in-world
             # and its seed item in Jade's GUI overlay (matching vanilla crops in Jade).

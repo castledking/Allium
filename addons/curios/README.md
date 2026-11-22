@@ -83,7 +83,11 @@ item name in the creative inventory, and at the end of the tooltip elsewhere.
 - `/curios merge` combines separate copies of one definition. The main-hand curio keeps its
   identity, the offhand donor contributes progress, and the level cap applies.
 - `/curios trade` exchanges the held curio for that definition's configured reward. Crafted
-  curios are bound, and merging a bound donor binds the result.
+  curios are bound, and merging a bound donor binds the result. A card pays its mob's heads, as
+  many as its quality band's `heads`, as legacy did: SpawnerCraft's head when SpawnerCraft is
+  installed (through the `CardTradeHeads` Bukkit service), else the vanilla head (zombie,
+  skeleton, piglin, ...). A mob with neither pays the card's `trade-item`. Set
+  `card-menu.trade-in-pays: item` to always pay the `trade-item`.
 - `/frame list` lists styles the player can use. `/frame apply <style>` changes the held
   curio's signed frame. `/cards frame [style]` does the same, as legacy's command did. Imported
   decorative styles retain their legacy permissions.

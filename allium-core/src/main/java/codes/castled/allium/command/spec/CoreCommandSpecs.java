@@ -1572,7 +1572,7 @@ public final class CoreCommandSpecs {
 
     public static final CommandSpec VOUCHER = new CommandSpec(
             "voucher", CommandSpec.DEFAULT_NAMESPACE, "tools", List.of("vouchers"),
-            "Give and list vouchers: powertools named voucher_<name>",
+            "Give and list vouchers: powertools named voucher_<name>. /vouchers is /voucher list",
             "/voucher <give|list|reload> [player] [voucher] [amount]",
             "/voucher <give|list|reload> [player] [voucher] [amount]",
             "allium.voucher.give", null,

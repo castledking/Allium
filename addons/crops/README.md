@@ -46,7 +46,12 @@ Kitchen's crop ingredient conversions and baking recipes work at vanilla station
 in a water cauldron, place a pie crust on a solid support, and add ingredients in order. Use
 sneak-right-click or punch to collect a finished cold pie, then bake it in a furnace. Place a
 hot pie and right-click to eat a slice. The pizza base accepts spinach, cheese and tomato
-sauce. A placed kitchen stove uses a native furnace with a Crops display. The flour bag stores
+sauce. While a pie is being made, a hologram above it shows the next ingredient and its icon,
+cycling through the accepted items (through one filling per pie before the pie has one) every
+`pies.hologram.icon-cycle`; a finished pie shows the `done` lines until it is picked up. The
+hologram is drawn with text and item displays, so it needs no hologram plugin; turn it off with
+`pies.hologram.enabled: false`. Jade shows a placed pie or crust under its item's name and icon.
+A placed kitchen stove uses a native furnace with a Crops display. The flour bag stores
 flour when clicked with a flour stack on the cursor. Right-click the held bag to withdraw one,
 or sneak-right-click to withdraw a stack.
 

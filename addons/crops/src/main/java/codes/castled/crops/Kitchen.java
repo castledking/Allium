@@ -22,8 +22,8 @@ import org.bukkit.inventory.*;
 import java.util.*;
 
 final class Kitchen implements Listener {
-    private record Step(Set<String> items, int amount, boolean filling) {}
-    private record Pie(String id, Set<String> fillings, String crust, String crustModel, String coldItem,
+    private record Step(Set<String> items, int amount, boolean filling, String name) {}
+    private record Pie(String id, Set<String> fillings, String fillingName, String crust, String crustModel, String coldItem,
                        String bakedItem, String filled, List<String> progress, List<String> cold, List<String> baked,
                        List<Step> steps, Set<Integer> skipped, boolean standard) {}
 
@@ -41,6 +41,12 @@ final class Kitchen implements Listener {
     private final String bag;
     private final String flour;
     private final int capacity;
+    private final boolean hologram;
+    private final double hologramHeight;
+    private final long hologramCycle;
+    private final List<String> stepLines;
+    private final List<String> doneLines;
+    private final Map<String, String> names = new HashMap<>();
 
     Kitchen(CropsPlugin plugin, ModelWorld world, ConfigurationSection config) {
         this.plugin = plugin;
@@ -53,6 +59,11 @@ final class Kitchen implements Listener {
         bag = config.getString("bags.flour_bag.item", "");
         flour = config.getString("bags.flour_bag.stores", "");
         capacity = config.getInt("bags.flour_bag.capacity", 256);
+        hologram = config.getBoolean("pies.hologram.enabled", true);
+        hologramHeight = config.getDouble("pies.hologram.height", 1.35);
+        hologramCycle = Math.max(50, Catalog.duration(config.getString("pies.hologram.icon-cycle", "2s")));
+        stepLines = lines("pies.hologram.step", List.of("#ICON: <required-item>", "&aAdd &7<amount>x &6<item>"));
+        doneLines = lines("pies.hologram.done", List.of("&6Done!", "&7Pick up the pie and bake it!"));
         var stations = config.getConfigurationSection("furnaces.stations");
         if (stations != null && config.getBoolean("enabled", true) && config.getBoolean("furnaces.enabled", true)) {
             for (String id : stations.getKeys(false)) {
@@ -69,7 +80,7 @@ final class Kitchen implements Listener {
                 String cold = config.getString("pies.models.item").replace("{state}", "cold").replace("{type}", id);
                 String baked = config.getString("pies.models.item").replace("{state}", "baked").replace("{type}", id);
                 String filled = config.getString("pies.models.filled").replace("{type}", id);
-                pies.put(id, new Pie(id, refs(row.get("filling")), row.getString("crust-item", standardCrust),
+                pies.put(id, new Pie(id, refs(row.get("filling")), row.getString("filling-name"), row.getString("crust-item", standardCrust),
                         row.getString("crust-model", standardModel), row.getString("cold-item", cold), row.getString("baked-item", baked),
                         row.getString("filled-model", filled), row.getStringList("progress-models"),
                         models(row, id, "cold"), models(row, id, "baked"), readSteps(row.getMapList("steps")),
@@ -99,7 +110,12 @@ final class Kitchen implements Listener {
 
     private static List<Step> readSteps(List<Map<?, ?>> rows) {
         return rows.stream().map(row -> new Step(refs(row.get("item")), Integer.parseInt(Catalog.string(row, "amount", "1")),
-                Boolean.parseBoolean(Catalog.string(row, "filling", "false")))).toList();
+                Boolean.parseBoolean(Catalog.string(row, "filling", "false")), Catalog.string(row, "name", null))).toList();
+    }
+
+    private List<String> lines(String path, List<String> fallback) {
+        if (config.isString(path)) return List.of(config.getString(path));
+        return config.isList(path) ? config.getStringList(path) : fallback;
     }
 
     void registerRecipes(ConfigurationSection external) {
@@ -241,7 +257,80 @@ final class Kitchen implements Listener {
         }
         if (placed.type.equals("plain") || pies.containsKey(placed.type)) {
             world.show(placed, visual(placed.type, placed.path, placed.stage));
+            world.label(placed, frames(placed), hologramHeight, hologramCycle);
         }
+    }
+
+    /**
+     * The step hologram, as legacy drew it: while a pie is assembled, what to add next, cycling
+     * through every item the step takes (every filling, before the pie has one); once it is
+     * finished, the done lines until it is picked up.
+     */
+    private List<ModelWorld.Frame> frames(ModelWorld.Placed placed) {
+        if (!hologram) return List.of();
+        Pie pie = pies.get(placed.type);
+        if (placed.path.equals("ready")) {
+            return List.of(frame(doneLines, pie == null ? null : pie.coldItem(), null, 1));
+        }
+        if (!placed.path.equals("assembly")) return List.of();
+        List<Step> sequence = pie != null && !pie.steps().isEmpty() ? pie.steps() : steps;
+        if (placed.stage >= sequence.size()) return List.of();
+        Step step = sequence.get(placed.stage);
+        List<ModelWorld.Frame> frames = new ArrayList<>();
+        if (step.filling()) {
+            // As assemble(): any pie made with the shared steps takes its filling here. One frame per
+            // pie, showing its first filling, as legacy cycled through the flavours.
+            for (Pie option : pies.values()) {
+                if (!option.steps().isEmpty() || option.fillings().isEmpty()) continue;
+                String filling = option.fillings().iterator().next();
+                frames.add(frame(stepLines, filling, step.name() != null ? step.name() : option.fillingName(), step.amount()));
+            }
+        } else {
+            for (String item : step.items()) frames.add(frame(stepLines, item, step.name(), step.amount()));
+        }
+        if (pie == null && placed.stage == 0) {
+            // A plain crust can also open a pie with its own steps (deep-dish pizza).
+            for (Pie option : pies.values()) {
+                if (!option.standard() || option.steps().isEmpty()) continue;
+                Step first = option.steps().get(0);
+                for (String item : first.items()) frames.add(frame(stepLines, item, first.name(), first.amount()));
+            }
+        }
+        return frames;
+    }
+
+    private ModelWorld.Frame frame(List<String> template, String item, String name, int amount) {
+        List<String> above = new ArrayList<>(), below = new ArrayList<>();
+        String icon = null;
+        String label = name != null ? name : item == null ? "" : name(item);
+        for (String line : template) {
+            String text = line.replace("<required-item>", item == null ? "" : item)
+                    .replace("<item>", label).replace("<amount>", Integer.toString(amount));
+            if (text.regionMatches(true, 0, "#ICON:", 0, 6)) {
+                if (icon == null) icon = text.substring(6).trim();
+                continue;
+            }
+            (icon == null ? above : below).add(plugin.connection().text().legacy(text));
+        }
+        return new ModelWorld.Frame(List.copyOf(above), icon == null || icon.isEmpty() ? null : icon, List.copyOf(below));
+    }
+
+    /** An item's plain name for the hologram: its display name, or the vanilla item's name. */
+    private String name(String reference) {
+        return names.computeIfAbsent(reference, ref -> {
+            ItemStack stack = plugin.item(ref, 1);
+            if (stack != null && stack.getItemMeta() != null && stack.getItemMeta().hasDisplayName()) {
+                return ChatColor.stripColor(stack.getItemMeta().getDisplayName());
+            }
+            String id = CropsPlugin.stripNamespace(ref).replace('_', ' ');
+            StringBuilder out = new StringBuilder();
+            for (String word : id.split(" ")) {
+                if (word.isEmpty()) continue;
+                if (!out.isEmpty()) out.append(' ');
+                out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+            }
+            return out.toString();
+        });
     }
 
     private Catalog.Visual visual(String type, String state, int stage) {
@@ -255,7 +344,10 @@ final class Kitchen implements Listener {
                 item = (state.equals("baked") ? pie.baked() : pie.cold()).get(Math.max(0, Math.min(3, stage)));
             }
         }
-        return new Catalog.Visual(item, ItemDisplayTransform.GROUND, 1, .001, true);
+        // Pie models carry no display transform, so they are drawn centred on the display, as in
+        // legacy (NONE at the cell centre): the model's floor sits half a block below the centre,
+        // which the .5 offset puts on the soil. GROUND with a .001 offset sank it into the soil.
+        return new Catalog.Visual(item, ItemDisplayTransform.NONE, 1, .501, true);
     }
 
     void tick(ModelWorld.Placed placed) {
@@ -357,7 +449,8 @@ final class Kitchen implements Listener {
         while (pie != null && pie.skipped().contains(next + 1)) next++;
         boolean finished = next >= sequence.size() && pie != null;
         String type = pie == null ? placed.type : pie.id();
-        if (!change(placed, type, finished ? "cold" : "assembly", finished ? 0 : next, 0)) return;
+        // "ready": finished here, shown as the cold pie with the done hologram until it is picked up.
+        if (!change(placed, type, finished ? "ready" : "assembly", finished ? 0 : next, 0)) return;
         CropsPlugin.spend(player, held, step.amount());
         if (finished) player.sendMessage("§aThe pie is ready. Sneak-right-click to pick it up and bake it.");
     }
@@ -369,6 +462,7 @@ final class Kitchen implements Listener {
         placed.stage = stage;
         placed.due = due;
         world.store(placed);
+        world.label(placed, frames(placed), hologramHeight, hologramCycle);
         return true;
     }
 
@@ -376,7 +470,7 @@ final class Kitchen implements Listener {
         Pie pie = pies.get(placed.type);
         String item = pie == null ? standardCrust : switch (placed.path) {
             case "baked" -> pie.bakedItem();
-            case "cold" -> pie.coldItem();
+            case "cold", "ready" -> pie.coldItem();
             default -> pie.crust();
         };
         // A part-eaten pie cannot turn back into a whole item.

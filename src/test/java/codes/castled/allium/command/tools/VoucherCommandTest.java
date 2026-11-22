@@ -6,6 +6,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class VoucherCommandTest {
 
@@ -17,5 +19,13 @@ class VoucherCommandTest {
         assertEquals("voucher_randomglow", VoucherCommand.resolve("RandomGlow", tools::contains));
         assertNull(VoucherCommand.resolve("lazy_axe", tools::contains), "only voucher_ tools are vouchers");
         assertNull(VoucherCommand.resolve("missing", tools::contains));
+    }
+
+    @org.junit.jupiter.api.Test
+    void vouchersIsTheListAlias() {
+        assertTrue(VoucherCommand.listAlias("vouchers"));
+        assertTrue(VoucherCommand.listAlias("allium:Vouchers"));
+        assertFalse(VoucherCommand.listAlias("voucher"));
+        assertFalse(VoucherCommand.listAlias(null));
     }
 }

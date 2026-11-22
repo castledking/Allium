@@ -678,14 +678,15 @@ final class CardGuiManager implements Listener {
             if (source.equipped()) {
                 set(22, icon(Material.BARRIER, "<red>This card is equipped",
                         "<gray>Take it out of /relics to trade it in"), null);
-            } else if (bound || entry.trade() == null) {
+            } else if (bound || plugin.tradePayout(entry, identity).isEmpty()) {
                 set(22, icon(Material.BARRIER, "<red>Cannot Trade In",
                         "<gray>" + (bound ? "Bound cards cannot be traded in." : "This card has no configured payout.")), null);
             } else {
                 int quality = CardRules.parseIntSafe(identity.state().get("quality"), 100);
                 CardRules.QualityBand band = plugin.cardRules().bandFor(quality);
-                int amount = plugin.tradePayoutAmount(entry, identity);
-                String rewardLabel = CardRules.titleCase(entry.trade().name());
+                ItemStack reward = plugin.tradePayout(entry, identity).orElseThrow();
+                int amount = reward.getAmount();
+                String rewardLabel = CuriosPlugin.payoutName(reward);
                 set(22, PackPresentation.decorateButton(new ItemStack(Material.NETHERITE_AXE), "<gold>Trade In", List.of(
                         "<gray>Quality Band: <" + band.colour() + ">" + band.label() + "</" + band.colour() + "> <dark_gray>[" + quality + "%]</dark_gray>",
                         "",
@@ -699,13 +700,13 @@ final class CardGuiManager implements Listener {
 
         private void confirmTrade() {
             if (exchanged || source.equipped() || !refresh()) return;
-            if (Boolean.parseBoolean(identity.state().get("bound")) || entry.trade() == null) {
+            ItemStack payout = Boolean.parseBoolean(identity.state().get("bound")) ? null
+                    : plugin.tradePayout(entry, identity).orElse(null);
+            if (payout == null) {
                 feedback(false, "This card cannot be traded in.");
                 render();
                 return;
             }
-            int amount = plugin.tradePayoutAmount(entry, identity);
-            ItemStack payout = new ItemStack(entry.trade(), Math.max(1, Math.min(entry.trade().getMaxStackSize(), amount)));
             source.write(plugin, player, null);
             unclaimed = payout;
             exchanged = true;

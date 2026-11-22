@@ -1213,7 +1213,7 @@ items:
     cmd: 3807594
   pie_crust_placed:
     model: crops:sf/sf/block/pie_crust_placed
-    name: '&fPie Crust Placed'
+    name: '&fPie Crust'
     cmd: 3987395
   pineapple:
     model: crops:sf/sf/crops/pineapple/pineapple
@@ -1303,7 +1303,7 @@ items:
     cmd: 3687092
   pizza_base_placed:
     model: crops:sf/sf/block/pie_crust_placed
-    name: '&fDeep-Dish Pizza Base Placed'
+    name: '&fDeep-Dish Pizza Base'
     cmd: 3954178
   pomegranate:
     model: crops:sf/sf/crops/pomegranate/pomegranate

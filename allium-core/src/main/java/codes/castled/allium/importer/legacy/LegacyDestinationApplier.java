@@ -37,7 +37,10 @@ public final class LegacyDestinationApplier {
     public static List<Outcome> apply(LegacyDestinationPlan plan, String runId, ImportLedger ledger, TravelRepository travel,
                                       TeleportRepository teleports) throws SQLException {
         Objects.requireNonNull(runId, "runId");
-        List<Record> work = plan.records().stream().filter(r -> r.status() == Status.IMPORT || r.status() == Status.PRESENT).toList();
+        List<Record> work = plan.records().stream().filter(r -> switch (r.status()) {
+            case IMPORT, PRESENT, REPLAYED -> true;
+            default -> false;
+        }).toList();
         List<Outcome> out = new ArrayList<>();
         for (int start = 0; start < work.size(); start += CHUNK) {
             List<Record> chunk = work.subList(start, Math.min(work.size(), start + CHUNK));
@@ -62,6 +65,7 @@ public final class LegacyDestinationApplier {
         String source = LegacyDestinationPlan.SOURCE;
         var ledgered = ledger.hash(c, source, r.domain().id(), r.key());
         if (ledgered.isPresent()) return ledgered.get().equals(r.payloadHash()) ? Result.REPLAYED : Result.CONFLICT;
+        if (r.status() == Status.REPLAYED) return Result.CONFLICT;
         Result result = switch (r.domain()) {
             case HOME -> switch (travel.importHome(c, r.owner(), r.name(), r.location())) {
                 case CREATED -> Result.APPLIED;

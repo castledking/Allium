@@ -18,6 +18,12 @@ migration-directory: config/relique/entities
 card-menu:
   # Legacy's action bar: the held card's title above the hotbar while a card is in the main hand.
   held-card-action-bar: true
+  # What trading in a card pays, as many as its quality band's heads:
+  # heads: the card's mob head, as legacy did. SpawnerCraft's head when SpawnerCraft is installed,
+  #        else the vanilla head (zombie, skeleton, piglin, ...); the card's trade-item for a mob
+  #        with neither.
+  # item:  always the card's trade-item.
+  trade-in-pays: heads
   allow-drop: true
   drop-delivery: inventory
   lore-separator: "───────────────"

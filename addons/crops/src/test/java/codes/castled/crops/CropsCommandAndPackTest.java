@@ -126,6 +126,13 @@ class CropsCommandAndPackTest {
         assertEquals("<#f0a040>Apple Pie <gray>(Baked)",
                 CropsPlugin.normalizeDisplayName("<#f0a040>Apple Pie <gray>(Baked)", false));
 
+        // Jade shows placed models by name; catalogues saved before " Placed" was dropped still load clean.
+        assertEquals("&fPie Crust", CropsPlugin.placedName("pie_crust_placed", "&fPie Crust Placed"));
+        assertEquals("Pie Crust", CropsPlugin.placedName("pie_crust_placed", "Pie Crust Placed"));
+        assertEquals("&fBaked Apple Pie", CropsPlugin.placedName("baked_apple_pie_placed_slice2", "&fBaked Apple Pie"));
+        assertEquals("&fPlaced Sign", CropsPlugin.placedName("placed_sign", "&fPlaced Sign"));
+        assertEquals("&fBlock Placed", CropsPlugin.placedName("pie_crust", "&fBlock Placed"));
+
         assertEquals(4_025_641, CropsPlugin.resolveCustomModelData(3_025_641, true, false));
         assertEquals(3_025_641, CropsPlugin.resolveCustomModelData(3_025_641, true, true));
         assertEquals(3_025_641, CropsPlugin.resolveCustomModelData(3_025_641, false, false));
@@ -164,6 +171,17 @@ class CropsCommandAndPackTest {
                             + "\"cases\":[{\"when\":\"gui\",\"model\":{\"type\":\"minecraft:model\",\"model\":\"crops:item/banana_seeds\"}}],"
                             + "\"fallback\":{\"type\":\"minecraft:model\",\"model\":\"crops:sf/ce/item/crops/banana/stage_1\"}}"),
                     "Missing seed-in-Jade entry for banana_stage_1");
+
+            // Kitchen's placed models show the item they stand for in GUIs (Jade's icon).
+            for (String[] placed : new String[][]{{"pie_crust_placed", "pie_crust"},
+                    {"baked_blackberry_pie_placed_slice2", "baked_blackberry_pie"}, {"blackberry_pie_filled", "cold_blackberry_pie"}}) {
+                assertTrue(json.contains("\"threshold\":" + itemsYml.getInt("items." + placed[0] + ".cmd")
+                                + ",\"model\":{\"type\":\"minecraft:select\",\"property\":\"minecraft:display_context\","
+                                + "\"cases\":[{\"when\":\"gui\",\"model\":{\"type\":\"minecraft:model\",\"model\":\""
+                                + itemsYml.getString("items." + placed[1] + ".model") + "\"}}],"
+                                + "\"fallback\":{\"type\":\"minecraft:model\",\"model\":\"" + itemsYml.getString("items." + placed[0] + ".model") + "\"}}"),
+                        "Missing the GUI icon for " + placed[0]);
+            }
 
             int blackberrySeedJadeCmd = blackberryBushCmd + CropsPlugin.JADE_SEED_CMD_OFFSET;
             assertTrue(json.contains("\"threshold\":" + blackberrySeedJadeCmd

@@ -143,8 +143,11 @@ class LegacyImportTest {
         assertEquals(4, again.records().stream().filter(r -> r.status() == Status.REPLAYED).count());
         assertEquals(0, again.records().stream().filter(r -> r.status() == Status.IMPORT).count());
         assertNotEquals(plan.sha256(), again.sha256());
+        var replayedPlan = LegacyDestinationApplier.counts(LegacyDestinationApplier.apply(again, "run-2", ledger, travel, teleports));
+        assertEquals(0, replayedPlan.get(Result.APPLIED));
+        assertEquals(4, replayedPlan.get(Result.REPLAYED));
         // Applying the first plan twice is still a no-op: the ledger is checked inside the transaction.
-        var replay = LegacyDestinationApplier.counts(LegacyDestinationApplier.apply(plan, "run-2", ledger, travel, teleports));
+        var replay = LegacyDestinationApplier.counts(LegacyDestinationApplier.apply(plan, "run-3", ledger, travel, teleports));
         assertEquals(0, replay.get(Result.APPLIED));
         assertEquals(4, replay.get(Result.REPLAYED));
         assertEquals(2, travel.homes(a).size());

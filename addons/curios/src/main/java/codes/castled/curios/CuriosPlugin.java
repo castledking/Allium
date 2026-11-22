@@ -436,17 +436,64 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         return entry.tradeAmount();
     }
 
+    /**
+     * What trading in this item pays. With {@code card-menu.trade-in-pays: heads} (the default) a
+     * card pays its mob's head, as legacy did: SpawnerCraft's head when SpawnerCraft provides one,
+     * else the vanilla head (zombie, skeleton, ...). Otherwise, and for mobs with neither, the
+     * entry's {@code trade-item}. Empty when there is no payout.
+     */
+    Optional<ItemStack> tradePayout(Catalog.Entry entry, ItemIdentity id) {
+        int amount = Math.max(1, tradePayoutAmount(entry, id));
+        String mob = entry.legacyCard().toLowerCase(Locale.ROOT);
+        if (!mob.isEmpty() && "heads".equalsIgnoreCase(getConfig().getString("card-menu.trade-in-pays", "heads"))) {
+            Optional<ItemStack> head = spawnerCraftHead(mob, amount).or(() -> vanillaHead(mob, amount));
+            if (head.isPresent()) return head;
+        }
+        if (entry.trade() == null) return Optional.empty();
+        return Optional.of(new ItemStack(entry.trade(), Math.min(entry.trade().getMaxStackSize(), amount)));
+    }
+
+    private Optional<ItemStack> spawnerCraftHead(String mob, int amount) {
+        CardTradeHeads heads = getServer().getServicesManager().load(CardTradeHeads.class);
+        if (heads == null) return Optional.empty();
+        try {
+            return heads.head(mob, amount).filter(stack -> !stack.getType().isAir())
+                    .map(stack -> { stack.setAmount(Math.min(stack.getMaxStackSize(), amount)); return stack; });
+        } catch (RuntimeException | LinkageError failed) {
+            getLogger().warning("The trade-in head service failed for " + mob + ": " + failed);
+            return Optional.empty();
+        }
+    }
+
+    private static Optional<ItemStack> vanillaHead(String mob, int amount) {
+        String name = mob.toUpperCase(Locale.ROOT);
+        Material head = Material.matchMaterial(name + "_HEAD");
+        if (head == null) head = Material.matchMaterial(name + "_SKULL");
+        return head == null || !head.isItem() ? Optional.empty() : Optional.of(new ItemStack(head, Math.min(head.getMaxStackSize(), amount)));
+    }
+
+    /** A payout's name for messages and the menu: its display name, or its item's name. */
+    static String payoutName(ItemStack payout) {
+        var meta = payout.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) return org.bukkit.ChatColor.stripColor(meta.getDisplayName());
+        return CardRules.titleCase(payout.getType().name());
+    }
+
     private void trade(Player player) {
         var inv = player.getInventory();
         ItemStack source = inv.getItemInMainHand();
         Catalog.Entry entry = entry(source);
-        if (entry == null || entry.trade() == null || Boolean.parseBoolean(identity(source).orElseThrow().state().get("bound"))) {
+        if (entry == null || Boolean.parseBoolean(identity(source).orElseThrow().state().get("bound"))) {
             tell(player, "This item has no available trade-in.");
             return;
         }
-        int amount = Math.min(entry.trade().getMaxStackSize(), tradePayoutAmount(entry, identity(source).orElseThrow()));
-        inv.setItemInMainHand(new ItemStack(entry.trade(), amount));
-        tell(player, entry, "Traded in " + entry.name() + " for " + amount + " " + entry.trade().name().toLowerCase(Locale.ROOT) + ".");
+        Optional<ItemStack> payout = tradePayout(entry, identity(source).orElseThrow());
+        if (payout.isEmpty()) {
+            tell(player, "This item has no available trade-in.");
+            return;
+        }
+        inv.setItemInMainHand(payout.get());
+        tell(player, entry, "Traded in " + entry.name() + " for " + payout.get().getAmount() + " " + payoutName(payout.get()) + ".");
     }
 
     Optional<ItemIdentity> identity(ItemStack stack) {

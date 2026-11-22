@@ -54,13 +54,13 @@ public final class PowerToolCommand implements SpecCommandHandler {
     public static final String PERM_RELOAD = "allium.powertool.reload";
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "add", "set", "remove", "clear", "cooldown", "perm", "uses", "cancel", "sneak", "hand",
+            "add", "set", "remove", "clear", "cooldown", "perm", "uses", "cancel", "sneak", "hand", "fish",
             "info", "save", "delete", "bind", "unbind", "enable", "disable", "get", "give", "list", "toggle", "reload", "help"
     );
 
     private static final List<String> FLAGS = List.of(
             "--t", "--trigger", "--as", "--cd", "--cooldown", "--scope", "--cdid",
-            "--delay", "--perm", "--sneak", "--hand", "--cancel", "--visualcd", "--param", "--required"
+            "--delay", "--perm", "--sneak", "--hand", "--fish", "--cancel", "--visualcd", "--param", "--required"
     );
 
     private final PluginStart plugin;
@@ -126,6 +126,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
             case "cancel" -> handleCancel(sender, behavior, subArgs);
             case "sneak" -> handleSneak(sender, behavior, subArgs);
             case "hand" -> handleHand(sender, behavior, subArgs);
+            case "fish", "fishing" -> handleFish(sender, behavior, subArgs);
             case "info" -> handleInfo(sender, behavior, subArgs);
             case "save" -> handleSave(sender, behavior, subArgs);
             case "delete", "del" -> handleDelete(sender, behavior, subArgs);
@@ -186,6 +187,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         String actionPerm = null;
         String sneak = null;
         String hand = null;
+        List<String> fishing = null;
         Boolean cancel = null;
         Boolean visualCd = null;
         boolean required = false;
@@ -258,6 +260,14 @@ public final class PowerToolCommand implements SpecCommandHandler {
                         return;
                     }
                     hand = h;
+                }
+                case "--fish", "--fishing" -> {
+                    fishing = fishStates(val);
+                    if (fishing == null) {
+                        send(sender, Messages.POWERTOOL_INVALID_VALUE, "{reason}", "--fish takes any or states: "
+                                + String.join(", ", PowerToolBinding.FISH_STATES));
+                        return;
+                    }
                 }
                 case "--cancel" -> cancel = Boolean.parseBoolean(val);
                 case "--visualcd", "--visual-cooldown" -> visualCd = Boolean.parseBoolean(val);
@@ -341,7 +351,12 @@ public final class PowerToolCommand implements SpecCommandHandler {
         }
 
         // Smart default trigger when --t was omitted:
-        PowerToolTrigger trigger = explicitTrigger != null ? explicitTrigger : defaultTriggerFor(type);
+        PowerToolTrigger trigger = explicitTrigger != null ? explicitTrigger
+                : fishing != null ? PowerToolTrigger.ON_FISH : defaultTriggerFor(type);
+        if (fishing != null && trigger != PowerToolTrigger.ON_FISH) {
+            send(sender, Messages.POWERTOOL_INVALID_VALUE, "{reason}", "--fish only applies to the on-fish trigger");
+            return;
+        }
 
         PowerToolAction action = new PowerToolAction(
                 type, value, asConsole, cooldownMillis, scope, cooldownId, delayTicks, actionPerm, params, required);
@@ -351,6 +366,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         PowerToolBinding binding = existing != null ? existing : PowerToolBinding.empty(trigger);
         if (sneak != null) binding = binding.withSneak(sneak);
         if (hand != null) binding = binding.withHand(hand);
+        if (fishing != null) binding = binding.withFishing(fishing);
         if (cancel != null) binding = binding.withCancelInteraction(cancel);
         if (visualCd != null) {
             binding = binding.withCooldown(binding.cooldownMillis(), binding.cooldownScope(), binding.cooldownId(), visualCd);
@@ -378,7 +394,8 @@ public final class PowerToolCommand implements SpecCommandHandler {
     private static PowerToolTrigger defaultTriggerFor(String actionType) {
         return switch (actionType) {
             case PowerToolAction.TYPE_TREE_FELL -> PowerToolTrigger.ON_BREAK;
-            case PowerToolAction.TYPE_DISARM -> PowerToolTrigger.ON_INTERACT_ENTITY;
+            case PowerToolAction.TYPE_DISARM, PowerToolAction.TYPE_RIDE, PowerToolAction.TYPE_MOUNT -> PowerToolTrigger.ON_INTERACT_ENTITY;
+            case PowerToolAction.TYPE_RELEASE -> PowerToolTrigger.DROP;
             default -> PowerToolTrigger.RIGHT;
         };
     }
@@ -697,6 +714,61 @@ public final class PowerToolCommand implements SpecCommandHandler {
         send(sender, Messages.POWERTOOL_UPDATED, "{setting}", "sneak (" + trigger.id() + ")", "{value}", val);
     }
 
+    /** {@code any}, or fishing states separated by spaces or commas; null when one is unknown. */
+    private static List<String> fishStates(String raw) {
+        List<String> states = new ArrayList<>();
+        for (String part : raw.split("[,\\s]+")) {
+            if (part.isBlank() || part.equalsIgnoreCase("any")) {
+                continue;
+            }
+            String state = PowerToolBinding.fishState(part);
+            if (state == null) {
+                return null;
+            }
+            states.add(state);
+        }
+        return states;
+    }
+
+    private void handleFish(CommandSender sender, PowerToolBehavior behavior, String[] args) {
+        if (!sender.hasPermission(PERM_EDIT)) {
+            send(sender, Messages.NO_PERMISSION);
+            return;
+        }
+        Player player = requirePlayer(sender);
+        if (player == null) return;
+        ItemStack held = requireHeldItem(player);
+        if (held == null) return;
+        List<String> values = new ArrayList<>();
+        for (int i = 0; i < args.length; i++) {
+            if (("--t".equalsIgnoreCase(args[i]) || "--trigger".equalsIgnoreCase(args[i])) && i + 1 < args.length) {
+                PowerToolTrigger trigger = PowerToolTrigger.parse(args[++i]);
+                if (trigger != PowerToolTrigger.ON_FISH) {
+                    send(sender, Messages.POWERTOOL_INVALID_VALUE, "{reason}", "fishing states only apply to the on-fish trigger");
+                    return;
+                }
+            } else {
+                values.add(args[i]);
+            }
+        }
+        List<String> states = values.isEmpty() ? null : fishStates(String.join(" ", values));
+        if (states == null) {
+            usage(sender, "/pt fish [--t on-fish] <any|" + String.join("|", PowerToolBinding.FISH_STATES) + "...>");
+            return;
+        }
+        PowerToolCodec.DecodedInline current = behavior.readEditable(held);
+        PowerToolBinding binding = current.parameters().binding(PowerToolTrigger.ON_FISH);
+        if (binding == null) {
+            send(sender, Messages.POWERTOOL_NO_BINDING, "{trigger}", PowerToolTrigger.ON_FISH.id());
+            return;
+        }
+        behavior.writeInline(held, current.parameters().withBinding(PowerToolTrigger.ON_FISH, binding.withFishing(states)),
+                current.usePermission());
+        player.getInventory().setItemInMainHand(held);
+        send(sender, Messages.POWERTOOL_UPDATED, "{setting}", "fishing (" + PowerToolTrigger.ON_FISH.id() + ")",
+                "{value}", states.isEmpty() ? "any" : String.join(", ", states));
+    }
+
     private void handleHand(CommandSender sender, PowerToolBehavior behavior, String[] args) {
         if (!sender.hasPermission(PERM_EDIT)) {
             send(sender, Messages.NO_PERMISSION);
@@ -914,6 +986,9 @@ public final class PowerToolCommand implements SpecCommandHandler {
             meta.append("hand=").append(b.hand())
                     .append(", sneak=").append(b.sneak())
                     .append(", cancel=").append(b.cancelInteraction());
+            if (!b.fishing().isEmpty()) {
+                meta.append(", fishing=").append(String.join("/", b.fishing()));
+            }
             if (b.hasCooldown()) {
                 meta.append(", cd=").append(PowerToolDurations.formatMillis(b.cooldownMillis()))
                         .append("/").append(b.cooldownScope().id());
@@ -1137,6 +1212,8 @@ public final class PowerToolCommand implements SpecCommandHandler {
                     .stream().filter(v -> v.startsWith(current)).toList();
             case "sneak" -> List.of("--t", "any", "require", "disallow").stream().filter(v -> v.startsWith(current)).toList();
             case "hand" -> List.of("--t", "main", "off", "both").stream().filter(v -> v.startsWith(current)).toList();
+            case "fish", "fishing" -> java.util.stream.Stream.concat(java.util.stream.Stream.of("--t", "any"), PowerToolBinding.FISH_STATES.stream())
+                    .filter(v -> v.startsWith(current)).toList();
             case "cancel" -> List.of("--t", "true", "false").stream().filter(v -> v.startsWith(current)).toList();
             default -> List.of();
         };

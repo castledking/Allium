@@ -1825,6 +1825,57 @@ tool:
       - "{prefix} &dAcciones: &f{actions}"
     help-placeholders:
       - "{prefix} &dVariables: &f{placeholders}"
+  ride:
+    carrying:
+      - "{prefix} &aRecogiste a &f{target}&a."
+      - "[sound] entity.item.pickup 0.8"
+    carried:
+      - "{prefix} &f{player} &ate recogio. Agachate para bajar."
+    restrained:
+      - "{prefix} &aInmovilizaste a &f{target}&a."
+      - "[sound] block.chain.place 1.2"
+    restrained-target:
+      - "{prefix} &cHas sido inmovilizado por &f{player}&c!"
+      - "[sound] block.chain.place 0.8"
+    restrained-title:
+      - "&c&lINMOVILIZADO"
+    restrained-subtitle:
+      - "&7Inmovilizado por &f{player}"
+    busy:
+      - "{prefix} &f{target} &cya esta montado o llevando a alguien."
+      - "[sound] block.note_block.bass 0.8"
+    full:
+      - "{prefix} &cSolo puedes llevar a &f{max} &ca la vez."
+      - "[sound] block.note_block.bass 0.8"
+    exempt:
+      - "{prefix} &f{target} &cno puede ser inmovilizado ni recogido."
+      - "[sound] block.note_block.bass 0.8"
+    protected:
+      - "{prefix} &cNo puedes hacerle eso a &f{target} &caqui."
+      - "[sound] block.note_block.bass 0.8"
+    players-only:
+      - "{prefix} &cSolo se puede inmovilizar a jugadores."
+      - "[sound] block.note_block.bass 0.8"
+    released:
+      - "{prefix} &aSoltaste a &f{target}&a."
+      - "[sound] block.chain.break 1.2"
+    released-target:
+      - "{prefix} &aTe solto &f{player}&a."
+      - "[sound] block.chain.break 1.0"
+    no-commands:
+      - "{prefix} &cNo puedes usar comandos mientras estas inmovilizado!"
+      - "[sound] block.note_block.bass 0.8"
+    no-dismount:
+      - "{prefix} &cNo puedes bajarte mientras estas inmovilizado!"
+    logged-out:
+      - "{prefix} &f{target} &ese desconecto mientras estaba inmovilizado."
+  unrestrain:
+    released:
+      - "{prefix} &aLiberaste a &f{count} &ajugador(es)."
+    none:
+      - "{prefix} &7Nadie esta inmovilizado."
+    not-restrained:
+      - "{prefix} &f{player} &7no esta inmovilizado ni siendo llevado."
 item:
   give:
     delivered:

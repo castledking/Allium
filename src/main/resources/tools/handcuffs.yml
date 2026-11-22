@@ -1,0 +1,53 @@
+# Handcuffs: pre-recode Allium's staff handcuffs, as a powertool (see docs/powertools.md). The
+# item is the core pack's handcuffs: a fishing rod that never wears out.
+#
+# Cast at a player and reel them in: they ride you, stacked on anyone you already restrained (at
+# most max-riders). A restrained player cannot get down, run commands (but
+# restraints.allowed-commands in config.yml), break, place, use or drop items, attack or be hurt.
+# Press Q with the handcuffs to let everyone go; idle handcuffs drop as usual. A restrained player
+# who logs out runs restraints.commands-on-quit. Staff free anyone with /unrestrain.
+#
+# Every piece is a general powertool setting, so other tools can do the same: the on-fish trigger
+# with its fishing states, and the ride, mount and release actions.
+schema: 1
+
+id: allium:handcuffs
+name: Handcuffs
+behavior: allium:powertool
+enabled: true
+
+appearance:
+  default: allium:handcuffs
+  aliases: []
+
+permissions:
+  # Pre-recode Allium's node for using staff handcuffs.
+  use: allium.restrain
+  bypass: allium.handcuffs.bypass
+
+bindings:
+  on-fish:
+    # Reeling in a hooked player. The reel-in is cancelled, so the rod does not pull them.
+    fishing: [caught-entity]
+    cancel-interaction: true
+    hand: both
+    actions:
+      - type: ride
+        required: true
+        params:
+          restrain: true
+          max-riders: 5
+          # Players with this node cannot be restrained (operators, unless you change it).
+          exempt-permission: allium.handcuffs.resist
+      - type: actionbar
+        value: "&7Press &fQ &7with the handcuffs to release &f{target}&7."
+  drop:
+    # Q lets everyone go and keeps the handcuffs; with no one restrained they drop normally.
+    cancel-interaction: false
+    hand: both
+    actions:
+      - type: release
+        params:
+          which: all
+
+messages: {}

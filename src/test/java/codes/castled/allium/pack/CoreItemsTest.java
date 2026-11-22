@@ -34,6 +34,7 @@ class CoreItemsTest {
         assertTrue(byId.get("mob_disarmer").signed());
         assertFalse(byId.get("mob_disarmer").privileged());
         assertEquals(Material.FISHING_ROD, byId.get("handcuffs").carrierMaterial(), "pre-recode Allium's material: casting is how they work");
+        assertTrue(byId.get("handcuffs").unbreakable(), "pre-recode handcuffs never wore out");
         assertTrue(byId.get("handcuffs").privileged());
         assertEquals(Material.NETHERITE_SWORD, byId.get("phantom_obliterator").carrierMaterial(), "pre-recode Allium's material");
         assertEquals(Map.of("charges", "3"), byId.get("phantom_obliterator").defaultState());

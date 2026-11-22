@@ -30,13 +30,14 @@ class BundledToolDefinitionsTest {
     private static final Map<String, ToolBehaviorType<?>> BEHAVIORS = Map.of(
             DisarmBehaviorType.ID, new DisarmBehaviorType(),
             ObliterateBehaviorType.ID, new ObliterateBehaviorType(),
-            FellTreeBehaviorType.ID, new FellTreeBehaviorType());
+            FellTreeBehaviorType.ID, new FellTreeBehaviorType(),
+            codes.castled.allium.tool.powertool.PowerToolBehaviorType.ID, new codes.castled.allium.tool.powertool.PowerToolBehaviorType());
 
     private static final ToolEnvironment ENV = new ToolEnvironment() {
         public boolean isItemMaterial(String material) { return true; }
         public boolean isEntityType(String entityType) { return entityType.startsWith("minecraft:"); }
         public boolean hasLangKey(String key) { return true; }
-        public boolean isCoreItem(String localId) { return Set.of("mob_disarmer", "phantom_obliterator", "lazy_axe").contains(localId); }
+        public boolean isCoreItem(String localId) { return Set.of("mob_disarmer", "phantom_obliterator", "lazy_axe", "handcuffs").contains(localId); }
         public Optional<String> coreItemBehavior(String localId) {
             return Optional.ofNullable(BukkitToolEnvironment.CORE_TOOL_BEHAVIORS.get(localId));
         }
@@ -111,5 +112,31 @@ class BundledToolDefinitionsTest {
         assertEquals("disables", parameters.sneak());
         assertTrue(parameters.importLegacy());
         assertEquals("allium.treeaxe.use", definition.permission("use"));
+    }
+
+    @Test
+    void theHandcuffsArePreRecodeAlliumsAsAPowertool() throws Exception {
+        ToolDefinition definition = parse("tools/handcuffs.yml");
+        assertEquals("allium:handcuffs", definition.id());
+        assertEquals(codes.castled.allium.tool.powertool.PowerToolBehaviorType.ID, definition.behavior());
+        assertTrue(definition.enabled());
+        assertEquals(ProviderKey.allium("handcuffs"), definition.appearance(), "the core pack's fishing rod");
+        assertEquals("allium.restrain", definition.permission("use"));
+        var parameters = definition.parameters(codes.castled.allium.tool.powertool.PowerToolParameters.class);
+        var fish = parameters.binding(codes.castled.allium.tool.powertool.PowerToolTrigger.ON_FISH);
+        assertEquals(List.of("caught-entity"), fish.fishing());
+        assertTrue(fish.cancelInteraction(), "the rod does not pull a hooked player");
+        assertTrue(fish.matchesFishing("CAUGHT_ENTITY"));
+        assertFalse(fish.matchesFishing("FISHING"));
+        var ride = fish.actions().get(0);
+        assertEquals("ride", ride.type());
+        assertTrue(ride.required());
+        assertEquals(true, ride.params().get("restrain"));
+        assertEquals(5, ride.params().get("max-riders"));
+        assertEquals("allium.handcuffs.resist", ride.params().get("exempt-permission"));
+        var drop = parameters.binding(codes.castled.allium.tool.powertool.PowerToolTrigger.DROP);
+        assertFalse(drop.cancelInteraction(), "idle handcuffs drop as usual");
+        assertEquals("release", drop.actions().get(0).type());
+        assertEquals("all", drop.actions().get(0).params().get("which"));
     }
 }

@@ -45,11 +45,17 @@ public record PowerToolAction(
     public static final String TYPE_OBLITERATE = "obliterate";
     /** Gives the player permission nodes they lack, one at random by weight or all of them. */
     public static final String TYPE_GRANT = "grant";
+    /** The target rides the player (stacked on whoever already does); {@code restrain} makes it the handcuffs. */
+    public static final String TYPE_RIDE = "ride";
+    /** The player rides the target. */
+    public static final String TYPE_MOUNT = "mount";
+    /** Lets go of whoever rides the player through {@link #TYPE_RIDE}. */
+    public static final String TYPE_RELEASE = "release";
 
     public static final Set<String> BUILT_IN_TYPES = Set.of(
             TYPE_COMMAND, TYPE_CONSOLE, TYPE_MESSAGE, TYPE_ACTIONBAR,
             TYPE_SOUND, TYPE_PARTICLE, TYPE_POTION,
-            TYPE_TREE_FELL, TYPE_DISARM, TYPE_OBLITERATE, TYPE_GRANT
+            TYPE_TREE_FELL, TYPE_DISARM, TYPE_OBLITERATE, TYPE_GRANT, TYPE_RIDE, TYPE_MOUNT, TYPE_RELEASE
     );
 
     /** An action that never stops its binding. */
@@ -91,6 +97,9 @@ public record PowerToolAction(
             case "mob_disarm", "allium:disarm" -> TYPE_DISARM;
             case "obliterate_phantoms", "obliterate_entities", "area_kill", "allium:obliterate", "allium:obliterate_phantoms" -> TYPE_OBLITERATE;
             case "permission", "grant_permission", "allium:grant" -> TYPE_GRANT;
+            case "carry", "pick_up", "pickup", "allium:ride" -> TYPE_RIDE;
+            case "ride_target", "mount_target", "allium:mount" -> TYPE_MOUNT;
+            case "unride", "uncarry", "unrestrain", "uncuff", "drop_riders", "allium:release" -> TYPE_RELEASE;
             default -> lower;
         };
     }

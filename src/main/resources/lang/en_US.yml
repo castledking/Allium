@@ -1825,6 +1825,57 @@ tool:
       - "{prefix} &dActions: &f{actions}"
     help-placeholders:
       - "{prefix} &dPlaceholders: &f{placeholders}"
+  ride:
+    carrying:
+      - "{prefix} &aYou picked up &f{target}&a."
+      - "[sound] entity.item.pickup 0.8"
+    carried:
+      - "{prefix} &f{player} &apicked you up. Sneak to get down."
+    restrained:
+      - "{prefix} &aYou restrained &f{target}&a."
+      - "[sound] block.chain.place 1.2"
+    restrained-target:
+      - "{prefix} &cYou have been restrained by &f{player}&c!"
+      - "[sound] block.chain.place 0.8"
+    restrained-title:
+      - "&c&lRESTRAINED"
+    restrained-subtitle:
+      - "&7Restrained by &f{player}"
+    busy:
+      - "{prefix} &f{target} &cis already riding or carrying someone."
+      - "[sound] block.note_block.bass 0.8"
+    full:
+      - "{prefix} &cYou can only carry &f{max} &cat once."
+      - "[sound] block.note_block.bass 0.8"
+    exempt:
+      - "{prefix} &f{target} &ccannot be restrained or picked up."
+      - "[sound] block.note_block.bass 0.8"
+    protected:
+      - "{prefix} &cYou can't do that to &f{target} &chere."
+      - "[sound] block.note_block.bass 0.8"
+    players-only:
+      - "{prefix} &cOnly players can be restrained."
+      - "[sound] block.note_block.bass 0.8"
+    released:
+      - "{prefix} &aYou released &f{target}&a."
+      - "[sound] block.chain.break 1.2"
+    released-target:
+      - "{prefix} &aYou were released by &f{player}&a."
+      - "[sound] block.chain.break 1.0"
+    no-commands:
+      - "{prefix} &cYou cannot use commands while restrained!"
+      - "[sound] block.note_block.bass 0.8"
+    no-dismount:
+      - "{prefix} &cYou cannot dismount while restrained!"
+    logged-out:
+      - "{prefix} &f{target} &ehas logged out while restrained."
+  unrestrain:
+    released:
+      - "{prefix} &aFreed &f{count} &aplayer(s)."
+    none:
+      - "{prefix} &7No one is restrained."
+    not-restrained:
+      - "{prefix} &f{player} &7is not restrained or carried."
 item:
   give:
     delivered:

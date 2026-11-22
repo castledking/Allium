@@ -68,7 +68,7 @@ public final class ToolsModule extends AbstractModule {
             PowerToolBehaviorType.ID, new PowerToolBehaviorType());
 
     /** The default definitions the jar ships, each installed once (tools/.defaults). */
-    static final List<String> BUNDLED_DEFAULTS = List.of("mob_disarmer.yml", "phantom_obliterator.yml", "lazy_axe.yml");
+    static final List<String> BUNDLED_DEFAULTS = List.of("mob_disarmer.yml", "phantom_obliterator.yml", "lazy_axe.yml", "handcuffs.yml");
 
     private final List<String> registeredItems = new ArrayList<>();
     private final List<String> registeredPermissions = new ArrayList<>();
@@ -83,6 +83,7 @@ public final class ToolsModule extends AbstractModule {
     private PowerToolListener powerToolListener;
     private codes.castled.allium.tool.powertool.LegacyVoucherListener legacyVouchers;
     private ToolCarrierSuppressionListener carrierSuppression;
+    private codes.castled.allium.ride.Rides rides;
     private ToolDefinitionLoader.Loaded loaded;
     private Set<String> cachedCoreItems = Set.of();
 
@@ -132,6 +133,15 @@ public final class ToolsModule extends AbstractModule {
                         () -> codes.castled.allium.creative.manage.CreativeAccess.current(plugin.getServer()),
                         plugin.getScheduler(), plugin.getMessageManager()::send, plugin.logger()::info, plugin.logger()::warning,
                         new Random(), this::singleUseCopy));
+        rides = new codes.castled.allium.ride.Rides(plugin);
+        rides.enable();
+        codes.castled.allium.ride.Rides activeRides = rides;
+        powerTools.setActivationGuard(activeRides::isRestrained);
+        var rideActions = new codes.castled.allium.ride.RideActions(rides, plugin.getProtectionService(),
+                plugin.getMessageManager()::send, this::title, org.bukkit.entity.Entity::getName);
+        powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_RIDE, rideActions.ride());
+        powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_MOUNT, rideActions.mount());
+        powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_RELEASE, rideActions.release());
         powerToolListener = new PowerToolListener(powerTools);
         plugin.getServer().getPluginManager().registerEvents(powerToolListener, plugin);
         legacyVouchers = new codes.castled.allium.tool.powertool.LegacyVoucherListener(plugin, powerTools, items,
@@ -139,6 +149,7 @@ public final class ToolsModule extends AbstractModule {
         plugin.getServer().getPluginManager().registerEvents(legacyVouchers, plugin);
         plugin.getCommandManager().register(new PowerToolCommand(plugin, () -> powerTools, () -> this));
         plugin.getCommandManager().register(new codes.castled.allium.command.tools.VoucherCommand(plugin, () -> powerTools, () -> this));
+        plugin.getCommandManager().register(new codes.castled.allium.command.tools.UnrestrainCommand(plugin));
     }
 
     private void loadAndActivateTools(ToolDefinitionLoader loader, ItemService items, Set<String> coreItems) {
@@ -410,6 +421,19 @@ public final class ToolsModule extends AbstractModule {
             powerTools.disable();
             powerTools = null;
         }
+        if (rides != null) {
+            rides.disable();
+            rides = null;
+        }
+    }
+
+    private void title(org.bukkit.entity.Player player, codes.castled.allium.message.Messages title,
+                       codes.castled.allium.message.Messages subtitle, String... replacements) {
+        var messages = plugin.getMessageManager();
+        String top = messages.resolve(title, replacements);
+        String bottom = messages.resolve(subtitle, replacements);
+        player.sendTitle(top == null ? "" : codes.castled.allium.text.TextFormatter.toLegacy(top),
+                bottom == null ? "" : codes.castled.allium.text.TextFormatter.toLegacy(bottom), 5, 45, 10);
     }
 
     /** The obliterate behavior, or {@code null} when no Phantom Obliterator is enabled. */

@@ -18,7 +18,9 @@ public enum PowerToolTrigger {
     ON_BREAK("on-break", false, "on_break", "break", "block-break", "block_break"),
     ON_INTERACT_ENTITY("on-interact-entity", true, "on_interact_entity", "interact-entity", "interact_entity", "entity-interact", "right-entity", "right_entity"),
     ON_HIT("on-hit", false, "on_hit", "hit", "attack", "damage-entity", "damage_entity"),
-    ON_CONSUME("on-consume", false, "on_consume", "consume", "eat");
+    ON_CONSUME("on-consume", false, "on_consume", "consume", "eat"),
+    /** A fishing rod: casting, a bite, hooking an entity, reeling in. A binding's {@code fishing} states pick which. */
+    ON_FISH("on-fish", false, "on_fish", "fish", "fishing", "rod");
 
     private final String id;
     private final boolean defaultCancel;

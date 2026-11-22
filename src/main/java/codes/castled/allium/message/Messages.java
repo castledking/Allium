@@ -974,7 +974,26 @@ public enum Messages {
     POWERTOOL_RELOADED("tool.powertool.reloaded", "{prefix} &aReloaded &f{count} &atool definition(s)."),
     POWERTOOL_HELP_TRIGGERS("tool.powertool.help-triggers", "{prefix} &dTriggers: &f{triggers}"),
     POWERTOOL_HELP_ACTIONS("tool.powertool.help-actions", "{prefix} &dActions: &f{actions}"),
-    POWERTOOL_HELP_PLACEHOLDERS("tool.powertool.help-placeholders", "{prefix} &dPlaceholders: &f{placeholders}");
+    POWERTOOL_HELP_PLACEHOLDERS("tool.powertool.help-placeholders", "{prefix} &dPlaceholders: &f{placeholders}"),
+    RIDE_CARRYING("tool.ride.carrying", "{prefix} &aYou picked up &f{target}&a."),
+    RIDE_CARRIED_TARGET("tool.ride.carried", "{prefix} &f{player} &apicked you up. Sneak to get down."),
+    RIDE_RESTRAINED("tool.ride.restrained", "{prefix} &aYou restrained &f{target}&a."),
+    RIDE_RESTRAINED_TARGET("tool.ride.restrained-target", "{prefix} &cYou have been restrained by &f{player}&c!"),
+    RIDE_RESTRAINED_TITLE("tool.ride.restrained-title", "&c&lRESTRAINED"),
+    RIDE_RESTRAINED_SUBTITLE("tool.ride.restrained-subtitle", "&7Restrained by &f{player}"),
+    RIDE_BUSY("tool.ride.busy", "{prefix} &f{target} &cis already riding or carrying someone."),
+    RIDE_FULL("tool.ride.full", "{prefix} &cYou can only carry &f{max} &cat once."),
+    RIDE_EXEMPT("tool.ride.exempt", "{prefix} &f{target} &ccannot be restrained or picked up."),
+    RIDE_PROTECTED("tool.ride.protected", "{prefix} &cYou can't do that to &f{target} &chere."),
+    RIDE_PLAYERS_ONLY("tool.ride.players-only", "{prefix} &cOnly players can be restrained."),
+    RIDE_RELEASED("tool.ride.released", "{prefix} &aYou released &f{target}&a."),
+    RIDE_RELEASED_TARGET("tool.ride.released-target", "{prefix} &aYou were released by &f{player}&a."),
+    RIDE_NO_COMMANDS("tool.ride.no-commands", "{prefix} &cYou cannot use commands while restrained!"),
+    RIDE_NO_DISMOUNT("tool.ride.no-dismount", "{prefix} &cYou cannot dismount while restrained!"),
+    RIDE_LOGGED_OUT("tool.ride.logged-out", "{prefix} &f{target} &ehas logged out while restrained."),
+    UNRESTRAIN_RELEASED("tool.unrestrain.released", "{prefix} &aFreed &f{count} &aplayer(s)."),
+    UNRESTRAIN_NONE("tool.unrestrain.none", "{prefix} &7No one is restrained."),
+    UNRESTRAIN_NOT_RESTRAINED("tool.unrestrain.not-restrained", "{prefix} &f{player} &7is not restrained or carried.");
 
     private static final Map<String, Messages> BY_KEY;
 

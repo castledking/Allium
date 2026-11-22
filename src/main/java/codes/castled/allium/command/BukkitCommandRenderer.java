@@ -125,6 +125,7 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         if(spec.canonicalName().equals("help")&&handler instanceof HelpCommand help)return help.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.TextFileCommand textFile)return textFile.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.InformCommand inform)return inform.complete(sender,args);
+        if(handler instanceof codes.castled.allium.command.tools.UnrestrainCommand unrestrain)return unrestrain.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.BroadcastCommand broadcast)return broadcast.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.SpawnMobCommand spawnMob)return spawnMob.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.essentials.GlowCommand glowCommand)return glowCommand.complete(sender,args);

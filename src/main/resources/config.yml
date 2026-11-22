@@ -691,3 +691,13 @@ powertools:
     - "minecraft:tellraw"
   # Reject @a/@e/@p/@r/@s target selectors inside console powertool commands.
   block-selectors: true
+
+# Restraints: the powertool ride action's restrain option, which the Handcuffs (tools/handcuffs.yml)
+# use. A restrained player rides whoever restrained them and cannot get down, break, place, use or
+# drop items, attack or be hurt, or run commands other than these (labels, e.g. msg or allium:msg).
+restraints:
+  allowed-commands: []
+  # Run by the console when a restrained player logs out; {player} is their name. Pre-recode
+  # Allium's handcuffs.commands-on-quit.
+  commands-on-quit:
+    - ban {player} Logged out while restrained

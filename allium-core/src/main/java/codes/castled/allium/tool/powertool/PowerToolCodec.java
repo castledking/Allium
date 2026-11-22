@@ -155,6 +155,9 @@ public final class PowerToolCodec {
             if (!b.worlds().isEmpty()) {
                 bm.put("worlds", new ArrayList<>(b.worlds()));
             }
+            if (!b.fishing().isEmpty()) {
+                bm.put("fishing", new ArrayList<>(b.fishing()));
+            }
             if (b.hasCooldown()) {
                 bm.put("cooldown", PowerToolDurations.formatMillis(b.cooldownMillis()));
                 if (b.cooldownScope() != PowerToolCooldownScope.PLAYER) {

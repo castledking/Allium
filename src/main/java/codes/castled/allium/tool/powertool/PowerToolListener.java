@@ -147,6 +147,24 @@ public final class PowerToolListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onFish(org.bukkit.event.player.PlayerFishEvent event) {
+        Player player = event.getPlayer();
+        // Vanilla uses the rod in the main hand first.
+        ItemStack main = player.getInventory().getItemInMainHand();
+        boolean mainRod = main != null && main.getType() == org.bukkit.Material.FISHING_ROD;
+        ItemStack item = mainRod ? main : player.getInventory().getItemInOffHand();
+        if (item == null || item.getType().isAir()) {
+            return;
+        }
+        behavior.handleTrigger(player, item, mainRod ? PowerToolBinding.HAND_MAIN : PowerToolBinding.HAND_OFF,
+                PowerToolTrigger.ON_FISH, null, event.getCaught(), event, event);
+        // A cancelled reel-in leaves the line out; take it in, as reeling in would have.
+        if (event.isCancelled() && event.getHook() != null) {
+            event.getHook().remove();
+        }
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onEntityPickup(EntityPickupItemEvent event) {
         if (behavior.actions().pickupSuppression().isBlocked(event.getEntity())) {
             event.setCancelled(true);

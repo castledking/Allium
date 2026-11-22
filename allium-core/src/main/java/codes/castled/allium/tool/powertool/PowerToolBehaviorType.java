@@ -136,6 +136,17 @@ public final class PowerToolBehaviorType implements ToolBehaviorType<PowerToolPa
         String sneak = b.choice("sneak", PowerToolBinding.SNEAK_ANY,
                 List.of(PowerToolBinding.SNEAK_ANY, PowerToolBinding.SNEAK_REQUIRE, PowerToolBinding.SNEAK_DISALLOW));
         List<String> worlds = b.stringList("worlds", List.of());
+        List<String> fishing = new ArrayList<>();
+        for (String state : b.stringList("fishing", List.of())) {
+            if (PowerToolBinding.fishState(state) == null) {
+                b.error("fishing", "unknown fishing state '" + state + "'; expected " + String.join(", ", PowerToolBinding.FISH_STATES));
+            } else {
+                fishing.add(state);
+            }
+        }
+        if (!fishing.isEmpty() && trigger != PowerToolTrigger.ON_FISH) {
+            b.error("fishing", "only applies to the " + PowerToolTrigger.ON_FISH.id() + " trigger");
+        }
 
         long cooldownMillis = parseDurationField(b, "cooldown", 0L);
         String scopeRaw = b.choice("cooldown-scope", PowerToolCooldownScope.PLAYER.id(),
@@ -181,6 +192,7 @@ public final class PowerToolBehaviorType implements ToolBehaviorType<PowerToolPa
                 hand,
                 sneak,
                 worlds,
+                fishing,
                 cooldownMillis,
                 scope == null ? PowerToolCooldownScope.PLAYER : scope,
                 cooldownId,

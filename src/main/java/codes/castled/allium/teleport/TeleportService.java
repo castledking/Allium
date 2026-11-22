@@ -543,7 +543,9 @@ public final class TeleportService implements Listener {
         operations.remove(id);offlineLookups.remove(id);committing.add(id);
         if(operation.lastWarmupSecond()[0]>0&&samePlayer(mover))plugin.getMessageManager().clearActionBarIfPresent(mover,Messages.TELEPORT_WARMUP);
         boolean success;
-        try{success=mover.teleport(destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN);}
+        // Bukkit will not teleport a player who carries riders; Allium's ride action takes them along.
+        var rides=codes.castled.allium.ride.Rides.current();
+        try{success=rides!=null?rides.teleport(mover,destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN):mover.teleport(destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN);}
         finally{committing.remove(id);}
         if(!success){finish(operation,false);send(operation.actor(),Messages.TELEPORT_INTERRUPTED,"{reason}","cancelled by another plugin");return;}
         finish(operation,true);

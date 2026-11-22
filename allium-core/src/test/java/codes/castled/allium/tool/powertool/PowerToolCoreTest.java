@@ -115,7 +115,7 @@ class PowerToolCoreTest {
         );
         PowerToolBinding onBreak = new PowerToolBinding(
                 PowerToolTrigger.ON_BREAK, "allium.lumber.use", false,
-                PowerToolBinding.HAND_MAIN, PowerToolBinding.SNEAK_DISALLOW, List.of("world"),
+                PowerToolBinding.HAND_MAIN, PowerToolBinding.SNEAK_DISALLOW, List.of("world"), List.of(),
                 5000L, PowerToolCooldownScope.PLAYER, "lumber_cd", "[actionbar] &cWait {time}",
                 true, true, List.of(fellAction, msgAction)
         );
@@ -183,5 +183,67 @@ class PowerToolCoreTest {
         assertFalse(res.valid());
         assertTrue(res.errors().stream().anyMatch(e -> e.contains("uses.max")));
         assertTrue(res.errors().stream().anyMatch(e -> e.contains("not_a_trigger")));
+    }
+
+    @Test
+    void fishingStatesAreAConditionOfTheOnFishTriggerAndRoundTrip() {
+        assertEquals(PowerToolTrigger.ON_FISH, PowerToolTrigger.parse("fish"));
+        assertEquals(PowerToolTrigger.ON_FISH, PowerToolTrigger.parse("on_fish"));
+        assertEquals("caught-entity", PowerToolBinding.fishState("CAUGHT_ENTITY"));
+        assertEquals("caught-entity", PowerToolBinding.fishState("hooked"));
+        assertEquals("cast", PowerToolBinding.fishState("FISHING"));
+        assertEquals("failed", PowerToolBinding.fishState("FAILED_ATTEMPT"));
+        assertEquals("in-ground", PowerToolBinding.fishState("IN_GROUND"));
+        assertEquals("reel-in", PowerToolBinding.fishState("REEL_IN"));
+        assertNull(PowerToolBinding.fishState("splash"));
+        for (String state : PowerToolBinding.FISH_STATES) {
+            assertEquals(state, PowerToolBinding.fishState(state), state);
+        }
+
+        PowerToolBinding any = PowerToolBinding.empty(PowerToolTrigger.ON_FISH);
+        assertTrue(any.matchesFishing("BITE") && any.matchesFishing("CAUGHT_ENTITY"), "no states: every state");
+        PowerToolBinding hooked = any.withFishing(List.of("hooked", "REEL_IN", "nonsense"))
+                .withActionAdded(new PowerToolAction("ride", null, false, 0L, PowerToolCooldownScope.PLAYER, null, 0L, null,
+                        Map.of("restrain", true)));
+        assertEquals(List.of("caught-entity", "reel-in"), hooked.fishing(), "canonical, unknown ones dropped");
+        assertTrue(hooked.matchesFishing("CAUGHT_ENTITY"));
+        assertFalse(hooked.matchesFishing("FISHING"));
+        assertFalse(hooked.matchesFishing(null));
+
+        PowerToolParameters params = new PowerToolParameters(PowerToolUses.UNLIMITED, 150L, Map.of(PowerToolTrigger.ON_FISH, hooked));
+        PowerToolBinding back = PowerToolCodec.decodeInlineJson(PowerToolCodec.encodeInlineJson(params, null))
+                .parameters().binding(PowerToolTrigger.ON_FISH);
+        assertEquals(List.of("caught-entity", "reel-in"), back.fishing());
+        assertEquals(PowerToolAction.TYPE_RIDE, back.actions().get(0).type());
+        assertEquals(true, back.actions().get(0).params().get("restrain"));
+    }
+
+    @Test
+    void theParserRefusesUnknownFishingStatesAndFishingOnOtherTriggers() {
+        Map<String, Object> doc = Map.of(
+                "schema", 1,
+                "id", "allium:bad_rod",
+                "behavior", PowerToolBehaviorType.ID,
+                "item", Map.of("material", "stick"),
+                "bindings", Map.of(
+                        "on-fish", Map.of("fishing", List.of("splash"), "actions", List.of(Map.of("type", "ride"))),
+                        "right", Map.of("fishing", List.of("cast"), "actions", List.of(Map.of("type", "release")))
+                )
+        );
+        ToolDefinitionParser.Result res = ToolDefinitionParser.parse(
+                "tools/bad_rod.yml", doc, Map.of(PowerToolBehaviorType.ID, new PowerToolBehaviorType()), TEST_ENV);
+        assertFalse(res.valid());
+        assertTrue(res.errors().stream().anyMatch(e -> e.contains("unknown fishing state 'splash'")), res.errors().toString());
+        assertTrue(res.errors().stream().anyMatch(e -> e.contains("only applies to the on-fish trigger")), res.errors().toString());
+    }
+
+    @Test
+    void rideMountAndReleaseAreBuiltInActionsWithFriendlyNames() {
+        assertTrue(PowerToolAction.BUILT_IN_TYPES.containsAll(List.of("ride", "mount", "release")));
+        assertEquals(PowerToolAction.TYPE_RIDE, PowerToolAction.normalizeType("carry"));
+        assertEquals(PowerToolAction.TYPE_RIDE, PowerToolAction.normalizeType("allium:ride"));
+        assertEquals(PowerToolAction.TYPE_MOUNT, PowerToolAction.normalizeType("ride-target"));
+        assertEquals(PowerToolAction.TYPE_RELEASE, PowerToolAction.normalizeType("unrestrain"));
+        assertEquals(PowerToolAction.TYPE_RELEASE, PowerToolAction.normalizeType("uncuff"));
     }
 }

@@ -17,13 +17,15 @@ import java.util.function.Predicate;
 public final class BukkitToolEnvironment implements ToolEnvironment {
 
     /**
-     * The behavior each core pack tool is reserved for. Core tools that are not implemented yet
-     * (handcuffs, the item renamer) are absent, so no definition can claim their identities.
+     * The behavior each core pack tool is reserved for. The handcuffs are a powertool
+     * (tools/handcuffs.yml). Core tools that are not implemented yet (the item renamer) are absent,
+     * so no definition can claim their identities.
      */
     static final Map<String, String> CORE_TOOL_BEHAVIORS = Map.of(
             "mob_disarmer", DisarmBehaviorType.ID,
             "phantom_obliterator", codes.castled.allium.tool.obliterator.ObliterateBehaviorType.ID,
-            "lazy_axe", codes.castled.allium.tool.felltree.FellTreeBehaviorType.ID);
+            "lazy_axe", codes.castled.allium.tool.felltree.FellTreeBehaviorType.ID,
+            "handcuffs", codes.castled.allium.tool.powertool.PowerToolBehaviorType.ID);
 
     private final Set<String> coreItems;
     private final Predicate<String> langKeys;

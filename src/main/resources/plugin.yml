@@ -548,6 +548,10 @@ commands:
     description: Give and list vouchers (powertools named voucher_<name>)
     usage: /<command> <give|list|reload> [player] [voucher] [amount]
     permission: allium.voucher.give
+  unrestrain:
+    description: Free every restrained player, or one player
+    usage: /<command> [player]
+    permission: allium.unrestrain
   antioch:
     aliases: [grenade, tnt]
     description: Throw primed TNT where you look
@@ -801,6 +805,9 @@ permissions:
       allium.sell.bulk: true
       allium.setworth: true
       allium.voucher.give: true
+      allium.unrestrain: true
+      allium.restrain: true
+      allium.handcuffs.resist: true
       allium.voucher.reload: true
       allium.report.receive: true
       allium.report.cooldown.bypass: true
@@ -1279,6 +1286,18 @@ permissions:
     default: op
   allium.escalate.receive:
     description: See escalations in chat
+    default: op
+  allium.unrestrain:
+    description: Allows /unrestrain [player], to free restrained players
+    default: op
+  allium.restrain:
+    description: Allows using the Handcuffs (tools/handcuffs.yml) to restrain players
+    default: op
+  allium.handcuffs.resist:
+    description: Cannot be restrained with the Handcuffs (their exempt-permission)
+    default: op
+  allium.handcuffs.bypass:
+    description: Uses the Handcuffs without their cooldowns or limits, if any are set
     default: op
   allium.voucher.give:
     description: Give and list vouchers with /voucher give and /voucher list

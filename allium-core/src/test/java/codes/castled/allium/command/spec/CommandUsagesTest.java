@@ -46,7 +46,7 @@ class CommandUsagesTest {
     void powertoolUsesTheSharedCardWithEveryFormAndNarrowsToTheMistypedSubcommand() {
         List<CommandUsage> all = CommandUsages.select(CoreCommandSpecs.POWERTOOL, CoreCommandSpecs.POWERTOOL.selfUsage());
         assertEquals(CommandUsages.of("powertool").size(), all.size());
-        assertEquals(22, all.size());
+        assertEquals(23, all.size());
         assertTrue(all.stream().noneMatch(u -> u.description().isBlank()));
 
         assertEquals(List.of("set <index> [flags...] <action> [args...]"),

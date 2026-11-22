@@ -326,6 +326,13 @@ public final class PowerToolBehavior {
      * Handles one trigger firing on {@code item}. Returns {@code true} when a matching binding
      * existed and was processed (whether it executed, refused, or was guarded).
      */
+    /** Players who may not use powertools at all for now (restrained players); none by default. */
+    private java.util.function.Predicate<UUID> activationGuard = id -> false;
+
+    public void setActivationGuard(java.util.function.Predicate<UUID> guard) {
+        this.activationGuard = guard == null ? id -> false : guard;
+    }
+
     public boolean handleTrigger(
             Player player,
             ItemStack item,
@@ -336,7 +343,7 @@ public final class PowerToolBehavior {
             @Nullable Cancellable cancellable,
             @Nullable Event causeEvent
     ) {
-        if (!settings.enabled() || !isPlayerEnabled(player.getUniqueId())) {
+        if (!settings.enabled() || !isPlayerEnabled(player.getUniqueId()) || activationGuard.test(player.getUniqueId())) {
             return false;
         }
         if (trigger == PowerToolTrigger.ON_BREAK && actionRegistry.isBreakingFor(player.getUniqueId())) {
@@ -354,6 +361,9 @@ public final class PowerToolBehavior {
             return false;
         }
         if (!binding.matchesSneak(player.isSneaking())) {
+            return false;
+        }
+        if (causeEvent instanceof org.bukkit.event.player.PlayerFishEvent fish && !binding.matchesFishing(fish.getState().name())) {
             return false;
         }
         if (player.getWorld() != null && !binding.matchesWorld(player.getWorld().getName())) {

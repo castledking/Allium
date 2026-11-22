@@ -1515,7 +1515,7 @@ public final class CoreCommandSpecs {
             "powertool", CommandSpec.DEFAULT_NAMESPACE, "tools",
             List.of("pt", "tool", "tools", "powertools", "ptt", "powertooltoggle"),
             "Create, edit, save, bind, enable/disable and give interactive powertool items",
-            "/pt <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|info|save|delete|bind|enable|disable|get|give|list|toggle|reload|help> [args...]",
+            "/pt <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|fish|info|save|delete|bind|enable|disable|get|give|list|toggle|reload|help> [args...]",
             "/pt <enable|disable|give|list|delete|reload|help> [args...]",
             "allium.powertool", null,
             List.of(),
@@ -1532,7 +1532,17 @@ public final class CoreCommandSpecs {
             List.of(),
             CommandMessageKeys.ofOutcomes(Map.of()));
 
-    public static final List<CommandSpec> TOOLS_SPECS = List.of(POWERTOOL, VOUCHER);
+    /** {@code /unrestrain [player]}: frees restrained players (the Handcuffs' ride action). */
+    public static final CommandSpec UNRESTRAIN = new CommandSpec(
+            "unrestrain", CommandSpec.DEFAULT_NAMESPACE, "tools", List.of(),
+            "Free every restrained player, or one player",
+            "/unrestrain [player]", "/unrestrain [player]",
+            "allium.unrestrain", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> TOOLS_SPECS = List.of(POWERTOOL, VOUCHER, UNRESTRAIN);
 
     public static final CommandSpec CREATIVEMANAGER = new CommandSpec(
             "creativemanager", CommandSpec.DEFAULT_NAMESPACE, "creative", List.of("cm"),

@@ -195,7 +195,7 @@ public final class VoucherImport {
                 PowerToolCooldownScope.PLAYER, null, 0L, null, Map.of()));
 
         PowerToolBinding redeem = new PowerToolBinding(PowerToolTrigger.RIGHT, null, true, PowerToolBinding.HAND_BOTH,
-                PowerToolBinding.SNEAK_ANY, List.of(), 0L, PowerToolCooldownScope.PLAYER, null, null, false, true, actions);
+                PowerToolBinding.SNEAK_ANY, List.of(), List.of(), 0L, PowerToolCooldownScope.PLAYER, null, null, false, true, actions);
         Map<PowerToolTrigger, PowerToolBinding> bindings = new LinkedHashMap<>();
         bindings.put(PowerToolTrigger.RIGHT, redeem);
         PowerToolParameters parameters = new PowerToolParameters(new PowerToolUses(1, true, 0, false, false),

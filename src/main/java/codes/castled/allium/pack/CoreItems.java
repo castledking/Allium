@@ -36,8 +36,12 @@ public final class CoreItems {
     }
 
     public static List<AlliumItemDefinition> definitions(AssetManifest manifest) {
+        AlliumItemDefinition cuffs = definition(manifest, "handcuffs", true, true, Map.of());
         return List.of(
-                definition(manifest, "handcuffs", true, true, Map.of()),
+                // Pre-recode handcuffs never wore out: hooking and reeling in a player costs a fishing rod durability.
+                new AlliumItemDefinition(cuffs.id(), cuffs.carrierMaterial(), cuffs.behaviorId(), cuffs.privileged(),
+                        cuffs.customModelData(), cuffs.displayName(), cuffs.defaultState(), cuffs.signed(), List.of(),
+                        Map.of(), true, List.of("HIDE_UNBREAKABLE")),
                 definition(manifest, "mob_disarmer", false, true, Map.of()),
                 definition(manifest, "phantom_obliterator", true, true, Map.of("charges", "3")),
                 definition(manifest, "item_renamer", false, false, Map.of()),

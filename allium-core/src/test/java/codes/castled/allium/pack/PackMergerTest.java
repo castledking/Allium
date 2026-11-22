@@ -22,6 +22,7 @@ class PackMergerTest {
     void mergesPaperOverridesRangeDispatchFontsAndShadowedOverlayDeterministically() throws Exception {
         byte[] base = zipOf(Map.of(
                 "pack.mcmeta", "{\"pack\":{\"pack_format\":15,\"description\":\"Allium\"},\"overlays\":{\"entries\":[{\"directory\":\"allium_item_definitions\",\"formats\":[46,97]}]}}",
+                "pack.png", "Allium icon",
                 "assets/minecraft/models/item/fishing_rod.json",
                 "{\"parent\":\"minecraft:item/handheld_rod\",\"overrides\":[{\"predicate\":{\"cast\":1},\"model\":\"minecraft:item/fishing_rod_cast\"},{\"predicate\":{\"custom_model_data\":1000},\"model\":\"allium:item/handcuffs\"}]}",
                 "allium_item_definitions/assets/minecraft/items/fishing_rod.json",
@@ -31,6 +32,7 @@ class PackMergerTest {
         ));
         byte[] addon = zipOf(Map.of(
                 "pack.mcmeta", "{\"pack\":{\"pack_format\":15,\"description\":\"Curios\"}}",
+                "pack.png", "Curios icon",
                 "assets/minecraft/models/item/fishing_rod.json",
                 "{\"parent\":\"minecraft:item/handheld_rod\",\"overrides\":[{\"predicate\":{\"custom_model_data\":2000},\"model\":\"curios:item/rod\"}]}",
                 "assets/minecraft/items/fishing_rod.json",
@@ -49,6 +51,7 @@ class PackMergerTest {
         assertTrue(first.warnings().isEmpty(), () -> "unexpected warnings: " + first.warnings());
 
         SortedMap<String, byte[]> out = PackMerger.readZip(first.bytes());
+        assertArrayEquals("Allium icon".getBytes(StandardCharsets.UTF_8), out.get("pack.png"));
         // Base pack.mcmeta wins
         assertTrue(new String(out.get("pack.mcmeta"), StandardCharsets.UTF_8).contains("Allium"));
         // Fishing rod overrides preserve non-CMD cast override first, then sorted CMD overrides

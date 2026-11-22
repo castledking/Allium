@@ -161,6 +161,11 @@ public final class ItemLibrary {
         if (tokens.isEmpty()) {
             return null;
         }
+        for (MetaToken token : tokens) {
+            if (token.key().equals("variant") && !items.applyVariant(stack, required(token).toLowerCase(java.util.Locale.ROOT))) {
+                throw new ItemBuildException("unknown or unsupported item variant: " + required(token));
+            }
+        }
         ItemMeta meta = stack.getItemMeta();
         if (meta == null) {
             throw new ItemBuildException(stack.getType().name().toLowerCase() + " cannot carry item metadata");
@@ -169,6 +174,7 @@ public final class ItemLibrary {
         for (MetaToken token : tokens) {
             String value = token.value();
             switch (token.key()) {
+                case "variant" -> { /* Applied before acquiring the item meta. */ }
                 case "name" -> TextTokens.name(meta, required(token), token.quoted());
                 case "lore" -> TextTokens.lore(meta, required(token), token.quoted());
                 case "spawner" -> {

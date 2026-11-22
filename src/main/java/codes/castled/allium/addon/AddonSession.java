@@ -3,6 +3,7 @@ package codes.castled.allium.addon;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.api.AddonCommands;
 import codes.castled.allium.api.AddonItems;
+import codes.castled.allium.api.AddonPowerTools;
 import codes.castled.allium.api.AddonText;
 import codes.castled.allium.api.AddonConnection;
 import codes.castled.allium.api.ItemDefinition;
@@ -17,13 +18,19 @@ import codes.castled.allium.item.AlliumItemDefinition;
 import codes.castled.allium.item.ItemRef;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.item.ResolutionResult;
+import codes.castled.allium.module.ToolsModule;
 import codes.castled.allium.scheduler.AlliumScheduler;
 import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
+import codes.castled.allium.tool.powertool.PowerToolBehavior;
+import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -34,6 +41,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 
 /** One connected addon: everything it registers or schedules is owned here and released on {@link #close}. */
 final class AddonSession implements AddonConnection {
@@ -45,6 +53,7 @@ final class AddonSession implements AddonConnection {
     private final CommandFamilyPolicy commandPolicy = new CommandFamilyPolicy();
     private final List<String> definedItems = new ArrayList<>();
     private final List<PluginCommand> commands = new ArrayList<>();
+    private final List<Runnable> powerToolCleanup = new ArrayList<>();
     private volatile boolean closed;
     private final codes.castled.allium.api.AddonEconomy economy;
 
@@ -98,20 +107,84 @@ final class AddonSession implements AddonConnection {
         return !codes.castled.allium.command.essentials.UtilitySupport.isInventoryBusy(allium, player);
     }
 
+    @Override
+    public AddonPowerTools powerTools() {
+        return powerTools;
+    }
+
+    private final AddonPowerTools powerTools = new AddonPowerTools() {
+        private PowerToolBehavior runtime() {
+            return allium.getModuleManager().getModule("tools") instanceof ToolsModule module
+                    && module.isEnabled() ? module.powerTools() : null;
+        }
+
+        @Override
+        public boolean available() {
+            requireOpen();
+            return runtime() != null;
+        }
+
+        @Override
+        public void registerAction(String name, Action action) {
+            requireOpen();
+            if (!name.matches("[a-z0-9_]+")) throw new IllegalArgumentException("Invalid action name: " + name);
+            var runtime = Objects.requireNonNull(runtime(), "Allium tools are disabled");
+            Objects.requireNonNull(action, "action");
+            String id = namespace + ":" + name;
+            powerToolCleanup.add(runtime.actions().registerAddon(id, (ctx, spec) -> !closed
+                    && action.run(new Context(ctx.player(), ctx.toolId(), ctx.item(), ctx.hand(), ctx.trigger().name(),
+                    ctx.block(), ctx.targetEntity(), ctx.causeEvent()), spec.value(), spec.params())));
+        }
+
+        @Override
+        public void registerTool(ConfigurationSection definition) {
+            requireOpen();
+            var runtime = Objects.requireNonNull(runtime(), "Allium tools are disabled");
+            powerToolCleanup.add(runtime.registerAddonTool(addon.getName(), definition));
+        }
+
+        @Override
+        public boolean mayModify(Player player, Block block, String action, @Nullable Event cause) {
+            requireOpen();
+            return allium.getProtectionService().checkBlockBreak(player, block.getLocation(), namespace + ":" + action, cause).allowed();
+        }
+    };
+
     private final AddonItems items = new AddonItems() {
         @Override
         public void define(ItemDefinition definition) {
+            define(definition, false);
+        }
+
+        @Override
+        public void defineStackableSigned(ItemDefinition definition) {
+            define(definition, true);
+        }
+
+        @Override
+        public void defineVariants(String id, java.util.Collection<String> names,
+                                   java.util.function.BiConsumer<ItemStack, String> initialize) {
+            requireOpen();
+            if (!definedItems.contains(id)) throw new IllegalArgumentException("Define your item before its variants: " + id);
+            allium.getItemService().registerVariants(id, names, initialize);
+        }
+
+        private void define(ItemDefinition definition, boolean stackable) {
             requireOpen();
             ItemService service = allium.getItemService();
             if (service.getAlliumItem(definition.id()).isPresent()) {
                 throw new IllegalArgumentException("allium:" + definition.id() + " is already defined (by Allium or another addon)");
             }
             String name = definition.displayName() == null ? null : TextFormatter.parse(definition.displayName()).toLegacy();
-            service.registerAlliumItem(new AlliumItemDefinition(definition.id(), definition.carrier(), namespace + ":" + definition.id(),
-                    false, definition.customModelData(), name, definition.defaultState(), definition.signed()));
+            var item = new AlliumItemDefinition(definition.id(), definition.carrier(), namespace + ":" + definition.id(),
+                    stackable, definition.customModelData(), name, definition.defaultState(), definition.signed());
+            if (stackable) service.registerStackableSignedItem(item);
+            else service.registerAlliumItem(item);
             definedItems.add(definition.id());
-            allium.logger().info(addon.getName() + " defined allium:" + definition.id() + " (behavior " + namespace + ":"
-                    + definition.id() + (definition.signed() ? ", signed" : "") + ").");
+            if (!stackable) {
+                allium.logger().info(addon.getName() + " defined allium:" + definition.id() + " (behavior " + namespace + ":"
+                        + definition.id() + (definition.signed() ? ", signed" : "") + ").");
+            }
         }
 
         @Override
@@ -247,6 +320,8 @@ final class AddonSession implements AddonConnection {
         if (!busy.isEmpty()) {
             allium.logger().warning(addon.getName() + "'s worker pools were still busy when it disabled: " + busy);
         }
+        for (int i = powerToolCleanup.size() - 1; i >= 0; i--) powerToolCleanup.get(i).run();
+        powerToolCleanup.clear();
         definedItems.forEach(allium.getItemService()::unregisterAlliumItem);
         for (PluginCommand command : commands) {
             command.setExecutor(null);

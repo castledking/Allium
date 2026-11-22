@@ -1,0 +1,23 @@
+name: SpawnerCraft
+main: codes.castled.spawnercraft.SpawnerCraft
+version: '1.0.0'
+api-version: '1.20'
+depend: [Allium]
+softdepend: [Curios, Nexo]
+allium-api: '^1.3'
+allium-addon-dir: true
+allium-pack: spawnercraft-pack.zip
+commands:
+  spawnercraft:
+    description: View head recipes, give ingredients, or import plushie recipes
+    usage: /spawnercraft [guide|give|import|reload]
+    permission: spawnercraft.use
+permissions:
+  spawnercraft.use:
+    default: true
+  spawnercraft.craft:
+    default: true
+  spawnercraft.admin:
+    default: op
+  spawnercraft.changer.use:
+    default: true

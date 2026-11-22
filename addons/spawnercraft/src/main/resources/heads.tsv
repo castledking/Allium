@@ -1,0 +1,204 @@
+# Includes assets from VanillaTweaks.net, used in accordance with their terms and conditions.
+# mob, item ID, name, texture hash, note sound, base chance, Looting I chance, per-level bonus, variant
+allay	allay_head	Allay Head	cc0389177dbaa92f0d5ffdf848862c7f9b36df222fbfd737e2639dc3059e0cf3	minecraft:entity.allay.ambient_without_item	0.2	0.21	0.01
+armadillo	armadillo_head	Armadillo Head	6607ae7a701767336c06b0c4ffa81dff2cfd8bc070d95714a6badf0efb7263e1	minecraft:entity.armadillo.ambient	0.1	0.105	0.005
+axolotl	lucy_axolotl_head	Lucy Axolotl Head	667e15eab73064b6680d1db98ba445ed0914ba35a799997c0da2b03ffc3a8826	minecraft:entity.axolotl.idle_air	0.2	0.21	0.01	lucy
+axolotl	wild_axolotl_head	Wild Axolotl Head	47cf0274998bf5a7f38b37036e154f112fa2e28bad40d5a7c94765fe4f52211e	minecraft:entity.axolotl.idle_air	0.2	0.21	0.01	wild
+axolotl	gold_axolotl_head	Gold Axolotl Head	e58560115faad11619b3d55de79ef2a053f478a67194bbe9247edea0bc98e834	minecraft:entity.axolotl.idle_air	0.2	0.21	0.01	gold
+axolotl	cyan_axolotl_head	Cyan Axolotl Head	851196d43930659d717e1b6a046a08d1220fcb4e31c4856bc33e7551986ef1d	minecraft:entity.axolotl.idle_air	0.2	0.21	0.01	cyan
+axolotl	blue_axolotl_head	Blue Axolotl Head	68fd10b0fef4595960b1f64193bc8a1865a2d2ed48b2e2ce03d994563027df95	minecraft:entity.axolotl.idle_air	1	1	0	blue
+bat	bat_head	Bat Head	3eb588dcd0bb57ce6ddab8e3afb6fd4330064eaac01b61a8e9769f0476f52f50	minecraft:entity.bat.ambient	0.1	0.12	0.02
+bee	bee_head	Bee Head	59ac16f296b461d05ea0785d477033e527358b4f30c266aa02f020157ffca736	minecraft:entity.bee.loop	0.2	0.22	0.02	{anger_end_time:-1L,HasNectar:0b}
+bee	pollinated_bee_head	Pollinated Bee Head	b727d0ab03f5cd022f8705d3f7f133ca4920eae8e1e47b5074433a137e691e4e	minecraft:entity.bee.pollinate	0.2	0.22	0.02	{anger_end_time:-1L,HasNectar:1b}
+bee	angry_bee_head	Angry Bee Head	e400223f1fa54741d421d7e8046409d5f3e15c7f4364b1b739940208f3b686d4	minecraft:entity.bee.loop_aggressive	0.2	0.22	0.02	{HasNectar:0b}
+bee	angry_pollinated_bee_head	Angry Pollinated Bee Head	e6b74e052b74288799ba6d9f35c5d0221cf8b04331547ec2f68d73597ae2c9b	minecraft:entity.bee.loop_aggressive	0.2	0.22	0.02	{HasNectar:1b}
+blaze	blaze_head	Blaze Head	dee23dc7a10c6a87ef937454c0e94ed42c23aa641a91ed8470a3042d05c52c52	minecraft:entity.blaze.ambient	0.005	0.0055	0.0005
+bogged	bogged_head	Bogged Head	4f807a187077f836b93820b32d8d8341d4d32cd4c8c1115cf1da6374e0fbd3ff	minecraft:entity.bogged.ambient	0.06	0.11	0.05
+breeze	breeze_head	Breeze Head	a275728af7e6a29c88125b675a39d88ae9919bb61fdc200337fed6ab0c49d65c	minecraft:entity.breeze.idle_air	0.1	0.101	0.001
+camel	camel_head	Camel Head	e67d4597340166e1978a668a06bf5756c17b4cb5b40ab8ff244093b6b8bc75d3	minecraft:entity.camel.ambient	1	1	0
+camel_husk	camel_husk_head	Camel Husk Head	c7d43463d848941159430a232b4d5c17b3b842f866b54a33e748476e40874747	minecraft:entity.camel_husk.ambient	1	1	0
+cat	tabby_cat_head	Tabby Cat Head	de28d30db3f8c3fe50ca4f26f3075e36f003ae8028135a8cd692f24c9a98ae1b	minecraft:entity.cat.ambient	0.33	0.35	0.02	tabby
+cat	tuxedo_cat_head	Tuxedo Cat Head	4fd10c8e75f67398c47587d25fc146f311c053cc5d0aeab8790bce36ee88f5f8	minecraft:entity.cat.ambient	0.33	0.35	0.02	black
+cat	ginger_cat_head	Ginger Cat Head	2113dbd3c6a078a17b4edb78ce07d836c38dace5027d4b0a83fd60e7ca7a0fcb	minecraft:entity.cat.ambient	0.33	0.35	0.02	red
+cat	siamese_cat_head	Siamese Cat Head	d5b3f8ca4b3a555ccb3d194449808b4c9d783327197800d4d65974cc685af2ea	minecraft:entity.cat.ambient	0.33	0.35	0.02	siamese
+cat	british_shorthair_cat_head	British Shorthair Cat Head	5389e0d5d3e81f84b570e2978244b3a73e5a22bcdb6874b44ef5d0f66ca24eec	minecraft:entity.cat.ambient	0.33	0.35	0.02	british_shorthair
+cat	calico_cat_head	Calico Cat Head	340097271bb680fe981e859e8ba93fea28b813b1042bd277ea3329bec493eef3	minecraft:entity.cat.ambient	0.33	0.35	0.02	calico
+cat	persian_cat_head	Persian Cat Head	ff40c746260ef91c96b27159795e87191ae7ce3d5f767bf8c74faad9689af25d	minecraft:entity.cat.ambient	0.33	0.35	0.02	persian
+cat	ragdoll_cat_head	Ragdoll Cat Head	dc7a45d25889e3fdf7797cb258e26d4e94f5bc13eef00795dafef2e83e0ab511	minecraft:entity.cat.ambient	0.33	0.35	0.02	ragdoll
+cat	white_cat_head	White Cat Head	21d15ac9558e98b89aca89d3819503f1c5256c2197dd3c34df5aac4d72e7fbed	minecraft:entity.cat.ambient	0.33	0.35	0.02	white
+cat	jellie_cat_head	Jellie Cat Head	a0db41376ca57df10fcb1539e86654eecfd36d3fe75e8176885e93185df280a5	minecraft:entity.cat.ambient	0.33	0.35	0.02	jellie
+cat	black_cat_head	Black Cat Head	22c1e81ff03e82a3e71e0cd5fbec607e11361089aa47f290d46c8a2c07460d92	minecraft:entity.cat.ambient	0.33	0.35	0.02	all_black
+cave_spider	cave_spider_head	Cave Spider Head	a6a1c2599fc91203a65a03d479c8dc87f662deac3663c16c5e04d625b3978a25	minecraft:entity.spider.step	0.005	0.015	0.01
+chicken	temperate_chicken_head	Temperate Chicken Head	42af6e5847eea099e1b0ab8c20a9e5f3c7190158bda54e28133d9b271ec0cb4b	minecraft:entity.chicken.ambient	0.01	0.011	0.001	temperate
+chicken	cold_chicken_head	Cold Chicken Head	5077361a18fc1dc3a0c8e2cee122db6cd0e2fb08033548ae9c47e6f33fa4db38	minecraft:entity.chicken.ambient	0.01	0.011	0.001	cold
+chicken	warm_chicken_head	Warm Chicken Head	7d66b0a355aa27f3649dff4080fe92ab5f2a1e19ba8c7f15ca67506843dea0d7	minecraft:entity.chicken.ambient	0.01	0.011	0.001	warm
+cod	cod_head	Cod Head	f246e19b32cf784549447e07b96072e1f656d78e93ccca5637485e6749734652	minecraft:entity.cod.flop	0.1	0.11	0.01
+copper_golem	copper_golem_head	Copper Golem Head	ef40c1bec122265e979e4378dc8d8b13bd926ed2ad8984f493eb46f754474717	minecraft:entity.copper_golem.spin	0.05	0.08	0.03
+copper_golem	exposed_copper_golem_head	Exposed Copper Golem Head	aac2844c30097c96462d48ada064cf9aae366aa11fdc1569ece860f720d1c9e0	minecraft:entity.copper_golem_weathered.spin	0.05	0.08	0.03	{weather_state: 'exposed'}
+copper_golem	weathered_copper_golem_head	Weathered Copper Golem Head	d51795c439f5e2c4b08d90272127f29cb4e0b1a7d4eeb687591aa58003802a1a	minecraft:entity.copper_golem_weathered.spin	0.05	0.08	0.03	{weather_state: 'weathered'}
+copper_golem	oxidized_copper_golem_head	Oxidized Copper Golem Head	f6a4598420c3f2049962de4936317a36d250d13d6502ac7ccc62f55a137bde37	minecraft:entity.copper_golem_oxidized.spin	0.05	0.08	0.03	{weather_state: 'oxidized'}
+cow	temperate_cow_head	Temperate Cow Head	d8fdc65e3ba09c12bc1d68fffb33d634305c014231b3d42a888e336ae490090f	minecraft:entity.cow.ambient	0.01	0.011	0.001
+cow	cold_cow_head	Cold Cow Head	d28d40507a0ec512cd9084c6db874e403fd396120574132a68ce10cafdd7b67c	minecraft:entity.cow.ambient	0.01	0.011	0.001	cold
+cow	warm_cow_head	Warm Cow Head	ff344c9942ac35789fa6c1d602876c9f56f68f02e670de0ff81b7c831610ff5a	minecraft:entity.cow.ambient	0.01	0.011	0.001	warm
+creaking	creaking_head	Creaking Head	fc077c975f13dbdaeda5f0d2016eb3af51e4c27d9714a123c4128901505c788c	minecraft:entity.creaking.ambient	0.1	0.105	0.005
+creeper	charged_creeper_head	Charged Creeper Head	3511e4a3d5add6a54499abad10d799d06ce45cba9e520afd2008608a6288b7e7	minecraft:entity.generic.explode	1	1	0	{powered:1b}
+dolphin	dolphin_head	Dolphin Head	8e9688b950d880b55b7aa2cfcd76e5a0fa94aac6d16f78e833f7443ea29fed3	minecraft:entity.dolphin.ambient_water	0.33	0.35	0.02
+donkey	donkey_head	Donkey Head	4e25ee9273ad579d44bf406f6f6295586481ea198fd572076cd0c5882da7e6cc	minecraft:entity.donkey.ambient	0.2	0.29	0.09
+drowned	drowned_head	Drowned Head	c3f7ccf61dbc3f9fe9a6333cde0c0e14399eb2eea71d34cf223b3ace22051	minecraft:entity.drowned.ambient	0.05	0.07	0.02
+elder_guardian	elder_guardian_head	Elder Guardian Head	4a2d64f4a00e9c85f67262edcacb84523581ae0f37bdab22dd704524f62e169f	minecraft:entity.elder_guardian.ambient	1	1	0
+enderman	enderman_head	Enderman Head	8977a94f02498cad0cfdb65ca7cb72e23111a914d8c670acccc7a65b347d7776	minecraft:entity.enderman.scream	0.005	0.0051	0.0001
+endermite	endermite_head	Endermite Head	8c6b65c22b4465ba6793b2195cd5084ce83b88dca6e55eb9484540acd7352a50	minecraft:entity.endermite.ambient	0.1	0.11	0.01
+evoker	evoker_head	Evoker Head	390fbd88f659d3963c68cbbcb7c7121d8195a8be65bbd2bf1257d1f69bccc0c7	minecraft:entity.evoker.prepare_attack	0.25	0.27	0.02
+fox	fox_head	Fox Head	d7e0043111bc57090856259155571c7906e707046df041b8b572704c451fcd82	minecraft:entity.fox.ambient	0.1	0.104	0.004	red
+fox	snow_fox_head	Snow Fox Head	41436377eb4c4b4e39fb0e1ed8899fb61ee1814a9169b8d08729ef01dc85d1ba	minecraft:entity.fox.ambient	0.2	0.204	0.004	snow
+frog	cold_frog_head	Cold Frog Head	76877893e920ff5dfa4b5fbd14dabee2e6308a6f97c3a19b08e241a29eb9a5c3	minecraft:entity.frog.ambient	0.2	0.21	0.01	cold
+frog	temperate_frog_head	Temperate Frog Head	a50d1073d41f193405d95b1d941f9fe1a7ff080e38155d7bb780bbbd8e86f70d	minecraft:entity.frog.ambient	0.2	0.21	0.01	temperate
+frog	warm_frog_head	Warm Frog Head	d5b0da43975b83c3322788dda317506333843aebe5512787cb2e3d769ed2b382	minecraft:entity.frog.ambient	0.2	0.21	0.01	warm
+ghast	ghast_head	Ghast Head	c53de31a2d0041a6ef75bf7a6c8468464db1aaa6201ebb1a6013edb2245c7607	minecraft:entity.ghast.warn	0.0625	0.075	0.0125
+glow_squid	glow_squid_head	Glow Squid Head	4b2e9b6581fed48a99e0323091ad5c3c326cda20073e28a902a0373f7382b59f	minecraft:entity.glow_squid.ambient	0.05	0.06	0.01
+goat	goat_head	Goat Head	87473e055df6e7fd98664e9fdb63675f088106305d744024a41bb358918a142b	minecraft:entity.goat.ambient	0.01	0.011	0.001	{IsScreamingGoat:0b}
+goat	screaming_goat_head	Screaming Goat Head	bda485ac23512420891a5ae1e8de989f091d848d15a9068da4720d316fc4330f	minecraft:entity.goat.screaming.prepare_ram	1	1	0	{IsScreamingGoat:1b}
+guardian	guardian_head	Guardian Head	e2ba34416670454b1a20496f80b9398529f49003fc613eb930248ea9b5d1a391	minecraft:entity.elder_guardian.flop	0.005	0.006	0.001
+happy_ghast	happy_ghast_head	Happy Ghast Head	7505b062078d9753ddb9bc0ef0f4e32313d37ba50840db87458c7f6cbcff480c	minecraft:entity.happy_ghast.ambient	0.1	0.11	0.01
+hoglin	hoglin_head	Hoglin Head	bc4a7f57fc03b13aa2f9d83cdd4822b936793096daf51e78025bbd241ed6f68d	minecraft:entity.hoglin.angry	0.03	0.05	0.02
+horse	white_horse_head	White Horse Head	c7bc61609730f2cb010268fab0821bd47352699750a150599f21c3fc4e92591a	minecraft:entity.horse.ambient	0.27	0.28	0.01	white
+horse	creamy_horse_head	Creamy Horse Head	42a0d54cc071267d6bfd5f523f8c89dcfdc5e805fabbb76010cb3befa465aa94	minecraft:entity.horse.ambient	0.27	0.28	0.01	creamy
+horse	chestnut_horse_head	Chestnut Horse Head	6c8720d1f552693b40a9a33afa41cef06afd142833bed9fa5b887e88f05f49fa	minecraft:entity.horse.ambient	0.27	0.28	0.01	chestnut
+horse	brown_horse_head	Brown Horse Head	6771800770cb4e814a3d91186fcd795ec82e06102ff7c1ee4e5c380102a0c70f	minecraft:entity.horse.ambient	0.27	0.28	0.01	brown
+horse	black_horse_head	Black Horse Head	6723fa5be6ac2292a72230f5fd7ab663493bd8f7e64816424dc5bf24f133890c	minecraft:entity.horse.ambient	0.27	0.28	0.01	black
+horse	gray_horse_head	Gray Horse Head	c25986102181083fb317bc5712f7104daa5a3e889264dfebb9159f6e08bac90c	minecraft:entity.horse.ambient	0.27	0.28	0.01	gray
+horse	dark_brown_horse_head	Dark Brown Horse Head	7f2341aaa0c82c22bbc207063e319291097c539adad9aa913eb8001b11aa59da	minecraft:entity.horse.ambient	0.27	0.28	0.01	dark_brown
+husk	husk_head	Husk Head	7338318bc91a36cd5ab6aa885c9a4ee2bdacdaa5c66b2a99dfb0a560983f2480	minecraft:entity.husk.ambient	0.06	0.06999999999999999	0.01
+illusioner	illusioner_head	Illusioner Head	d382701c67d6c54c907558891dc176225112518771e061c5d8bd918479e6bdd8	minecraft:entity.illusioner.cast_spell	0.25	0.27	0.02
+iron_golem	iron_golem_head	Iron Golem Head	fe7c0719fabe116dce605199bcadc69a538860864ef15706983ff662822d9fe3	minecraft:entity.iron_golem.hurt	0.05	0.065	0.015
+llama	creamy_llama_head	Creamy Llama Head	4d67fd4bff293269cb908974dca83c33485e435ed5a8e1dbd6521c61687140	minecraft:entity.llama.ambient	0.24	0.26	0.02	creamy
+llama	white_llama_head	White Llama Head	80277e6b3d9f7819efc7da4b42745f7ab9a63ba8f36d6b84a7a250c6d1a358eb	minecraft:entity.llama.ambient	0.24	0.26	0.02	white
+llama	brown_llama_head	Brown Llama Head	c2b1ecff77ffe3b503c30a548eb23a1a08fa26fd67cdff389855d74921368	minecraft:entity.llama.ambient	0.24	0.26	0.02	brown
+llama	gray_llama_head	Gray Llama Head	cf24e56fd9ffd7133da6d1f3e2f455952b1da462686f753c597ee82299a	minecraft:entity.llama.ambient	0.24	0.26	0.02	gray
+magma_cube	magma_cube_head	Magma Cube Head	b81718d4984847a4ad3ec081a4ebffd183743239aecab60322138a72609812c3	minecraft:entity.magma_cube.squish	0.005	0.006	0.001
+mooshroom	red_mooshroom_head	Red Mooshroom Head	fee4288d87333fd7a1d6fef49d5e46847c737c816d19a8950350381e4757f349	minecraft:entity.cow.ambient	0.01	0.011	0.001	red
+mooshroom	brown_mooshroom_head	Brown Mooshroom Head	d16871099bb553700f466d7b8f6009a10a4fe1ff462409cde6aca5c898b2619b	minecraft:entity.cow.ambient	0.1	0.101	0.001	brown
+mule	mule_head	Mule Head	41c224a1031be434d25ae1885bf4ff400c9894c69bfef56a49354c5625c0c09c	minecraft:entity.mule.ambient	0.2	0.25	0.05
+nautilus	nautilus_shell	Nautilus Shell	2708cf9900399060c9280c6b3b88cbe536e722c0eebc932a9c5fa0140d0362fc	minecraft:entity.nautilus.ambient	0.1	0.11	0.01
+ocelot	ocelot_head	Ocelot Head	9175cc43ea8ae20168a1f170810b4da4d9b4ebd3c9976e9fc22e9f995c3cbc3c	minecraft:entity.ocelot.ambient	0.2	0.22	0.02
+panda	aggressive_panda_head	Aggressive Panda Head	e546e436d166b17f0521bd8538ea13cd6ee3b5df102eb32e3e425cb285d44063	minecraft:entity.panda.aggressive_ambient	0.27	0.274	0.004	{MainGene:"aggressive"}
+panda	lazy_panda_head	Lazy Panda Head	587f1f5db2e24df4daaed4685d6aee5deb7cdd029630f0079c1f8e1f9741acfd	minecraft:entity.panda.ambient	0.27	0.274	0.004	{MainGene:"lazy"}
+panda	playful_panda_head	Playful Panda Head	8cadd4bf3c4cace916680e1fef90b5d16ad6643951725668ba6b4996b69ca140	minecraft:entity.panda.ambient	0.27	0.274	0.004	{MainGene:"playful"}
+panda	worried_panda_head	Worried Panda Head	fb86fd1bf8cbce23bc08fb90691717611addc85ab823b7714aec98a5660eff15	minecraft:entity.panda.worried_ambient	0.27	0.274	0.004	{MainGene:"worried"}
+panda	brown_panda_head	Brown Panda Head	1d5f6d6126728671b44c1c775f99617424e33611b5d31ad2acff2804eb96eb06	minecraft:entity.panda.ambient	0.27	0.274	0.004	{MainGene:"brown",HiddenGene:"brown"}
+panda	weak_panda_head	Weak Panda Head	cc56a355fbe0e2fbd28e85c4d815ffa5d1f9d5f8798dbc259ff88c4addb202ae	minecraft:entity.panda.sneeze	0.27	0.274	0.004	{MainGene:"weak",HiddenGene:"weak"}
+panda	panda_head	Panda Head	59df47e015d5c1c68d72be11bb656380fc6db533aab38941a91b1d3d5e396497	minecraft:entity.panda.ambient	0.27	0.274	0.004
+parched	parched_head	Parched Head	24aeceff5f26dd8413c5c03547c234ac03108d187af0b9cd834a8ce12598591c	minecraft:entity.parched.ambient	0.06	0.11	0.05
+parrot	red_parrot_head	Red Parrot Head	40a3d47f54e71a58bf8f57c5253fb2d213f4f55bb7934a19104bfb94edc76eaa	minecraft:entity.parrot.ambient	0.25	0.27	0.02	red_blue
+parrot	blue_parrot_head	Blue Parrot Head	b94bd3fcf4d46354ede8fef73126dbcab52b301a1c8c23b6cdfc12d612b61bea	minecraft:entity.parrot.ambient	0.25	0.27	0.02	blue
+parrot	green_parrot_head	Green Parrot Head	6a1dc33115232f800825cac9e3d9ed03fc18ae553c25b8059513000c59e354fe	minecraft:entity.parrot.ambient	0.25	0.27	0.02	green
+parrot	light_blue_parrot_head	Light Blue Parrot Head	7268ce37be8507ed67e3d40b617e2d72f66f9d20b106efb08e6ba041f9b9ef10	minecraft:entity.parrot.ambient	0.25	0.27	0.02	yellow_blue
+parrot	gray_parrot_head	Gray Parrot Head	71be723aa17393d99daddc119c98b2c79c54b35debe05c7138edeb8d0256dc46	minecraft:entity.parrot.ambient	0.25	0.27	0.02	gray
+phantom	phantom_head	Phantom Head	7e95153ec23284b283f00d19d29756f244313a061b70ac03b97d236ee57bd982	minecraft:entity.phantom.ambient	0.1	0.11	0.01
+pig	temperate_pig_head	Temperate Pig Head	41ee7681adf00067f04bf42611c97641075a44ae2b1c0381d5ac6b3246211bfe	minecraft:entity.pig.ambient	0.01	0.011	0.001
+pig	cold_pig_head	Cold Pig Head	ba18d4043cd6c903866788914fd534315281af9f259e34837e3e175e545c2ede	minecraft:entity.pig.ambient	0.01	0.011	0.001	cold
+pig	warm_pig_head	Warm Pig Head	7beba1a2d56e84f8e51fed6659f2cb7c14fed43859af584737897bf70c039475	minecraft:entity.pig.ambient	0.01	0.011	0.001	warm
+piglin_brute	piglin_brute_head	Piglin Brute Head	6488799c83ecb29452ceba89c3c0099219274ce5b2bfb8ad0b3ea4c65fac4630	minecraft:entity.piglin_brute.ambient	0.1	0.11	0.01
+pillager	pillager_head	Pillager Head	c225f0b49c5295048a409c9c601cca79aa8eb52aff5e2033ebb865f4367ef43e	minecraft:entity.pillager.ambient	0.025	0.03	0.005
+polar_bear	polar_bear_head	Polar Bear Head	cd8702911e616c0d32fbe778d195f21ecce9025bcbd09151e3d97af3192aa7ec	minecraft:entity.polar_bear.ambient	0.2	0.25	0.05
+pufferfish	pufferfish_head	Pufferfish Head	e2733d5da59c82eaf310b382aff40bd513c44354dbbabfe14b066a556810a7f9	minecraft:entity.puffer_fish.blow_up	0.15	0.16	0.01
+rabbit	toast_rabbit_head	Toast Rabbit Head	805c5fe80ba2a0e8004c9caa2723e7864acc93229df2c8e0b27b71f8153edb27	minecraft:entity.rabbit.ambient	1.0	1	0
+rabbit	brown_rabbit_head	Brown Rabbit Head	8e7d22111aae3e8846f8ec45c52483f374591ee5a36c498b4a0600c45c09e7b5	minecraft:entity.rabbit.ambient	0.26	0.31	0.05	brown
+rabbit	white_rabbit_head	White Rabbit Head	ca96155bb6513bfd119194d58cf18e6ee98fe5ebe7f34f59c4ec10c0d5ea9f37	minecraft:entity.rabbit.ambient	0.26	0.31	0.05	white
+rabbit	black_rabbit_head	Black Rabbit Head	ba77b0e455c1dd2532bee898298d8964a610379d56180fae344b0d266a0343c6	minecraft:entity.rabbit.ambient	0.26	0.31	0.05	black
+rabbit	black_and_white_rabbit_head	Black and White Rabbit Head	11c3b6fc003dd6449b3c53bdc36b230bfed9bcfa1d9f80baeed8952e6e9663dd	minecraft:entity.rabbit.ambient	0.26	0.31	0.05	white_splotched
+rabbit	gold_rabbit_head	Gold Rabbit Head	e0627440e2b092559299029b9da631f52ed6e45194bdfef07af69d79eaf16521	minecraft:entity.rabbit.ambient	0.26	0.31	0.05	gold
+rabbit	salt_and_pepper_rabbit_head	Salt and Pepper Rabbit Head	66538d74a7a0f039c33574b243ddf75989ae038c7ee7de1c01747fb8813f14f	minecraft:entity.rabbit.ambient	0.26	0.31	0.05	salt
+rabbit	the_killer_bunny_head	The Killer Bunny Head	3233d6a2e2a641a7c04d3f3d2356ffac411537a239f37b33d63d66b43bc1e8f5	minecraft:entity.rabbit.attack	1	1	0	evil
+ravager	ravager_head	Ravager Head	eb4db2986140e251e32e70ed08c8a081720313ce257632be1ef94a0737394db	minecraft:entity.ravager.roar	0.25	0.27	0.02
+salmon	salmon_head	Salmon Head	791d9e69b795da4eaacfcf7350dfe8ae367fed833556706e040339dd7fe0240a	minecraft:entity.salmon.flop	0.1	0.11	0.01
+sheep	jeb_sheep_head	jeb_ Sheep Head	cebf1b6761829d803eb47ef0e6edab255d2498614aace1c7c027470fb9bb6eb7	minecraft:entity.sheep.shear	0.1	0.15	0.05	jeb_
+sheep	white_sheep_head	White Sheep Head	6dfe7cc46d749b153261c1dc11abbf2a3108ea1ba0b2650280eed1592dcfc75b	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	white
+sheep	orange_sheep_head	Orange Sheep Head	b059342474b6265cfc3eaeebff80ecaa05d10f74097423507f3abbd540f07678	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	orange
+sheep	magenta_sheep_head	Magenta Sheep Head	6246a7bf9c8f6987753ed625ece0318bdaf7e8e4c049d695762811de7158df27	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	magenta
+sheep	light_blue_sheep_head	Light Blue Sheep Head	6cdec6db1222b1bf7b72d30a3dd6c2bc0441f05a645d33de575046b944106ffa	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	light_blue
+sheep	yellow_sheep_head	Yellow Sheep Head	f61c01aa65dfd6a6120b9d07936aa6edf2c56e2d972c2b569c178c308b0f66e7	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	yellow
+sheep	lime_sheep_head	Lime Sheep Head	3f09cfb38c22173463a0efedfd7f3f3762eed25936ae0061ff3c1e95dc0dc20c	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	lime
+sheep	pink_sheep_head	Pink Sheep Head	eae83b013c309a58418a5d9c4c82eae5550ef426aad8f913cd5988a358c188fe	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	pink
+sheep	gray_sheep_head	Gray Sheep Head	c2d25479e165eb7703bb100c55d16b07db8c5fd93a73e525b3de91e075040883	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	gray
+sheep	light_gray_sheep_head	Light Gray Sheep Head	122030a40d9a9b92458f7f6a4f78d18d494fc4e8711f39b575b2ef8cbcbeaa6d	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	light_gray
+sheep	cyan_sheep_head	Cyan Sheep Head	5c68e3070ec79694a043cd9ec384cace677e2de62c43263b652435cd466eb3f	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	cyan
+sheep	purple_sheep_head	Purple Sheep Head	e45fe10ec46275753735ee0f3d5857bf95ac5bed3056b44b2a722e6e84b66ce9	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	purple
+sheep	blue_sheep_head	Blue Sheep Head	6f4de35da6a3da3956f8e8f9c83be7a5359f15d7e4d783edcd9e0fe93a490f9	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	blue
+sheep	brown_sheep_head	Brown Sheep Head	e0b0ed1382eedd5814549c8299245d917668aab38086aedeb9fdb6f3ca7d3372	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	brown
+sheep	green_sheep_head	Green Sheep Head	e8c9cf605efd07d38332aefdba45bdd9fe04b4702910b0a30746c6fc9a219604	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	green
+sheep	red_sheep_head	Red Sheep Head	aba8e6c9898181f0160d0f50ffa954e6d5cb27951d66e610ba72c8ca12ebba94	minecraft:entity.evoker.prepare_wololo	0.0175	0.02	0.0025	red
+sheep	black_sheep_head	Black Sheep Head	73b79b7c82e50cbecd72764575a5edb93865a412c4c00df5445ea3ca9ef9a09a	minecraft:entity.sheep.ambient	0.0175	0.02	0.0025	black
+shulker	shulker_head	Shulker Head	fb9e6af6b819f3d90e67ce2e7059fbef31da2aa953d35e3454f1021fa912efde	minecraft:entity.shulker.ambient	0.05	0.06	0.01
+silverfish	silverfish_head	Silverfish Head	f25e9fae371664de1a800c84d025124abb8f15111807c8bc1ab9126aacbd4f95	minecraft:entity.silverfish.ambient	0.05	0.06	0.01
+skeleton_horse	skeleton_horse_head	Skeleton Horse Head	6e226705bd2a9e7bb8d6b0f4daa969b9e12d4ae5c66da693bb5f4a4a1e6aa296	minecraft:entity.skeleton_horse.ambient	0.2	0.25	0.05
+slime	slime_head	Slime Head	c06424ec7a196b15f9ad5733a36a6d1f2e6a0d42ffce1e1508f90f312ac4caed	minecraft:entity.slime.squish_small	0.005	0.006	0.001
+sniffer	sniffer_head	Sniffer Head	c84a7e7fe197b7e7419b51d46cc233551b9ec899de1afe7f653e4f8fb26a686e	minecraft:entity.sniffer.scenting	1	1	0
+snow_golem	snow_golem_head	Snow Golem Head	caa3e17ef1b29a4b87fa43dee1db12c41fd39aa387fa13af2a079b5b378fde8b	minecraft:entity.snow_golem.hurt	0.05	0.06	0.01
+spider	spider_head	Spider Head	de28e6629b6ed1da94d4a818761612c36fb3a6813c4b63fb9fea5076415f3f0c	minecraft:entity.spider.ambient	0.005	0.006	0.001
+squid	squid_head	Squid Head	8351b7d9a4f36cfe31fd59d8c900e419a135144105e7a981caa5a168dcff325b	minecraft:entity.squid.ambient	0.05	0.06	0.01
+stray	stray_head	Stray Head	592b5597085e35db53d9bda008cae72b2f00cd7d4cd8dc69ff174a55b689e6e	minecraft:entity.stray.ambient	0.06	0.11	0.05
+strider	strider_head	Strider Head	9c40fad1c11de9e6422b405426e9b97907f35bce345e3758604d3e7be7df884	minecraft:entity.strider.happy	0.1	0.15	0.05
+strider	cold_strider_head	Cold Strider Head	2713085a57527e45459c38faa7bb91cabb381df31cf2bf79d67a07156b6c2309	minecraft:entity.strider.ambient	0.1	0.15	0.05
+sulfur_cube	sulfur_cube_head	Sulfur Cube Head	a5ca506bfc34b9a8d0bed0530e13651b28c2b01c35c41405a78dce9f7dbd7cdb	minecraft:entity.sulfur_cube.absorb	0.01	0.015	0.005
+tadpole	tadpole_head	Tadpole Head	3daf1653b5f59b5ec5a3f79609cb4233579fef07e693b61749e0900149edf563	minecraft:entity.tadpole.flop	0.1	0.11	0.01
+trader_llama	creamy_trader_llama_head	Creamy Trader Llama Head	e89a2eb17705fe7154ab041e5c76a08d41546a31ba20ea3060e3ec8edc10412c	minecraft:entity.llama.ambient	0.24	0.31	0.07	{Variant:0}
+trader_llama	white_trader_llama_head	White Trader Llama Head	7087a556d4ffa95ecd2844f350dc43e254e5d535fa596f540d7e77fa67df4696	minecraft:entity.llama.ambient	0.24	0.31	0.07	{Variant:1}
+trader_llama	brown_trader_llama_head	Brown Trader Llama Head	8424780b3c5c5351cf49fb5bf41fcb289491df6c430683c84d7846188db4f84d	minecraft:entity.llama.ambient	0.24	0.31	0.07	{Variant:2}
+trader_llama	gray_trader_llama_head	Gray Trader Llama Head	be4d8a0bc15f239921efd8be3480ba77a98ee7d9ce00728c0d733f0a2d614d16	minecraft:entity.llama.ambient	0.24	0.31	0.07	{Variant:3}
+tropical_fish	tropical_fish_head	Tropical Fish Head	34a0c84dc3c090df7bafc4367a9fc6c8520da2f73efffb80e934d1189eadac41	minecraft:entity.tropical_fish.flop	0.1	0.11	0.01
+turtle	turtle_head	Turtle Head	304931200ad460b650a190e8d41227c3999fbeb933b51ca49fd9e5920d1f8e7d	minecraft:entity.turtle.ambient_land	0.1	0.11	0.01
+vex	vex_head	Vex Head	b9538f2830c4dea6996ed744785504e32e0e20d8663edab6b0222f2c022077bd	minecraft:entity.vex.ambient	0.1	0.11	0.01
+vex	vex_head_alt	Vex Head	4a4e518e16e4b5c114acbd9c61cd18292da9ef60550a4fcae27d39ae293e477a	minecraft:entity.vex.charge	0.1	0.11	0.01
+villager	armorer_villager_head	Armorer Villager Head	1ef627f566ac0a7828bad93e9e4b9643d99a928a13d5f977bf441e40db1336bf	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:armorer"}}
+villager	butcher_villager_head	Butcher Villager Head	a1bad64185e04bf1dafe3da84933d02545ea4a63221a10d0f07759179112bdc2	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:butcher"}}
+villager	cartographer_villager_head	Cartographer Villager Head	e3aecfbe801cf32b5d1b0b1f6680049666158678c53f4a651fc83e0df9d3738b	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:cartographer"}}
+villager	cleric_villager_head	Cleric Villager Head	5b9e582e2f9b89d556e79c4697f706b1dd4929ecae3c07ee90bf1d5be319bf6f	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:cleric"}}
+villager	farmer_villager_head	Farmer Villager Head	d9272d03cda6290e4d925a7e850a745e711fe5760f6f06f93d92b8f8c739db07	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:farmer"}}
+villager	fisherman_villager_head	Fisherman Villager Head	d189fb4acd15d73ff2a58a88df0466ad9f4c154a2008e5c6265d5c2f07d39376	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:fisherman"}}
+villager	fletcher_villager_head	Fletcher Villager Head	bf611f12e18ce44a57238eef1cae03cd9f730a7a45e0ec248f14ce84e9c48056	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:fletcher"}}
+villager	leatherworker_villager_head	Leatherworker Villager Head	ae0e9591e11aaef4c2c51d9ac69514e340485defcc2c12c38cd12386c2ec6b78	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:leatherworker"}}
+villager	librarian_villager_head	Librarian Villager Head	cdcaa574babb40ee0fa83f2fd5ea20cff31ffa272fe113588ceee469682128e7	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:librarian"}}
+villager	shepherd_villager_head	Shepherd Villager Head	2abf4e9154ac9271941c733eacc62dc9fc0a6dc1b5d67c78ca98afb5cb1be9b2	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:shepherd"}}
+villager	weaponsmith_villager_head	Weaponsmith Villager Head	8476ffa410bbe7fa70909965a125f4a4e9a4fb1ce1b8b3c34bfb73aaffd4ce43	minecraft:entity.villager.ambient	1	1	0	{VillagerData:{profession:"minecraft:weaponsmith"}}
+vindicator	vindicator_head	Vindicator Head	2dabafde27ee12b09865047aff6f183fdb64e04dae1c00ccbde04ad93dcc6c95	minecraft:entity.vindicator.ambient	0.05	0.065	0.015
+wandering_trader	wandering_trader_head	Wandering Trader Head	5f1379a82290d7abe1efaabbc70710ff2ec02dd34ade386bc00c930c461cf932	minecraft:entity.wandering_trader.ambient	1	1	0
+warden	warden_head	Warden Head	b2f3879b737127485eb35ddee748d06cf914b193d97753ae34e92230842831fb	minecraft:entity.warden.ambient	1	1	0
+witch	witch_head	Witch Head	a520f12c63c7912186c4be4e30c33c5acaec0db0b6abd836d517d74a62275d4b	minecraft:entity.witch.ambient	0.005	0.006	0.001
+wither	wither_head	Wither Head	eda10828f63b7ecdefd767b3245fbdaa13c3ec0c6b13774f1ee8d307c034c383	minecraft:entity.wither.ambient	1	1	0
+wither	wither_projectile_head	Wither Projectile Head	b37c5814a92f8ec0f6ae9933abe9542e165190768e760478543aebeed4027c27	minecraft:entity.wither.shoot	0.5	0.5	0
+wither	blue_wither_projectile_head	Blue Wither Projectile Head	d3682b06203b9de4c28541071a26cdc340dd25d4c372b7023ec2f412021d62f7	minecraft:entity.wither.shoot	0.5	0.5	0
+wolf	ashen_wolf_head	Ashen Wolf Head	72384c5cf18948b83a89548dba5a9945edeefc5e9654c5d6d38ae10a5d502e75	minecraft:entity.wolf.ambient	0.2	0.21	0.01	ashen|{anger_end_time:-1L}
+wolf	angry_ashen_wolf_head	Angry Ashen Wolf Head	7cbc3066d31c439035038fd6875d5dbeec3968c1b8006ffbfb5f674d76c89cde	minecraft:entity.wolf.growl	0.2	0.21	0.01	ashen
+wolf	black_wolf_head	Black Wolf Head	c5a66a42b25f822a7e16a2187528d1a2e294a01d9f850671b94c95742bb4916e	minecraft:entity.wolf.ambient	0.2	0.21	0.01	black|{anger_end_time:-1L}
+wolf	angry_black_wolf_head	Angry Black Wolf Head	a5ed47ded2708b13d92eb50fb68e8c1e11b39a0cd45b39372eead872c49eeaeb	minecraft:entity.wolf.growl	0.2	0.21	0.01	black
+wolf	chestnut_wolf_head	Chestnut Wolf Head	cb9b0d48442204ff6fd39fa074167118e9c066cde3888977d0f6036e1d8a69ee	minecraft:entity.wolf.ambient	0.2	0.21	0.01	chestnut|{anger_end_time:-1L}
+wolf	angry_chestnut_wolf_head	Angry Chestnut Wolf Head	284b28f232b14a59b6cb7757323974ea502b1bcb984dea30093ec21ed2ade312	minecraft:entity.wolf.growl	0.2	0.21	0.01	chestnut
+wolf	pale_wolf_head	Pale Wolf Head	1ee33c2dc07d76b4f03e66427a08cba2e8179d075ae64b9ce150aa4209c5af39	minecraft:entity.wolf.ambient	0.2	0.21	0.01	pale|{anger_end_time:-1L}
+wolf	angry_pale_wolf_head	Angry Pale Wolf Head	6887a42787900e6716fa462fbad8deb5526b94398797414f03f6013ef885a1db	minecraft:entity.wolf.growl	0.2	0.21	0.01	pale
+wolf	rusty_wolf_head	Rusty Wolf Head	23455f6048a68098cd27634e3146c81c8269aeefcf0aff91cc976efa0baa1146	minecraft:entity.wolf.ambient	0.2	0.21	0.01	rusty|{anger_end_time:-1L}
+wolf	angry_rusty_wolf_head	Angry Rusty Wolf Head	d1f1c32e5258f3d8f8d181fb30df61e0693e55d538a13eeabdf6300f38083adc	minecraft:entity.wolf.growl	0.2	0.21	0.01	rusty
+wolf	snowy_wolf_head	Snowy Wolf Head	4ecadab50aa8d41fa9b369a2f84f97456be7900b220ece3b95e8a00968660d5	minecraft:entity.wolf.ambient	0.5	0.6	0.1	snowy|{anger_end_time:-1L}
+wolf	angry_snowy_wolf_head	Angry Snowy Wolf Head	52b7c286c230826b29e7fd37f2573b9015c422bc38feb14d9a317c6855ada3f6	minecraft:entity.wolf.growl	0.5	0.6	0.1	snowy
+wolf	spotted_wolf_head	Spotted Wolf Head	573b9a6431af26bcb31826eb6fd9f4b35b947ba5882c6e4aa93588633f7b8d9d	minecraft:entity.wolf.ambient	0.2	0.21	0.01	spotted|{anger_end_time:-1L}
+wolf	angry_spotted_wolf_head	Angry Spotted Wolf Head	1786b739348aa8502ea185dfb14bf5ab01e29e082d1feb8613b3fe93e0debd8e	minecraft:entity.wolf.growl	0.2	0.21	0.01	spotted
+wolf	striped_wolf_head	Striped Wolf Head	7fc52fb3cdfc6aeb00e67c1b7a59d8d320df44656c7af6824b13ca60792aa7d7	minecraft:entity.wolf.ambient	0.2	0.21	0.01	striped|{anger_end_time:-1L}
+wolf	angry_striped_wolf_head	Angry Striped Wolf Head	8d60c25488b06727669a6915d1dadaa9a7d2831b460bee30e5da407874705001	minecraft:entity.wolf.growl	0.2	0.21	0.01	striped
+wolf	woods_wolf_head	Woods Wolf Head	8d12ab17647b69c9421769572ac674de199124c284b9ed1f65a285c38cd2a504	minecraft:entity.wolf.ambient	0.2	0.21	0.01	woods|{anger_end_time:-1L}
+wolf	angry_woods_wolf_head	Angry Woods Wolf Head	530583dba8ea614305db010babdc5bb44e9a2003311b399d8965e772dd0191fb	minecraft:entity.wolf.growl	0.2	0.21	0.01	woods
+zoglin	zoglin_head	Zoglin Head	2e3493a956bfd7588ed1a8ea858759667659d58100cbecd6d96ccc0ca9b36923	minecraft:entity.zoglin.ambient	0.2	0.25	0.05
+zombie_horse	zombie_horse_head	Zombie Horse Head	6618ffbe1cfa2058fe80a065f70c128c225a1e0bc9deaf8b38b0395443f40909	minecraft:entity.zombie_horse.ambient	1	1	0
+zombie_nautilus	temperate_zombie_nautilus_shell	Temperate Zombie Nautilus Shell	eb6d16bcbc858320e4eecb818abf29af825bcf91fac7989aba5536ab8ba40c0f	minecraft:entity.zombie_nautilus.ambient	0.1	0.11	0.01	temperate
+zombie_nautilus	coral_zombie_nautilus_shell	Coral Zombie Nautilus Shell	552ac2acc5e9ca23727f44879242b104fdd6e044f7fb2d29fefca4bc2f4d4c3	minecraft:entity.zombie_nautilus.ambient	0.1	0.11	0.01	warm
+zombie_villager	zombie_armorer_head	Zombie Armorer Head	c8679e034767d518660d9416dc5eaf319d697682ac40c886e3c2bc8dfa1de1d	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:armorer"}}
+zombie_villager	zombie_butcher_head	Zombie Butcher Head	9cce8d6ce4124cec3e84a852e70f50293f244ddc9ee8578f7d6d8929e16bad69	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:butcher"}}
+zombie_villager	zombie_cartographer_head	Zombie Cartographer Head	e60800b01012e963e7c20c8ba14b70a0264d146a850deffbca7bfe512f4cb23d	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:cartographer"}}
+zombie_villager	zombie_cleric_head	Zombie Cleric Head	2958578be0e12172734a78242dab14964abc85ab9b596361f7c5daf8f14a0feb	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:cleric"}}
+zombie_villager	zombie_farmer_head	Zombie Farmer Head	f77d415f9baa4fa4b5e058f5b81bf7f003b0a2c90a4831e53a7dbc09841c5511	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:farmer"}}
+zombie_villager	zombie_fisherman_head	Zombie Fisherman Head	6905d53fe4faeb0b315a6878c9ab81b4be52c31cd478c027f0d7ece9f6da8914	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:fisherman"}}
+zombie_villager	zombie_fletcher_head	Zombie Fletcher Head	2ea26ac0e25498adada4ecea58bb4e76da32d5ca2de307efe5e4218fb7c5ef89	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:fletcher"}}
+zombie_villager	zombie_leatherworker_head	Zombie Leatherworker Head	fb552c90f212e855d12255d5cd62ed38b9cd7e30e73f0ea779d1764330e69264	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:leatherworker"}}
+zombie_villager	zombie_librarian_head	Zombie Librarian Head	62211a1f409cca4249c70d20ca80399fa4844ea417458be988cc21eb4797375e	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:librarian"}}
+zombie_villager	zombie_shepherd_head	Zombie Shepherd Head	691391bef3a46ef267d3b7171086ba4c8d17f2a6b0f83fa2ac30efe914b7c249	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:shepherd"}}
+zombie_villager	zombie_weaponsmith_head	Zombie Weaponsmith Head	4370894b5cc305d87aa08c3b4b08587db68ff29e7a3ef354cad6abca50e5528b	minecraft:entity.zombie_villager.ambient	0.5	0.52	0.02	{VillagerData:{profession:"minecraft:weaponsmith"}}
+zombified_piglin	zombified_piglin_head	Zombified Piglin Head	2df03128b002a70708d6825ed6cf54ddf694b3766d78d5649030b1cb8b34c6fa	minecraft:entity.zombified_piglin.ambient	0.005	0.006	0.001

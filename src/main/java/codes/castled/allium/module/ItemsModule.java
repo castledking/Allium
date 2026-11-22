@@ -42,6 +42,12 @@ public final class ItemsModule extends AbstractModule {
         int semicolon=prefix.lastIndexOf(';');
         if (semicolon >= 0) {
             int firstSemicolon = prefix.indexOf(';');
+            var custom = plugin.getItemService().variantNames(prefix.substring(0, firstSemicolon).toLowerCase(Locale.ROOT));
+            if (!custom.isEmpty() && semicolon == firstSemicolon) {
+                String head = prefix.substring(0, semicolon + 1);
+                String suffix = prefix.substring(semicolon + 1).toLowerCase(Locale.ROOT);
+                return custom.stream().filter(name -> name.startsWith(suffix)).sorted().map(name -> head + name).toList();
+            }
             Material carrier = Material.matchMaterial(prefix.substring(0, firstSemicolon));
             if (carrier != null && switch (carrier) {
                 case POTION, SPLASH_POTION, LINGERING_POTION, TIPPED_ARROW, SPAWNER -> true;
@@ -107,7 +113,7 @@ public final class ItemsModule extends AbstractModule {
         });
         int perMinute = give == null ? 30 : give.getInt("skull.max-lookups-per-minute", 30);
         boolean legacy = give != null && give.getBoolean("legacy-semicolon-syntax", false);
-        parser = new ItemSpecParser(legacy);
+        parser = new ItemSpecParser(legacy, reference -> !plugin.getItemService().variantNames(reference).isEmpty());
         long timeout = give == null ? 3000L : Math.max(100L, give.getLong("skull.lookup-timeout-millis", 3000L));
         long ttl = give == null ? 3_600_000L : Math.max(0L, give.getLong("skull.cache-minutes", 60L) * 60_000L);
         int size = give == null ? 256 : Math.max(1, give.getInt("skull.cache-size", 256));

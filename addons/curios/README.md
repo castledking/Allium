@@ -34,8 +34,8 @@ Configure `resource-pack.delivery` in `plugins/Curios/config.yml` (restart or ru
   Allium's standalone self-hosting (`resource-pack.owner: standalone` + `self-host.enabled: true`)
   and `rpm-export` deliver Curios's cards, relics, frames, and menus automatically out of the box.
 - `rspm`: Allium writes `Curios_resource_pack.zip` straight into ResourcePackManager's mixer
-  directory (`resource-pack.rpm-export.mixer-directory`), even if Allium's own `resource-pack.owner`
-  is `none` or `standalone`.
+  directory (`resource-pack.rpm-export.mixer-directory`) with the Curios icon and description.
+  This works with any Allium pack owner, including `none` and `standalone`.
 - `none`: disables automatic delivery so you can host `Curios-resource-pack.zip` yourself.
 
 `textured-menu` defaults to `true` for the SF card frames, tier badges, and menu backgrounds. The

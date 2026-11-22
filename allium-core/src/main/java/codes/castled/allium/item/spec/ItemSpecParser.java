@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 /**
@@ -36,9 +37,15 @@ public final class ItemSpecParser {
     private static final Pattern TOKEN_KEY = Pattern.compile("[a-z0-9_.\\-]+(:[a-z0-9_.\\-/]+)?");
 
     private final boolean legacySemicolonSyntax;
+    private final Predicate<String> hasVariants;
 
     public ItemSpecParser(boolean legacySemicolonSyntax) {
+        this(legacySemicolonSyntax, ignored -> false);
+    }
+
+    public ItemSpecParser(boolean legacySemicolonSyntax, Predicate<String> hasVariants) {
         this.legacySemicolonSyntax = legacySemicolonSyntax;
+        this.hasVariants = hasVariants;
     }
 
     public GiveSpec parse(String arguments) {
@@ -58,7 +65,13 @@ public final class ItemSpecParser {
         boolean batch=ItemSpecLexer.splitTopLevel(itemSpec,',').size()>1;
         if(!batch&&ItemSpecLexer.indexOfTopLevel(itemSpec,';')>=0){
             var variant=ItemSpecLexer.splitTopLevel(itemSpec,';');String base=variant.get(0).toLowerCase(Locale.ROOT);
-            if(Set.of("potion","splash_potion","lingering_potion","tipped_arrow","spawner","minecraft:potion","minecraft:splash_potion","minecraft:lingering_potion","minecraft:tipped_arrow","minecraft:spawner").contains(base)){
+            if (hasVariants.test(base) && variant.size() >= 2 && !variant.get(1).contains(":")) {
+                if (variant.size() != 2 || variant.get(1).isBlank()) {
+                    throw new ItemSpecException("item variant syntax is <item>;<variant>");
+                }
+                itemSpec = variant.get(0);
+                tokens.add(new MetaToken("variant", variant.get(1), false));
+            } else if(Set.of("potion","splash_potion","lingering_potion","tipped_arrow","spawner","minecraft:potion","minecraft:splash_potion","minecraft:lingering_potion","minecraft:tipped_arrow","minecraft:spawner").contains(base)){
                 itemSpec=variant.get(0);
                 if(!base.endsWith("spawner")&&Set.of("splash","lingering").contains(variant.get(1).toLowerCase(Locale.ROOT))){itemSpec=variant.get(1).toLowerCase(Locale.ROOT)+"_potion";tokens.add(new MetaToken("potion","water",false));}
                 else if(base.endsWith("spawner")){if(variant.size()!=2)throw new ItemSpecException("spawner syntax is spawner;entity");tokens.add(new MetaToken("spawner",variant.get(1),false));}

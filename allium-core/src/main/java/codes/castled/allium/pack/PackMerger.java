@@ -50,6 +50,8 @@ public final class PackMerger {
             for (Map.Entry<String, byte[]> entry : addonFiles.entrySet()) {
                 String path = entry.getKey();
                 byte[] addonBytes = entry.getValue();
+                // Branding belongs to the pack being delivered. Addon icons are only used in separate zips.
+                if ("pack.png".equals(path)) continue;
                 if ("pack.mcmeta".equals(path)) {
                     byte[] baseMeta = files.get("pack.mcmeta");
                     if (baseMeta != null) {

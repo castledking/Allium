@@ -181,6 +181,14 @@ public final class PowerToolActionRegistry {
         handlers.put(PowerToolAction.normalizeType(typeId), handler);
     }
 
+    public Runnable registerAddon(String id, PowerToolActionHandler handler) {
+        String key = PowerToolAction.normalizeType(id);
+        if (handlers.putIfAbsent(key, handler) != null) {
+            throw new IllegalArgumentException("Powertool action already registered: " + key);
+        }
+        return () -> handlers.remove(key, handler);
+    }
+
     @Nullable
     public PowerToolActionHandler get(String typeId) {
         return handlers.get(PowerToolAction.normalizeType(typeId));

@@ -171,6 +171,10 @@ public final class ToolsModule extends AbstractModule {
         List<FellTreeTool> fellTreeTools = new ArrayList<>();
         List<ToolDefinition> powerToolDefs = new ArrayList<>();
         for (ToolDefinition definition : loaded.enabled()) {
+            if (powerTools != null && powerTools.isAddonTool(definition.id())) {
+                plugin.logger().warning("Ignoring " + definition.file() + ": " + definition.id() + " belongs to an addon.");
+                continue;
+            }
             if (PowerToolBehaviorType.ID.equals(definition.behavior())) {
                 registerPermissions(definition);
                 powerToolDefs.add(definition);

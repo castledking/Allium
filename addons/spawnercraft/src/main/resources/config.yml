@@ -1,0 +1,43 @@
+resource-pack:
+  # allium merges into Allium's pack. rspm exports a separate pack for ResourcePackManager.
+  delivery: allium
+
+# Defaults come from Vanilla Tweaks. Values are probabilities from 0 to 1.
+# Set a mob override, or use a head ID from /spawnercraft give <player> head
+# for a specific variant. A head override takes precedence over the mob.
+drops:
+  enabled: true
+  mobs: {}
+  heads: {}
+  # Example under mobs:
+  # enderman:
+  #   chance: 0.005
+  #   looting-chance: 0.0051
+  #   looting-per-level: 0.0001
+
+# Every H slot must contain a SpawnerCraft head of the same mob family.
+# C selects that mob's signed spawner core. Exact vanilla materials and #wool
+# can be specified in ingredients. An item reference uses Allium's item providers.
+recipes:
+  spawner:
+    name: Mob Spawner
+    pattern: [HHH, HCH, HHH]
+    result:
+      spawner: true
+      preview: SPAWNER
+      # A command replaces vanilla spawner delivery when present.
+      # command: 'spawnermeta give {mob} 1 {player}'
+  trading_card:
+    name: Trading Card
+    pattern: [HHH, HPH, HHH]
+    ingredients:
+      P: PAPER
+    result:
+      card: true
+      preview: PAPER
+      # Empty weights use the Curios mob pool.
+      weights: {}
+
+# Used by /spawnercraft import with no arguments. The directory can be the
+# plugins folder from an SF backup or a folder containing the Nexo mob catalog.
+import-directory: import

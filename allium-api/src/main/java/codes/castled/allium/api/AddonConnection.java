@@ -26,6 +26,11 @@ public interface AddonConnection {
      */
     TaskScheduler scheduler();
 
+    /** Addon-owned powertool actions and tools, released when the addon disables. */
+    default AddonPowerTools powerTools() {
+        throw new UnsupportedOperationException("Allium's powertool API is unavailable");
+    }
+
     /** Allium's text formatting and delivery. */
     AddonText text();
 

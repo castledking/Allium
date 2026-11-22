@@ -19,6 +19,7 @@ import codes.castled.allium.tool.definition.ToolDefinitionParser;
 import codes.castled.allium.tool.definition.ToolEnvironment;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
@@ -118,6 +119,7 @@ public final class PowerToolBehavior {
     private final PowerToolActionRegistry actionRegistry;
     private final PowerToolCooldownTracker cooldowns;
     private final Map<String, ToolDefinition> registryTools = new ConcurrentHashMap<>();
+    private final Set<String> addonTools = ConcurrentHashMap.newKeySet();
     private final Set<UUID> disabledPlayers = ConcurrentHashMap.newKeySet();
     private volatile PowerToolSettings settings;
 
@@ -189,12 +191,39 @@ public final class PowerToolBehavior {
     }
 
     public void clearRegistry() {
-        for (ToolDefinition def : registryTools.values()) {
-            if (def.item() != null) {
-                items.unregisterAlliumItem(def.localId());
-            }
+        for (ToolDefinition def : new ArrayList<>(registryTools.values())) {
+            if (!addonTools.contains(def.id())) unregisterDefinition(def);
         }
-        registryTools.clear();
+    }
+
+    private void unregisterDefinition(ToolDefinition definition) {
+        registryTools.remove(definition.id(), definition);
+        if (definition.item() != null) items.unregisterAlliumItem(definition.localId());
+    }
+
+    public boolean isAddonTool(String id) {
+        return addonTools.contains(id);
+    }
+
+    public Runnable registerAddonTool(String addon, ConfigurationSection yaml) {
+        var parsed = ToolDefinitionParser.parse(addon + "/powertool.yml", ToolDefinitionLoader.toMap(yaml),
+                Map.of(PowerToolBehaviorType.ID, new PowerToolBehaviorType()), environmentSupplier.get());
+        if (!parsed.valid()) throw new IllegalArgumentException(String.join("; ", parsed.errors()));
+        ToolDefinition def = parsed.definition();
+        if (def.item() == null || !def.appearance().equals(ProviderKey.allium(def.localId()))
+                || !def.boundAppearances().equals(Set.of(def.appearance()))) {
+            throw new IllegalArgumentException("Addon powertools must use their own built-in item");
+        }
+        if (registryTools.containsKey(def.id()) || items.getAlliumItem(def.localId()).isPresent()
+                || findToolFile(def.localId()) != null) {
+            throw new IllegalArgumentException("Powertool ID already in use: " + def.id());
+        }
+        if (!def.enabled()) return () -> {};
+        registerDefinition(def);
+        addonTools.add(def.id());
+        return () -> {
+            if (addonTools.remove(def.id())) unregisterDefinition(def);
+        };
     }
 
     // ---- Registry management ----
@@ -203,6 +232,10 @@ public final class PowerToolBehavior {
         Objects.requireNonNull(definition, "definition");
         if (!PowerToolBehaviorType.ID.equals(definition.behavior())) {
             throw new IllegalArgumentException("Expected behavior " + PowerToolBehaviorType.ID + ", got " + definition.behavior());
+        }
+        if (addonTools.contains(definition.id())) {
+            diagnostics.accept("Ignoring tool definition " + definition.file() + ": " + definition.id() + " belongs to an addon");
+            return;
         }
         BuiltInItemSpec itemSpec = definition.item();
         if (itemSpec != null) {
@@ -674,6 +707,7 @@ public final class PowerToolBehavior {
             return SaveResult.fail("Hold an item with at least one powertool action before saving.");
         }
 
+        if (addonTools.contains("allium:" + localId)) return SaveResult.fail("This tool ID belongs to an addon.");
         File targetFile = new File(toolsDirectory, localId + ".yml");
         if (targetFile.exists() && !overwrite) {
             return SaveResult.fail("tools/" + localId + ".yml already exists. Pass --overwrite to replace it.");
@@ -727,6 +761,7 @@ public final class PowerToolBehavior {
         if (def == null) {
             return SaveResult.fail("No powertool named '" + localId + "' is loaded.");
         }
+        if (addonTools.contains("allium:" + localId)) return SaveResult.fail("This tool ID belongs to an addon.");
         File file = new File(toolsDirectory, localId + ".yml");
         if (file.isFile() && !file.delete()) {
             return SaveResult.fail("Could not delete " + file.getName());
@@ -853,12 +888,7 @@ public final class PowerToolBehavior {
 
     /** Hot-reloads all {@code allium:powertool} definitions from {@code plugins/Allium/tools/*.yml}. */
     public int reloadPowerTools() {
-        for (ToolDefinition def : new ArrayList<>(registryTools.values())) {
-            if (def.item() != null) {
-                items.unregisterAlliumItem(def.localId());
-            }
-        }
-        registryTools.clear();
+        clearRegistry();
         if (!toolsDirectory.isDirectory()) {
             return 0;
         }

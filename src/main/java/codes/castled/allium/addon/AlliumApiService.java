@@ -55,7 +55,7 @@ import java.util.stream.Stream;
 public final class AlliumApiService implements AlliumApi, Listener {
 
     /** The API version this Allium provides; kept equal to {@code alliumApiVersion} in gradle.properties. */
-    public static final ApiVersion API_VERSION = new ApiVersion(1, 1, 0);
+    public static final ApiVersion API_VERSION = new ApiVersion(1, 3, 0);
 
     /** Classes whose presence in an addon's own jar means it shaded the API. */
     static final List<Class<?>> API_PROBES = List.of(AlliumApi.class, CommandSpec.class, TaskScheduler.class);
@@ -123,10 +123,12 @@ public final class AlliumApiService implements AlliumApi, Listener {
             return;
         }
 
+        var metadata = new java.util.LinkedHashMap<Path, YamlConfiguration>();
+        jars.forEach(jar -> metadata.put(jar, readJarPluginYml(jar)));
         PluginManager pm = allium.getServer().getPluginManager();
-        for (Path jarPath : jars) {
+        for (Path jarPath : orderAddons(metadata)) {
             String fileName = jarPath.getFileName().toString();
-            YamlConfiguration meta = readJarPluginYml(jarPath);
+            YamlConfiguration meta = metadata.get(jarPath);
             if (meta == null) {
                 allium.logger().warning("Ignoring " + fileName + " in plugins/Allium/addons/: missing a valid plugin.yml.");
                 continue;
@@ -195,6 +197,32 @@ public final class AlliumApiService implements AlliumApi, Listener {
     }
 
     @Nullable
+    static List<Path> orderAddons(Map<Path, YamlConfiguration> metadata) {
+        Map<String, Path> byName = new java.util.HashMap<>();
+        metadata.forEach((path, meta) -> {
+            if (meta != null && meta.isString("name")) byName.putIfAbsent(meta.getString("name"), path);
+        });
+        Set<Path> visited = new java.util.HashSet<>();
+        List<Path> ordered = new ArrayList<>();
+        for (Path path : metadata.keySet()) visitAddon(path, metadata, byName, visited, ordered);
+        return ordered;
+    }
+
+    private static void visitAddon(Path path, Map<Path, YamlConfiguration> metadata, Map<String, Path> byName,
+                                   Set<Path> visited, List<Path> ordered) {
+        if (!visited.add(path)) return;
+        YamlConfiguration meta = metadata.get(path);
+        if (meta != null) {
+            List<String> dependencies = new ArrayList<>(meta.getStringList("depend"));
+            dependencies.addAll(meta.getStringList("softdepend"));
+            for (String dependency : dependencies) {
+                Path peer = byName.get(dependency);
+                if (peer != null) visitAddon(peer, metadata, byName, visited, ordered);
+            }
+        }
+        ordered.add(path);
+    }
+
     private static YamlConfiguration readJarPluginYml(Path jarPath) {
         try (JarFile jar = new JarFile(jarPath.toFile())) {
             JarEntry entry = jar.getJarEntry("plugin.yml");

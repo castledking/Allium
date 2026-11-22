@@ -67,6 +67,17 @@ class ItemSpecParserTest {
     }
 
     @Test
+    void registeredItemVariantWorksWithLegacySyntaxDisabled() {
+        var variants = new ItemSpecParser(false, "allium:spawner_core"::equals);
+        GiveSpec spec = variants.parse("allium:spawner_core;allay 2");
+        assertEquals(ProviderKey.allium("spawner_core"), spec.items().get(0).key());
+        assertEquals(2, spec.amount().orElseThrow());
+        assertEquals(List.of(new MetaToken("variant", "allay", false)), spec.tokens());
+        assertThrows(ItemSpecException.class, () -> variants.parse("allium:spawner_core;allay;fox"));
+        assertThrows(ItemSpecException.class, () -> parser.parse("allium:spawner_core;allay"));
+    }
+
+    @Test
     void tokensFlagsQuotesAndApostrophes() {
         GiveSpec spec = parser.parse("player_head owner:Notch name:Bob's_Head lore:One_|\"Two\" unbreakable -e --overflow=Refuse");
         assertEquals(new MetaToken("owner", "Notch", false), spec.tokens().get(0));

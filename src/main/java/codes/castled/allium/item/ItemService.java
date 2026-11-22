@@ -9,6 +9,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -41,8 +43,12 @@ public final class ItemService {
     public static final String STATE_KEY_PREFIX = "state_";
 
     private final Map<String, ItemProviderAdapter> providers = new ConcurrentHashMap<>();
+    private record ItemVariants(Set<String> names, BiConsumer<ItemStack, String> initialize) {}
+
+    private final Map<String, ItemVariants> variantsByItem = new ConcurrentHashMap<>();
     private final Map<String, AlliumItemDefinition> alliumDefinitions = new ConcurrentHashMap<>();
     private final Map<ProviderKey, String> appearanceToBehavior = new ConcurrentHashMap<>();
+    private final Set<String> stackableSignedBehaviors = ConcurrentHashMap.newKeySet();
     private final Map<String, ProviderKey> behaviorPreferredAppearance = new ConcurrentHashMap<>();
     private final Set<String> privilegedBehaviors = ConcurrentHashMap.newKeySet();
     private final Set<String> signedBehaviors = ConcurrentHashMap.newKeySet();
@@ -112,6 +118,14 @@ public final class ItemService {
         }
     }
 
+    public void registerStackableSignedItem(AlliumItemDefinition definition) {
+        if (!definition.privileged()) {
+            throw new IllegalArgumentException("Stackable signed definitions must require signatures");
+        }
+        registerAlliumItem(definition);
+        stackableSignedBehaviors.add(definition.behaviorId());
+    }
+
     /**
      * Removes an Allium item definition (an addon's, when the addon disables). Existing stacks keep
      * their stamps; they identify again once the definition is registered again.
@@ -121,10 +135,41 @@ public final class ItemService {
         if (definition == null || definition.behaviorId() == null) {
             return;
         }
+        variantsByItem.remove(definition.id());
         appearanceToBehavior.remove(definition.providerKey(), definition.behaviorId());
         behaviorPreferredAppearance.remove(definition.behaviorId(), definition.providerKey());
         signedBehaviors.remove(definition.behaviorId());
+        stackableSignedBehaviors.remove(definition.behaviorId());
         privilegedBehaviors.remove(definition.behaviorId());
+    }
+
+    public void registerVariants(String id, Collection<String> names,
+                                 BiConsumer<ItemStack, String> initialize) {
+        Set<String> accepted = Set.copyOf(names);
+        if (accepted.stream().anyMatch(name -> !name.matches("[a-z0-9_]+"))) {
+            throw new IllegalArgumentException("Invalid item variant name for " + id);
+        }
+        if (variantsByItem.putIfAbsent(id, new ItemVariants(accepted, Objects.requireNonNull(initialize))) != null) {
+            throw new IllegalArgumentException("Variants already registered for " + id);
+        }
+    }
+
+    public Set<String> variantNames(String reference) {
+        if (!reference.startsWith("allium:")) return Set.of();
+        ItemVariants variants = variantsByItem.get(reference.substring("allium:".length()));
+        return variants == null ? Set.of() : variants.names();
+    }
+
+    public boolean applyVariant(ItemStack stack, String name) {
+        var identity = identify(stack).orElse(null);
+        if (identity == null || !identity.appearance().isAllium()) return false;
+        String id = identity.appearance().id();
+        ItemVariants variants = variantsByItem.get(id);
+        var definition = alliumDefinitions.get(id);
+        if (variants == null || definition == null || !Optional.of(definition.behaviorId()).equals(identity.behaviorId())
+                || !variants.names().contains(name)) return false;
+        variants.initialize().accept(stack, name);
+        return true;
     }
 
     /**
@@ -1137,9 +1182,13 @@ public final class ItemService {
             if (behaviorId != null && !behaviorId.isBlank()) {
                 pdc.set(KEY_BEHAVIOR_ID, PersistentDataType.STRING, behaviorId);
                 if (isSignedBehavior(behaviorId) || preserveSignature) {
-                    String instanceUuid = (preservedInstanceUuid != null && !preservedInstanceUuid.isBlank())
-                            ? preservedInstanceUuid
-                            : UUID.randomUUID().toString();
+                    String instanceUuid = preservedInstanceUuid;
+                    if (instanceUuid == null || instanceUuid.isBlank()) {
+                        // Stateless commodities with the same appearance must stack across restarts.
+                        instanceUuid = stackableSignedBehaviors.contains(behaviorId)
+                                ? UUID.nameUUIDFromBytes(behaviorId.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()
+                                : UUID.randomUUID().toString();
+                    }
                     String signature = hmacSigner.sign(
                             appearance.provider(),
                             appearance.id(),

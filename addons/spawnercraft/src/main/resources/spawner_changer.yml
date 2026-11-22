@@ -1,0 +1,20 @@
+schema: 1
+id: allium:spawner_changer
+name: Spawner Type Changer
+behavior: allium:powertool
+enabled: true
+item:
+  material: BLAZE_ROD
+  custom-model-data: 2690000
+  name: '&6&lSpawner Type Changer'
+  lore:
+    - '&7Right-click a spawner and insert a spawn egg.'
+permissions:
+  use: spawnercraft.changer.use
+bindings:
+  right:
+    hand: both
+    cancel-interaction: false
+    actions:
+      - type: spawnercraft:change_spawner
+        required: true

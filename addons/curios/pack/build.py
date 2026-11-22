@@ -190,7 +190,8 @@ def make(config, output, manifest_out=None):
 
         card_panels(archive, manifest_out)
         write("pack.mcmeta", {"pack": {"pack_format": 15, "supported_formats": [15, 97],
-              "min_format": 15, "max_format": [97, 1], "description": "Allium Curios"}})
+              "min_format": 15, "max_format": [97, 1], "description": "§6Curios Resources §7v1.0"}})
+        archive.write(ROOT / "pack.png", "pack.png")
         for path in sorted(ASSETS.rglob("*")):
             if path.is_file():
                 archive.write(path, path.relative_to(ROOT))

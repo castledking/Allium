@@ -3,8 +3,10 @@ package codes.castled.allium.api;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 /** Item definitions and Allium's item create/identify. */
 public interface AddonItems {
@@ -16,6 +18,16 @@ public interface AddonItems {
      * @throws IllegalArgumentException if the id is already defined by Allium or another addon
      */
     void define(ItemDefinition definition);
+
+    /** Defines a stackable item whose identity always requires a server signature. */
+    default void defineStackableSigned(ItemDefinition definition) {
+        throw new UnsupportedOperationException("Stackable signing is unavailable");
+    }
+
+    /** Registers the accepted names and initializer for {@code allium:<id>;<variant>} in /give and /i. */
+    default void defineVariants(String id, Collection<String> names, BiConsumer<ItemStack, String> initialize) {
+        throw new UnsupportedOperationException("Item variants are unavailable");
+    }
 
     /**
      * Creates a stack from any item reference Allium understands: {@code allium:<id>},

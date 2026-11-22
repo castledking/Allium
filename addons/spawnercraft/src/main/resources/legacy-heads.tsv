@@ -1,0 +1,7 @@
+# Supplemental heads from legacy Allium and vanilla skull carriers.
+creeper	creeper_head	Creeper Head	f4254838c33ea227ffca223dddaabfe0b0215f70da649e944477f44370ca6952	minecraft:entity.creeper.hurt	0.0045	0.0046	0.0001
+skeleton	skeleton_head	Skeleton Head	301268e9c492da1f0d88271cb492a4b302395f515a7bbf77f4a20b95fc02eb2	minecraft:entity.skeleton.ambient	0.0055	0.0056	0.0001
+zombie	zombie_head	Zombie Head	56fc854bb84cf4b7697297973e02b79bc10698460b51a639c60e5e417734e11	minecraft:entity.zombie.ambient	0.006	0.0061	0.0001
+piglin	piglin_head	Piglin Head	PIGLIN_HEAD		0.005	0.0051	0.0001
+wither_skeleton	wither_skeleton_head	Wither Skeleton Head	WITHER_SKELETON_SKULL		0.005	0.0051	0.0001
+ender_dragon	ender_dragon_head	Ender Dragon Head	DRAGON_HEAD		0.005	0.0051	0.0001

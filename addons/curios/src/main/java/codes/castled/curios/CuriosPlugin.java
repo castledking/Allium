@@ -97,6 +97,42 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         heldCardBar.start();
         getServer().getServicesManager().register(CurioExperience.class, this::awardEquipped,
                 this, org.bukkit.plugin.ServicePriority.Normal);
+        getServer().getServicesManager().register(CardCrafting.class, new CardCrafting() {
+            @Override
+            public boolean supports(String mob) {
+                return catalog.entries.values().stream().anyMatch(entry -> entry.legacyCard().equalsIgnoreCase(mob));
+            }
+
+            @Override
+            public OptionalInt previewModel(String mob, Map<String, Double> weights) {
+                return choices(mob, weights).keySet().stream()
+                        .min(Comparator.comparing(entry -> CardRules.Tier.parse(entry.legacyTier())))
+                        .map(entry -> OptionalInt.of(entry.model())).orElseGet(OptionalInt::empty);
+            }
+
+            @Override
+            public Optional<ItemStack> craft(String mob, Map<String, Double> weights) {
+                Catalog.Entry entry = new Catalog.Pool(mob, 1, choices(mob, weights)).roll(ThreadLocalRandom.current().nextDouble());
+                return entry == null ? Optional.empty() : Optional.ofNullable(create(entry, Map.of("bound", "true")));
+            }
+
+            private Map<Catalog.Entry, Double> choices(String mob, Map<String, Double> weights) {
+                var choices = new LinkedHashMap<Catalog.Entry, Double>();
+                if (weights.isEmpty()) {
+                    for (var pool : catalog.pools) {
+                        if (pool.mob().equalsIgnoreCase(mob)) choices.putAll(pool.weights());
+                    }
+                }
+                if (choices.isEmpty()) {
+                    for (var entry : catalog.entries.values()) {
+                        if (!entry.legacyCard().equalsIgnoreCase(mob)) continue;
+                        double weight = weights.isEmpty() ? 1 : weights.getOrDefault(entry.legacyTier(), 0.0);
+                        if (weight > 0 && Double.isFinite(weight)) choices.put(entry, weight);
+                    }
+                }
+                return choices;
+            }
+        }, this, org.bukkit.plugin.ServicePriority.Normal);
         for (Player online : getServer().getOnlinePlayers()) refreshAttributes(online);
     }
 

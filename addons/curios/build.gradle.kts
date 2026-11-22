@@ -36,6 +36,7 @@ val resourcePack = tasks.register<Exec>("resourcePack") {
     group = "build"
     description = "Builds the Curios resource pack (requires Python and PyYAML)"
     inputs.file("pack/build.py")
+    inputs.file("pack/pack.png")
     inputs.dir("pack/assets")
     inputs.file("src/main/resources/config.yml")
     inputs.file("src/main/resources/frame-glyphs.json")

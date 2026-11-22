@@ -54,7 +54,7 @@ class CorePackTest {
     void manifestAllocatesEveryCoreToolInsideTheBlockWithoutCollisions() throws IOException {
         AssetManifest manifest = manifest();
         assertEquals(List.of(), PackValidator.manifest(manifest));
-        assertEquals(List.of("handcuffs", "mob_disarmer", "phantom_obliterator", "item_renamer", "lazy_axe", "gui_slot"),
+        assertEquals(List.of("handcuffs", "mob_disarmer", "phantom_obliterator", "item_renamer", "lazy_axe", "claim_handcuffs", "gui_slot"),
                 manifest.tools().stream().map(AssetManifest.Tool::id).toList());
         AssetManifest.Tool disarmer = manifest.tool("mob_disarmer").orElseThrow();
         assertTrue(disarmer.ready());
@@ -157,6 +157,79 @@ class CorePackTest {
                 assertEquals("allium:item/mob_disarmer/one_third", report.renders().get("item_model allium:mob_disarmer cmd=2577022"), format);
             }
         }
+    }
+
+    /** The manifest with both handcuffs ready, drawn with a committed texture, as sf_export.py makes them with SF's art. */
+    @SuppressWarnings("unchecked")
+    private static AssetManifest readyHandcuffs() throws IOException {
+        Map<String, Object> root = Json.parseObject(Files.readString(ROOT.resolve("manifest.json")));
+        for (Object entry : (List<Object>) root.get("tools")) {
+            Map<String, Object> tool = (Map<String, Object>) entry;
+            if (List.of("handcuffs", "claim_handcuffs").contains(tool.get("id"))) {
+                tool.put("status", "ready");
+                for (Object state : (List<Object>) tool.get("states")) {
+                    ((Map<String, Object>) state).put("texture", "allium:item/mob_disarmer/full");
+                }
+            }
+        }
+        return AssetManifest.parse(Json.write(root));
+    }
+
+    /** 1.20.1 writes the rod without namespaces and with its cast override; 1.21.4+ moved the cast look to the item definition. */
+    private static VanillaAssets vanillaRod(boolean itemDefinitions) {
+        Map<String, String> files = new HashMap<>();
+        files.put("assets/minecraft/models/item/diamond_sword.json", DIAMOND_SWORD_MODEL);
+        files.put("assets/minecraft/models/item/light_gray_stained_glass_pane.json", PANE_MODEL);
+        if (itemDefinitions) {
+            files.put("assets/minecraft/models/item/fishing_rod.json",
+                    "{\"parent\":\"minecraft:item/handheld_rod\",\"textures\":{\"layer0\":\"minecraft:item/fishing_rod\"}}");
+            files.put("assets/minecraft/items/fishing_rod.json", "{\"model\":{\"type\":\"minecraft:condition\",\"on_false\":{\"type\":"
+                    + "\"minecraft:model\",\"model\":\"minecraft:item/fishing_rod\"},\"on_true\":{\"type\":\"minecraft:model\",\"model\":"
+                    + "\"minecraft:item/fishing_rod_cast\"},\"property\":\"minecraft:fishing_rod/cast\"}}");
+            files.put("assets/minecraft/items/diamond_sword.json", DIAMOND_SWORD_ITEM);
+            files.put("assets/minecraft/items/light_gray_stained_glass_pane.json", PANE_ITEM);
+        } else {
+            files.put("assets/minecraft/models/item/fishing_rod.json", "{\"parent\":\"item/handheld_rod\",\"textures\":{\"layer0\":"
+                    + "\"item/fishing_rod\"},\"overrides\":[{\"predicate\":{\"cast\":1},\"model\":\"item/fishing_rod_cast\"}]}");
+        }
+        return new VanillaAssets("test-vanilla-rod",
+                Set.of("minecraft:item/handheld", "minecraft:item/generated", "minecraft:item/diamond_sword",
+                        "minecraft:item/light_gray_stained_glass_pane", "minecraft:item/handheld_rod", "minecraft:item/fishing_rod",
+                        "minecraft:item/fishing_rod_cast"),
+                Set.of("minecraft:item/diamond_sword", "minecraft:block/light_gray_stained_glass", "minecraft:item/fishing_rod"),
+                itemDefinitions ? Set.of("minecraft:diamond_sword", "minecraft:light_gray_stained_glass_pane", "minecraft:fishing_rod") : Set.of(),
+                files);
+    }
+
+    @Test
+    void handcuffStatesShareTheFishingRodAndPlainRodsKeepTheirCastLook() throws IOException {
+        AssetManifest manifest = readyHandcuffs();
+        assertEquals(List.of(), PackValidator.manifest(manifest, true));
+        SortedMap<String, byte[]> files = build(manifest);
+        Map<String, Object> rod = Json.parseObject(new String(files.get("assets/minecraft/models/item/fishing_rod.json"), StandardCharsets.UTF_8));
+        List<?> overrides = (List<?>) rod.get("overrides");
+        assertEquals(Map.of("predicate", Map.of("cast", 1L), "model", "item/fishing_rod_cast"), overrides.get(0),
+                "vanilla's cast override comes first, so Allium's values still win");
+        assertEquals("item/handheld_rod", rod.get("parent"));
+        Map<String, Object> item = Json.parseObject(new String(files.get("allium_item_definitions/assets/minecraft/items/fishing_rod.json"),
+                StandardCharsets.UTF_8));
+        assertEquals("minecraft:condition", ((Map<?, ?>) ((Map<?, ?>) item.get("model")).get("fallback")).get("type"),
+                "plain rods fall back to vanilla's cast condition");
+
+        for (String format : List.of("15", "42", "46", "97.1")) {
+            PackFormatRules.Format client = PackFormatRules.Format.parse(format);
+            PackValidator.Report report = PackValidator.lane(format, client, files, manifest, vanillaRod(client.major() >= 46));
+            assertEquals(List.of(), report.errors(), format);
+            assertEquals("allium:item/handcuffs/default", report.renders().get("fishing_rod cmd=2577010"), format);
+            assertEquals("allium:item/handcuffs/restrained", report.renders().get("fishing_rod cmd=2577011"), format);
+            assertEquals("allium:item/claim_handcuffs/restrained", report.renders().get("fishing_rod cmd=2577061"), format);
+            assertTrue(report.renders().get("fishing_rod cmd=none").endsWith("item/fishing_rod"), format);
+        }
+
+        rod.put("overrides", overrides.subList(1, overrides.size()));
+        files.put("assets/minecraft/models/item/fishing_rod.json", Json.write(rod).getBytes(StandardCharsets.UTF_8));
+        PackValidator.Report dropped = PackValidator.lane("15", PackFormatRules.Format.parse("15"), files, manifest, vanillaRod(false));
+        assertTrue(dropped.errors().stream().anyMatch(e -> e.contains("drops vanilla's own overrides")), dropped.errors().toString());
     }
 
     @Test

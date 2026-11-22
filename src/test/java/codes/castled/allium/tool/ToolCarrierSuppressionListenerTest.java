@@ -105,6 +105,32 @@ class ToolCarrierSuppressionListenerTest {
     }
 
     @Test
+    void registeredCookingRecipeAcceptsOnlyItsExactInputAndResult() {
+        var key = new org.bukkit.NamespacedKey("crops", "test_bake");
+        var recipe = mock(org.bukkit.inventory.FurnaceRecipe.class);
+        var exact = mock(org.bukkit.inventory.RecipeChoice.ExactChoice.class);
+        ItemStack output = MockItemStacks.create(Material.BREAD);
+        when(recipe.getInputChoice()).thenReturn(exact);
+        when(recipe.getResult()).thenReturn(output);
+        when(output.isSimilar(output)).thenReturn(true);
+        when(exact.test(customMembrane)).thenReturn(true);
+        items.registerRecipe(key, recipe);
+
+        var event = mock(FurnaceSmeltEvent.class);
+        var furnace = mock(org.bukkit.block.Block.class);
+        when(event.getBlock()).thenReturn(furnace);
+        when(furnace.getType()).thenReturn(Material.FURNACE);
+        when(event.getSource()).thenReturn(customMembrane);
+        when(event.getResult()).thenReturn(output);
+        listener.onFurnaceSmelt(event);
+        verify(event, never()).setCancelled(true);
+
+        when(event.getResult()).thenReturn(plainHoe);
+        listener.onFurnaceSmelt(event);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
     void furnaceSmeltAndBurnCancelledForCustomTools() {
         FurnaceSmeltEvent smeltEvent = mock(FurnaceSmeltEvent.class);
         when(smeltEvent.getSource()).thenReturn(customMembrane);

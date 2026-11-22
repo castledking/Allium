@@ -27,7 +27,9 @@ import java.util.function.Function;
  *   <li>{@code ride}: the target rides the player, on top of whoever already does. Params:
  *       {@code restrain} (false; true restrains a player, as the Handcuffs do), {@code max-riders}
  *       (5, 1 to 16), {@code entity-types} (any living entity), {@code exempt-permission} (targets
- *       holding it cannot be picked up).</li>
+ *       holding it cannot be picked up), {@code claim} (false; true allows only an untrusted player
+ *       inside a claim the player owns or manages, through {@link ClaimAccess}: the claim
+ *       handcuffs).</li>
  *   <li>{@code mount}: the player rides the target. Params: {@code entity-types},
  *       {@code exempt-permission}.</li>
  *   <li>{@code release}: lets go of the player's riders. Param {@code which}: {@code all} (default)
@@ -44,10 +46,10 @@ public final class RideActions {
         void send(CommandSender recipient, Messages message, String... replacements);
     }
 
-    /** Shows a title to a player. */
+    /** Shows a title to a player, with fade-in, stay and fade-out ticks. */
     @FunctionalInterface
     public interface Titles {
-        void show(Player player, Messages title, Messages subtitle, String... replacements);
+        void show(Player player, Messages title, Messages subtitle, int fadeIn, int stay, int fadeOut, String... replacements);
     }
 
     public static final int DEFAULT_MAX_RIDERS = 5;
@@ -58,13 +60,21 @@ public final class RideActions {
     private final Notifier notifier;
     private final Titles titles;
     private final Function<Entity, String> names;
+    @Nullable
+    private final ClaimAccess claims;
 
     public RideActions(Rides rides, ProtectionService protection, Notifier notifier, Titles titles, Function<Entity, String> names) {
+        this(rides, protection, notifier, titles, names, null);
+    }
+
+    public RideActions(Rides rides, ProtectionService protection, Notifier notifier, Titles titles, Function<Entity, String> names,
+                       @Nullable ClaimAccess claims) {
         this.rides = rides;
         this.protection = protection;
         this.notifier = notifier;
         this.titles = titles;
         this.names = names;
+        this.claims = claims;
     }
 
     public PowerToolActionHandler ride() {
@@ -88,18 +98,26 @@ public final class RideActions {
         Map<String, Object> params = action.params();
         boolean restrain = bool(params.get("restrain"));
         String name = names.apply(target);
-        if (restrain && !(target instanceof Player)) {
+        boolean claim = bool(params.get("claim"));
+        if ((restrain || claim) && !(target instanceof Player)) {
             notifier.send(player, Messages.RIDE_PLAYERS_ONLY, "{target}", name);
             return false;
         }
         int max = Math.max(1, Math.min(MAX_RIDERS, integer(params.get("max-riders"), DEFAULT_MAX_RIDERS)));
-        Rides.Result result = rides.carry(player, target, restrain, max);
+        if (claim && !rides.isCarried(target.getUniqueId()) && rides.riders(player.getUniqueId()).size() < max) {
+            ClaimAccess.Check check = claims == null ? ClaimAccess.Check.denied(ClaimAccess.Refusal.UNAVAILABLE) : claims.check(player, (Player) target);
+            if (!check.allowed()) {
+                notifier.send(player, ClaimBans.refusal(check.refusal()), "{target}", name);
+                return false;
+            }
+        }
+        Rides.Result result = rides.carry(player, target, restrain, max, context.toolId());
         switch (result) {
             case RESTRAINED -> {
                 Player victim = (Player) target;
                 notifier.send(player, Messages.RIDE_RESTRAINED, "{target}", name);
                 notifier.send(victim, Messages.RIDE_RESTRAINED_TARGET, "{player}", player.getName());
-                titles.show(victim, Messages.RIDE_RESTRAINED_TITLE, Messages.RIDE_RESTRAINED_SUBTITLE, "{player}", player.getName());
+                titles.show(victim, Messages.RIDE_RESTRAINED_TITLE, Messages.RIDE_RESTRAINED_SUBTITLE, 5, 45, 10, "{player}", player.getName());
                 return true;
             }
             case CARRIED -> {

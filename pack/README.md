@@ -23,10 +23,11 @@ values exactly. Planned tools reserve their values but generate nothing until th
 
 | Tool | Carrier | Allocation | States |
 | --- | --- | --- | --- |
-| `allium:handcuffs` | fishing rod | 2577010–2577019 | planned |
+| `allium:handcuffs` | fishing rod | 2577010–2577019 | planned: default 2577010, restrained 2577011 |
 | `allium:mob_disarmer` | diamond sword | 2577020–2577029 | full 2577020, two_thirds 2577021, one_third 2577022, empty 2577023, broken 2577024 |
 | `allium:phantom_obliterator` | netherite sword | 2577030–2577039 | planned |
 | `allium:item_renamer` | name tag | 2577040–2577049 | planned |
+| `allium:claim_handcuffs` | fishing rod | 2577060–2577069 | planned: default 2577060, restrained 2577061 |
 | `gui_slot` (menu icons, not an item) | light gray stained glass pane | 2577100–2577109 | filler 2577100, helmet 2577101, chestplate 2577102, leggings 2577103, boots 2577104, shield 2577105, sword 2577106 |
 
 Allium's built-in item definitions read the carrier, default model data and fallback name from
@@ -110,5 +111,8 @@ Renamer: name tag), and SF's Nexo pack replaces all four of the first files
 `diamond_sword.json` with Nexo's, or the core pack's Mob Disarmer models (2577020..2577029) and
 Nexo's diamond-sword models (1004..1007, 1450003) cannot both show. An item carrying the
 `item_model` component (`allium:mob_disarmer`, 1.21.2+) would not read the carrier file, but Allium
-does not stamp it yet (see What Allium stamps). The tools without art (handcuffs, Phantom Obliterator, Lazy Axe, Item Renamer) add no
+does not stamp it yet (see What Allium stamps). A carrier's own vanilla overrides stay in its replaced model, first, so a fishing rod keeps its
+cast look while the handcuffs' values still win; 1.21.4+ keeps it through the vanilla item
+definition that Allium's dispatch falls back to. `sf_export.py` makes both handcuffs ready with SF's
+four handcuff textures for a local pack. The tools without art (handcuffs, Phantom Obliterator, Lazy Axe, Item Renamer) add no
 carrier file, so nothing else collides until their art ships.

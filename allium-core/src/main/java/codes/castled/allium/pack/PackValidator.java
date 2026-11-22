@@ -362,18 +362,25 @@ public final class PackValidator {
         }
         Object vanillaModel = Json.parse(vanillaModelText.get());
         AssetManifest.Carrier recorded = manifest.carriers().get(carrier);
-        if (!vanillaModel.equals(recorded.vanillaModel())) {
+        // Overrides are only read before format 46, and older files leave out the minecraft:
+        // namespace, so a carrier's files compare by meaning: 1.20.1's fishing rod (with its cast
+        // override) is the same model as 1.21.4's, whose cast look moved to the item definition.
+        boolean overridesRead = client.major() < 46;
+        if (!sameModel(vanillaModel, recorded.vanillaModel(), overridesRead)) {
             errors.add("manifest vanillaModel for " + carrier + " differs from " + vanilla.label() + ": " + Json.write(vanillaModel));
         }
         if (view.json(modelPath) instanceof Map<?, ?> packModel) {
-            Map<Object, Object> stripped = new LinkedHashMap<>(packModel);
-            stripped.remove("overrides");
-            if (!stripped.equals(vanillaModel)) {
+            if (!sameModel(packModel, vanillaModel, false)) {
                 errors.add(modelPath + " differs from vanilla beyond its overrides");
+            }
+            List<?> own = overridesRead && vanillaModel instanceof Map<?, ?> v && v.get("overrides") instanceof List<?> list ? list : List.of();
+            List<?> packOverrides = packModel.get("overrides") instanceof List<?> list ? list : List.of();
+            if (packOverrides.size() < own.size() || !normalizeIds(packOverrides.subList(0, own.size())).equals(normalizeIds(own))) {
+                errors.add(modelPath + " drops vanilla's own overrides " + Json.write(own));
             }
         }
         String copy = CorePackBuilder.modelPath(manifest.namespace() + ":item/vanilla/" + carrier);
-        if (view.has(copy) && !Objects.equals(view.json(copy), vanillaModel)) {
+        if (view.has(copy) && !sameModel(view.json(copy), vanillaModel, overridesRead)) {
             errors.add(copy + " is not an exact copy of vanilla " + modelPath);
         }
         if (client.major() >= 46) {
@@ -403,6 +410,38 @@ public final class PackValidator {
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /** Two model files with the same meaning: ids compared with their namespace, overrides only when read. */
+    static boolean sameModel(Object a, Object b, boolean compareOverrides) {
+        if (!(a instanceof Map<?, ?> left) || !(b instanceof Map<?, ?> right)) {
+            return Objects.equals(a, b);
+        }
+        Map<Object, Object> l = new LinkedHashMap<>(left);
+        Map<Object, Object> r = new LinkedHashMap<>(right);
+        if (!compareOverrides) {
+            l.remove("overrides");
+            r.remove("overrides");
+        }
+        return normalizeIds(l).equals(normalizeIds(r));
+    }
+
+    /** Resource ids in model JSON with the default minecraft: namespace written out. */
+    static Object normalizeIds(Object json) {
+        if (json instanceof Map<?, ?> map) {
+            Map<Object, Object> out = new LinkedHashMap<>();
+            map.forEach((k, v) -> out.put(k, normalizeIds(v)));
+            return out;
+        }
+        if (json instanceof List<?> list) {
+            List<Object> out = new ArrayList<>();
+            list.forEach(v -> out.add(normalizeIds(v)));
+            return out;
+        }
+        if (json instanceof String text && !text.startsWith("#") && !text.contains(":") && text.contains("/")) {
+            return "minecraft:" + text;
+        }
+        return json;
+    }
 
     /** The files one client sees: base files with applicable overlays on top (later overlays win). */
     private static final class View {
@@ -498,6 +537,10 @@ public final class PackValidator {
             String type = normalize(String.valueOf(map.get("type")));
             if (type.equals("minecraft:model")) {
                 return normalize(String.valueOf(map.get("model")));
+            }
+            if (type.equals("minecraft:condition")) {
+                // An item in hand, not in use: a fishing rod that is not cast.
+                return map.get("on_false") == null ? "missing" : evaluate(Map.of("model", map.get("on_false")), cmd);
             }
             if (type.equals("minecraft:range_dispatch") && "minecraft:custom_model_data".equals(normalize(String.valueOf(map.get("property"))))) {
                 float value = cmd == null ? 0.0F : cmd.floatValue();

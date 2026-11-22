@@ -47,6 +47,11 @@ public final class TeleportCommand implements SpecCommandHandler {
         }
         if(!(sender instanceof Player player)){plugin.getMessageManager().send(sender,Messages.PLAYER_ONLY);return;}
         switch(command){
+            case "setspawn" -> {
+                if (args.length > 1) { context.sendInvalidArgs(spec.selfUsage()); return; }
+                if (args.length == 0) service.setSpawn(player);
+                else service.setSpawn(player, args[0]);
+            }
             case "tpoffline" -> {if(args.length!=1){context.sendInvalidArgs(spec.selfUsage());return;}service.offline(player,args[0]);}
             case "tpa","tpahere","tphere","tpohere" -> {
                 if(args.length!=1){context.sendInvalidArgs(spec.selfUsage());return;}
@@ -61,7 +66,7 @@ public final class TeleportCommand implements SpecCommandHandler {
             }
             default -> {
                 if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
-                switch(command){case "tpacancel"->service.cancel(player);case "back"->service.back(player);case "spawn"->service.spawn(player);case "setspawn"->service.setSpawn(player);
+                switch(command){case "tpacancel"->service.cancel(player);case "back"->service.back(player);case "spawn"->service.spawn(player);
                     case "jump"->service.jump(player);
                     case "top","bottom"->{
                         var to=command.equals("top")?codes.castled.allium.teleport.VerticalTeleports.top(player):codes.castled.allium.teleport.VerticalTeleports.bottom(player);

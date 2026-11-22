@@ -68,11 +68,16 @@ public final class ToolsModule extends AbstractModule {
             PowerToolBehaviorType.ID, new PowerToolBehaviorType());
 
     /** The default definitions the jar ships, each installed once (tools/.defaults). */
-    static final List<String> BUNDLED_DEFAULTS = List.of("mob_disarmer.yml", "phantom_obliterator.yml", "lazy_axe.yml", "handcuffs.yml");
+    static final List<String> BUNDLED_DEFAULTS = List.of("mob_disarmer.yml", "phantom_obliterator.yml", "lazy_axe.yml", "handcuffs.yml",
+            "claim_handcuffs.yml");
+    /** The state key a restraining tool carries while its holder restrains someone with it. */
+    static final String STATE_RESTRAINING = "restraining";
 
     private final List<String> registeredItems = new ArrayList<>();
     private final List<String> registeredPermissions = new ArrayList<>();
     private final List<String> modelSelectors = new ArrayList<>();
+    /** Powertools whose items show a restraining state (the handcuffs). */
+    private final java.util.Set<String> restrainingTools = new java.util.HashSet<>();
     private DisarmListener disarmListener;
     private DisarmBehavior disarm;
     private ObliterateListener obliterateListener;
@@ -84,6 +89,7 @@ public final class ToolsModule extends AbstractModule {
     private codes.castled.allium.tool.powertool.LegacyVoucherListener legacyVouchers;
     private ToolCarrierSuppressionListener carrierSuppression;
     private codes.castled.allium.ride.Rides rides;
+    private codes.castled.allium.ride.ClaimBans claimBans;
     private ToolDefinitionLoader.Loaded loaded;
     private Set<String> cachedCoreItems = Set.of();
 
@@ -137,8 +143,21 @@ public final class ToolsModule extends AbstractModule {
         rides.enable();
         codes.castled.allium.ride.Rides activeRides = rides;
         powerTools.setActivationGuard(activeRides::isRestrained);
+        var claims = new codes.castled.allium.ride.GpExpansionClaims(() -> plugin.getServer().getPluginManager());
         var rideActions = new codes.castled.allium.ride.RideActions(rides, plugin.getProtectionService(),
-                plugin.getMessageManager()::send, this::title, org.bukkit.entity.Entity::getName);
+                plugin.getMessageManager()::send, this::title, org.bukkit.entity.Entity::getName, claims);
+        claimBans = new codes.castled.allium.ride.ClaimBans(rides, claims, plugin.getScheduler(), plugin.getServer()::getPlayer,
+                plugin.getMessageManager()::send, this::title, plugin.logger()::info);
+        powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_CLAIM_BAN, claimBans.action());
+        rides.addListener(new codes.castled.allium.ride.Rides.RideListener() {
+            @Override
+            public void restraintsChanged(java.util.UUID carrier) {
+                showRestraining(carrier);
+                // Q lets go while the handcuffs are out of the inventory; they come back when the
+                // drop is cancelled, so look again once the event is over.
+                plugin.getScheduler().runOnServer(() -> showRestraining(carrier));
+            }
+        });
         powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_RIDE, rideActions.ride());
         powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_MOUNT, rideActions.mount());
         powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_RELEASE, rideActions.release());
@@ -191,6 +210,7 @@ public final class ToolsModule extends AbstractModule {
         }
         if (powerTools != null) {
             for (ToolDefinition def : powerToolDefs) {
+                installRestrainingSelector(items, def);
                 powerTools.registerDefinition(def);
             }
             if (!powerToolDefs.isEmpty()) {
@@ -379,6 +399,7 @@ public final class ToolsModule extends AbstractModule {
         ItemService items = plugin.getItemService();
         modelSelectors.forEach(id -> items.setModelSelector(id, null));
         modelSelectors.clear();
+        restrainingTools.clear();
         registeredItems.forEach(items::unregisterAlliumItem);
         registeredItems.clear();
         PluginManager manager = plugin.getServer().getPluginManager();
@@ -425,6 +446,10 @@ public final class ToolsModule extends AbstractModule {
             powerTools.disable();
             powerTools = null;
         }
+        if (claimBans != null) {
+            claimBans.disable();
+            claimBans = null;
+        }
         if (rides != null) {
             rides.disable();
             rides = null;
@@ -432,12 +457,70 @@ public final class ToolsModule extends AbstractModule {
     }
 
     private void title(org.bukkit.entity.Player player, codes.castled.allium.message.Messages title,
-                       codes.castled.allium.message.Messages subtitle, String... replacements) {
+                       codes.castled.allium.message.Messages subtitle, int fadeIn, int stay, int fadeOut, String... replacements) {
         var messages = plugin.getMessageManager();
         String top = messages.resolve(title, replacements);
         String bottom = messages.resolve(subtitle, replacements);
         player.sendTitle(top == null ? "" : codes.castled.allium.text.TextFormatter.toLegacy(top),
-                bottom == null ? "" : codes.castled.allium.text.TextFormatter.toLegacy(bottom), 5, 45, 10);
+                bottom == null ? "" : codes.castled.allium.text.TextFormatter.toLegacy(bottom), fadeIn, stay, fadeOut);
+    }
+
+    /**
+     * A powertool on a core pack item with {@code default} and {@code restrained} states (the
+     * handcuffs) shows the restrained model while its holder restrains someone with it.
+     */
+    private void installRestrainingSelector(ItemService items, ToolDefinition definition) {
+        ProviderKey appearance = definition.appearance();
+        if (!ProviderKey.ALLIUM.equals(appearance.provider())) {
+            return;
+        }
+        var tool = plugin.getPackManifest().tool(appearance.id());
+        if (tool.isEmpty()) {
+            return;
+        }
+        Map<String, Integer> byState = new HashMap<>();
+        tool.get().states().forEach(state -> byState.put(state.key(), state.customModelData()));
+        Integer idle = byState.get("default");
+        Integer restrained = byState.get("restrained");
+        if (idle == null || restrained == null) {
+            return;
+        }
+        items.setModelSelector(appearance.id(), state -> "true".equals(state.get(STATE_RESTRAINING)) ? restrained : idle);
+        modelSelectors.add(appearance.id());
+        restrainingTools.add(definition.id());
+    }
+
+    /**
+     * Sets the restraining state on {@code carrier}'s restraining tools: on for each tool they
+     * restrain someone with, off for the rest, as pre-recode Allium switched every pair of handcuffs
+     * in the inventory.
+     */
+    private void showRestraining(java.util.UUID carrierId) {
+        org.bukkit.entity.Player carrier = plugin.getServer().getPlayer(carrierId);
+        codes.castled.allium.ride.Rides active = rides;
+        if (carrier == null || active == null || restrainingTools.isEmpty()) {
+            return;
+        }
+        ItemService items = plugin.getItemService();
+        var inventory = carrier.getInventory();
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            org.bukkit.inventory.ItemStack stack = inventory.getItem(slot);
+            if (stack == null || stack.getType().isAir()) {
+                continue;
+            }
+            var ref = items.identify(stack).orElse(null);
+            String tool = ref == null ? null : ref.behaviorId().orElse(null);
+            if (tool == null || !restrainingTools.contains(tool)) {
+                continue;
+            }
+            boolean restraining = active.restrains(carrierId, tool);
+            if (restraining == "true".equals(ref.stateData().get(STATE_RESTRAINING))) {
+                continue;
+            }
+            if (items.updateState(stack, Map.of(STATE_RESTRAINING, Boolean.toString(restraining)))) {
+                inventory.setItem(slot, stack);
+            }
+        }
     }
 
     /** The obliterate behavior, or {@code null} when no Phantom Obliterator is enabled. */

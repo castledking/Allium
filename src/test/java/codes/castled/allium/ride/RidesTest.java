@@ -270,7 +270,7 @@ class RidesTest {
                 ? ProtectionDecision.allow() : ProtectionDecision.deny("Claims", null));
         ProtectionService protection = new ProtectionService(List.of(hook), null, message -> { });
         return new RideActions(rides, protection, messages::send,
-                (player, title, subtitle, replacements) -> titles.add(player.getName() + ":" + title.name()), Entity::getName);
+                (player, title, subtitle, in, stay, out, replacements) -> titles.add(player.getName() + ":" + title.name()), Entity::getName);
     }
 
     private static PowerToolAction action(String type, Map<String, Object> params) {

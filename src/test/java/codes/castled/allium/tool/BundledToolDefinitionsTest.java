@@ -37,7 +37,7 @@ class BundledToolDefinitionsTest {
         public boolean isItemMaterial(String material) { return true; }
         public boolean isEntityType(String entityType) { return entityType.startsWith("minecraft:"); }
         public boolean hasLangKey(String key) { return true; }
-        public boolean isCoreItem(String localId) { return Set.of("mob_disarmer", "phantom_obliterator", "lazy_axe", "handcuffs").contains(localId); }
+        public boolean isCoreItem(String localId) { return Set.of("mob_disarmer", "phantom_obliterator", "lazy_axe", "handcuffs", "claim_handcuffs").contains(localId); }
         public Optional<String> coreItemBehavior(String localId) {
             return Optional.ofNullable(BukkitToolEnvironment.CORE_TOOL_BEHAVIORS.get(localId));
         }
@@ -138,5 +138,24 @@ class BundledToolDefinitionsTest {
         assertFalse(drop.cancelInteraction(), "idle handcuffs drop as usual");
         assertEquals("release", drop.actions().get(0).type());
         assertEquals("all", drop.actions().get(0).params().get("which"));
+    }
+
+    @Test
+    void theClaimHandcuffsRestrainOneUntrustedPlayerThenCountDownToAClaimBan() throws Exception {
+        ToolDefinition definition = parse("tools/claim_handcuffs.yml");
+        assertEquals("allium:claim_handcuffs", definition.id());
+        assertEquals(ProviderKey.allium("claim_handcuffs"), definition.appearance());
+        assertEquals("allium.claimhandcuffs.use", definition.permission("use"));
+        var parameters = definition.parameters(codes.castled.allium.tool.powertool.PowerToolParameters.class);
+        var fish = parameters.binding(codes.castled.allium.tool.powertool.PowerToolTrigger.ON_FISH);
+        assertEquals(List.of("caught-entity"), fish.fishing());
+        var ride = fish.actions().get(0);
+        assertEquals("ride", ride.type());
+        assertTrue(ride.required(), "no countdown unless the claim check and restraint worked");
+        assertEquals(true, ride.params().get("claim"));
+        assertEquals(1, ride.params().get("max-riders"));
+        assertEquals("claim_ban", fish.actions().get(1).type());
+        assertEquals(5, fish.actions().get(1).params().get("countdown-seconds"));
+        assertEquals("release", parameters.binding(codes.castled.allium.tool.powertool.PowerToolTrigger.DROP).actions().get(0).type());
     }
 }

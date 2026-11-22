@@ -44,6 +44,36 @@
         }
       }
     },
+    "fishing_rod": {
+      "vanillaModel": {
+        "parent": "item/handheld_rod",
+        "textures": {
+          "layer0": "item/fishing_rod"
+        },
+        "overrides": [
+          {
+            "predicate": {
+              "cast": 1
+            },
+            "model": "item/fishing_rod_cast"
+          }
+        ]
+      },
+      "vanillaItem": {
+        "model": {
+          "type": "minecraft:condition",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/fishing_rod"
+          },
+          "on_true": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/fishing_rod_cast"
+          },
+          "property": "minecraft:fishing_rod/cast"
+        }
+      }
+    },
     "netherite_axe": {
       "vanillaModel": {
         "parent": "minecraft:item/handheld",
@@ -78,16 +108,23 @@
       "id": "handcuffs",
       "behavior": "allium:handcuffs",
       "carrier": "fishing_rod",
-      "name": "§fHandcuffs",
+      "name": "§6Handcuffs",
       "status": "planned",
       "allocation": {
         "first": 2577010,
         "last": 2577019
       },
+      "modelParent": "minecraft:item/handheld",
       "states": [
         {
           "key": "default",
-          "cmd": 2577010
+          "cmd": 2577010,
+          "meaning": "restraining no one"
+        },
+        {
+          "key": "restrained",
+          "cmd": 2577011,
+          "meaning": "restraining someone (pre-recode Allium's \"Restraining Player\" state)"
         }
       ]
     },
@@ -206,6 +243,30 @@
         {
           "key": "default",
           "cmd": 2577050
+        }
+      ]
+    },
+    {
+      "id": "claim_handcuffs",
+      "behavior": "allium:claim_handcuffs",
+      "carrier": "fishing_rod",
+      "name": "§6Claim Handcuffs",
+      "status": "planned",
+      "allocation": {
+        "first": 2577060,
+        "last": 2577069
+      },
+      "modelParent": "minecraft:item/handheld",
+      "states": [
+        {
+          "key": "default",
+          "cmd": 2577060,
+          "meaning": "restraining no one"
+        },
+        {
+          "key": "restrained",
+          "cmd": 2577061,
+          "meaning": "restraining someone, a claim ban pending"
         }
       ]
     },

@@ -73,6 +73,26 @@ public final class TeleportRepository {
         }
     }
 
+    /** Group spawns share the server-owned location table with the original default spawn. */
+    public Map<String, SavedLocation> loadGroupSpawns() throws SQLException {
+        Map<String, SavedLocation> groups = new LinkedHashMap<>();
+        try (Connection connection = connections.connection();
+             PreparedStatement select = connection.prepareStatement(
+                     "SELECT slot, world_id, world_name, x, y, z, yaw, pitch FROM " + LOCATIONS_TABLE
+                             + " WHERE owner = ? AND slot LIKE 'spawn:%'")) {
+            select.setString(1, new UUID(0, 0).toString());
+            try (ResultSet rows = select.executeQuery()) {
+                while (rows.next()) {
+                    groups.put(rows.getString(1).substring("spawn:".length()),
+                            new SavedLocation(UUID.fromString(rows.getString(2)), rows.getString(3),
+                                    rows.getDouble(4), rows.getDouble(5), rows.getDouble(6),
+                                    rows.getFloat(7), rows.getFloat(8)));
+                }
+            }
+        }
+        return Map.copyOf(groups);
+    }
+
     public void save(UUID owner, String slot, SavedLocation location) throws SQLException {
         Objects.requireNonNull(owner, "owner");
         validateSlot(slot);

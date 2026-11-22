@@ -446,7 +446,8 @@ commands:
     description: Teleport to spawn
     permission: allium.spawn
   setspawn:
-    description: Set the spawn point here
+    description: Set the default or a group spawn point here
+    usage: /<command> [group]
     permission: allium.setspawn
   tp:
     description: Teleport to a player or coordinates, or move a player
@@ -1389,6 +1390,12 @@ permissions:
     default: op
   allium.handcuffs.bypass:
     description: Uses the Handcuffs without their cooldowns or limits, if any are set
+    default: op
+  allium.claimhandcuffs.use:
+    description: Allows using the Claim Handcuffs (tools/claim_handcuffs.yml) in claims you own or manage
+    default: true
+  allium.claimhandcuffs.bypass:
+    description: Uses the Claim Handcuffs without their cooldowns or limits, if any are set
     default: op
   allium.voucher.give:
     description: Give and list vouchers with /voucher give and /voucher list

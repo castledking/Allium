@@ -41,6 +41,7 @@ public final class TeleportService implements Listener {
     private final TeleportRepository repository;
     private final ThreadPoolExecutor io;
     private final DestinationSafety safety;
+    private final EndGatewayReturn gatewayReturn;
     private final RequestTracker requests=new RequestTracker();
     private final Map<UUID,Session> sessions=new HashMap<>();
     private final Map<UUID,Operation> operations=new HashMap<>();
@@ -57,6 +58,7 @@ public final class TeleportService implements Listener {
     private volatile TeleportSettings settings;
     private final Map<UUID,SelectorConfirmation> selectorConfirmations=new HashMap<>();
     private SavedLocation spawn;
+    private final Map<String, SavedLocation> groupSpawns = new HashMap<>();
     private boolean spawnReady;
     private boolean closed;
     private TaskHandle timer;
@@ -88,6 +90,7 @@ public final class TeleportService implements Listener {
     public TeleportService(PluginStart plugin,TeleportRepository repository,ThreadPoolExecutor io,DestinationSafety safety) {
         this.plugin=plugin;this.repository=repository;this.io=io;
         this.safety=safety;
+        this.gatewayReturn = new EndGatewayReturn(safety);
         settings=TeleportSettings.read(plugin.getConfig());
     }
     public void enable() {
@@ -308,20 +311,95 @@ public final class TeleportService implements Listener {
         if(destination==null){send(player,Messages.TELEPORT_UNSAFE);return;}
         begin(player,player,"back",()->destination.clone(),null,null,false);
     }
+    private Location configuredSpawn(Player player) {
+        if (!spawnReady) return null;
+        if (!groupSpawns.isEmpty()) {
+            String group = codes.castled.allium.text.PlayerMeta.primaryGroup(plugin, player).toLowerCase(Locale.ROOT);
+            SavedLocation point = groupSpawns.get(group);
+            Location groupLocation = point == null ? null : location(point);
+            if (groupLocation != null) return groupLocation;
+        }
+        return spawn == null ? null : location(spawn);
+    }
+
     public void spawn(Player player) {
-        if(!spawnReady){send(player,Messages.TELEPORT_LOADING);return;}
-        Location destination=spawn==null?plugin.getServer().getWorlds().get(0).getSpawnLocation():location(spawn);
-        if(destination==null){send(player,Messages.TELEPORT_UNSAFE);return;}
-        begin(player,player,"spawn",()->destination.clone(),null,null,false);
+        if (!spawnReady) { send(player, Messages.TELEPORT_LOADING); return; }
+        List<World> worlds = plugin.getServer().getWorlds();
+        Location configured = configuredSpawn(player);
+        Location destination = configured != null ? configured
+                : spawn == null && !worlds.isEmpty() ? worlds.get(0).getSpawnLocation() : null;
+        if (destination == null) { send(player, Messages.TELEPORT_UNSAFE); return; }
+        begin(player, player, "spawn", destination::clone, null, null, false);
     }
+
     public void setSpawn(Player player) {
-        if(!player.hasPermission("allium.setspawn")){send(player,Messages.NO_PERMISSION);return;}
-        SavedLocation point=saved(player.getLocation());
-        submit(()->{
-            try{checkWrite();repository.save(SERVER,"spawn",point);onServer(()->{spawn=point;spawnReady=true;send(player,Messages.SPAWN_SET);});}
-            catch(SQLException e){onServer(()->send(player,Messages.TELEPORT_STORAGE_FAILED));}
-        },()->send(player,Messages.TELEPORT_STORAGE_FAILED));
+        setSpawn(player, "default");
     }
+
+    public void setSpawn(Player player, String rawGroup) {
+        if (!player.hasPermission("allium.setspawn")) { send(player, Messages.NO_PERMISSION); return; }
+        String group = rawGroup.toLowerCase(Locale.ROOT);
+        if (!group.matches("[a-z0-9_-]{1,58}")) {
+            send(player, Messages.SPAWN_INVALID_GROUP);
+            return;
+        }
+        boolean global = group.equals("default");
+        SavedLocation point = saved(player.getLocation());
+        submit(() -> {
+            try {
+                checkWrite();
+                repository.save(SERVER, global ? "spawn" : "spawn:" + group, point);
+                onServer(() -> {
+                    if (global) spawn = point;
+                    else groupSpawns.put(group, point);
+                    send(player, global ? Messages.SPAWN_SET : Messages.SPAWN_GROUP_SET, "{group}", group);
+                });
+            } catch (SQLException exception) {
+                onServer(() -> send(player, Messages.TELEPORT_STORAGE_FAILED));
+            }
+        }, () -> send(player, Messages.TELEPORT_STORAGE_FAILED));
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void gatewayReturn(PlayerTeleportEvent event) {
+        var cause = event.getCause();
+        if (cause != PlayerTeleportEvent.TeleportCause.END_GATEWAY
+                && cause != PlayerTeleportEvent.TeleportCause.ENDER_PEARL) return;
+        safeGatewayReturn(event, event.getTo()).ifPresent(event::setTo);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void gatewayEntityReturn(org.bukkit.event.entity.EntityTeleportEvent event) {
+        if (!event.getClass().getName().equals(EndGatewayReturn.ENTITY_EVENT)) return;
+        safeGatewayReturn(event, event.getTo()).ifPresent(event::setTo);
+    }
+
+    private Optional<Location> safeGatewayReturn(Event event, Location destination) {
+        var config = plugin.getConfig();
+        if (!config.getBoolean("end-gateway.enabled", true)) return Optional.empty();
+        return gatewayReturn.resolve(destination, EndGatewayReturn.exit(event),
+                config.getInt("end-gateway.max-distance-from-center", 512),
+                config.getInt("end-gateway.search-radius", 5));
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void respawn(PlayerRespawnEvent event) {
+        if (event.getRespawnReason() != PlayerRespawnEvent.RespawnReason.DEATH
+                || event.isBedSpawn() || event.isAnchorSpawn()) return;
+        Player player = event.getPlayer();
+        var modules = plugin.getModuleManager();
+        if (modules != null && modules.getModule("rtp") instanceof codes.castled.allium.module.RtpModule rtp
+                && rtp.isEnabled() && rtp.rtp() != null && rtp.rtp().settings().onDeath()) return;
+        if (modules != null && plugin.getConfig().getBoolean("teleport.respawn-at-home", true)
+                && modules.getModule("travel") instanceof codes.castled.allium.module.TravelModule travel
+                && travel.isEnabled() && travel.travel() != null) {
+            Location home = travel.travel().respawnHome(player);
+            if (home != null) { event.setRespawnLocation(home); return; }
+        }
+        Location destination = configuredSpawn(player);
+        if (destination != null) event.setRespawnLocation(destination);
+    }
+
     /**
      * Server thread: seconds left on {@code command}'s cooldown for {@code mover}, 0 when none runs or
      * {@code actor} bypasses it. Lets a slow search (random teleport) be refused before it starts.
@@ -698,7 +776,10 @@ public final class TeleportService implements Listener {
     }
     private void loadSpawn(int attempt) {
         if(closed)return;
-        submit(()->{try{var point=repository.load(SERVER,"spawn");onServer(()->{spawn=point.orElse(null);spawnReady=true;});}
+        submit(()->{try{
+                var point=repository.load(SERVER,"spawn");
+                var groups=repository.loadGroupSpawns();
+                onServer(()->{spawn=point.orElse(null);groupSpawns.clear();groupSpawns.putAll(groups);spawnReady=true;});}
             catch(SQLException|RuntimeException e){onServer(()->retrySpawn(attempt));}},()->retrySpawn(attempt));
     }
     private void retrySpawn(int attempt) {

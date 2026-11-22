@@ -43,6 +43,19 @@ class SfExportTest(unittest.TestCase):
         self.assertEqual(source.read_bytes(), (self.root / 'output' / texture['file']).read_bytes())
         self.assertEqual(1, len([p for p in provenance if p['tool'] == 'lazy_axe']))
 
+    def test_both_handcuffs_get_their_idle_and_restraining_textures(self):
+        derived, provenance = sf_export.derive(self.manifest, self.root, self.root / 'output')
+        for tool in ('handcuffs', 'claim_handcuffs'):
+            entry = next(t for t in derived['tools'] if t['id'] == tool)
+            self.assertEqual('ready', entry['status'], tool)
+            self.assertEqual('fishing_rod', entry['carrier'])
+            self.assertEqual(['default', 'restrained'], [s['key'] for s in entry['states']])
+            for state in entry['states']:
+                self.assertEqual(f'allium:item/{tool}/{state["key"]}', state['texture'])
+            self.assertEqual(2, len([p for p in provenance if p['tool'] == tool]))
+        self.assertEqual('planned', next(t for t in self.manifest['tools'] if t['id'] == 'handcuffs')['status'],
+                         'the committed manifest ships no SF art')
+
     def test_missing_client_input_fails_before_touching_the_existing_export(self):
         with tempfile.TemporaryDirectory(dir=sf_export.REPO / 'build') as output:
             marker = Path(output) / 'keep.txt'

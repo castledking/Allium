@@ -276,7 +276,15 @@ mail:
     new-mail: true
 
 # Shared safe teleport pipeline. Bounds are validated before the settings snapshot is swapped.
+end-gateway:
+  enabled: true
+  # Correct returns near the central End island. Search already-loaded chunks around the exit.
+  max-distance-from-center: 512
+  search-radius: 5
+
 teleport:
+  # Use the saved home named "home" on death before falling back to the configured spawn.
+  respawn-at-home: true
   warmup-seconds: 3
   movement-tolerance: 0.1
   request-expiry-seconds: 60

@@ -415,6 +415,10 @@ warp:
     - "{prefix} &aWarped &f{player} &ato &e{name}&a."
     - "[sound] entity.enderman.teleport 1.1"
 spawn:
+  group-set:
+    - "{prefix} &aSpawn point set for &f{group}&a."
+  invalid-group:
+    - "{prefix} &cUse 1–58 letters, digits, underscores or hyphens for the group."
   set:
     - "{prefix} &aSpawn point set."
     - "[sound] block.beacon.activate 1.2"
@@ -1953,6 +1957,58 @@ tool:
       - "{prefix} &7No one is restrained."
     not-restrained:
       - "{prefix} &f{player} &7is not restrained or carried."
+  claim-cuffs:
+    unavailable:
+      - "{prefix} &cClaim handcuffs need GPExpansion and GriefPrevention."
+      - "[sound] block.note_block.bass 0.8"
+    not-in-claim:
+      - "{prefix} &f{target} &cis not inside a claim."
+      - "[sound] block.note_block.bass 0.8"
+    no-claim-id:
+      - "{prefix} &cCould not tell which claim &f{target} &cis in."
+      - "[sound] block.note_block.bass 0.8"
+    not-manager:
+      - "{prefix} &cYou must own that claim or have manager trust in it."
+      - "[sound] block.note_block.bass 0.8"
+    trusted:
+      - "{prefix} &cClaim handcuffs only work on untrusted players."
+      - "[sound] block.note_block.bass 0.8"
+    already-banned:
+      - "{prefix} &f{target} &cis already banned from that claim."
+      - "[sound] block.note_block.bass 0.8"
+    ban-started:
+      - "{prefix} &eDrop the claim handcuffs within &f{seconds} &eseconds to cancel."
+    ban-started-target:
+      - "{prefix} &cA claim ban is being prepared. The restrainer can cancel it."
+    ban-title:
+      - "&c&lDrop item to cancel ban"
+    ban-target-title:
+      - "&4&lCLAIM RESTRAINED"
+    ban-countdown:
+      - "&6Claim ban in &e{seconds}s"
+    ban-cancelled:
+      - "{prefix} &eThe claim ban was cancelled because the restraint ended."
+    ban-left:
+      - "{prefix} &eThe claim ban was cancelled because &f{target} &eleft the claim."
+    ban-changed:
+      - "{prefix} &cClaim ban cancelled: the claim changed, so &f{target} &cwas released."
+      - "[sound] block.note_block.bass 0.8"
+    ban-done:
+      - "{prefix} &f{target} &awas banned from the claim."
+      - "[sound] block.beacon.activate 0.75"
+    ban-done-title:
+      - "&6&lCLAIM BAN COMPLETE"
+    ban-done-subtitle:
+      - "&e{target} was banned from the claim"
+    banned-title:
+      - "&c&lBANNED FROM CLAIM"
+    banned-subtitle:
+      - "&7You may no longer enter this claim"
+    ban-failed:
+      - "{prefix} &cThe restraint ended, but GPExpansion could not save the claim ban for &f{target}&c."
+      - "[sound] block.note_block.bass 0.8"
+    ban-failed-target:
+      - "{prefix} &eThe claim ban failed and you were released."
 item:
   give:
     delivered:

@@ -415,6 +415,10 @@ warp:
     - "{prefix} &aTeletransportaste a &f{player} &aal warp &e{name}&a."
     - "[sound] entity.enderman.teleport 1.1"
 spawn:
+  group-set:
+    - "{prefix} &aPunto de aparición de &f{group} &aconfigurado."
+  invalid-group:
+    - "{prefix} &cUsa de 1 a 58 letras, números, guiones bajos o guiones para el grupo."
   set:
     - "{prefix} &aPunto de aparicion establecido."
     - "[sound] block.beacon.activate 1.2"
@@ -1953,6 +1957,58 @@ tool:
       - "{prefix} &7Nadie esta inmovilizado."
     not-restrained:
       - "{prefix} &f{player} &7no esta inmovilizado ni siendo llevado."
+  claim-cuffs:
+    unavailable:
+      - "{prefix} &cLas esposas de claim necesitan GPExpansion y GriefPrevention."
+      - "[sound] block.note_block.bass 0.8"
+    not-in-claim:
+      - "{prefix} &f{target} &cno esta dentro de un claim."
+      - "[sound] block.note_block.bass 0.8"
+    no-claim-id:
+      - "{prefix} &cNo se pudo saber en que claim esta &f{target}&c."
+      - "[sound] block.note_block.bass 0.8"
+    not-manager:
+      - "{prefix} &cDebes ser dueno de ese claim o tener confianza de administrador."
+      - "[sound] block.note_block.bass 0.8"
+    trusted:
+      - "{prefix} &cLas esposas de claim solo funcionan con jugadores sin confianza."
+      - "[sound] block.note_block.bass 0.8"
+    already-banned:
+      - "{prefix} &f{target} &cya esta vetado de ese claim."
+      - "[sound] block.note_block.bass 0.8"
+    ban-started:
+      - "{prefix} &eSuelta las esposas de claim en &f{seconds} &esegundos para cancelar."
+    ban-started-target:
+      - "{prefix} &cSe esta preparando un veto del claim. Quien te inmovilizo puede cancelarlo."
+    ban-title:
+      - "&c&lSuelta el objeto para cancelar"
+    ban-target-title:
+      - "&4&lINMOVILIZADO EN CLAIM"
+    ban-countdown:
+      - "&6Veto del claim en &e{seconds}s"
+    ban-cancelled:
+      - "{prefix} &eEl veto del claim se cancelo porque termino la inmovilizacion."
+    ban-left:
+      - "{prefix} &eEl veto del claim se cancelo porque &f{target} &esalio del claim."
+    ban-changed:
+      - "{prefix} &cVeto del claim cancelado: el claim cambio, asi que &f{target} &cfue liberado."
+      - "[sound] block.note_block.bass 0.8"
+    ban-done:
+      - "{prefix} &f{target} &afue vetado del claim."
+      - "[sound] block.beacon.activate 0.75"
+    ban-done-title:
+      - "&6&lVETO DEL CLAIM COMPLETO"
+    ban-done-subtitle:
+      - "&e{target} fue vetado del claim"
+    banned-title:
+      - "&c&lVETADO DEL CLAIM"
+    banned-subtitle:
+      - "&7Ya no puedes entrar a este claim"
+    ban-failed:
+      - "{prefix} &cLa inmovilizacion termino, pero GPExpansion no pudo guardar el veto de &f{target}&c."
+      - "[sound] block.note_block.bass 0.8"
+    ban-failed-target:
+      - "{prefix} &eEl veto del claim fallo y fuiste liberado."
 item:
   give:
     delivered:

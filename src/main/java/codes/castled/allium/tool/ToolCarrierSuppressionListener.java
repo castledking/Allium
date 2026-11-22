@@ -45,7 +45,8 @@ import java.util.Objects;
  * hopper or other automated transfers into those stations.
  *
  * <p>Only Allium tools are blocked: stacks carrying an Allium behavior, or a pre-recode tool ID.
- * Plain items and other plugins' custom items are unaffected. A tool may still be repaired, renamed
+ * Plain items and other plugins' custom items are unaffected. Addon-registered exact recipes
+ * can consume the specific signed ingredients they declare. A tool may still be repaired, renamed
  * or combined with a book in the anvil's first slot, and enchanted on an enchanting table.
  */
 public final class ToolCarrierSuppressionListener implements Listener {
@@ -96,7 +97,7 @@ public final class ToolCarrierSuppressionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareItemCraft(PrepareItemCraftEvent event) {
         for (ItemStack matrixItem : event.getInventory().getMatrix()) {
-            if (isSuppressedTool(matrixItem)) {
+            if (isSuppressedTool(matrixItem) && !items.isAddonCraftIngredient(matrixItem, event.getRecipe())) {
                 event.getInventory().setResult(null);
                 return;
             }
@@ -106,7 +107,7 @@ public final class ToolCarrierSuppressionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCraftItem(CraftItemEvent event) {
         for (ItemStack matrixItem : event.getInventory().getMatrix()) {
-            if (isSuppressedTool(matrixItem)) {
+            if (isSuppressedTool(matrixItem) && !items.isAddonCraftIngredient(matrixItem, event.getRecipe())) {
                 event.setCancelled(true);
                 return;
             }
@@ -117,9 +118,18 @@ public final class ToolCarrierSuppressionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onFurnaceSmelt(FurnaceSmeltEvent event) {
-        if (isSuppressedTool(event.getSource())) {
+        if (!isSuppressedTool(event.getSource())) return;
+        ItemStack result = event.getResult();
+        if (result == null || result.getType().isAir()) {
             event.setCancelled(true);
+            return;
         }
+        InventoryType station = switch (event.getBlock().getType()) {
+            case BLAST_FURNACE -> InventoryType.BLAST_FURNACE;
+            case SMOKER -> InventoryType.SMOKER;
+            default -> InventoryType.FURNACE;
+        };
+        if (!items.isAddonCookingIngredient(event.getSource(), station, result)) event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -237,12 +247,14 @@ public final class ToolCarrierSuppressionListener implements Listener {
         if (type == InventoryType.FURNACE || type == InventoryType.BLAST_FURNACE || type == InventoryType.SMOKER) {
             if (clickInTop) {
                 if (rawSlot == 0 || rawSlot == 1) { // 0 = ingredient, 1 = fuel
-                    if (isSuppressedTool(event.getCursor())) {
+                    if (isSuppressedTool(event.getCursor())
+                            && (rawSlot != 0 || !items.isAddonCookingIngredient(event.getCursor(), type, null))) {
                         event.setCancelled(true);
                         return;
                     }
                 }
-            } else if (event.isShiftClick() && isSuppressedTool(event.getCurrentItem())) {
+            } else if (event.isShiftClick() && isSuppressedTool(event.getCurrentItem())
+                    && !items.isAddonCookingIngredient(event.getCurrentItem(), type, null)) {
                 event.setCancelled(true);
                 return;
             }
@@ -280,7 +292,8 @@ public final class ToolCarrierSuppressionListener implements Listener {
                 || type == InventoryType.SMITHING
                 || "CRAFTER".equals(type.name())) {
             for (int rawSlot : event.getRawSlots()) {
-                if (rawSlot < top.getSize()) {
+                if (rawSlot < top.getSize()
+                        && (rawSlot != 0 || !items.isAddonCookingIngredient(event.getOldCursor(), type, null))) {
                     event.setCancelled(true);
                     return;
                 }
@@ -295,7 +308,8 @@ public final class ToolCarrierSuppressionListener implements Listener {
         if (!isSuppressedTool(event.getItem())) {
             return;
         }
-        if (isRestrictedDestination(event.getDestination())) {
+        if (isRestrictedDestination(event.getDestination())
+                && !items.isAddonCookingIngredient(event.getItem(), event.getDestination().getType(), null)) {
             event.setCancelled(true);
         }
     }

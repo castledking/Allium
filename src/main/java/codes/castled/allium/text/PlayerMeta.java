@@ -12,13 +12,17 @@ import java.util.Objects;
  * installed, else from Vault's permission and chat services, else empty. The optional APIs load only
  * inside the nested classes. Server thread.
  */
-final class PlayerMeta {
+public final class PlayerMeta {
 
     record Value(String group, String prefix, String suffix) {
         static final Value EMPTY = new Value("", "", "");
     }
 
     private PlayerMeta() {
+    }
+
+    public static String primaryGroup(PluginStart plugin, Player player) {
+        return of(plugin, player).group();
     }
 
     static Value of(PluginStart plugin, Player player) {

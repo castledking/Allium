@@ -16,6 +16,9 @@ build/sf-export/allium-core-pack-sf.zip for SF's own use only.
   one again reusing _0-3.
 - Lazy Axe: SF's tree_axe texture, only with --include-lazy-axe. Its netherite-axe
   dispatch conflicts with Nexo's, so it is never included in the default export.
+- Handcuffs and Claim Handcuffs: SF's four handcuff textures, idle and restraining. Plain fishing
+  rods keep vanilla's cast look. Like every tool here, this pack replaces Nexo's fishing-rod
+  dispatch, so it is for servers without Nexo's pack.
 
 The provenance file records every source and hash. The committed manifest and pack are unchanged.
 """
@@ -35,12 +38,17 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 SPECIALS = 'Nexo/pack/assets/sf/textures/items/specials'
+HANDCUFFS = 'Nexo/pack/assets/sf/textures/items/handcuffs'
 CHARGES = {'full': '', 'two_thirds': '_2-3', 'one_third': '_1-3', 'empty': '_0-3', 'broken': '_0-3'}
 # tool id -> {state: SF texture path relative to the plugins directory}
 SOURCES = {
     'mob_disarmer': {state: f'{SPECIALS}/mob_disarmer{suffix}.png' for state, suffix in CHARGES.items()},
     'phantom_obliterator': {state: f'{SPECIALS}/phantom_obliterator{suffix}.png' for state, suffix in CHARGES.items()},
     'lazy_axe': {'default': 'Nexo/pack/assets/sf/textures/items/tree_axe.png'},
+    # Pre-recode Allium's handcuff states: idle, and restraining someone.
+    'handcuffs': {'default': f'{HANDCUFFS}/handcuffs.png', 'restrained': f'{HANDCUFFS}/handcuffs_restrained.png'},
+    'claim_handcuffs': {'default': f'{HANDCUFFS}/claim_handcuffs.png',
+                        'restrained': f'{HANDCUFFS}/claim_handcuffs_restrained.png'},
 }
 VANILLA_SLOT_SPRITES = {
     'helmet': ('gui/sprites/container/slot/helmet.png', 'item/empty_armor_slot_helmet.png'),

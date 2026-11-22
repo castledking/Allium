@@ -114,6 +114,14 @@ public final class TravelService implements Listener {
     }
     public boolean reloadSettings(){try{settings=Settings.read(plugin);settingsEpoch++;sessions.values().forEach(s->{s.confirmation=null;updateCompass(s);});return true;}
         catch(IllegalArgumentException e){plugin.logger().warning("Kept previous travel settings: "+e.getMessage());return false;}}
+    /** The cached default /home, for death respawns where database access cannot be awaited. */
+    public Location respawnHome(Player player) {
+        Session session = sessions.get(player.getUniqueId());
+        if (session == null || session.player != player || !session.loaded) return null;
+        SavedLocation point = session.homes.get("home");
+        return point == null ? null : location(point);
+    }
+
     public boolean ready(UUID id){Session s=sessions.get(id);return s!=null&&same(s)&&s.loaded;}
     public boolean pending(UUID id){Session s=sessions.get(id);return s!=null&&s.busy;}
     public boolean warpsReady(){return warpsLoaded;}

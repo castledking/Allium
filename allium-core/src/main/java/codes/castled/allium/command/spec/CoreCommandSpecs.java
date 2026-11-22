@@ -870,7 +870,7 @@ public final class CoreCommandSpecs {
                     CommandArgSpec.optional("player", "allium.tptoggle.others", SuggestionSpec.onlinePlayers("allium.tptoggle.others")))),
             teleportSpec("tpauto", List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
                     CommandArgSpec.optional("player", "allium.tpauto.others", SuggestionSpec.onlinePlayers("allium.tpauto.others")))),
-            teleportSpec("back", List.of()), teleportSpec("spawn", List.of()), teleportSpec("setspawn", List.of()),
+            teleportSpec("back", List.of()), teleportSpec("spawn", List.of()), teleportSpec("setspawn", List.of(CommandArgSpec.optional("group", null, SuggestionSpec.literals(List.of("default"), null)))),
             teleportSpec("tp", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
                     CommandArgSpec.optional("target", "allium.tp.others", SuggestionSpec.onlinePlayers("allium.tp.others")))),
             teleportSpec("tpo", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
@@ -898,6 +898,7 @@ public final class CoreCommandSpecs {
             case "tphere", "there" -> " [players|selectors...]";
             case "tppet", "tpent", "tpall", "tpaall" -> " [player]";
             case "tpaccept", "tpdeny" -> " [requester]";
+            case "setspawn" -> " [group]";
             case "tp" -> " <player> [target] | /tp <x> <y> <z> [yaw] [pitch] [world]";
             case "tppos" -> " <x> <y> <z> [yaw] [pitch] [world]";
             case "tptoggle", "tpauto" -> " [on|off] [player]";

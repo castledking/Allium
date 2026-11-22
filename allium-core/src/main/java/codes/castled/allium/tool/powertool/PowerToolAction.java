@@ -51,11 +51,14 @@ public record PowerToolAction(
     public static final String TYPE_MOUNT = "mount";
     /** Lets go of whoever rides the player through {@link #TYPE_RIDE}. */
     public static final String TYPE_RELEASE = "release";
+    /** Counts down, then bans the restrained target from the claim they stand in (the claim handcuffs). */
+    public static final String TYPE_CLAIM_BAN = "claim_ban";
 
     public static final Set<String> BUILT_IN_TYPES = Set.of(
             TYPE_COMMAND, TYPE_CONSOLE, TYPE_MESSAGE, TYPE_ACTIONBAR,
             TYPE_SOUND, TYPE_PARTICLE, TYPE_POTION,
-            TYPE_TREE_FELL, TYPE_DISARM, TYPE_OBLITERATE, TYPE_GRANT, TYPE_RIDE, TYPE_MOUNT, TYPE_RELEASE
+            TYPE_TREE_FELL, TYPE_DISARM, TYPE_OBLITERATE, TYPE_GRANT, TYPE_RIDE, TYPE_MOUNT, TYPE_RELEASE,
+            TYPE_CLAIM_BAN
     );
 
     /** An action that never stops its binding. */
@@ -100,6 +103,7 @@ public record PowerToolAction(
             case "carry", "pick_up", "pickup", "allium:ride" -> TYPE_RIDE;
             case "ride_target", "mount_target", "allium:mount" -> TYPE_MOUNT;
             case "unride", "uncarry", "unrestrain", "uncuff", "drop_riders", "allium:release" -> TYPE_RELEASE;
+            case "claimban", "claim_ban_countdown", "allium:claim_ban" -> TYPE_CLAIM_BAN;
             default -> lower;
         };
     }

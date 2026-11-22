@@ -1,0 +1,52 @@
+# Claim Handcuffs: pre-recode Allium's claim handcuffs, as a powertool (see docs/powertools.md). The
+# item is the core pack's claim handcuffs: a fishing rod that never wears out. They need GPExpansion
+# with GriefPrevention or GriefPrevention3D.
+#
+# Cast at an untrusted player standing in a claim you own or manage, and reel them in: they are
+# restrained as with the Handcuffs, and a claim ban counts down. When it ends they are let go and
+# banned from the claim. Press Q with the claim handcuffs to cancel it and let them go; it is also
+# cancelled when they leave the claim, either of you leaves, or the claim changes. One player at a
+# time, and only when you are not restraining anyone else.
+schema: 1
+
+id: allium:claim_handcuffs
+name: Claim Handcuffs
+behavior: allium:powertool
+enabled: true
+
+appearance:
+  default: allium:claim_handcuffs
+  aliases: []
+
+permissions:
+  # Pre-recode Allium let anyone holding claim handcuffs use them; who may is up to the claim.
+  use: allium.claimhandcuffs.use
+  bypass: allium.claimhandcuffs.bypass
+
+bindings:
+  on-fish:
+    fishing: [caught-entity]
+    cancel-interaction: true
+    hand: both
+    actions:
+      - type: ride
+        required: true
+        params:
+          restrain: true
+          # Only an untrusted player inside a claim you own or manage, not already banned from it.
+          claim: true
+          max-riders: 1
+          exempt-permission: allium.handcuffs.resist
+      - type: claim_ban
+        params:
+          countdown-seconds: 5
+  drop:
+    # Q cancels a pending claim ban and lets the player go; idle claim handcuffs drop normally.
+    cancel-interaction: false
+    hand: both
+    actions:
+      - type: release
+        params:
+          which: all
+
+messages: {}

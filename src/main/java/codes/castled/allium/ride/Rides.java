@@ -58,7 +58,19 @@ public final class Rides implements Listener {
     /** What {@link #carry} did. */
     public enum Result { CARRIED, RESTRAINED, SELF, BUSY, FULL, FAILED }
 
-    private record Rider(UUID id, UUID carrier, boolean restrained) {
+    /** @param tool the powertool that restrained the rider, e.g. {@code allium:handcuffs}; null when unknown */
+    private record Rider(UUID id, UUID carrier, boolean restrained, @Nullable String tool) {
+    }
+
+    /** Told about riders and carriers, on the server thread. */
+    public interface RideListener {
+        /** {@code rider} was let go, for any reason. */
+        default void released(UUID rider, UUID carrier) {
+        }
+
+        /** Whom {@code carrier} restrains, or with what, changed (also on join, when it is no one). */
+        default void restraintsChanged(UUID carrier) {
+        }
     }
 
     private static volatile Rides current;
@@ -70,6 +82,7 @@ public final class Rides implements Listener {
     /** Riders Allium is moving itself, whose dismounts and teleports are expected. */
     private final Set<UUID> moving = new HashSet<>();
     private final Map<UUID, Long> dismountNotices = new HashMap<>();
+    private final List<RideListener> listeners = new ArrayList<>();
     private boolean enabled;
 
     public Rides(PluginStart plugin) {
@@ -145,6 +158,28 @@ public final class Rides implements Listener {
         return List.copyOf(stacks.getOrDefault(carrier, List.of()));
     }
 
+    public void addListener(RideListener listener) {
+        listeners.add(listener);
+    }
+
+    /** Whether {@code carrier} restrains anyone with {@code tool}. */
+    public boolean restrains(UUID carrier, String tool) {
+        for (UUID id : stacks.getOrDefault(carrier, List.of())) {
+            Rider rider = riders.get(id);
+            if (rider != null && rider.restrained() && tool.equals(rider.tool())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The tool that restrained {@code id}, or null. */
+    @Nullable
+    public String toolOf(UUID id) {
+        Rider rider = riders.get(id);
+        return rider == null ? null : rider.tool();
+    }
+
     /** Every restrained player. */
     public List<UUID> restrained() {
         return riders.values().stream().filter(Rider::restrained).map(Rider::id).toList();
@@ -157,6 +192,11 @@ public final class Rides implements Listener {
      * already carried, carrying someone, or carrying the carrier, and a full stack.
      */
     public Result carry(Player carrier, Entity target, boolean restrain, int maxRiders) {
+        return carry(carrier, target, restrain, maxRiders, null);
+    }
+
+    /** {@link #carry(Player, Entity, boolean, int)}, recording the powertool {@code tool} that did it. */
+    public Result carry(Player carrier, Entity target, boolean restrain, int maxRiders, @Nullable String tool) {
         UUID carrierId = carrier.getUniqueId();
         UUID targetId = target.getUniqueId();
         if (carrierId.equals(targetId)) {
@@ -194,9 +234,10 @@ public final class Rides implements Listener {
         }
         stack.add(targetId);
         boolean restrained = restrain && target instanceof Player;
-        riders.put(targetId, new Rider(targetId, carrierId, restrained));
+        riders.put(targetId, new Rider(targetId, carrierId, restrained, tool));
         if (restrained) {
             ((Player) target).setCollidable(false);
+            changed(carrierId);
         }
         return restrained ? Result.RESTRAINED : Result.CARRIED;
     }
@@ -274,7 +315,23 @@ public final class Rides implements Listener {
                 restack(rider.carrier());
             }
         }
+        announce(rider);
         return entity;
+    }
+
+    private void announce(Rider rider) {
+        for (RideListener listener : List.copyOf(listeners)) {
+            listener.released(rider.id(), rider.carrier());
+        }
+        if (rider.restrained()) {
+            changed(rider.carrier());
+        }
+    }
+
+    private void changed(UUID carrier) {
+        for (RideListener listener : List.copyOf(listeners)) {
+            listener.restraintsChanged(carrier);
+        }
     }
 
     /** Seats every rider on the one below again, bottom first, dropping riders that are gone. */
@@ -324,6 +381,7 @@ public final class Rides implements Listener {
                 stacks.remove(rider.carrier());
             }
         }
+        announce(rider);
     }
 
     // -- Teleports --------------------------------------------------------------------------------
@@ -399,6 +457,12 @@ public final class Rides implements Listener {
             dismountNotices.put(id, now);
             send(player, Messages.RIDE_NO_DISMOUNT);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+        // Nobody is restrained after a rejoin or a crash; restraining-state items go back to idle.
+        changed(event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

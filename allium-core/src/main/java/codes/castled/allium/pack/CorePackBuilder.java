@@ -116,7 +116,14 @@ public final class CorePackBuilder {
                 entries.add(d.model() == null ? entry(d.value(), vanillaItemModel) : entry(d.value(), d.model()));
             }
             Map<String, Object> carrierModel = new LinkedHashMap<>(vanilla.vanillaModel());
-            carrierModel.put("overrides", overrides);
+            // The carrier's own vanilla overrides (a fishing rod's cast look) stay, first: the last
+            // matching override wins, so Allium's values still pick their models.
+            List<Object> combined = new ArrayList<>();
+            if (vanilla.vanillaModel().get("overrides") instanceof List<?> own) {
+                combined.addAll(own);
+            }
+            combined.addAll(overrides);
+            carrierModel.put("overrides", combined);
             files.put("assets/minecraft/models/item/" + carrier + ".json", json(carrierModel));
 
             Map<String, Object> carrierItem = new LinkedHashMap<>(vanilla.vanillaItem());

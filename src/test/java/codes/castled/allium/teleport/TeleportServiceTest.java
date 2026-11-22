@@ -425,6 +425,55 @@ class TeleportServiceTest {
         verify(plugin.getMessageManager()).send(eq(mover), eq(codes.castled.allium.message.Messages.TELEPORT_NO_BACK), any(String[].class));
     }
     @Test
+    void deathWithoutBedUsesPersistedSpawnWithExactHeightAndRotation() throws Exception {
+        Location point = new Location(world, 12.25, 66.5, -10.25, 45, 20);
+        doReturn(Optional.of(snapshot(point))).when(repository).load(TeleportService.SERVER, "spawn");
+        enable();
+        var respawn = mock(org.bukkit.event.player.PlayerRespawnEvent.class);
+        when(respawn.getPlayer()).thenReturn(mover);
+        when(respawn.getRespawnReason()).thenReturn(org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.DEATH);
+
+        service.respawn(respawn);
+        verify(respawn).setRespawnLocation(point);
+
+        reset(respawn);
+        when(respawn.getRespawnReason()).thenReturn(org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.DEATH);
+        when(respawn.isAnchorSpawn()).thenReturn(true);
+        service.respawn(respawn);
+        verify(respawn, never()).setRespawnLocation(any());
+    }
+
+    @Test
+    void primaryGroupSpawnOverridesDefaultForDeathAndSpawnCommand() throws Exception {
+        Location point = destination();
+        doReturn(Optional.of(snapshot(new Location(world, 1, 64, 1)))).when(repository).load(TeleportService.SERVER, "spawn");
+        doReturn(Map.of("vip", snapshot(point))).when(repository).loadGroupSpawns();
+        enable();
+        when(server.getWorlds()).thenReturn(List.of(world));
+        var respawn = mock(org.bukkit.event.player.PlayerRespawnEvent.class);
+        when(respawn.getPlayer()).thenReturn(mover);
+        when(respawn.getRespawnReason()).thenReturn(org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.DEATH);
+        try (var groups = mockStatic(codes.castled.allium.text.PlayerMeta.class)) {
+            groups.when(() -> codes.castled.allium.text.PlayerMeta.primaryGroup(plugin, mover)).thenReturn("VIP");
+            service.respawn(respawn);
+            service.spawn(mover);
+            drainWorker();
+        }
+        verify(respawn).setRespawnLocation(point);
+        verify(mover).teleport(eq(point), eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+    }
+
+    @Test
+    void groupWriteKeepsTheDefaultSpawnSlot() throws Exception {
+        enable();
+        when(mover.hasPermission("allium.setspawn")).thenReturn(true);
+        service.setSpawn(mover, "VIP");
+        drainWorker();
+        verify(repository).save(eq(TeleportService.SERVER), eq("spawn:vip"), any(SavedLocation.class));
+        verify(repository, never()).save(eq(TeleportService.SERVER), eq("spawn"), any(SavedLocation.class));
+    }
+
+    @Test
     void spawnUsesDedicatedSuccessKey()throws Exception{
         when(server.getWorlds()).thenReturn(List.of(world));when(world.getSpawnLocation()).thenReturn(destination());enable();service.spawn(mover);drainWorker();
         verify(plugin.getMessageManager()).send(eq(mover),eq(codes.castled.allium.message.Messages.SPAWN_TELEPORT),any(String[].class));

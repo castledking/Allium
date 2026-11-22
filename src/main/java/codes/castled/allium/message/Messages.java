@@ -341,6 +341,8 @@ public enum Messages {
     WARP_OTHER("warp.other", "{prefix} &aWarped &f{player} &ato &e{name}&a."),
 
     // -- Spawn --
+    SPAWN_INVALID_GROUP("spawn.invalid-group", "{prefix} &cUse 1–58 letters, digits, underscores or hyphens for the group."),
+    SPAWN_GROUP_SET("spawn.group-set", "{prefix} &aSpawn point set for &f{group}&a."),
     SPAWN_SET("spawn.set", "{prefix} &aSpawn point set."),
     SPAWN_TELEPORT("spawn.teleport", "{prefix} &aTeleported to spawn."),
     SPAWN_NOT_SET("spawn.not-set", "{prefix} &cSpawn has not been set."),
@@ -1029,7 +1031,28 @@ public enum Messages {
     RIDE_LOGGED_OUT("tool.ride.logged-out", "{prefix} &f{target} &ehas logged out while restrained."),
     UNRESTRAIN_RELEASED("tool.unrestrain.released", "{prefix} &aFreed &f{count} &aplayer(s)."),
     UNRESTRAIN_NONE("tool.unrestrain.none", "{prefix} &7No one is restrained."),
-    UNRESTRAIN_NOT_RESTRAINED("tool.unrestrain.not-restrained", "{prefix} &f{player} &7is not restrained or carried.");
+    UNRESTRAIN_NOT_RESTRAINED("tool.unrestrain.not-restrained", "{prefix} &f{player} &7is not restrained or carried."),
+    CLAIM_CUFFS_UNAVAILABLE("tool.claim-cuffs.unavailable", "{prefix} &cClaim handcuffs need GPExpansion and GriefPrevention."),
+    CLAIM_CUFFS_NOT_IN_CLAIM("tool.claim-cuffs.not-in-claim", "{prefix} &f{target} &cis not inside a claim."),
+    CLAIM_CUFFS_NO_CLAIM_ID("tool.claim-cuffs.no-claim-id", "{prefix} &cCould not tell which claim &f{target} &cis in."),
+    CLAIM_CUFFS_NOT_MANAGER("tool.claim-cuffs.not-manager", "{prefix} &cYou must own that claim or have manager trust in it."),
+    CLAIM_CUFFS_TRUSTED("tool.claim-cuffs.trusted", "{prefix} &cClaim handcuffs only work on untrusted players."),
+    CLAIM_CUFFS_ALREADY_BANNED("tool.claim-cuffs.already-banned", "{prefix} &f{target} &cis already banned from that claim."),
+    CLAIM_BAN_STARTED("tool.claim-cuffs.ban-started", "{prefix} &eDrop the claim handcuffs within &f{seconds} &eseconds to cancel."),
+    CLAIM_BAN_STARTED_TARGET("tool.claim-cuffs.ban-started-target", "{prefix} &cA claim ban is being prepared. The restrainer can cancel it."),
+    CLAIM_BAN_TITLE("tool.claim-cuffs.ban-title", "&c&lDrop item to cancel ban"),
+    CLAIM_BAN_TARGET_TITLE("tool.claim-cuffs.ban-target-title", "&4&lCLAIM RESTRAINED"),
+    CLAIM_BAN_COUNTDOWN("tool.claim-cuffs.ban-countdown", "&6Claim ban in &e{seconds}s"),
+    CLAIM_BAN_CANCELLED("tool.claim-cuffs.ban-cancelled", "{prefix} &eThe claim ban was cancelled because the restraint ended."),
+    CLAIM_BAN_LEFT("tool.claim-cuffs.ban-left", "{prefix} &eThe claim ban was cancelled because &f{target} &eleft the claim."),
+    CLAIM_BAN_CHANGED("tool.claim-cuffs.ban-changed", "{prefix} &cClaim ban cancelled: the claim changed, so &f{target} &cwas released."),
+    CLAIM_BAN_DONE("tool.claim-cuffs.ban-done", "{prefix} &f{target} &awas banned from the claim."),
+    CLAIM_BAN_DONE_TITLE("tool.claim-cuffs.ban-done-title", "&6&lCLAIM BAN COMPLETE"),
+    CLAIM_BAN_DONE_SUBTITLE("tool.claim-cuffs.ban-done-subtitle", "&e{target} was banned from the claim"),
+    CLAIM_BAN_BANNED_TITLE("tool.claim-cuffs.banned-title", "&c&lBANNED FROM CLAIM"),
+    CLAIM_BAN_BANNED_SUBTITLE("tool.claim-cuffs.banned-subtitle", "&7You may no longer enter this claim"),
+    CLAIM_BAN_FAILED("tool.claim-cuffs.ban-failed", "{prefix} &cThe restraint ended, but GPExpansion could not save the claim ban for &f{target}&c."),
+    CLAIM_BAN_FAILED_TARGET("tool.claim-cuffs.ban-failed-target", "{prefix} &eThe claim ban failed and you were released.");
 
     private static final Map<String, Messages> BY_KEY;
 

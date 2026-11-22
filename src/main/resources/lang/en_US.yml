@@ -1201,6 +1201,8 @@ player:
     - "{prefix} &cYou don't have permission to use &f{mode} &cmode."
     - "[sound] entity.villager.no 0.9"
 utility:
+  workstation-unavailable:
+    - "{prefix} &cThis server version cannot open a virtual &f{workstation}&c."
   depth:
     "above":
       - "{prefix} &7You are &f{blocks} &7block(s) above sea level."

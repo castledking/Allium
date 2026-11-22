@@ -83,7 +83,24 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
             }
             case "workbench" -> player.openWorkbench(null, true);
             case "anvil" -> player.openInventory(plugin.getServer().createInventory(null, InventoryType.ANVIL, "Anvil"));
+            case "grindstone", "cartographytable", "stonecutter", "loom", "smithing" -> openWorkstation(player);
             default -> throw new IllegalArgumentException("unknown utility");
+        }
+    }
+
+    private void openWorkstation(Player player) {
+        String name = spec.canonicalName();
+        String field = name.equals("cartographytable") ? "CARTOGRAPHY_TABLE" : name.toUpperCase(Locale.ROOT);
+        try {
+            // Use the platform's real menu so result slots and input returns retain vanilla behavior.
+            Class<?> menu = Class.forName("org.bukkit.inventory.MenuType");
+            Class<?> typed = Class.forName("org.bukkit.inventory.MenuType$Typed");
+            Object type = menu.getField(field).get(null);
+            Object view = typed.getMethod("create", org.bukkit.entity.HumanEntity.class).invoke(type, player);
+            org.bukkit.entity.HumanEntity.class.getMethod("openInventory", org.bukkit.inventory.InventoryView.class)
+                    .invoke(player, view);
+        } catch (ReflectiveOperationException | LinkageError | UnsupportedOperationException unavailable) {
+            UtilitySupport.send(plugin, player, Messages.WORKSTATION_UNAVAILABLE, "{workstation}", name);
         }
     }
 

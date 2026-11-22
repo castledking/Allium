@@ -948,8 +948,19 @@ public final class CoreCommandSpecs {
     );
 
     public static final List<CommandSpec> UTILITY_SPECS = List.of(
-            REPAIR, DISPOSAL, WORKBENCH, ANVIL
+            REPAIR, DISPOSAL, WORKBENCH, ANVIL,
+            workstation("grindstone", "grindstone"),
+            workstation("cartographytable", "cartography table", "carttable"),
+            workstation("stonecutter", "stonecutter"),
+            workstation("loom", "loom"),
+            workstation("smithing", "smithing table", "smithingtable")
     );
+
+    private static CommandSpec workstation(String label, String name, String... aliases) {
+        return new CommandSpec(label, CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(aliases),
+                "Open a virtual " + name, "/" + label, "/" + label, "allium." + label, null,
+                List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+    }
 
     public static final CommandSpec SPEED = new CommandSpec(
             "speed", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("wspeed", "walkspeed", "flyspeed", "fspeed"),
@@ -1536,7 +1547,7 @@ public final class CoreCommandSpecs {
 
     public static final CommandSpec POWERTOOL = new CommandSpec(
             "powertool", CommandSpec.DEFAULT_NAMESPACE, "tools",
-            List.of("pt", "tool", "tools", "powertools", "ptt", "powertooltoggle", "pttoggle"),
+            List.of("pt", "tool", "tools", "powertools", "ptt", "powertooltoggle", "pttoggle", "powertoollist", "ptlist"),
             "Create, edit, save, bind, enable/disable and give interactive powertool items",
             "/pt <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|fish|info|save|delete|bind|enable|disable|get|give|list|toggle|reload|help> [args...]",
             "/pt <enable|disable|give|list|delete|reload|help> [args...]",

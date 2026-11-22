@@ -686,6 +686,7 @@ public enum Messages {
     GLOW_OVERRIDDEN("glow.overridden", "{prefix} &7In restricted creative you show the creative glow; yours comes back when you leave it."),
     THUNDER_ON("utility.thunder.on", "{prefix} &aThunder enabled in &f{world}&a."),
     THUNDER_OFF("utility.thunder.off", "{prefix} &aThunder disabled in &f{world}&a."),
+    WORKSTATION_UNAVAILABLE("utility.workstation-unavailable", "{prefix} &cThis server version cannot open a virtual &f{workstation}&c."),
     DEPTH_ABOVE("utility.depth.above", "{prefix} &7You are &f{blocks} &7block(s) above sea level."),
     DEPTH_BELOW("utility.depth.below", "{prefix} &7You are &f{blocks} &7block(s) below sea level."),
     DEPTH_LEVEL("utility.depth.level", "{prefix} &7You are at sea level."),

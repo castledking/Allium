@@ -1201,6 +1201,8 @@ player:
     - "{prefix} &cNo tienes permiso para usar el modo &f{mode}&c."
     - "[sound] entity.villager.no 0.9"
 utility:
+  workstation-unavailable:
+    - "{prefix} &cEsta versión del servidor no puede abrir &f{workstation} &cde forma virtual."
   depth:
     "above":
       - "{prefix} &7Estás &f{blocks} &7bloque(s) sobre el nivel del mar."

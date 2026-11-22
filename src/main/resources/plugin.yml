@@ -2030,6 +2030,16 @@ permissions:
     description: Refund an imposed tax entry from the tax account
     default: op
 
+  allium.grindstone:
+    default: op
+  allium.cartographytable:
+    default: op
+  allium.stonecutter:
+    default: op
+  allium.loom:
+    default: op
+  allium.smithing:
+    default: op
   allium.depth:
     default: true
   allium.ice:

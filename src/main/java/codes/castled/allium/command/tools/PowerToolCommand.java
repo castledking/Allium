@@ -97,6 +97,14 @@ public final class PowerToolCommand implements SpecCommandHandler {
             handleToggle(sender, behavior);
             return;
         }
+        if (cmdLabel.equals("powertoollist") || cmdLabel.equals("ptlist")) {
+            if (args.length != 0) {
+                context.sendInvalidArgs("/" + cmdLabel);
+            } else {
+                handleInfo(sender, behavior, args);
+            }
+            return;
+        }
         if (cmdLabel.equals("tools")) {
             handleList(sender, behavior, args);
             return;
@@ -1120,7 +1128,8 @@ public final class PowerToolCommand implements SpecCommandHandler {
                             .filter(id -> id.startsWith(prefix)).toList()
                     : List.of();
         }
-        if ("ptt".equals(cleanLabel) || "powertooltoggle".equals(cleanLabel) || "pttoggle".equals(cleanLabel)) {
+        if ("ptt".equals(cleanLabel) || "powertooltoggle".equals(cleanLabel) || "pttoggle".equals(cleanLabel)
+                || "powertoollist".equals(cleanLabel) || "ptlist".equals(cleanLabel)) {
             return List.of();
         }
         if (args.length <= 1) {

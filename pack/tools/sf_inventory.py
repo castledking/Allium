@@ -24,7 +24,7 @@ from pathlib import Path
 import yaml
 
 REPO = Path(__file__).resolve().parents[2]
-CARRIERS = ['golden_hoe', 'iron_shovel', 'phantom_membrane', 'blaze_rod', 'name_tag', 'netherite_axe']
+CARRIERS = ['fishing_rod', 'diamond_sword', 'netherite_sword', 'name_tag', 'netherite_axe']
 # Legacy SF Nexo ids that are Allium core tools, with the core state each one corresponds to.
 CORE_MAPPING = {
     'mob_disarmer': ('mob_disarmer', 'full'),

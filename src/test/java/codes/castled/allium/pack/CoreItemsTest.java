@@ -29,13 +29,13 @@ class CoreItemsTest {
         List<AlliumItemDefinition> definitions = CoreItems.definitions(manifest);
         Map<String, AlliumItemDefinition> byId = new HashMap<>();
         definitions.forEach(d -> byId.put(d.id(), d));
-        assertEquals(Material.GOLDEN_HOE, byId.get("mob_disarmer").carrierMaterial());
+        assertEquals(Material.DIAMOND_SWORD, byId.get("mob_disarmer").carrierMaterial(), "pre-recode Allium's material");
         assertEquals(2577020, byId.get("mob_disarmer").customModelData());
         assertTrue(byId.get("mob_disarmer").signed());
         assertFalse(byId.get("mob_disarmer").privileged());
-        assertEquals(Material.IRON_SHOVEL, byId.get("handcuffs").carrierMaterial());
+        assertEquals(Material.FISHING_ROD, byId.get("handcuffs").carrierMaterial(), "pre-recode Allium's material: casting is how they work");
         assertTrue(byId.get("handcuffs").privileged());
-        assertEquals(Material.PHANTOM_MEMBRANE, byId.get("phantom_obliterator").carrierMaterial(), "moved off blaze_rod, which SF's Nexo pack overrides");
+        assertEquals(Material.NETHERITE_SWORD, byId.get("phantom_obliterator").carrierMaterial(), "pre-recode Allium's material");
         assertEquals(Map.of("charges", "3"), byId.get("phantom_obliterator").defaultState());
         assertEquals(Material.NAME_TAG, byId.get("item_renamer").carrierMaterial());
         assertEquals(Material.NETHERITE_AXE, byId.get("lazy_axe").carrierMaterial());
@@ -69,7 +69,7 @@ class CoreItemsTest {
 
         assertTrue(items.updateState(tool, new DisarmerCharges(2, 0L, false, 1L).toState()));
         assertEquals(2577021, tool.getItemMeta().getCustomModelData());
-        assertEquals(Material.GOLDEN_HOE, tool.getType(), "never an item swap");
+        assertEquals(Material.DIAMOND_SWORD, tool.getType(), "never an item swap");
         assertTrue(items.updateState(tool, new DisarmerCharges(0, 5L, false, 3L).toState()));
         assertEquals(2577023, tool.getItemMeta().getCustomModelData());
         assertTrue(items.updateState(tool, new DisarmerCharges(0, 5L, true, 4L).toState()));

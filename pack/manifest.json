@@ -16,31 +16,31 @@
     "last": 2577999
   },
   "carriers": {
-    "golden_hoe": {
+    "diamond_sword": {
       "vanillaModel": {
         "parent": "minecraft:item/handheld",
         "textures": {
-          "layer0": "minecraft:item/golden_hoe"
+          "layer0": "minecraft:item/diamond_sword"
         }
       },
       "vanillaItem": {
         "model": {
           "type": "minecraft:model",
-          "model": "minecraft:item/golden_hoe"
+          "model": "minecraft:item/diamond_sword"
         }
       }
     },
-    "phantom_membrane": {
+    "netherite_sword": {
       "vanillaModel": {
-        "parent": "minecraft:item/generated",
+        "parent": "minecraft:item/handheld",
         "textures": {
-          "layer0": "minecraft:item/phantom_membrane"
+          "layer0": "minecraft:item/netherite_sword"
         }
       },
       "vanillaItem": {
         "model": {
           "type": "minecraft:model",
-          "model": "minecraft:item/phantom_membrane"
+          "model": "minecraft:item/netherite_sword"
         }
       }
     },
@@ -77,7 +77,7 @@
     {
       "id": "handcuffs",
       "behavior": "allium:handcuffs",
-      "carrier": "iron_shovel",
+      "carrier": "fishing_rod",
       "name": "§fHandcuffs",
       "status": "planned",
       "allocation": {
@@ -94,7 +94,7 @@
     {
       "id": "mob_disarmer",
       "behavior": "allium:mob_disarmer",
-      "carrier": "golden_hoe",
+      "carrier": "diamond_sword",
       "name": "§6Mob Disarmer",
       "status": "ready",
       "allocation": {
@@ -138,7 +138,7 @@
     {
       "id": "phantom_obliterator",
       "behavior": "allium:phantom_obliterator",
-      "carrier": "phantom_membrane",
+      "carrier": "netherite_sword",
       "name": "§bPhantom Obliterator",
       "status": "planned",
       "allocation": {

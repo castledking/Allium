@@ -23,9 +23,9 @@ values exactly. Planned tools reserve their values but generate nothing until th
 
 | Tool | Carrier | Allocation | States |
 | --- | --- | --- | --- |
-| `allium:handcuffs` | iron shovel | 2577010–2577019 | planned |
-| `allium:mob_disarmer` | golden hoe | 2577020–2577029 | full 2577020, two_thirds 2577021, one_third 2577022, empty 2577023, broken 2577024 |
-| `allium:phantom_obliterator` | phantom membrane | 2577030–2577039 | planned |
+| `allium:handcuffs` | fishing rod | 2577010–2577019 | planned |
+| `allium:mob_disarmer` | diamond sword | 2577020–2577029 | full 2577020, two_thirds 2577021, one_third 2577022, empty 2577023, broken 2577024 |
+| `allium:phantom_obliterator` | netherite sword | 2577030–2577039 | planned |
 | `allium:item_renamer` | name tag | 2577040–2577049 | planned |
 | `gui_slot` (menu icons, not an item) | light gray stained glass pane | 2577100–2577109 | filler 2577100, helmet 2577101, chestplate 2577102, leggings 2577103, boots 2577104, shield 2577105, sword 2577106 |
 
@@ -46,7 +46,7 @@ and the gold **Mob Disarmer** name. The wire format differs by version:
 | 1.21.4+ (incl. 26.3) | `minecraft:custom_model_data={floats:[2577020.0f]}` | `minecraft:custom_name` |
 
 Allium does not stamp `item_model`. A client without the pack renders an unknown `item_model` as
-the purple-and-black missing model. Without one, a player who declines the pack sees a golden hoe
+the purple-and-black missing model. Without one, a player who declines the pack sees a diamond sword
 with its name, and it still works. The pack still provides `item_model` targets
 (`allium:mob_disarmer`) for any server that opts into that component.
 
@@ -54,10 +54,10 @@ with its name, and it still works. The pack still provides `item_model` targets
 
 | Files | Read by | Purpose |
 | --- | --- | --- |
-| `assets/minecraft/models/item/golden_hoe.json` | 1.20 to 1.21.3 | vanilla model plus `custom_model_data` overrides. The value after Allium's run closes back to a vanilla copy (`allium:item/vanilla/golden_hoe`), so other plugins' higher values are not swallowed. 1.21.4+ ignores `overrides`. |
+| `assets/minecraft/models/item/diamond_sword.json` | 1.20 to 1.21.3 | vanilla model plus `custom_model_data` overrides. The value after Allium's run closes back to a vanilla copy (`allium:item/vanilla/diamond_sword`), so other plugins' higher values are not swallowed. 1.21.4+ ignores `overrides`. |
 | `assets/allium/models/item/mob_disarmer/<state>.json` + textures | all | one handheld model per state |
 | `assets/allium/models/item/mob_disarmer.json` | 1.21.2, 1.21.3 | `item_model allium:mob_disarmer` target (`models/item/<id>`) with the same overrides |
-| `allium_item_definitions/assets/minecraft/items/golden_hoe.json` | 1.21.4+ | vanilla item definition with a `range_dispatch` on `custom_model_data`, closing back to `minecraft:item/golden_hoe`; its fallback is the exact vanilla definition |
+| `allium_item_definitions/assets/minecraft/items/diamond_sword.json` | 1.21.4+ | vanilla item definition with a `range_dispatch` on `custom_model_data`, closing back to `minecraft:item/diamond_sword`; its fallback is the exact vanilla definition |
 | `allium_item_definitions/assets/allium/items/mob_disarmer.json` | 1.21.4+ | `item_model allium:mob_disarmer` target |
 
 `pack.mcmeta` declares `pack_format 15`, `supported_formats [15, 97]` and
@@ -101,10 +101,14 @@ java -cp build/libs/Allium.jar codes.castled.allium.pack.CorePackMain validate b
 
 ## Coexisting with other packs
 
-The pack replaces the vanilla `golden_hoe` model (1.20 to 1.21.3) and item definition (1.21.4+).
+The pack replaces the vanilla `diamond_sword` model (1.20 to 1.21.3) and item definition (1.21.4+).
 Another pack that replaces the same files must be merged with this one, or one of them loses its
-golden-hoe models. `docs/s06b-sf-inventory.md` lists such files in SF's mixer. None touch the
-golden hoe today. SF's Nexo pack replaces `items/blaze_rod.json` with an unclosed
-`range_dispatch` from 1002. So in S10 the planned Phantom Obliterator moved from the blaze rod to
-the phantom membrane, which no readable SF pack overrides. SF's CraftEngine pack could not be read;
-the staging RPM merge confirms it.
+diamond-sword models. The core tools use their pre-recode materials (handcuffs: fishing rod, Mob
+Disarmer: diamond sword, Phantom Obliterator: netherite sword, Lazy Axe: netherite axe, Item
+Renamer: name tag), and SF's Nexo pack replaces all four of the first files
+(`docs/s06b-sf-inventory.md`, carrier collision audit). So on SF the RPM mixer must merge
+`diamond_sword.json` with Nexo's, or the core pack's Mob Disarmer models (2577020..2577029) and
+Nexo's diamond-sword models (1004..1007, 1450003) cannot both show. An item carrying the
+`item_model` component (`allium:mob_disarmer`, 1.21.2+) would not read the carrier file, but Allium
+does not stamp it yet (see What Allium stamps). The tools without art (handcuffs, Phantom Obliterator, Lazy Axe, Item Renamer) add no
+carrier file, so nothing else collides until their art ships.

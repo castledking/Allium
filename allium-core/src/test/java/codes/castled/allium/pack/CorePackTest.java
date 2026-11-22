@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class CorePackTest {
 
     private static final Path ROOT = Path.of("..", "pack").toAbsolutePath().normalize();
-    private static final String GOLDEN_HOE_MODEL = "{\"parent\":\"minecraft:item/handheld\",\"textures\":{\"layer0\":\"minecraft:item/golden_hoe\"}}";
-    private static final String GOLDEN_HOE_ITEM = "{\"model\":{\"type\":\"minecraft:model\",\"model\":\"minecraft:item/golden_hoe\"}}";
+    private static final String DIAMOND_SWORD_MODEL = "{\"parent\":\"minecraft:item/handheld\",\"textures\":{\"layer0\":\"minecraft:item/diamond_sword\"}}";
+    private static final String DIAMOND_SWORD_ITEM = "{\"model\":{\"type\":\"minecraft:model\",\"model\":\"minecraft:item/diamond_sword\"}}";
     private static final String PANE_MODEL = "{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"minecraft:block/light_gray_stained_glass\"}}";
     private static final String PANE_ITEM = "{\"model\":{\"type\":\"minecraft:model\",\"model\":\"minecraft:item/light_gray_stained_glass_pane\"}}";
 
@@ -36,17 +36,17 @@ class CorePackTest {
     /** The vanilla files the pack touches, identical on every validated lane (checked live against client jars). */
     private static VanillaAssets vanilla(boolean itemDefinitions) {
         Map<String, String> files = new HashMap<>();
-        files.put("assets/minecraft/models/item/golden_hoe.json", GOLDEN_HOE_MODEL);
+        files.put("assets/minecraft/models/item/diamond_sword.json", DIAMOND_SWORD_MODEL);
         files.put("assets/minecraft/models/item/light_gray_stained_glass_pane.json", PANE_MODEL);
         if (itemDefinitions) {
-            files.put("assets/minecraft/items/golden_hoe.json", GOLDEN_HOE_ITEM);
+            files.put("assets/minecraft/items/diamond_sword.json", DIAMOND_SWORD_ITEM);
             files.put("assets/minecraft/items/light_gray_stained_glass_pane.json", PANE_ITEM);
         }
         return new VanillaAssets("test-vanilla",
-                Set.of("minecraft:item/handheld", "minecraft:item/generated", "minecraft:item/golden_hoe",
+                Set.of("minecraft:item/handheld", "minecraft:item/generated", "minecraft:item/diamond_sword",
                         "minecraft:item/light_gray_stained_glass_pane"),
-                Set.of("minecraft:item/golden_hoe", "minecraft:block/light_gray_stained_glass"),
-                itemDefinitions ? Set.of("minecraft:golden_hoe", "minecraft:light_gray_stained_glass_pane") : Set.of(),
+                Set.of("minecraft:item/diamond_sword", "minecraft:block/light_gray_stained_glass"),
+                itemDefinitions ? Set.of("minecraft:diamond_sword", "minecraft:light_gray_stained_glass_pane") : Set.of(),
                 files);
     }
 
@@ -58,7 +58,7 @@ class CorePackTest {
                 manifest.tools().stream().map(AssetManifest.Tool::id).toList());
         AssetManifest.Tool disarmer = manifest.tool("mob_disarmer").orElseThrow();
         assertTrue(disarmer.ready());
-        assertEquals("golden_hoe", disarmer.carrier());
+        assertEquals("diamond_sword", disarmer.carrier());
         for (DisarmerVisualState state : DisarmerVisualState.values()) {
             assertTrue(disarmer.state(state.key()).isPresent(), "manifest state for " + state);
         }
@@ -82,8 +82,8 @@ class CorePackTest {
         assertEquals(List.of(), PackValidator.structure(unzipped, manifest));
         assertTrue(first.containsKey("assets/allium/models/item/mob_disarmer.json"), "1.21.2 item_model ns:id reads models/item/id");
         assertTrue(first.containsKey("allium_item_definitions/assets/allium/items/mob_disarmer.json"));
-        assertTrue(first.containsKey("allium_item_definitions/assets/minecraft/items/golden_hoe.json"));
-        assertFalse(first.keySet().stream().anyMatch(p -> p.contains("blaze_rod") || p.contains("phantom_membrane") || p.contains("iron_shovel") || p.contains("name_tag") || p.contains("netherite_axe")),
+        assertTrue(first.containsKey("allium_item_definitions/assets/minecraft/items/diamond_sword.json"));
+        assertFalse(first.keySet().stream().anyMatch(p -> p.contains("netherite_sword") || p.contains("fishing_rod") || p.contains("name_tag") || p.contains("netherite_axe")),
                 "planned tools reserve values but generate nothing");
     }
 
@@ -149,10 +149,10 @@ class CorePackTest {
             PackValidator.Report report = PackValidator.lane(format, client, files, manifest, vanilla(client.major() >= 46));
             assertEquals(List.of(), report.errors(), format);
             assertTrue(report.clean(), format);
-            assertEquals("allium:item/mob_disarmer/two_thirds", report.renders().get("golden_hoe cmd=2577021"), format);
-            assertEquals("allium:item/mob_disarmer/broken", report.renders().get("golden_hoe cmd=2577024"), format);
-            assertTrue(report.renders().get("golden_hoe cmd=2577025").endsWith("golden_hoe"), format + " closer");
-            assertTrue(report.renders().get("golden_hoe cmd=none").endsWith("golden_hoe"), format);
+            assertEquals("allium:item/mob_disarmer/two_thirds", report.renders().get("diamond_sword cmd=2577021"), format);
+            assertEquals("allium:item/mob_disarmer/broken", report.renders().get("diamond_sword cmd=2577024"), format);
+            assertTrue(report.renders().get("diamond_sword cmd=2577025").endsWith("diamond_sword"), format + " closer");
+            assertTrue(report.renders().get("diamond_sword cmd=none").endsWith("diamond_sword"), format);
             if (client.major() >= 42) {
                 assertEquals("allium:item/mob_disarmer/one_third", report.renders().get("item_model allium:mob_disarmer cmd=2577022"), format);
             }
@@ -204,8 +204,8 @@ class CorePackTest {
         AssetManifest manifest = manifest();
         SortedMap<String, byte[]> files = build(manifest);
         Map<String, String> drifted = new HashMap<>();
-        drifted.put("assets/minecraft/models/item/golden_hoe.json", "{\"parent\":\"minecraft:item/handheld\",\"textures\":{\"layer0\":\"minecraft:item/golden_hoe_v2\"}}");
-        VanillaAssets future = new VanillaAssets("future", Set.of("minecraft:item/handheld"), Set.of("minecraft:item/golden_hoe_v2"), Set.of(), drifted);
+        drifted.put("assets/minecraft/models/item/diamond_sword.json", "{\"parent\":\"minecraft:item/handheld\",\"textures\":{\"layer0\":\"minecraft:item/diamond_sword_v2\"}}");
+        VanillaAssets future = new VanillaAssets("future", Set.of("minecraft:item/handheld"), Set.of("minecraft:item/diamond_sword_v2"), Set.of(), drifted);
         PackValidator.Report report = PackValidator.lane("15", PackFormatRules.Format.parse("15"), files, manifest, future);
         assertTrue(report.errors().stream().anyMatch(e -> e.contains("differs from vanilla")), report.errors().toString());
     }

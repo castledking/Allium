@@ -1,0 +1,34 @@
+name: PartyLocator
+main: codes.castled.partylocator.PartyLocator
+version: '1.0.0'
+api-version: '1.20'
+depend: [Allium]
+softdepend: [packetevents, mcMMO]
+allium-api: '^1.5'
+allium-addon-dir: true
+commands:
+  party:
+    description: Create, join, leave or inspect a party
+    usage: /party <create|invite|join|leave|disband|info|list>
+    permission: allium.party
+  locatorbar:
+    description: Staff locator mode and per-player locator bar overrides
+    usage: /locatorbar [staff|show|hide|reset|help]
+    aliases: [partybar, lbar, pbar]
+    permission: allium.locatorbar
+permissions:
+  allium.party:
+    description: Allows using party commands
+    default: op
+  allium.party.reload:
+    description: Reloads the party configuration and forces a locator refresh
+    default: op
+  allium.party.staff:
+    description: Sees every player on the locator bar regardless of distance (staff locator mode)
+    default: op
+  allium.locatorbar:
+    description: Allows /locatorbar
+    default: op
+  allium.locatorbar.help:
+    description: Shows /locatorbar help
+    default: op

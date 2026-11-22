@@ -1,0 +1,19 @@
+# Party Locator: /party membership and the party locator bar (the 1.21.6+ waypoint dots above the
+# hotbar). Party members always see each other on the bar, at any distance in the same world;
+# everyone else appears only within show-non-party-members-radius blocks.
+#
+# The bar needs PacketEvents and Minecraft 1.21.6 or newer: it filters the waypoint packets
+# themselves, so hidden players stay in the tab list, stay completable and stay visible to plugins
+# that check canSee. Without either, /party still works and the bar is left to vanilla.
+
+# Show party members everywhere and hide non-members beyond the radius.
+party-locator-bar: true
+
+# Blocks within which non-party members appear on the bar.
+show-non-party-members-radius: 128
+
+# How often the bar is rechecked, in ticks (20 = 1 second). Packets are only sent on a change.
+refresh-ticks: 10
+
+# Keep mcMMO parties in step: create, join, leave and disband also update mcMMO when it is installed.
+sync-with-mcmmo: true

@@ -42,10 +42,9 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
 
     @Override
     protected void onAddonEnable(AddonConnection connection) {
-        if (!verifyInstallLocation()) {
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
+        // Placement in plugins/Allium/addons/ is Allium's to enforce (allium-addon-dir in plugin.yml):
+        // it refuses Curios elsewhere before this runs, and its check holds on Paper 1.20.5+, which
+        // loads a remapped copy of the jar from plugins/.paper-remapped/.
         core = connection;
         saveDefaultConfig();
         if (ConfigUpgrade.apply(getConfig())) saveUpgradedConfig();
@@ -136,25 +135,6 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         for (Player online : getServer().getOnlinePlayers()) refreshAttributes(online);
     }
 
-    private boolean verifyInstallLocation() {
-        var alliumPlugin = getServer().getPluginManager().getPlugin("Allium");
-        if (alliumPlugin == null || !alliumPlugin.isEnabled()) {
-            getLogger().severe("Curios requires Allium to be installed and enabled.");
-            return false;
-        }
-        java.io.File jar = getFile();
-        if (jar != null && jar.isFile() && alliumPlugin.getDataFolder() != null) {
-            java.nio.file.Path expectedDir = normalizePath(alliumPlugin.getDataFolder().toPath().resolve("addons"));
-            java.nio.file.Path actualParent = jar.toPath().getParent() == null ? null : normalizePath(jar.toPath().getParent());
-            if (!expectedDir.equals(actualParent)) {
-                getLogger().severe("Curios must be placed in plugins/Allium/addons/ instead of plugins/. "
-                        + "Move the jar into plugins/Allium/addons/ and restart the server.");
-                return false;
-            }
-        }
-        return true;
-    }
-
     private void saveUpgradedConfig() {
         var file = new java.io.File(getDataFolder(), "config.yml").toPath();
         var backup = file.resolveSibling("config.yml.before-v" + ConfigUpgrade.VERSION);
@@ -168,14 +148,6 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         saveConfig();
         getLogger().info("Upgraded config.yml to version " + ConfigUpgrade.VERSION + " (the old file is "
                 + backup.getFileName() + "): added missing sections and turned textured-menu on.");
-    }
-
-    private static java.nio.file.Path normalizePath(java.nio.file.Path path) {
-        try {
-            return path.toRealPath();
-        } catch (java.io.IOException e) {
-            return path.toAbsolutePath().normalize();
-        }
     }
 
     @FunctionalInterface

@@ -319,7 +319,10 @@ public final class CoreCommandSpecs {
                             List.of()),
                     new CommandNodeSpec("reload", List.of(), "allium.reload", "/allium reload", List.of(), List.of()),
                     new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of()),
-                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import <config [apply]|lang [apply]|vouchers [apply]|legacy [apply <run>]>", List.of(), List.of(
+                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import <tidy [apply]|config [apply]|lang [apply]|vouchers [apply]|legacy [apply <run>]>", List.of(), List.of(
+                            new CommandNodeSpec("tidy", List.of(), "allium.import", "/allium import tidy [apply]",
+                                    List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
+                                    List.of()),
                             new CommandNodeSpec("config", List.of(), "allium.import", "/allium import config [apply]",
                                     List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
                                     List.of()),

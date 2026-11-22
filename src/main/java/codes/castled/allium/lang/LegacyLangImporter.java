@@ -75,7 +75,7 @@ public final class LegacyLangImporter {
      * @param bundled opens the jar's {@code lang/<locale>.yml}, or returns null when it has none
      */
     public static Plan plan(File dataFolder, String locale, Function<String, InputStream> bundled) throws IOException, InvalidConfigurationException {
-        File source = new File(dataFolder, SOURCE);
+        File source = codes.castled.allium.importer.LegacyTidy.source(dataFolder.toPath(), SOURCE).toFile();
         File target = new File(dataFolder, "lang/" + locale + ".yml");
         YamlConfiguration legacy = new YamlConfiguration();
         legacy.load(source);

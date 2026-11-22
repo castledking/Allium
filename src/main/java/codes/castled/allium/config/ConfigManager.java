@@ -66,7 +66,7 @@ public final class ConfigManager {
     public void importLegacyConfig(boolean apply, Consumer<String> reply) throws IOException, InvalidConfigurationException {
         Path folder = plugin.getDataFolder().toPath();
         Path file = folder.resolve("config.yml");
-        Path sourceFile = folder.resolve(LegacyConfigMigration.SOURCE);
+        Path sourceFile = codes.castled.allium.importer.LegacyTidy.source(folder, LegacyConfigMigration.SOURCE);
         Path formatBackup = file.resolveSibling("config.yml.before-format");
         if (!Files.isRegularFile(sourceFile) && Files.isRegularFile(formatBackup)
                 && LegacyConfigMigration.legacy(LegacyConfigMigration.read(formatBackup))) {

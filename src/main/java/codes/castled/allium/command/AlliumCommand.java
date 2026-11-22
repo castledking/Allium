@@ -61,11 +61,14 @@ public final class AlliumCommand implements SpecCommandHandler {
                 boolean apply = args.length == 3 && args[2].equalsIgnoreCase("apply");
                 boolean vouchers = args.length >= 2 && args[1].equalsIgnoreCase("vouchers");
                 boolean config = args.length >= 2 && args[1].equalsIgnoreCase("config");
-                if (args.length < 2 || !(config || vouchers || args[1].equalsIgnoreCase("lang")) || (args.length == 3 && !apply) || args.length > 3) {
-                    context.sendInvalidArgs("/allium import <config [apply]|lang [apply]|vouchers [apply]|legacy [apply <run>]>");
+                boolean tidy = args.length >= 2 && args[1].equalsIgnoreCase("tidy");
+                if (args.length < 2 || !(tidy || config || vouchers || args[1].equalsIgnoreCase("lang")) || (args.length == 3 && !apply) || args.length > 3) {
+                    context.sendInvalidArgs("/allium import <tidy [apply]|config [apply]|lang [apply]|vouchers [apply]|legacy [apply <run>]>");
                     return;
                 }
-                if (config) {
+                if (tidy) {
+                    tidy(sender, apply);
+                } else if (config) {
                     try {
                         plugin.getConfigManager().importLegacyConfig(apply, line -> TextSender.send(sender, line));
                     } catch (java.io.IOException | org.bukkit.configuration.InvalidConfigurationException error) {
@@ -127,6 +130,32 @@ public final class AlliumCommand implements SpecCommandHandler {
             legacyImport = new codes.castled.allium.importer.LegacyImportService(plugin, plugin.getScheduler().boundedPool("Allium-Import", 1, 2));
         }
         return legacyImport;
+    }
+
+    private void tidy(CommandSender sender, boolean apply) {
+        var base = plugin.getDataFolder().toPath();
+        if (legacyImport != null && legacyImport.running()) {
+            TextSender.send(sender, "&cWait for the active legacy data import before tidying.");
+            return;
+        }
+        try {
+            var plan = codes.castled.allium.importer.LegacyTidy.plan(base);
+            plugin.logger().info("Legacy tidy candidate paths: " + plan.paths() + ". Paths kept: " + plan.skipped());
+            if (plan.paths().isEmpty()) {
+                TextSender.send(sender, "&7There are no retired Allium paths to archive.");
+            } else if (!apply) {
+                TextSender.send(sender, "&7Found &f" + plan.paths().size()
+                        + "&7 retired paths. See the console for the list. Archive with &f/allium import tidy apply&7.");
+            } else {
+                var result = codes.castled.allium.importer.LegacyTidy.apply(base, plan);
+                TextSender.send(sender, "&7Archived &f" + result.moved().size() + "&7 paths in &f"
+                        + base.relativize(result.archive()) + "&7. Paths left in place after errors: &f"
+                        + result.failed().size() + "&7. See manifest.txt in the archive.");
+            }
+        } catch (java.io.IOException error) {
+            plugin.logger().warning("Legacy tidy could not finish: " + error.getMessage());
+            TextSender.send(sender, "&cTidy could not finish. Check the console and import/backups for any completed moves.");
+        }
     }
 
     /** The longest window: it is meant to be open only briefly, during a migration. */
@@ -200,18 +229,19 @@ public final class AlliumCommand implements SpecCommandHandler {
      * reloads the tools.
      */
     private void importVouchers(CommandSender sender, boolean apply) {
-        java.io.File source = new java.io.File(plugin.getDataFolder(), codes.castled.allium.importer.VoucherImport.SOURCE);
         String sourceName = "plugins/" + plugin.getDataFolder().getName() + "/" + codes.castled.allium.importer.VoucherImport.SOURCE;
-        if (!source.isFile()) {
-            plugin.getMessageManager().send(sender, Messages.IMPORT_VOUCHERS_NO_SOURCE, "{file}", sourceName);
-            return;
-        }
         if (!(plugin.getModuleManager().getModule("tools") instanceof codes.castled.allium.module.ToolsModule tools)
                 || !tools.isEnabled() || tools.powerTools() == null) {
             plugin.getMessageManager().send(sender, Messages.MODULE_DISABLED);
             return;
         }
         try {
+            var source = codes.castled.allium.importer.LegacyTidy.source(plugin.getDataFolder().toPath(),
+                    codes.castled.allium.importer.VoucherImport.SOURCE).toFile();
+            if (!source.isFile()) {
+                plugin.getMessageManager().send(sender, Messages.IMPORT_VOUCHERS_NO_SOURCE, "{file}", sourceName);
+                return;
+            }
             if (source.length() > 1_048_576L) throw new java.io.IOException(sourceName + " exceeds 1 MiB");
             org.bukkit.configuration.file.YamlConfiguration yaml = new org.bukkit.configuration.file.YamlConfiguration();
             yaml.load(source);
@@ -291,13 +321,13 @@ public final class AlliumCommand implements SpecCommandHandler {
     }
 
     private void importLang(CommandSender sender, boolean apply) {
-        java.io.File source = new java.io.File(plugin.getDataFolder(), LegacyLangImporter.SOURCE);
         String sourceName = "plugins/" + plugin.getDataFolder().getName() + "/" + LegacyLangImporter.SOURCE;
-        if (!source.isFile()) {
-            plugin.getMessageManager().send(sender, Messages.IMPORT_LANG_NO_SOURCE, "{file}", sourceName);
-            return;
-        }
         try {
+            if (!java.nio.file.Files.isRegularFile(codes.castled.allium.importer.LegacyTidy.source(
+                    plugin.getDataFolder().toPath(), LegacyLangImporter.SOURCE))) {
+                plugin.getMessageManager().send(sender, Messages.IMPORT_LANG_NO_SOURCE, "{file}", sourceName);
+                return;
+            }
             String locale = plugin.getLanguageManager().getActiveLocale();
             LegacyLangImporter.Plan plan = LegacyLangImporter.plan(plugin.getDataFolder(), locale, plugin::getResource);
             String targetName = "lang/" + locale + ".yml";

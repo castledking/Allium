@@ -289,7 +289,11 @@ public final class LegacyImportService implements Listener {
         }
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file.toFile());
         Path base = plugin.getDataFolder().toPath();
-        Path source = base.resolve(yaml.getString("source", "database/sfcore.mv.db")).normalize();
+        String sourceName = yaml.getString("source", "database/sfcore.mv.db");
+        Path source = base.resolve(sourceName).normalize();
+        if (source.equals(base.resolve("database/sfcore.mv.db").normalize())) {
+            source = LegacyTidy.source(base, "database/sfcore.mv.db");
+        }
         String driverText = yaml.getString("driver", "");
         Path driver = driverText == null || driverText.isBlank() ? null : base.resolve(driverText).normalize();
         Map<String, String> worlds = new LinkedHashMap<>();

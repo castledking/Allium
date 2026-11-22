@@ -93,7 +93,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
         }
         String rawLabel = context.label().toLowerCase(Locale.ROOT);
         String cmdLabel = rawLabel.contains(":") ? rawLabel.substring(rawLabel.indexOf(':') + 1) : rawLabel;
-        if (cmdLabel.equals("ptt") || cmdLabel.equals("powertooltoggle")) {
+        if (cmdLabel.equals("ptt") || cmdLabel.equals("powertooltoggle") || cmdLabel.equals("pttoggle")) {
             handleToggle(sender, behavior);
             return;
         }
@@ -1120,7 +1120,7 @@ public final class PowerToolCommand implements SpecCommandHandler {
                             .filter(id -> id.startsWith(prefix)).toList()
                     : List.of();
         }
-        if ("ptt".equals(cleanLabel) || "powertooltoggle".equals(cleanLabel)) {
+        if ("ptt".equals(cleanLabel) || "powertooltoggle".equals(cleanLabel) || "pttoggle".equals(cleanLabel)) {
             return List.of();
         }
         if (args.length <= 1) {

@@ -152,7 +152,7 @@ public final class CoreCommandSpecs {
             "god",
             CommandSpec.DEFAULT_NAMESPACE,
             "essentials",
-            List.of(),
+            List.of("godmode", "tgm"),
             "Toggle god mode",
             "/god [player]",
             "/god <player>",
@@ -179,11 +179,15 @@ public final class CoreCommandSpecs {
             case "gms","survival","survivalmode"->"survival";case "gmsp","spectator","spectatormode"->"spectator";default->null;};
     }
 
-    /** {@code /wspeed} and {@code /walkspeed} are {@code /speed walk}. */
+    /** {@code /wspeed} and {@code /flyspeed} select walk and fly speed respectively. */
     public static String speedAlias(String label) {
         if(label==null)return null;
         String name=label.substring(label.lastIndexOf(':')+1).toLowerCase(java.util.Locale.ROOT);
-        return name.equals("wspeed")||name.equals("walkspeed")?"walk":null;
+        return switch (name) {
+            case "wspeed", "walkspeed" -> "walk";
+            case "fspeed", "flyspeed" -> "fly";
+            default -> null;
+        };
     }
 
     /** {@code /payon} and {@code /payoff} are fixed forms of {@code /paytoggle}. */
@@ -344,7 +348,7 @@ public final class CoreCommandSpecs {
 
     /** {@code /msg} with Essentials' aliases. */
     public static final CommandSpec MSG = new CommandSpec(
-            "msg", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of("tell", "w", "whisper", "m", "t"),
+            "msg", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of("tell", "w", "whisper", "m", "t", "pm"),
             "Send a private message", "/msg <player> <message>", "/msg <player> <message>", "allium.msg", null,
             List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
                     CommandArgSpec.required("message", null, SuggestionSpec.none())),
@@ -363,7 +367,7 @@ public final class CoreCommandSpecs {
             List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
 
     public static final CommandSpec UNIGNORE = new CommandSpec(
-            "unignore", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of(),
+            "unignore", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of("delignore", "remignore", "rmignore"),
             "Stop ignoring a player", "/unignore <player>", "/unignore <player>", "allium.ignore", null,
             List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null))),
             List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
@@ -408,7 +412,7 @@ public final class CoreCommandSpecs {
      * known-player index; the gift amount completes from common stack sizes.
      */
     public static final CommandSpec MAIL = new CommandSpec(
-            "mail", CommandSpec.DEFAULT_NAMESPACE, "mail", List.of(),
+            "mail", CommandSpec.DEFAULT_NAMESPACE, "mail", List.of("memo"),
             "Send and read mail, and gifts of items", "/mail <read|send|gift|claim|delete|clear>",
             "/mail send <player> <message>",
             "allium.mail", null,
@@ -461,7 +465,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec CREATEKIT = new CommandSpec(
-            "createkit", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of(),
+            "createkit", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of("ck", "kc", "createk", "kitcreate"),
             "Create a kit from your inventory",
             "/createkit <name> [cooldown] [once]",
             "/createkit <name> [cooldown] [once]",
@@ -476,7 +480,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec DELKIT = new CommandSpec(
-            "delkit", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of(),
+            "delkit", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of("deletekit", "remkit", "rmkit"),
             "Delete a kit definition",
             "/delkit <name>",
             "/delkit <name>",
@@ -621,6 +625,7 @@ public final class CoreCommandSpecs {
         };
         List<String> aliases = switch (name) {
             case "unban" -> List.of("pardon");
+            case "setjail" -> List.of("createjail");
             case "unbanip" -> List.of("pardonip");
             case "togglejail" -> List.of("tjail");
             case "deljail" -> List.of("remjail", "rmjail");
@@ -830,7 +835,14 @@ public final class CoreCommandSpecs {
             if(command.equals("warp"))args.add(CommandArgSpec.optional("player","allium.warp.others",SuggestionSpec.onlinePlayers("allium.warp.others")));
             if(command.equals("renamehome"))args.add(CommandArgSpec.required("newhome",null,SuggestionSpec.none()));
         }
-        return new CommandSpec(command,CommandSpec.DEFAULT_NAMESPACE,"travel",List.of(),describe(command,"Allium homes and warps: "+command),
+        List<String> aliases = switch (command) {
+            case "sethome" -> List.of("createhome");
+            case "setwarp" -> List.of("createwarp");
+            case "delhome" -> List.of("remhome", "rmhome");
+            case "delwarp" -> List.of("remwarp", "rmwarp");
+            default -> List.of();
+        };
+        return new CommandSpec(command,CommandSpec.DEFAULT_NAMESPACE,"travel",aliases,describe(command,"Allium homes and warps: "+command),
                 usage,command.equals("warp")?"/warp <name> <player>":usage,"allium."+command,othersPerm,args,List.of(),CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
@@ -880,6 +892,8 @@ public final class CoreCommandSpecs {
         };
         List<String> aliases = switch (command) {
             case "tp" -> List.of("tp2p", "tele");
+            case "tpa" -> List.of("call", "tpask");
+            case "back" -> List.of("return");
             case "tpaccept" -> List.of("tpyes");
             case "tpdeny" -> List.of("tpno");
             case "jump" -> List.of("j", "jumpto");
@@ -900,7 +914,7 @@ public final class CoreCommandSpecs {
     }
 
     public static final CommandSpec REPAIR = new CommandSpec(
-            "repair", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "repair", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("fix"),
             "Repair the held item or all damaged items",
             "/repair [hand|all]", "/repair [hand|all]",
             "allium.repair", null,
@@ -938,7 +952,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec SPEED = new CommandSpec(
-            "speed", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("wspeed", "walkspeed"),
+            "speed", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("wspeed", "walkspeed", "flyspeed", "fspeed"),
             "Change walk or fly speed (0-10 or reset)",
             "/speed [walk|fly] <0..10|reset> [player]", "/speed [walk|fly] <0..10|reset> <player>",
             "allium.speed", "allium.speed.others",
@@ -969,7 +983,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec PING = new CommandSpec(
-            "ping", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "ping", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("pong"),
             "Check your ping or another player's ping",
             "/ping [player]", "/ping <player>",
             "allium.ping", "allium.ping.others",
@@ -979,7 +993,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec COORDS = new CommandSpec(
-            "coords", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("getpos", "whereami"),
+            "coords", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("getpos", "whereami", "getloc", "getlocation", "position"),
             "Show your position or another player's",
             "/coords [player]", "/coords <player>",
             "allium.getpos", "allium.getpos.others",
@@ -999,7 +1013,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec COMPASS = new CommandSpec(
-            "compass", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "compass", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("direction"),
             "Show the direction you are facing",
             "/compass", "/compass",
             "allium.compass", null,
@@ -1030,7 +1044,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec SMITE = new CommandSpec(
-            "smite", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("lightning", "strike"),
+            "smite", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("lightning", "strike", "shock", "thor"),
             "Strike a player or the block you are looking at with visual lightning",
             "/smite [player]", "/smite <player>",
             "allium.smite", null,
@@ -1052,7 +1066,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec CLEARINVENTORY = new CommandSpec(
-            "clearinventory", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("clear", "ci"),
+            "clearinventory", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("clear", "ci", "clean", "clearinvent"),
             "Clear inventory items for yourself, a player, or a group",
             "/clearinventory [player|*|**] [item] [maxCount]", "/clearinventory <player|*|**> [item] [maxCount]",
             "allium.clearinventory", "allium.clearinventory.others",
@@ -1062,7 +1076,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec CLEAR_CONFIRM_TOGGLE = new CommandSpec(
-            "clearinventoryconfirmtoggle", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "clearinventoryconfirmtoggle", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("clearconfirm"),
             "Toggle inventory clear confirmation",
             "/clearinventoryconfirmtoggle", "/clearinventoryconfirmtoggle",
             "allium.clearinventoryconfirmtoggle", null,
@@ -1092,7 +1106,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec SKULL = new CommandSpec(
-            "skull", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("head", "playerhead"),
+            "skull", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("head", "playerhead", "playerskull"),
             "Give yourself or another player a player skull",
             "/skull [owner] [player]", "/skull <owner> <player>",
             "allium.skull", "allium.skull.others",
@@ -1105,7 +1119,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec ITEMDB = new CommandSpec(
-            "itemdb", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("iteminfo"),
+            "itemdb", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("iteminfo", "itemno"),
             "Inspect the held item ID, durability, and Allium identity",
             "/itemdb [player]", "/itemdb <player>",
             "allium.itemdb", "allium.itemdb.others",
@@ -1115,7 +1129,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec GC = new CommandSpec(
-            "gc", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("uptime", "lag", "tps"),
+            "gc", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("uptime", "lag", "tps", "mem", "memory"),
             "Display runtime uptime, memory, disk, TPS, and world counts",
             "/gc", "/gc",
             "allium.gc", null,
@@ -1187,7 +1201,7 @@ public final class CoreCommandSpecs {
 
     /** {@code /rename <name>|clear}: the held item's custom name. */
     public static final CommandSpec RENAME = new CommandSpec(
-            "rename", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("itemname"),
+            "rename", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("itemname", "iname", "itemrename", "irename"),
             "Rename the item in your hand",
             "/rename <name|clear>", "/rename <name|clear>",
             "allium.rename", null,
@@ -1197,7 +1211,7 @@ public final class CoreCommandSpecs {
 
     /** {@code /lore add|set|insert|remove|clear}: the held item's lore lines. */
     public static final CommandSpec LORE = new CommandSpec(
-            "lore", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("itemlore"),
+            "lore", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("itemlore", "ilore"),
             "Edit the lore of the item in your hand",
             "/lore <add|set|insert|remove|clear|copy|paste>", "/lore <add|set|insert|remove|clear|copy|paste>",
             "allium.lore", null,
@@ -1392,7 +1406,7 @@ public final class CoreCommandSpecs {
             "list",
             CommandSpec.DEFAULT_NAMESPACE,
             "info",
-            List.of("online", "who"),
+            List.of("online", "who", "playerlist", "plist"),
             "List online players",
             "/list",
             "/list",
@@ -1441,7 +1455,7 @@ public final class CoreCommandSpecs {
             "near",
             CommandSpec.DEFAULT_NAMESPACE,
             "info",
-            List.of(),
+            List.of("nearby"),
             "List nearby visible players",
             "/near [radius]",
             "/near [radius]",
@@ -1513,7 +1527,7 @@ public final class CoreCommandSpecs {
 
     public static final CommandSpec POWERTOOL = new CommandSpec(
             "powertool", CommandSpec.DEFAULT_NAMESPACE, "tools",
-            List.of("pt", "tool", "tools", "powertools", "ptt", "powertooltoggle"),
+            List.of("pt", "tool", "tools", "powertools", "ptt", "powertooltoggle", "pttoggle"),
             "Create, edit, save, bind, enable/disable and give interactive powertool items",
             "/pt <add|set|remove|clear|cooldown|perm|uses|cancel|sneak|hand|fish|info|save|delete|bind|enable|disable|get|give|list|toggle|reload|help> [args...]",
             "/pt <enable|disable|give|list|delete|reload|help> [args...]",

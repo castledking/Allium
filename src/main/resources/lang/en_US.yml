@@ -1201,6 +1201,20 @@ player:
     - "{prefix} &cYou don't have permission to use &f{mode} &cmode."
     - "[sound] entity.villager.no 0.9"
 utility:
+  realname-found:
+    - "{prefix} &aAccount name(s): &f{players}"
+  realname-not-found:
+    - "{prefix} &cNo visible player has that nickname."
+  reply-last-recipient:
+    - "{prefix} &aReply now targets the last player you messaged."
+  reply-last-sender:
+    - "{prefix} &aReply now targets the last player who messaged you."
+  tree-failed:
+    - "{prefix} &cA tree cannot grow there."
+  tree-grown:
+    - "{prefix} &aTree grown."
+  remove-count:
+    - "{prefix} &aRemoved &f{count} &aentities."
   block-tool:
     no-target:
       - "{prefix} &cLook at a nearby block first."

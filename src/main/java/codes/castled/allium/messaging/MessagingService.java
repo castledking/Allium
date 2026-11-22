@@ -171,8 +171,24 @@ public final class MessagingService implements Listener {
         return replies.target(participant);
     }
 
+    private static final org.bukkit.NamespacedKey REPLY_MODE = new org.bukkit.NamespacedKey("allium", "reply_mode");
+
+    public Optional<UUID> replyTarget(Player player) {
+        var data = player.getPersistentDataContainer();
+        Byte mode = data == null ? null : data.get(REPLY_MODE, org.bukkit.persistence.PersistentDataType.BYTE);
+        return mode == null ? replyTarget(player.getUniqueId()) : replies.target(player.getUniqueId(), mode == 1);
+    }
+
+    public void toggleReplyMode(Player player) {
+        var data = player.getPersistentDataContainer();
+        Byte mode = data.get(REPLY_MODE, org.bukkit.persistence.PersistentDataType.BYTE);
+        boolean lastRecipient = mode == null || mode != 1;
+        data.set(REPLY_MODE, org.bukkit.persistence.PersistentDataType.BYTE, (byte) (lastRecipient ? 1 : 0));
+        plugin.getMessageManager().send(player, lastRecipient ? Messages.REPLY_LAST_RECIPIENT : Messages.REPLY_LAST_SENDER);
+    }
+
     public void reply(CommandSender sender, String body) {
-        Optional<UUID> target = replies.target(idOf(sender));
+        Optional<UUID> target = sender instanceof Player player ? replyTarget(player) : replies.target(idOf(sender));
         if (target.isEmpty()) {
             plugin.getMessageManager().send(sender, Messages.MSG_NO_REPLY_TARGET);
             return;

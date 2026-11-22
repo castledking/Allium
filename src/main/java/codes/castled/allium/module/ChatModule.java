@@ -14,6 +14,10 @@ public final class ChatModule extends AbstractModule {
         var repository=new ChatRepository(plugin.getDatabaseManager().connectionSource(),plugin.getDatabaseManager().dialect());
         try{repository.migrate();}catch(java.sql.SQLException error){throw new IllegalStateException("Chat schema unavailable",error);}
         service=new ChatService(plugin,repository,plugin.getScheduler().boundedPool("Allium-Chat-Storage",1,256));service.enable();
+        plugin.getCommandManager().register(new SpecCommandHandler() {
+            public CommandSpec spec() { return CoreCommandSpecs.REALNAME; }
+            public void execute(BukkitCommandContext context) { service.realName(context); }
+        });
         for(var spec:CoreCommandSpecs.CHAT_SPECS)plugin.getCommandManager().register(new SpecCommandHandler(){public CommandSpec spec(){return spec;}public void execute(BukkitCommandContext context){service.dispatch(context);}});
     }
     @Override public void onDisable(){if(service!=null)service.close();}

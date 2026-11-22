@@ -1201,6 +1201,20 @@ player:
     - "{prefix} &cNo tienes permiso para usar el modo &f{mode}&c."
     - "[sound] entity.villager.no 0.9"
 utility:
+  realname-found:
+    - "{prefix} &aNombre(s) de cuenta: &f{players}"
+  realname-not-found:
+    - "{prefix} &cNingún jugador visible tiene ese apodo."
+  reply-last-recipient:
+    - "{prefix} &aLa respuesta ahora va a la última persona a la que escribiste."
+  reply-last-sender:
+    - "{prefix} &aLa respuesta ahora va a la última persona que te escribió."
+  tree-failed:
+    - "{prefix} &cNo puede crecer un árbol ahí."
+  tree-grown:
+    - "{prefix} &aÁrbol plantado."
+  remove-count:
+    - "{prefix} &aEliminaste &f{count} &aentidades."
   block-tool:
     no-target:
       - "{prefix} &cMira un bloque cercano primero."

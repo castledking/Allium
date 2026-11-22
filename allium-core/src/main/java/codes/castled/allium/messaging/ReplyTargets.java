@@ -17,24 +17,37 @@ public final class ReplyTargets {
 
     private final Map<UUID, UUID> targets = new ConcurrentHashMap<>();
 
+    private final Map<UUID, UUID> senders = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> recipients = new ConcurrentHashMap<>();
+
     /** A message from {@code from} to {@code to} was delivered. */
     public void delivered(UUID from, UUID to) {
         targets.put(from, to);
         targets.put(to, from);
+        senders.put(to, from);
+        recipients.put(from, to);
     }
 
     public Optional<UUID> target(UUID participant) {
         return Optional.ofNullable(targets.get(participant));
     }
 
+    public Optional<UUID> target(UUID participant, boolean lastRecipient) {
+        return Optional.ofNullable((lastRecipient ? recipients : senders).get(participant));
+    }
+
     /** Clears only {@code participant}'s own saved reply target. */
     public void clear(UUID participant) {
         targets.remove(participant);
+        senders.remove(participant);
+        recipients.remove(participant);
     }
 
     /** {@code participant} went offline. */
     public void forget(UUID participant) {
-        targets.remove(participant);
+        clear(participant);
         targets.values().removeIf(participant::equals);
+        senders.values().removeIf(participant::equals);
+        recipients.values().removeIf(participant::equals);
     }
 }

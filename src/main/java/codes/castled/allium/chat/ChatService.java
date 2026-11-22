@@ -334,6 +334,25 @@ public final class ChatService implements Listener,AutoCloseable {
         catch(UsageFailure usage){context.sendInvalidArgs(context.spec().selfUsage());}
         catch(IllegalArgumentException error){tell(sender,error instanceof ChatFailure failure?failure.message:Messages.CHAT_ARGUMENT_ERROR,"{message}",Objects.toString(error.getMessage(),"Invalid chat arguments."));}
     }
+    public void realName(BukkitCommandContext context) {
+        String query = TextFormatter.parse(String.join(" ", context.args())).toPlainText().strip();
+        if (query.isEmpty()) {
+            context.sendInvalidArgs(context.spec().selfUsage());
+            return;
+        }
+        var sender = context.sender();
+        List<String> matches = sessions.values().stream()
+                .filter(session -> session.ready && session.player.isOnline() && session.nickname != null)
+                .filter(session -> TextFormatter.parse(session.nickname).toPlainText().equalsIgnoreCase(query))
+                .filter(session -> PlayerNameVisibility.canSee(sender, session.player))
+                .map(session -> session.player.getName()).sorted(String.CASE_INSENSITIVE_ORDER).toList();
+        if (matches.isEmpty()) {
+            tell(sender, Messages.REALNAME_NOT_FOUND);
+        } else {
+            tell(sender, Messages.REALNAME_FOUND, "{players}", String.join(", ", matches));
+        }
+    }
+
     private void nick(CommandSender sender,String[] args){
         if(args.length<1||args.length>2)throw new UsageFailure();
         String raw=args[args.length-1];boolean reset=Set.of("off","reset").contains(raw.toLowerCase(Locale.ROOT));

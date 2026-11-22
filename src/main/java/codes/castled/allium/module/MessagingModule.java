@@ -46,6 +46,21 @@ public final class MessagingModule extends AbstractModule {
         messaging.enable();
         plugin.getCommandManager().register(new MsgCommand(plugin, messaging));
         plugin.getCommandManager().register(new ReplyCommand(messaging));
+        plugin.getCommandManager().register(new codes.castled.allium.command.SpecCommandHandler() {
+            public codes.castled.allium.command.spec.CommandSpec spec() {
+                return codes.castled.allium.command.spec.CoreCommandSpecs.REPLY_TOGGLE;
+            }
+
+            public void execute(codes.castled.allium.command.BukkitCommandContext context) {
+                if (context.args().length != 0) {
+                    context.sendInvalidArgs(spec().selfUsage());
+                } else if (context.sender() instanceof org.bukkit.entity.Player player) {
+                    messaging.toggleReplyMode(player);
+                } else {
+                    plugin.getMessageManager().send(context.sender(), codes.castled.allium.message.Messages.PLAYER_ONLY);
+                }
+            }
+        });
         plugin.getCommandManager().register(new IgnoreCommands.Ignore(plugin, messaging, ignores));
         plugin.getCommandManager().register(new IgnoreCommands.Unignore(plugin, ignores));
         plugin.getCommandManager().register(new MsgToggleCommand(plugin, messaging));

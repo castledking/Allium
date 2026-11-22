@@ -444,6 +444,7 @@ class MessagingServiceS11Test {
             player = (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[]{Player.class},
                     (proxy, method, args) -> switch (method.getName()) {
                         case "getUniqueId" -> uuid;
+                        case "getPersistentDataContainer" -> null;
                         case "getName", "toString" -> name;
                         case "hasPermission" -> permissions.contains(args[0]);
                         case "canSee" -> !hidden.contains(((Player) args[0]).getUniqueId());

@@ -354,6 +354,19 @@ public final class CoreCommandSpecs {
                     CommandArgSpec.required("message", null, SuggestionSpec.none())),
             List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
 
+    public static final CommandSpec REPLY_TOGGLE = new CommandSpec(
+            "rtoggle", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of("replytoggle"),
+            "Choose whether reply uses your last sender or last recipient",
+            "/rtoggle", "/rtoggle", "allium.rtoggle", null,
+            List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec REALNAME = new CommandSpec(
+            "realname", CommandSpec.DEFAULT_NAMESPACE, "chat", List.of(),
+            "Find a visible online player's account name from their nickname",
+            "/realname <nickname>", "/realname <nickname>", "allium.realname", null,
+            List.of(CommandArgSpec.required("nickname", null, SuggestionSpec.none())), List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
     public static final CommandSpec REPLY = new CommandSpec(
             "reply", CommandSpec.DEFAULT_NAMESPACE, "messaging", List.of("r"),
             "Reply to your last private message", "/reply <message>", "/reply <message>", "allium.reply", null,

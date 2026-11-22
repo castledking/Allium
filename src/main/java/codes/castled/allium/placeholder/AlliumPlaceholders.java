@@ -341,7 +341,7 @@ public final class AlliumPlaceholders {
                 || messaging.messaging() == null) {
             return "";
         }
-        return messaging.messaging().replyTarget(p.getUniqueId()).map(id -> {
+        return messaging.messaging().replyTarget(p).map(id -> {
             if (id.equals(codes.castled.allium.messaging.ReplyTargets.CONSOLE)) {
                 return "Console";
             }

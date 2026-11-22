@@ -131,6 +131,11 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new BurnCommand(plugin));
         plugin.getCommandManager().register(new BlockToolCommand(plugin, BlockToolCommand.BREAK));
         plugin.getCommandManager().register(new BlockToolCommand(plugin, BlockToolCommand.SPAWNER));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.TreeCommand(plugin,
+                codes.castled.allium.command.essentials.TreeCommand.TREE));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.TreeCommand(plugin,
+                codes.castled.allium.command.essentials.TreeCommand.BIG_TREE));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.RemoveCommand(plugin));
         plugin.getCommandManager().register(new SmiteCommand(plugin));
         recipes = new codes.castled.allium.recipe.RecipeViewer(plugin);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) recipes.enable();

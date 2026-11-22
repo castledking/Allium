@@ -1,0 +1,232 @@
+package codes.castled.crops;
+
+import org.bukkit.*;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.type.Farmland;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.*;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
+
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
+
+final class Planting implements Listener {
+    private final CropsPlugin plugin;
+    private final ModelWorld world;
+    private final Map<String, Catalog.Crop> crops;
+    private final Map<String, Catalog.Crop> seeds = new HashMap<>();
+
+    Planting(CropsPlugin plugin, ModelWorld world, Map<String, Catalog.Crop> crops) {
+        this.plugin = plugin;
+        this.world = world;
+        this.crops = crops;
+        crops.values().forEach(crop -> seeds.put(crop.seed(), crop));
+    }
+
+    int count() { return crops.size(); }
+    List<String> cropIds() { return List.copyOf(crops.keySet()); }
+    Catalog.Crop crop(String id) { return id == null ? null : crops.get(id.toLowerCase(Locale.ROOT)); }
+    Catalog.Path pathOf(ModelWorld.Placed planted) { return path(planted); }
+
+    String plantDirect(Player player, Catalog.Crop crop, Block soil, String requestedPath) {
+        if (!crop.soils().contains(soil.getType())) {
+            return "Invalid soil for " + crop.id() + " (needs " + crop.soils() + ").";
+        }
+        Block target = soil.getRelative(BlockFace.UP);
+        if (!target.getType().isAir() || world.at(target) != null) {
+            return "The block above that soil is already occupied.";
+        }
+        Catalog.Path chosen = requestedPath == null || requestedPath.isBlank()
+                ? crop.rollPath()
+                : crop.paths().get(requestedPath.toLowerCase(Locale.ROOT));
+        if (chosen == null) {
+            return "Unknown path '" + requestedPath + "' for " + crop.id() + " (available: "
+                    + String.join(", ", crop.paths().keySet()) + ").";
+        }
+        var stage = chosen.stages().get(0);
+        if (world.place(target, "crop", crop.id(), chosen.id(), 0, next(System.currentTimeMillis(), crop, stage), stage.visual()) == null) {
+            return "Could not place crop visual at that location.";
+        }
+        soil.getWorld().playSound(soil.getLocation(), "item.crop.plant", 1, 1);
+        return null;
+    }
+
+    int forceGrow(ModelWorld.Placed planted, int stages) {
+        Catalog.Crop def = crops.get(planted.type);
+        Catalog.Path path = path(planted);
+        if (def == null || path == null || stages <= 0) return 0;
+        int maxIndex = path.stages().size() - 1;
+        int targetStage = Math.min(maxIndex, planted.stage + stages);
+        if (targetStage <= planted.stage) return 0;
+        var stage = path.stages().get(targetStage);
+        if (!world.show(planted, stage.visual())) return 0;
+        int advanced = targetStage - planted.stage;
+        planted.stage = targetStage;
+        planted.due = targetStage >= maxIndex ? System.currentTimeMillis() : next(System.currentTimeMillis(), def, stage);
+        world.store(planted);
+        return advanced;
+    }
+
+    boolean isHydrated(Block soil) { return water(soil); }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void plant(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK
+                || event.getBlockFace() != BlockFace.UP || event.getClickedBlock() == null) return;
+        var crop = seeds.get(plugin.reference(event.getItem()));
+        Block soil = event.getClickedBlock();
+        if (crop == null || !crop.soils().contains(soil.getType())) return;
+        event.setCancelled(true);
+        var player = event.getPlayer();
+        if (!player.hasPermission("crops.use") || !plugin.connection().canEditInventory(player)) return;
+        Block target = soil.getRelative(BlockFace.UP);
+        if (!target.getType().isAir() || world.at(target) != null) return;
+        if (target.getLightLevel() < crop.light() || crop.water() && !water(soil)) {
+            player.sendMessage("§eThis crop needs hydrated soil and enough light.");
+            return;
+        }
+        if (!plugin.connection().mayModify(player, target, "plant", event)) return;
+        var path = crop.rollPath();
+        if (path == null) return;
+        var stage = path.stages().get(0);
+        if (world.place(target, "crop", crop.id(), path.id(), 0, next(System.currentTimeMillis(), crop, stage), stage.visual()) != null) {
+            CropsPlugin.spend(player, event.getItem(), 1);
+            soil.getWorld().playSound(soil.getLocation(), "item.crop.plant", 1, 1);
+        }
+    }
+
+    private static boolean water(Block soil) {
+        if (soil.getBlockData() instanceof Farmland farmland) return farmland.getMoisture() > 0;
+        for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++) {
+            Block block = soil.getRelative(x, 0, z);
+            if (block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)
+                    && (block.getType() == Material.WATER || block.getRelative(BlockFace.UP).getType() == Material.WATER)) return true;
+        }
+        return false;
+    }
+
+    void restore(ModelWorld.Placed planted) {
+        Catalog.Path path = path(planted);
+        if (path != null && planted.stage >= 0 && planted.stage < path.stages().size()) {
+            world.show(planted, path.stages().get(planted.stage).visual());
+        }
+    }
+
+    void tick(ModelWorld.Placed planted) {
+        if (!planted.hitbox.isValid()) return;
+        Catalog.Crop crop = crops.get(planted.type);
+        Catalog.Path path = path(planted);
+        if (crop == null || path == null || planted.stage < 0 || planted.stage >= path.stages().size()) return;
+        var attack = planted.hitbox.getLastAttack();
+        if (attack != null && attack.getTimestamp() > planted.lastAttack) {
+            planted.lastAttack = attack.getTimestamp();
+            Player player = attack.getPlayer().getPlayer();
+            if (player != null) harvest(player, planted, true, null);
+            if (!planted.hitbox.isValid()) return;
+        }
+        Block soil = planted.cell().getRelative(BlockFace.DOWN);
+        if (!crop.soils().contains(soil.getType()) || !planted.cell().getType().isAir()) {
+            drop(planted, null, path.immature().roll(), "DROP_AT_CROP");
+            world.remove(planted);
+            return;
+        }
+        long now = System.currentTimeMillis();
+        int previous = planted.stage;
+        if (planted.stage + 1 < path.stages().size() && planted.due <= now
+                && planted.cell().getLightLevel() >= crop.light() && (!crop.water() || water(soil))) {
+            for (int steps = 0; steps < crop.catchUp() && planted.stage + 1 < path.stages().size()
+                    && planted.due <= now; steps++) {
+                var stage = path.stages().get(planted.stage + 1);
+                if (!world.show(planted, stage.visual())) break;
+                planted.stage++;
+                planted.due = next(planted.due, crop, stage);
+            }
+        }
+        if (previous != planted.stage) world.store(planted);
+        restore(planted);
+    }
+
+    private Catalog.Path path(ModelWorld.Placed planted) {
+        var crop = crops.get(planted.type);
+        return crop == null ? null : crop.paths().get(planted.path);
+    }
+
+    private static long next(long start, Catalog.Crop crop, Catalog.Stage stage) {
+        double factor = 1 + (ThreadLocalRandom.current().nextDouble() * 2 - 1) * crop.randomness();
+        return start + Math.max(0, Math.round(stage.duration() * factor));
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPick(PlayerInteractEntityEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) return;
+        var placement = world.get(event.getRightClicked());
+        if (placement == null || !placement.kind.equals("crop")) return;
+        event.setCancelled(true);
+        harvest(event.getPlayer(), placement, false, event);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPunch(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player player)) return;
+        var placement = world.get(event.getEntity());
+        if (placement == null || !placement.kind.equals("crop")) return;
+        event.setCancelled(true);
+        harvest(player, placement, true, event);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBreakSoil(BlockBreakEvent event) {
+        var placement = world.at(event.getBlock().getRelative(BlockFace.UP));
+        if (placement != null && placement.kind.equals("crop")) harvest(event.getPlayer(), placement, true, event);
+    }
+
+    private void harvest(Player player, ModelWorld.Placed crop, boolean breaking, org.bukkit.event.Event source) {
+        if (!player.hasPermission("crops.use") || !plugin.connection().mayModify(player, crop.cell(), "harvest", source)
+                || !plugin.connection().canEditInventory(player)) return;
+        Catalog.Crop def = crops.get(crop.type);
+        Catalog.Path path = path(crop);
+        if (def == null || path == null) return;
+        boolean mature = crop.stage + 1 >= path.stages().size();
+        boolean pick = mature && (breaking ? def.punch() : def.right());
+        if (!breaking && !pick) {
+            if (!def.progress().equalsIgnoreCase("OFF") && !def.progress().equalsIgnoreCase("false")) {
+                player.sendMessage(mature ? "§aReady to harvest." : "§eStill growing.");
+            }
+            return;
+        }
+        List<Catalog.Drop> loot = new ArrayList<>();
+        if (pick) {
+            loot.addAll(path.primary().roll());
+            loot.addAll(path.additional().roll());
+        } else loot.addAll((mature ? path.mature() : path.immature()).roll());
+        int regrow = breaking ? path.breakRegrowth() : path.rightRegrowth();
+        if (pick && regrow >= 0 && regrow < path.stages().size() && !(source instanceof BlockBreakEvent)) {
+            var stage = path.stages().get(regrow);
+            if (!world.show(crop, stage.visual())) return;
+            crop.stage = regrow;
+            crop.due = next(System.currentTimeMillis(), def, stage);
+            world.store(crop);
+        } else world.remove(crop);
+        drop(crop, player, loot, pick ? path.delivery() : "DROP_AT_CROP");
+        player.getWorld().playSound(crop.hitbox.getLocation(), "block.crop.break", 1, 1);
+    }
+
+    private void drop(ModelWorld.Placed crop, Player player, List<Catalog.Drop> loot, String delivery) {
+        Location location = crop.hitbox.getLocation().add(0, .25, 0);
+        for (Catalog.Drop reward : loot) {
+            int amount = ThreadLocalRandom.current().nextInt(reward.min(), reward.max() + 1);
+            if (amount <= 0) continue;
+            var stack = plugin.item(reward.item(), amount);
+            if (stack == null) continue;
+            if (player != null && (delivery.equals("PLAYER_INVENTORY") || delivery.equals("INVENTORY_THEN_DROP"))) plugin.give(player, stack);
+            else location.getWorld().dropItemNaturally(location, stack);
+        }
+    }
+}

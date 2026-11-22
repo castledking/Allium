@@ -1,0 +1,180 @@
+enabled: true
+bags:
+  flour_bag:
+    item: allium:flour_bag
+    stores: allium:flour
+    capacity: 256
+    lore: '<gray>Flour: <white><amount></white>/<capacity>'
+kneading:
+  enabled: true
+  stations:
+    blocks:
+    - CAULDRON
+    nexo: []
+  water:
+    required: 3
+    bucket: 3
+    bottle: 1
+  flour:
+    item: allium:flour
+    required: 3
+  result:
+    item: allium:dough
+    amount: 1
+  sound: block.mud.place
+pies:
+  enabled: true
+  crust:
+    item: allium:pie_crust
+    model: allium:pie_crust_placed
+  steps:
+  - item: minecraft:egg
+    amount: 1
+  - item: minecraft:sugar
+    amount: 1
+  - filling: true
+    amount: 1
+  - item: allium:dough
+    amount: 1
+  models:
+    item: allium:{state}_{type}_pie
+    placed: allium:{state}_{type}_pie_placed{slice}
+    filled: allium:{type}_pie_filled
+  types:
+    apple:
+      filling: minecraft:apple
+    blackberry:
+      filling:
+      - allium:blackberries
+      - allium:blackberries_silver_star
+      - allium:blackberries_golden_star
+    blueberry:
+      filling:
+      - allium:blueberries
+      - allium:blueberries_silver_star
+      - allium:blueberries_golden_star
+    cherry:
+      filling:
+      - allium:cherry
+      - allium:cherry_silver_star
+      - allium:cherry_golden_star
+    chocolate:
+      filling: minecraft:cocoa_beans
+      skip-steps:
+      - 4
+    cranberry:
+      filling:
+      - allium:cranberries
+      - allium:cranberries_silver_star
+      - allium:cranberries_golden_star
+    elderberry:
+      filling:
+      - allium:elderberries
+      - allium:elderberries_silver_star
+      - allium:elderberries_golden_star
+    pumpkin:
+      filling: minecraft:pumpkin
+      skip-steps:
+      - 4
+    raspberry:
+      filling:
+      - allium:raspberries
+      - allium:raspberries_silver_star
+      - allium:raspberries_golden_star
+    strawberry:
+      filling:
+      - allium:strawberry
+      - allium:strawberry_silver_star
+      - allium:strawberry_golden_star
+    deep_dish_pizza:
+      filling: allium:spinach
+      filling-name: Spinach
+      crust-item: allium:pizza_base
+      crust-model: allium:pizza_base_placed
+      opens-on-standard-crust: true
+      cold-item: allium:cold_deep_dish_pizza
+      baked-item: allium:baked_deep_dish_pizza
+      filled-model: allium:deep_dish_pizza_filled
+      progress-models:
+      - allium:deep_dish_pizza_spinach
+      - allium:deep_dish_pizza_cheese
+      cold-models:
+      - allium:cold_deep_dish_pizza_placed
+      - allium:cold_deep_dish_pizza_placed_slice1
+      - allium:cold_deep_dish_pizza_placed_slice2
+      - allium:cold_deep_dish_pizza_placed_slice3
+      baked-models:
+      - allium:baked_deep_dish_pizza_placed
+      - allium:baked_deep_dish_pizza_placed_slice1
+      - allium:baked_deep_dish_pizza_placed_slice2
+      - allium:baked_deep_dish_pizza_placed_slice3
+      steps:
+      - item: allium:spinach
+        name: Spinach
+      - item: allium:cheese
+        name: Cheese
+      - item: allium:tomato_sauce
+        name: Tomato Sauce
+  eating:
+    nutrition: 3
+    saturation: 0.6
+    require-hunger: true
+    require-build-permission: true
+    sound: entity.generic.eat
+  cooling:
+    time: 10m
+    dropped-items: true
+  hologram:
+    enabled: true
+    height: 1.35
+    icon-cycle: 2s
+    step:
+    - '#ICON: <required-item>'
+    - '&aAdd &7<amount>x &6<item>'
+    done:
+    - '&6Done!'
+    - '&7Pick up the pie and bake it!'
+furnaces:
+  enabled: true
+  stations:
+    kitchen_stove:
+      title: Stove
+      type: FURNACE
+      speed: 1.0
+crafting:
+  tomato_sauce:
+    ingredients:
+    - - allium:tomato
+      - allium:tomato_silver_star
+      - allium:tomato_golden_star
+    - - allium:tomato
+      - allium:tomato_silver_star
+      - allium:tomato_golden_star
+    - minecraft:bowl
+    result:
+      item: allium:tomato_sauce
+      amount: 1
+  cheese:
+    ingredients:
+    - minecraft:milk_bucket
+    - allium:salt
+    result:
+      item: allium:cheese
+      amount: 1
+  pizza_base:
+    ingredients:
+    - allium:dough
+    - allium:dough
+    - allium:dough
+    result:
+      item: allium:pizza_base
+      amount: 1
+smelting:
+  bake_deep_dish_pizza:
+    ingredient: allium:cold_deep_dish_pizza
+    result:
+      item: allium:baked_deep_dish_pizza
+      amount: 1
+    type: furnace
+    time: 200
+    experience: 0.35

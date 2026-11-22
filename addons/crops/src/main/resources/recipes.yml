@@ -1,0 +1,418 @@
+recipes:
+  pie_crust:
+    result:
+      item: allium:pie_crust
+      amount: 1
+    shape:
+    - DDD
+    - D D
+    - DDD
+    keys:
+      D: allium:dough
+  flour:
+    result:
+      item: allium:flour
+      amount: 1
+    shape:
+    - WW
+    - WW
+    keys:
+      W: minecraft:wheat
+  flour_bag:
+    result:
+      item: allium:flour_bag
+      amount: 1
+    shape:
+    - ' S '
+    - P P
+    - PPP
+    keys:
+      S: minecraft:string
+      P: minecraft:paper
+  tomato_seeds_from_tomato:
+    result:
+      item: allium:tomato_seeds
+      amount: 2
+    ingredients:
+    - allium:tomato
+  tomato_seeds_from_tomato_silver_star:
+    result:
+      item: allium:tomato_seeds
+      amount: 3
+    ingredients:
+    - allium:tomato_silver_star
+  tomato_seeds_from_tomato_golden_star:
+    result:
+      item: allium:tomato_seeds
+      amount: 4
+    ingredients:
+    - allium:tomato_golden_star
+  tomato_seeds_from_golden_tomato:
+    result:
+      item: allium:tomato_seeds
+      amount: 5
+    ingredients:
+    - allium:golden_tomato
+  tomato_seeds_from_gigantic_tomato:
+    result:
+      item: allium:tomato_seeds
+      amount: 6
+    ingredients:
+    - allium:gigantic_tomato
+  strawberry_seeds_from_strawberry:
+    result:
+      item: allium:strawberry_seeds
+      amount: 2
+    ingredients:
+    - allium:strawberry
+  strawberry_seeds_from_strawberry_silver_star:
+    result:
+      item: allium:strawberry_seeds
+      amount: 3
+    ingredients:
+    - allium:strawberry_silver_star
+  strawberry_seeds_from_strawberry_golden_star:
+    result:
+      item: allium:strawberry_seeds
+      amount: 4
+    ingredients:
+    - allium:strawberry_golden_star
+  pomegranate_seeds_from_pomegranate:
+    result:
+      item: allium:pomegranate_seeds
+      amount: 2
+    ingredients:
+    - allium:pomegranate
+  pomegranate_seeds_from_pomegranate_silver_star:
+    result:
+      item: allium:pomegranate_seeds
+      amount: 3
+    ingredients:
+    - allium:pomegranate_silver_star
+  pomegranate_seeds_from_pomegranate_golden_star:
+    result:
+      item: allium:pomegranate_seeds
+      amount: 4
+    ingredients:
+    - allium:pomegranate_golden_star
+  pitaya_seeds_from_pitaya:
+    result:
+      item: allium:pitaya_seeds
+      amount: 2
+    ingredients:
+    - allium:pitaya
+  pitaya_seeds_from_pitaya_silver_star:
+    result:
+      item: allium:pitaya_seeds
+      amount: 3
+    ingredients:
+    - allium:pitaya_silver_star
+  pitaya_seeds_from_pitaya_golden_star:
+    result:
+      item: allium:pitaya_seeds
+      amount: 4
+    ingredients:
+    - allium:pitaya_golden_star
+  pineapple_seeds_from_pineapple:
+    result:
+      item: allium:pineapple_seeds
+      amount: 2
+    ingredients:
+    - allium:pineapple
+  pineapple_seeds_from_pineapple_silver_star:
+    result:
+      item: allium:pineapple_seeds
+      amount: 3
+    ingredients:
+    - allium:pineapple_silver_star
+  pineapple_seeds_from_pineapple_golden_star:
+    result:
+      item: allium:pineapple_seeds
+      amount: 4
+    ingredients:
+    - allium:pineapple_golden_star
+  pepper_seedds_from_pepper:
+    result:
+      item: allium:pepper_seeds
+      amount: 2
+    ingredients:
+    - allium:pepper
+  pepper_seedds_from_pepper_silver_star:
+    result:
+      item: allium:pepper_seeds
+      amount: 3
+    ingredients:
+    - allium:pepper_silver_star
+  pepper_seedds_from_pepper_golden_star:
+    result:
+      item: allium:pepper_seeds
+      amount: 4
+    ingredients:
+    - allium:pepper_golden_star
+  orange_seeds_from_orange:
+    result:
+      item: allium:orange_seeds
+      amount: 2
+    ingredients:
+    - allium:orange
+  orange_seeds_from_orange_silver_star:
+    result:
+      item: allium:orange_seeds
+      amount: 3
+    ingredients:
+    - allium:orange_silver_star
+  orange_seeds_from_orange_golden_star:
+    result:
+      item: allium:orange_seeds
+      amount: 4
+    ingredients:
+    - allium:orange_golden_star
+  lettuce_seeds_from_lettuce:
+    result:
+      item: allium:lettuce_seeds
+      amount: 2
+    ingredients:
+    - allium:lettuce
+  lettuce_seeds_from_lettuce_silver_star:
+    result:
+      item: allium:lettuce_seeds
+      amount: 3
+    ingredients:
+    - allium:lettuce_silver_star
+  lettuce_seeds_from_lettuce_golden_star:
+    result:
+      item: allium:lettuce_seeds
+      amount: 4
+    ingredients:
+    - allium:lettuce_golden_star
+  lemon_seeds_from_lemon:
+    result:
+      item: allium:lemon_seeds
+      amount: 2
+    ingredients:
+    - allium:lemon
+  lemon_seeds_from_lemon_silver_star:
+    result:
+      item: allium:lemon_seeds
+      amount: 3
+    ingredients:
+    - allium:lemon_silver_star
+  lemon_seeds_from_lemon_golden_star:
+    result:
+      item: allium:lemon_seeds
+      amount: 4
+    ingredients:
+    - allium:lemon_golden_star
+  hop_seeds_from_hop:
+    result:
+      item: allium:hop_seeds
+      amount: 2
+    ingredients:
+    - allium:hop
+  hop_seeds_from_hop_silver_star:
+    result:
+      item: allium:hop_seeds
+      amount: 3
+    ingredients:
+    - allium:hop_silver_star
+  hop_seeds_from_hop_golden_star:
+    result:
+      item: allium:hop_seeds
+      amount: 4
+    ingredients:
+    - allium:hop_golden_star
+  grape_seeds_from_grape:
+    result:
+      item: allium:grape_seeds
+      amount: 2
+    ingredients:
+    - allium:grape
+  grape_seeds_from_grape_silver_star:
+    result:
+      item: allium:grape_seeds
+      amount: 3
+    ingredients:
+    - allium:grape_silver_star
+  grape_seeds_from_grape_golden_star:
+    result:
+      item: allium:grape_seeds
+      amount: 4
+    ingredients:
+    - allium:grape_golden_star
+  garlic_seeds_from_garlic:
+    result:
+      item: allium:garlic_seeds
+      amount: 2
+    ingredients:
+    - allium:garlic
+  garlic_seeds_from_garlic_silver_star:
+    result:
+      item: allium:garlic_seeds
+      amount: 3
+    ingredients:
+    - allium:garlic_silver_star
+  garlic_seeds_from_garlic_golden_star:
+    result:
+      item: allium:garlic_seeds
+      amount: 4
+    ingredients:
+    - allium:garlic_golden_star
+  eggplant_seeds_from_eggplant:
+    result:
+      item: allium:eggplant_seeds
+      amount: 2
+    ingredients:
+    - allium:eggplant
+  eggplant_seeds_from_eggplant_silver_star:
+    result:
+      item: allium:eggplant_seeds
+      amount: 3
+    ingredients:
+    - allium:eggplant_silver_star
+  eggplant_seeds_from_eggplant_golden_star:
+    result:
+      item: allium:eggplant_seeds
+      amount: 4
+    ingredients:
+    - allium:eggplant_golden_star
+  corn_seeds_from_corn:
+    result:
+      item: allium:corn
+      amount: 2
+    ingredients:
+    - allium:corn_seeds
+  corn_seeds_from_corn_silver_star:
+    result:
+      item: allium:corn_seeds
+      amount: 3
+    ingredients:
+    - allium:corn_silver_star
+  corn_seeds_from_corn_golden_star:
+    result:
+      item: allium:corn_seeds
+      amount: 4
+    ingredients:
+    - allium:corn_golden_star
+  cabbage_seeds_from_cabbage:
+    result:
+      item: allium:cabbage
+      amount: 2
+    ingredients:
+    - allium:cabbage_seeds
+  cabbage_seeds_from_cabbage_silver_star:
+    result:
+      item: allium:cabbage_silver_star
+      amount: 3
+    ingredients:
+    - allium:cabbage_seeds
+  cabbage_seeds_from_cabbage_golden_star:
+    result:
+      item: allium:cabbage_golden_star
+      amount: 4
+    ingredients:
+    - allium:cabbage_seeds
+  cabbage_seeds_from_gigantic_cabbage:
+    result:
+      item: allium:cabbage_seeds
+      amount: 5
+    ingredients:
+    - allium:gigantic_cabbage
+  banana_seeds_from_banana:
+    result:
+      item: allium:banana_seeds
+      amount: 2
+    ingredients:
+    - allium:banana
+  banana_seeds_from_banana_silver_star:
+    result:
+      item: allium:banana_seeds
+      amount: 3
+    ingredients:
+    - allium:banana_silver_star
+  banana_seeds_from_banana_golden_star:
+    result:
+      item: allium:banana_seeds
+      amount: 4
+    ingredients:
+    - allium:banana_golden_star
+  spinach_seeds_from_spinach:
+    result:
+      item: allium:spinach_seeds
+      amount: 2
+    ingredients:
+    - allium:spinach
+  spinach_seeds_from_spinach_silver_star:
+    result:
+      item: allium:spinach_seeds
+      amount: 3
+    ingredients:
+    - allium:spinach_silver_star
+  spinach_seeds_from_spinach_golden_star:
+    result:
+      item: allium:spinach_seeds
+      amount: 4
+    ingredients:
+    - allium:spinach_golden_star
+  bake_apple_pie:
+    result:
+      item: allium:baked_apple_pie
+      amount: 1
+    ingredient: allium:cold_apple_pie
+    time: 200
+    experience: 1
+  bake_blackberry_pie:
+    result:
+      item: allium:baked_blackberry_pie
+      amount: 1
+    ingredient: allium:cold_blackberry_pie
+    time: 200
+    experience: 1
+  bake_blueberry_pie:
+    result:
+      item: allium:baked_blueberry_pie
+      amount: 1
+    ingredient: allium:cold_blueberry_pie
+    time: 200
+    experience: 1
+  bake_chocolate_pie:
+    result:
+      item: allium:baked_chocolate_pie
+      amount: 1
+    ingredient: allium:cold_chocolate_pie
+    time: 200
+    experience: 1
+  bake_cranberry_pie:
+    result:
+      item: allium:baked_cranberry_pie
+      amount: 1
+    ingredient: allium:cold_cranberry_pie
+    time: 200
+    experience: 1
+  bake_elderberry_pie:
+    result:
+      item: allium:baked_elderberry_pie
+      amount: 1
+    ingredient: allium:cold_elderberry_pie
+    time: 200
+    experience: 1
+  bake_pumpkin_pie:
+    result:
+      item: allium:baked_pumpkin_pie
+      amount: 1
+    ingredient: allium:cold_pumpkin_pie
+    time: 200
+    experience: 1
+  bake_raspberry_pie:
+    result:
+      item: allium:baked_raspberry_pie
+      amount: 1
+    ingredient: allium:cold_raspberry_pie
+    time: 200
+    experience: 1
+  bake_strawberry_pie:
+    result:
+      item: allium:baked_strawberry_pie
+      amount: 1
+    ingredient: allium:cold_strawberry_pie
+    time: 200
+    experience: 1

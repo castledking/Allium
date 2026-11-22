@@ -1,0 +1,5052 @@
+crops:
+  banana:
+    id: banana
+    display-name: Banana
+    seed:
+      item: allium:banana_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:banana_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:banana
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:banana_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:banana_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:banana_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:banana_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:banana_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:banana_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:banana_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:banana_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:banana_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:banana_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:banana_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:banana_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:banana_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  blackberry:
+    id: blackberry
+    display-name: Blackberry
+    seed:
+      item: allium:blackberries
+    placement:
+      valid-soils:
+      - FARMLAND
+      - GRASS_BLOCK
+      - COARSE_DIRT
+      - ROOTED_DIRT
+      - DIRT
+      - MYCELIUM
+      - PODZOL
+      requires-water: false
+      minimum-light: 0
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: true
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:blackberry_bush_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:blackberry_bush_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:blackberry_bush_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:blackberry_bush_4
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:blackberries
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:blackberries_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:blackberries_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                berries:
+                  chance: 1.0
+                  drops:
+                  - item: allium:blackberries
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:blackberries
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:blackberries
+                    amount: 2
+          regrowth:
+            enabled: true
+            stage: 0
+            on-right-click:
+              enabled: true
+              stage: 0
+            on-break:
+              enabled: false
+  blueberry:
+    id: blueberry
+    display-name: Blueberry
+    seed:
+      item: allium:blueberries
+    placement:
+      valid-soils:
+      - FARMLAND
+      - GRASS_BLOCK
+      - COARSE_DIRT
+      - ROOTED_DIRT
+      - DIRT
+      - MYCELIUM
+      - PODZOL
+      requires-water: false
+      minimum-light: 0
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: true
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:blueberry_bush_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:blueberry_bush_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:blueberry_bush_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:blueberry_bush_4
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:blueberries
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:blueberries_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:blueberries_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                berries:
+                  chance: 1.0
+                  drops:
+                  - item: allium:blueberries
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:blueberries
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:blueberries
+                    amount: 2
+          regrowth:
+            enabled: true
+            stage: 0
+            on-right-click:
+              enabled: true
+              stage: 0
+            on-break:
+              enabled: false
+  cabbage:
+    id: cabbage
+    display-name: Cabbage
+    seed:
+      item: allium:cabbage_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:cabbage_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:cabbage
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:cabbage_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:cabbage_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:cabbage_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cabbage_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cabbage_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 5
+          stages:
+          - model: allium:cabbage_stage_1
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_2
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_3
+            duration: 90m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_cabbage
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cabbage_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cabbage_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 10
+          stages:
+          - model: allium:cabbage_stage_1
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_2
+            duration: 90m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_3
+            duration: 120m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cabbage_stage_4
+            duration: 180m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:gigantic_cabbage_stage
+            visual:
+              transform: GROUND
+              scale: 3.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_cabbage
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:cabbage_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cabbage_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cabbage_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  cherry:
+    id: cherry
+    display-name: Cherry
+    seed:
+      item: allium:cherry_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:cherry_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:cherry
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:cherry_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:cherry_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:cherry_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cherry_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cherry_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:cherry_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cherry_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cherry_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:cherry_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cherry_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:cherry_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cherry_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cherry_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  corn:
+    id: corn
+    display-name: Corn
+    seed:
+      item: allium:corn_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:corn_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:corn
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:corn_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:corn_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:corn_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:corn_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:corn_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:corn_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:corn_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:corn_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_corn
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:corn_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:corn_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:corn_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  cotton:
+    id: cotton
+    display-name: Cotton
+    seed:
+      item: allium:cotton_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:cotton_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cotton_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cotton_stage_3
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:cotton
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:cotton_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:cotton_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:cotton_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cotton_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:cotton_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+  cranberry:
+    id: cranberry
+    display-name: Cranberry
+    seed:
+      item: allium:cranberries
+    placement:
+      valid-soils:
+      - FARMLAND
+      - GRASS_BLOCK
+      - COARSE_DIRT
+      - ROOTED_DIRT
+      - DIRT
+      - MYCELIUM
+      - PODZOL
+      requires-water: false
+      minimum-light: 0
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: true
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:cranberry_bush_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cranberry_bush_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cranberry_bush_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:cranberry_bush_4
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:cranberries
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:cranberries_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:cranberries_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                berries:
+                  chance: 1.0
+                  drops:
+                  - item: allium:cranberries
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:cranberries
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:cranberries
+                    amount: 2
+          regrowth:
+            enabled: true
+            stage: 0
+            on-right-click:
+              enabled: true
+              stage: 0
+            on-break:
+              enabled: false
+  eggplant:
+    id: eggplant
+    display-name: Eggplant
+    seed:
+      item: allium:eggplant_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:eggplant_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:eggplant
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:eggplant_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:eggplant_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:eggplant_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:eggplant_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:eggplant_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:eggplant_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:eggplant_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:eggplant_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_eggplant
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:eggplant_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:eggplant_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:eggplant_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  elderberry:
+    id: elderberry
+    display-name: Elderberry
+    seed:
+      item: allium:elderberries
+    placement:
+      valid-soils:
+      - FARMLAND
+      - GRASS_BLOCK
+      - COARSE_DIRT
+      - ROOTED_DIRT
+      - DIRT
+      - MYCELIUM
+      - PODZOL
+      requires-water: false
+      minimum-light: 0
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: true
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:elderberry_bush_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:elderberry_bush_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:elderberry_bush_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:elderberry_bush_4
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:elderberries
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:elderberries_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:elderberries_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                berries:
+                  chance: 1.0
+                  drops:
+                  - item: allium:elderberries
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:elderberries
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:elderberries
+                    amount: 2
+          regrowth:
+            enabled: true
+            stage: 0
+            on-right-click:
+              enabled: true
+              stage: 0
+            on-break:
+              enabled: false
+  garlic:
+    id: garlic
+    display-name: Garlic
+    seed:
+      item: allium:garlic_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:garlic_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:garlic
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:garlic_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:garlic_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:garlic_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:garlic_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:garlic_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:garlic_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:garlic_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:garlic_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_garlic
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:garlic_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:garlic_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:garlic_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  grape:
+    id: grape
+    display-name: Grape
+    seed:
+      item: allium:grape_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:grape_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_6
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:grape
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:grape_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:grape_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:grape_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:grape_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:grape_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:grape_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_6
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:grape_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:grape_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:grape_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:grape_stage_6
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:grape_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:grape_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:grape_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  hop:
+    id: hop
+    display-name: Hop
+    seed:
+      item: allium:hop_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:hop_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:hop
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:hop_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:hop_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:hop_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:hop_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:hop_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:hop_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:hop_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:hop_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_hop
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:hop_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:hop_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:hop_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  lemon:
+    id: lemon
+    display-name: Lemon
+    seed:
+      item: allium:lemon_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:lemon_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:lemon
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:lemon_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:lemon_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:lemon_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lemon_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lemon_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:lemon_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lemon_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lemon_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:lemon_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lemon_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:lemon_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lemon_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lemon_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  lettuce:
+    id: lettuce
+    display-name: Lettuce
+    seed:
+      item: allium:lettuce_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:lettuce_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lettuce_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lettuce_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:lettuce
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:lettuce_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:lettuce_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:lettuce_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lettuce_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lettuce_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:lettuce_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lettuce_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lettuce_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lettuce_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lettuce_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:lettuce_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lettuce_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:lettuce_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:lettuce_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lettuce_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:lettuce_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  onion:
+    id: onion
+    display-name: Onion
+    seed:
+      item: allium:onion_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:onion_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:onion_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:onion_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:onion_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:onion
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:onion_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:onion_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:onion_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:onion_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:onion_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+  orange:
+    id: orange
+    display-name: Orange
+    seed:
+      item: allium:orange_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:orange_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:orange
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:orange_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:orange_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:orange_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:orange_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:orange_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:orange_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:orange_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:orange_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:orange_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:orange_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:orange_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:orange_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:orange_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  pepper:
+    id: pepper
+    display-name: Pepper
+    seed:
+      item: allium:pepper_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:pepper_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:pepper
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:pepper_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:pepper_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:pepper_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pepper_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pepper_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:pepper_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pepper_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pepper_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:pepper_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pepper_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:pepper_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pepper_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pepper_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  pineapple:
+    id: pineapple
+    display-name: Pineapple
+    seed:
+      item: allium:pineapple_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:pineapple_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:pineapple
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:pineapple_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:pineapple_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:pineapple_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pineapple_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pineapple_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:pineapple_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:pineapple_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pineapple_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_pineapple
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:pineapple_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pineapple_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pineapple_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  pitaya:
+    id: pitaya
+    display-name: Pitaya
+    seed:
+      item: allium:pitaya_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:pitaya_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_6
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:pitaya
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:pitaya_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:pitaya_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:pitaya_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pitaya_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pitaya_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:pitaya_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_6
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pitaya_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pitaya_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:pitaya_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pitaya_stage_6
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:pitaya_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pitaya_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pitaya_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  pomegranate:
+    id: pomegranate
+    display-name: Pomegranate
+    seed:
+      item: allium:pomegranate_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:pomegranate_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:pomegranate
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:pomegranate_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:pomegranate_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:pomegranate_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pomegranate_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pomegranate_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:pomegranate_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pomegranate_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pomegranate_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:pomegranate_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_4
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:pomegranate_stage_5
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:pomegranate_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pomegranate_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:pomegranate_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  raspberry:
+    id: raspberry
+    display-name: Raspberry
+    seed:
+      item: allium:raspberries
+    placement:
+      valid-soils:
+      - FARMLAND
+      - GRASS_BLOCK
+      - COARSE_DIRT
+      - ROOTED_DIRT
+      - DIRT
+      - MYCELIUM
+      - PODZOL
+      requires-water: false
+      minimum-light: 0
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: true
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:raspberry_bush_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:raspberry_bush_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:raspberry_bush_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:raspberry_bush_4
+            visual:
+              transform: GROUND
+              scale: 1.7
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:raspberries
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:raspberries_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:raspberries_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                berries:
+                  chance: 1.0
+                  drops:
+                  - item: allium:raspberries
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:raspberries
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                berries:
+                  drops:
+                  - item: allium:raspberries
+                    amount: 2
+          regrowth:
+            enabled: true
+            stage: 0
+            on-right-click:
+              enabled: true
+              stage: 0
+            on-break:
+              enabled: false
+  soybean:
+    id: soybean
+    display-name: Soybean
+    seed:
+      item: allium:soybean_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:soybean_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:soybean_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:soybean_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:soybean_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:soybean
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:soybean_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:soybean_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:soybean_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:soybean_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:soybean_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+  spinach:
+    id: spinach
+    display-name: Spinach
+    seed:
+      item: allium:spinach_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 100
+          stages:
+          - model: allium:spinach_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:spinach_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:spinach_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:spinach_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:spinach
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:spinach_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:spinach_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:spinach_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:spinach_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:spinach_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  strawberry:
+    id: strawberry
+    display-name: Strawberry
+    seed:
+      item: allium:strawberry_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:strawberry_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:strawberry_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:strawberry_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:strawberry
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:strawberry_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:strawberry_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:strawberry_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:strawberry_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:strawberry_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 0
+          stages:
+          - model: allium:strawberry_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:strawberry_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:strawberry_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:strawberry_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:strawberry_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 0
+          stages:
+          - model: allium:strawberry_stage_1
+            duration: 30m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:strawberry_stage_2
+            duration: 45m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          - model: allium:strawberry_stage_3
+            duration: 60m
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:strawberry_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:strawberry_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:strawberry_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+  tomato:
+    id: tomato
+    display-name: Tomato
+    seed:
+      item: allium:tomato_seeds
+    placement:
+      valid-soils:
+      - FARMLAND
+      requires-water: true
+      minimum-light: 9
+    growth:
+      clock: REAL_TIME
+      grow-while-unloaded: true
+      maximum-catch-up-stages: 10
+      randomness: 0.25
+    interaction:
+      right-click-harvest: false
+      break-harvest: true
+      progress-check: false
+    paths:
+      selection:
+        mode: WEIGHTED_ONE
+        timing: ON_PLANT
+      entries:
+        normal:
+          weight: 85
+          stages:
+          - model: allium:tomato_stage_1
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 30m
+          - model: allium:tomato_stage_2
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 45m
+          - model: allium:tomato_stage_3
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 60m
+          - model: allium:tomato_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            delivery: DROP_AT_CROP
+            primary:
+              mode: WEIGHTED_ONE
+              entries:
+                regular:
+                  weight: 65
+                  drops:
+                  - item: allium:tomato
+                    amount: 1
+                silver:
+                  weight: 25
+                  drops:
+                  - item: allium:tomato_silver_star
+                    amount: 1
+                golden-star:
+                  weight: 10
+                  drops:
+                  - item: allium:tomato_golden_star
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 1.0
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount:
+                      min: 1
+                      max: 2
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+            stage: 2
+            on-right-click:
+              enabled: false
+              stage: 2
+            on-break:
+              enabled: false
+        golden:
+          weight: 5
+          stages:
+          - model: allium:tomato_stage_1
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 45m
+          - model: allium:tomato_stage_2
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 60m
+          - model: allium:tomato_stage_3
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 90m
+          - model: allium:tomato_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                golden:
+                  drops:
+                  - item: allium:golden_tomato
+                    amount: 1
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 2
+          regrowth:
+            enabled: false
+        gigantic:
+          weight: 10
+          stages:
+          - model: allium:tomato_stage_1
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 60m
+          - model: allium:tomato_stage_2
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 90m
+          - model: allium:tomato_stage_3
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 120m
+          - model: allium:tomato_stage_4
+            visual:
+              transform: GROUND
+              scale: 1.0
+              y-offset: 0.001
+              align-to-soil: true
+            duration: 180m
+          - model: allium:gigantic_tomato_stage
+            visual:
+              transform: GROUND
+              scale: 3.0
+              y-offset: 0.001
+              align-to-soil: true
+          mature-harvest:
+            primary:
+              mode: GUARANTEED_ALL
+              entries:
+                gigantic:
+                  drops:
+                  - item: allium:gigantic_tomato
+                    amount: 1
+            additional:
+              mode: INDEPENDENT
+              entries:
+                seeds:
+                  chance: 0.85
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount:
+                      min: 2
+                      max: 4
+          break-drops:
+            immature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 1
+            mature:
+              mode: GUARANTEED_ALL
+              entries:
+                seeds:
+                  drops:
+                  - item: allium:tomato_seeds
+                    amount: 2
+          regrowth:
+            enabled: false

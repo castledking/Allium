@@ -12,3 +12,4 @@ include("allium-api")
 
 include("addons:curios")
 include("addons:spawnercraft")
+include("addons:crops")

@@ -1,0 +1,18 @@
+name: Crops
+main: codes.castled.crops.CropsPlugin
+version: '1.0.0'
+api-version: '1.20'
+depend: [Allium]
+allium-api: '^1.4'
+allium-addon-dir: true
+allium-pack: crops-pack.zip
+commands:
+  crops:
+    aliases: [crop, hf, harvest]
+    description: Inspect, give, plant, grow, and manage custom crops and kitchen items
+    permission: crops.use
+permissions:
+  crops.use:
+    default: true
+  crops.admin:
+    default: op

@@ -1,0 +1,5 @@
+resource-pack:
+  delivery: allium
+growth:
+  interval-ticks: 20
+crop-model-in-jade: false

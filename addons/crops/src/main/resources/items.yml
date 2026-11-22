@@ -1,0 +1,1539 @@
+items:
+  apple_pie_filled:
+    model: crops:sf/sf/block/apple_pie_filled
+    name: '&fApple Pie Filled'
+    cmd: 3821556
+  baked_apple_pie:
+    model: crops:sf/sf/item/baked_apple_pie
+    name: <#f0a040>Apple Pie <gray>(Baked)
+    cmd: 3874957
+  baked_apple_pie_placed:
+    model: crops:sf/sf/block/baked_apple_pie
+    name: '&fBaked Apple Pie'
+    cmd: 3190477
+  baked_apple_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_apple_pie_slice1
+    name: '&fBaked Apple Pie'
+    cmd: 3160369
+  baked_apple_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_apple_pie_slice2
+    name: '&fBaked Apple Pie'
+    cmd: 3848779
+  baked_apple_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_apple_pie_slice3
+    name: '&fBaked Apple Pie'
+    cmd: 3330397
+  baked_blackberry_pie:
+    model: crops:sf/sf/item/baked_blackberry_pie
+    name: <#f0a040>Blackberry Pie <gray>(Baked)
+    cmd: 3196613
+  baked_blackberry_pie_placed:
+    model: crops:sf/sf/block/baked_blackberry_pie
+    name: '&fBaked Blackberry Pie'
+    cmd: 3702299
+  baked_blackberry_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_blackberry_pie_slice1
+    name: '&fBaked Blackberry Pie'
+    cmd: 3841657
+  baked_blackberry_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_blackberry_pie_slice2
+    name: '&fBaked Blackberry Pie'
+    cmd: 3355331
+  baked_blackberry_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_blackberry_pie_slice3
+    name: '&fBaked Blackberry Pie'
+    cmd: 3643989
+  baked_blueberry_pie:
+    model: crops:sf/sf/item/baked_blueberry_pie
+    name: <#f0a040>Blueberry Pie <gray>(Baked)
+    cmd: 3836274
+  baked_blueberry_pie_placed:
+    model: crops:sf/sf/block/baked_blueberry_pie
+    name: '&fBaked Blueberry Pie'
+    cmd: 3873017
+  baked_blueberry_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_blueberry_pie_slice1
+    name: '&fBaked Blueberry Pie'
+    cmd: 3539877
+  baked_blueberry_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_blueberry_pie_slice2
+    name: '&fBaked Blueberry Pie'
+    cmd: 3064543
+  baked_blueberry_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_blueberry_pie_slice3
+    name: '&fBaked Blueberry Pie'
+    cmd: 3628809
+  baked_cherry_pie:
+    model: crops:sf/sf/item/baked_cherry_pie
+    name: <#f0a040>Cherry Pie <gray>(Baked)
+    cmd: 3146845
+  baked_cherry_pie_placed:
+    model: crops:sf/sf/block/baked_cherry_pie
+    name: '&fBaked Cherry Pie'
+    cmd: 3166700
+  baked_cherry_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_cherry_pie_slice1
+    name: '&fBaked Cherry Pie'
+    cmd: 3007626
+  baked_cherry_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_cherry_pie_slice2
+    name: '&fBaked Cherry Pie'
+    cmd: 3590256
+  baked_cherry_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_cherry_pie_slice3
+    name: '&fBaked Cherry Pie'
+    cmd: 3277414
+  baked_chocolate_pie:
+    model: crops:sf/sf/item/baked_chocolate_pie
+    name: <#f0a040>Chocolate Pie <gray>(Baked)
+    cmd: 3199089
+  baked_chocolate_pie_placed:
+    model: crops:sf/sf/block/baked_chocolate_pie
+    name: '&fBaked Chocolate Pie'
+    cmd: 3989411
+  baked_chocolate_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_chocolate_pie_slice1
+    name: '&fBaked Chocolate Pie'
+    cmd: 3155128
+  baked_chocolate_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_chocolate_pie_slice2
+    name: '&fBaked Chocolate Pie'
+    cmd: 3679234
+  baked_chocolate_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_chocolate_pie_slice3
+    name: '&fBaked Chocolate Pie'
+    cmd: 3110612
+  baked_cranberry_pie:
+    model: crops:sf/sf/item/baked_cranberry_pie
+    name: <#f0a040>Cranberry Pie <gray>(Baked)
+    cmd: 3205227
+  baked_cranberry_pie_placed:
+    model: crops:sf/sf/block/baked_cranberry_pie
+    name: '&fBaked Cranberry Pie'
+    cmd: 3014567
+  baked_cranberry_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_cranberry_pie_slice1
+    name: '&fBaked Cranberry Pie'
+    cmd: 3155090
+  baked_cranberry_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_cranberry_pie_slice2
+    name: '&fBaked Cranberry Pie'
+    cmd: 3234152
+  baked_cranberry_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_cranberry_pie_slice3
+    name: '&fBaked Cranberry Pie'
+    cmd: 3135166
+  baked_deep_dish_pizza:
+    model: crops:sf/sf/block/baked_deep_dish_pizza
+    name: <#e8c07a>Deep Dish Pizza <gray>(Sauce on Top)
+    cmd: 3818743
+  baked_deep_dish_pizza_placed:
+    model: crops:sf/sf/block/baked_deep_dish_pizza
+    name: '&fDeep-Dish Pizza baked 0'
+    cmd: 3541132
+  baked_deep_dish_pizza_placed_slice1:
+    model: crops:sf/sf/block/baked_deep_dish_pizza_slice1
+    name: '&fDeep-Dish Pizza baked 1'
+    cmd: 3753523
+  baked_deep_dish_pizza_placed_slice2:
+    model: crops:sf/sf/block/baked_deep_dish_pizza_slice2
+    name: '&fDeep-Dish Pizza baked 2'
+    cmd: 3401033
+  baked_deep_dish_pizza_placed_slice3:
+    model: crops:sf/sf/block/baked_deep_dish_pizza_slice3
+    name: '&fDeep-Dish Pizza baked 3'
+    cmd: 3983327
+  baked_elderberry_pie:
+    model: crops:sf/sf/item/baked_elderberry_pie
+    name: <#f0a040>Elderberry Pie <gray>(Baked)
+    cmd: 3679220
+  baked_elderberry_pie_placed:
+    model: crops:sf/sf/block/baked_elderberry_pie
+    name: '&fBaked Elderberry Pie'
+    cmd: 3033436
+  baked_elderberry_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_elderberry_pie_slice1
+    name: '&fBaked Elderberry Pie'
+    cmd: 3570785
+  baked_elderberry_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_elderberry_pie_slice2
+    name: '&fBaked Elderberry Pie'
+    cmd: 3568283
+  baked_elderberry_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_elderberry_pie_slice3
+    name: '&fBaked Elderberry Pie'
+    cmd: 3748045
+  baked_pumpkin_pie:
+    model: crops:sf/sf/item/baked_pumpkin_pie
+    name: <#f0a040>Pumpkin Pie <gray>(Baked)
+    cmd: 3555134
+  baked_pumpkin_pie_placed:
+    model: crops:sf/sf/block/baked_pumpkin_pie
+    name: '&fBaked Pumpkin Pie'
+    cmd: 3194792
+  baked_pumpkin_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_pumpkin_pie_slice1
+    name: '&fBaked Pumpkin Pie'
+    cmd: 3893286
+  baked_pumpkin_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_pumpkin_pie_slice2
+    name: '&fBaked Pumpkin Pie'
+    cmd: 3910556
+  baked_pumpkin_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_pumpkin_pie_slice3
+    name: '&fBaked Pumpkin Pie'
+    cmd: 3489290
+  baked_raspberry_pie:
+    model: crops:sf/sf/item/baked_raspberry_pie
+    name: <#f0a040>Raspberry Pie <gray>(Baked)
+    cmd: 3246889
+  baked_raspberry_pie_placed:
+    model: crops:sf/sf/block/baked_raspberry_pie
+    name: '&fBaked Raspberry Pie'
+    cmd: 3524183
+  baked_raspberry_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_raspberry_pie_slice1
+    name: '&fBaked Raspberry Pie'
+    cmd: 3561830
+  baked_raspberry_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_raspberry_pie_slice2
+    name: '&fBaked Raspberry Pie'
+    cmd: 3499356
+  baked_raspberry_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_raspberry_pie_slice3
+    name: '&fBaked Raspberry Pie'
+    cmd: 3206922
+  baked_strawberry_pie:
+    model: crops:sf/sf/item/baked_strawberry_pie
+    name: <#f0a040>Strawberry Pie <gray>(Baked)
+    cmd: 3921155
+  baked_strawberry_pie_placed:
+    model: crops:sf/sf/block/baked_strawberry_pie
+    name: '&fBaked Strawberry Pie'
+    cmd: 3446194
+  baked_strawberry_pie_placed_slice1:
+    model: crops:sf/sf/block/baked_strawberry_pie_slice1
+    name: '&fBaked Strawberry Pie'
+    cmd: 3295274
+  baked_strawberry_pie_placed_slice2:
+    model: crops:sf/sf/block/baked_strawberry_pie_slice2
+    name: '&fBaked Strawberry Pie'
+    cmd: 3431504
+  baked_strawberry_pie_placed_slice3:
+    model: crops:sf/sf/block/baked_strawberry_pie_slice3
+    name: '&fBaked Strawberry Pie'
+    cmd: 3951878
+  banana:
+    model: crops:sf/sf/crops/banana/banana
+    name: '&fBanana'
+    cmd: 3467727
+  banana_golden_star:
+    model: crops:sf/sf/crops/banana/banana_golden_star
+    name: '&fBanana (Golden Star)'
+    cmd: 3131574
+  banana_seeds:
+    model: crops:item/banana_seeds
+    name: '&fBanana Seeds'
+    cmd: 3750494
+  banana_silver_star:
+    model: crops:sf/sf/crops/banana/banana_silver_star
+    name: '&fBanana (Silver Star)'
+    cmd: 3651022
+  banana_stage_1:
+    model: crops:sf/ce/item/crops/banana/stage_1
+    name: Banana
+    gui: crops:sf/ce/item/crop_stage_icons/banana_stage_1
+    cmd: 3381876
+  banana_stage_2:
+    model: crops:sf/ce/item/crops/banana/stage_2
+    name: Banana
+    gui: crops:sf/ce/item/crop_stage_icons/banana_stage_2
+    cmd: 3427662
+  banana_stage_3:
+    model: crops:sf/ce/item/crops/banana/stage_3
+    name: Banana
+    gui: crops:sf/ce/item/crop_stage_icons/banana_stage_3
+    cmd: 3716056
+  banana_stage_4:
+    model: crops:sf/ce/item/crops/banana/stage_4
+    name: Banana
+    gui: crops:sf/ce/item/crop_stage_icons/banana_stage_4
+    cmd: 3978427
+  banana_stage_5:
+    model: crops:sf/ce/item/crops/banana/stage_5
+    name: Banana
+    gui: crops:sf/ce/item/crop_stage_icons/banana_stage_5
+    cmd: 3153453
+  blackberries:
+    model: crops:sf/sf/crops/blackberry/blackberries
+    name: '&fBlackberries'
+    cmd: 3863699
+  blackberries_golden_star:
+    model: crops:sf/sf/crops/blackberry/blackberries_golden_star
+    name: '&fBlackberries (Golden Star)'
+    cmd: 3203344
+  blackberries_silver_star:
+    model: crops:sf/sf/crops/blackberry/blackberries_silver_star
+    name: '&fBlackberries (Silver Star)'
+    cmd: 3103336
+  blackberry_bush_1:
+    model: crops:sf/ce/item/crops/blackberry/blackberry_bush_1
+    name: Blackberry
+    gui: crops:sf/ce/item/crop_stage_icons/blackberry_bush_1
+    cmd: 3462564
+  blackberry_bush_2:
+    model: crops:sf/ce/item/crops/blackberry/blackberry_bush_2
+    name: Blackberry
+    gui: crops:sf/ce/item/crop_stage_icons/blackberry_bush_2
+    cmd: 3631774
+  blackberry_bush_3:
+    model: crops:sf/ce/item/crops/blackberry/blackberry_bush_3
+    name: Blackberry
+    gui: crops:sf/ce/item/crop_stage_icons/blackberry_bush_3
+    cmd: 3526664
+  blackberry_bush_4:
+    model: crops:sf/ce/item/crops/blackberry/blackberry_bush_4
+    name: Blackberry
+    gui: crops:sf/ce/item/crop_stage_icons/blackberry_bush_4
+    cmd: 3111467
+  blackberry_pie_filled:
+    model: crops:sf/sf/block/blackberry_pie_filled
+    name: '&fBlackberry Pie Filled'
+    cmd: 3062086
+  blueberries:
+    model: crops:sf/sf/crops/blueberry/blueberries
+    name: '&fBlueberries'
+    cmd: 3483640
+  blueberries_golden_star:
+    model: crops:sf/sf/crops/blueberry/blueberries_golden_star
+    name: '&fBlueberries (Golden Star)'
+    cmd: 3234533
+  blueberries_silver_star:
+    model: crops:sf/sf/crops/blueberry/blueberries_silver_star
+    name: '&fBlueberries (Silver Star)'
+    cmd: 3763357
+  blueberry_bush_1:
+    model: crops:sf/ce/item/crops/blueberry/blueberry_bush_1
+    name: Blueberry
+    gui: crops:sf/ce/item/crop_stage_icons/blueberry_bush_1
+    cmd: 3792968
+  blueberry_bush_2:
+    model: crops:sf/ce/item/crops/blueberry/blueberry_bush_2
+    name: Blueberry
+    gui: crops:sf/ce/item/crop_stage_icons/blueberry_bush_2
+    cmd: 3137266
+  blueberry_bush_3:
+    model: crops:sf/ce/item/crops/blueberry/blueberry_bush_3
+    name: Blueberry
+    gui: crops:sf/ce/item/crop_stage_icons/blueberry_bush_3
+    cmd: 3397476
+  blueberry_bush_4:
+    model: crops:sf/ce/item/crops/blueberry/blueberry_bush_4
+    name: Blueberry
+    gui: crops:sf/ce/item/crop_stage_icons/blueberry_bush_4
+    cmd: 3767303
+  blueberry_pie_filled:
+    model: crops:sf/sf/block/blueberry_pie_filled
+    name: '&fBlueberry Pie Filled'
+    cmd: 3324999
+  cabbage:
+    model: crops:sf/sf/crops/cabbage/cabbage
+    name: '&fCabbage'
+    cmd: 3016956
+  cabbage_golden_star:
+    model: crops:sf/sf/crops/cabbage/cabbage_golden_star
+    name: '&fCabbage (Golden Star)'
+    cmd: 3666489
+  cabbage_seeds:
+    model: crops:item/cabbage_seeds
+    name: '&fCabbage Seeds'
+    cmd: 3624164
+  cabbage_silver_star:
+    model: crops:sf/sf/crops/cabbage/cabbage_silver_star
+    name: '&fCabbage (Silver Star)'
+    cmd: 3796097
+  cabbage_stage_1:
+    model: crops:sf/ce/item/crops/cabbage/stage_1
+    name: Cabbage
+    gui: crops:sf/ce/item/crop_stage_icons/cabbage_stage_1
+    cmd: 3131164
+  cabbage_stage_2:
+    model: crops:sf/ce/item/crops/cabbage/stage_2
+    name: Cabbage
+    gui: crops:sf/ce/item/crop_stage_icons/cabbage_stage_2
+    cmd: 3179238
+  cabbage_stage_3:
+    model: crops:sf/ce/item/crops/cabbage/stage_3
+    name: Cabbage
+    gui: crops:sf/ce/item/crop_stage_icons/cabbage_stage_3
+    cmd: 3445552
+  cabbage_stage_4:
+    model: crops:sf/ce/item/crops/cabbage/stage_4
+    name: Cabbage
+    gui: crops:sf/ce/item/crop_stage_icons/cabbage_stage_4
+    cmd: 3995091
+  cheese:
+    model: crops:item/cheese
+    name: <#f7d36c>Cheese
+    cmd: 3721539
+  cherry:
+    model: crops:sf/sf/crops/cherry/cherry
+    name: '&fCherry'
+    cmd: 3948216
+  cherry_golden_star:
+    model: crops:sf/sf/crops/cherry/cherry_golden_star
+    name: '&fCherry (Golden Star)'
+    cmd: 3775479
+  cherry_pie_filled:
+    model: crops:sf/sf/block/cherry_pie_filled
+    name: '&fCherry Pie Filled'
+    cmd: 3233718
+  cherry_seeds:
+    model: crops:item/cherry_seeds
+    name: '&fCherry Seeds'
+    cmd: 3857594
+  cherry_silver_star:
+    model: crops:sf/sf/crops/cherry/cherry_silver_star
+    name: '&fCherry (Silver Star)'
+    cmd: 3253647
+  cherry_stage_1:
+    model: crops:sf/ce/item/crops/cherry/stage_1
+    name: Cherry
+    gui: crops:sf/ce/item/crop_stage_icons/cherry_stage_1
+    cmd: 3829601
+  cherry_stage_2:
+    model: crops:sf/ce/item/crops/cherry/stage_2
+    name: Cherry
+    gui: crops:sf/ce/item/crop_stage_icons/cherry_stage_2
+    cmd: 3779099
+  cherry_stage_3:
+    model: crops:sf/ce/item/crops/cherry/stage_3
+    name: Cherry
+    gui: crops:sf/ce/item/crop_stage_icons/cherry_stage_3
+    cmd: 3075277
+  cherry_stage_4:
+    model: crops:sf/ce/item/crops/cherry/stage_4
+    name: Cherry
+    gui: crops:sf/ce/item/crop_stage_icons/cherry_stage_4
+    cmd: 3791086
+  cherry_stage_5:
+    model: crops:sf/ce/item/crops/cherry/stage_5
+    name: Cherry
+    gui: crops:sf/ce/item/crop_stage_icons/cherry_stage_5
+    cmd: 3047352
+  chocolate_pie_filled:
+    model: crops:sf/sf/block/chocolate_pie_filled
+    name: '&fChocolate Pie Filled'
+    cmd: 3024733
+  cold_apple_pie:
+    model: crops:sf/sf/item/cold_apple_pie
+    name: <#e8c07a>Apple Pie <gray>(Cold)
+    cmd: 3236021
+  cold_apple_pie_placed:
+    model: crops:sf/sf/block/cold_apple_pie
+    name: '&fCold Apple Pie'
+    cmd: 3383003
+  cold_apple_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_apple_pie_slice1
+    name: '&fCold Apple Pie'
+    cmd: 3099198
+  cold_apple_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_apple_pie_slice2
+    name: '&fCold Apple Pie'
+    cmd: 3656580
+  cold_apple_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_apple_pie_slice3
+    name: '&fCold Apple Pie'
+    cmd: 3156306
+  cold_blackberry_pie:
+    model: crops:sf/sf/item/cold_blackberry_pie
+    name: <#e8c07a>Blackberry Pie <gray>(Cold)
+    cmd: 3081820
+  cold_blackberry_pie_placed:
+    model: crops:sf/sf/block/cold_blackberry_pie
+    name: '&fCold Blackberry Pie'
+    cmd: 3782378
+  cold_blackberry_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_blackberry_pie_slice1
+    name: '&fCold Blackberry Pie'
+    cmd: 3939821
+  cold_blackberry_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_blackberry_pie_slice2
+    name: '&fCold Blackberry Pie'
+    cmd: 3945239
+  cold_blackberry_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_blackberry_pie_slice3
+    name: '&fCold Blackberry Pie'
+    cmd: 3539393
+  cold_blueberry_pie:
+    model: crops:sf/sf/item/cold_blueberry_pie
+    name: <#e8c07a>Blueberry Pie <gray>(Cold)
+    cmd: 3884431
+  cold_blueberry_pie_placed:
+    model: crops:sf/sf/block/cold_blueberry_pie
+    name: '&fCold Blueberry Pie'
+    cmd: 3638281
+  cold_blueberry_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_blueberry_pie_slice1
+    name: '&fCold Blueberry Pie'
+    cmd: 3109780
+  cold_blueberry_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_blueberry_pie_slice2
+    name: '&fCold Blueberry Pie'
+    cmd: 3546030
+  cold_blueberry_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_blueberry_pie_slice3
+    name: '&fCold Blueberry Pie'
+    cmd: 3276088
+  cold_cherry_pie:
+    model: crops:sf/sf/item/cold_cherry_pie
+    name: <#e8c07a>Cherry Pie <gray>(Cold)
+    cmd: 3023913
+  cold_cherry_pie_placed:
+    model: crops:sf/sf/block/cold_cherry_pie
+    name: '&fCold Cherry Pie'
+    cmd: 3361286
+  cold_cherry_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_cherry_pie_slice1
+    name: '&fCold Cherry Pie'
+    cmd: 3663155
+  cold_cherry_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_cherry_pie_slice2
+    name: '&fCold Cherry Pie'
+    cmd: 3318793
+  cold_cherry_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_cherry_pie_slice3
+    name: '&fCold Cherry Pie'
+    cmd: 3925663
+  cold_chocolate_pie:
+    model: crops:sf/sf/item/cold_chocolate_pie
+    name: <#e8c07a>Chocolate Pie <gray>(Cold)
+    cmd: 3515788
+  cold_chocolate_pie_placed:
+    model: crops:sf/sf/block/cold_chocolate_pie
+    name: '&fCold Chocolate Pie'
+    cmd: 3802643
+  cold_chocolate_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_chocolate_pie_slice1
+    name: '&fCold Chocolate Pie'
+    cmd: 3886153
+  cold_chocolate_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_chocolate_pie_slice2
+    name: '&fCold Chocolate Pie'
+    cmd: 3321907
+  cold_chocolate_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_chocolate_pie_slice3
+    name: '&fCold Chocolate Pie'
+    cmd: 3402661
+  cold_cranberry_pie:
+    model: crops:sf/sf/item/cold_cranberry_pie
+    name: <#e8c07a>Cranberry Pie <gray>(Cold)
+    cmd: 3879510
+  cold_cranberry_pie_placed:
+    model: crops:sf/sf/block/cold_cranberry_pie
+    name: '&fCold Cranberry Pie'
+    cmd: 3202839
+  cold_cranberry_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_cranberry_pie_slice1
+    name: '&fCold Cranberry Pie'
+    cmd: 3081763
+  cold_cranberry_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_cranberry_pie_slice2
+    name: '&fCold Cranberry Pie'
+    cmd: 3006937
+  cold_cranberry_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_cranberry_pie_slice3
+    name: '&fCold Cranberry Pie'
+    cmd: 3073679
+  cold_deep_dish_pizza:
+    model: crops:sf/sf/block/cold_deep_dish_pizza
+    name: <#e8c07a>Deep Dish Pizza <gray>(Sauce on Top)
+    cmd: 3559654
+  cold_deep_dish_pizza_placed:
+    model: crops:sf/sf/block/cold_deep_dish_pizza
+    name: '&fDeep-Dish Pizza cold 0'
+    cmd: 3938793
+  cold_deep_dish_pizza_placed_slice1:
+    model: crops:sf/sf/block/cold_deep_dish_pizza_slice1
+    name: '&fDeep-Dish Pizza cold 1'
+    cmd: 3356442
+  cold_deep_dish_pizza_placed_slice2:
+    model: crops:sf/sf/block/cold_deep_dish_pizza_slice2
+    name: '&fDeep-Dish Pizza cold 2'
+    cmd: 3404768
+  cold_deep_dish_pizza_placed_slice3:
+    model: crops:sf/sf/block/cold_deep_dish_pizza_slice3
+    name: '&fDeep-Dish Pizza cold 3'
+    cmd: 3936950
+  cold_elderberry_pie:
+    model: crops:sf/sf/item/cold_elderberry_pie
+    name: <#e8c07a>Elderberry Pie <gray>(Cold)
+    cmd: 3630637
+  cold_elderberry_pie_placed:
+    model: crops:sf/sf/block/cold_elderberry_pie
+    name: '&fCold Elderberry Pie'
+    cmd: 3545581
+  cold_elderberry_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_elderberry_pie_slice1
+    name: '&fCold Elderberry Pie'
+    cmd: 3261109
+  cold_elderberry_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_elderberry_pie_slice2
+    name: '&fCold Elderberry Pie'
+    cmd: 3783759
+  cold_elderberry_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_elderberry_pie_slice3
+    name: '&fCold Elderberry Pie'
+    cmd: 3051353
+  cold_pumpkin_pie:
+    model: crops:sf/sf/item/cold_pumpkin_pie
+    name: <#e8c07a>Pumpkin Pie <gray>(Cold)
+    cmd: 3710559
+  cold_pumpkin_pie_placed:
+    model: crops:sf/sf/block/cold_pumpkin_pie
+    name: '&fCold Pumpkin Pie'
+    cmd: 3311309
+  cold_pumpkin_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_pumpkin_pie_slice1
+    name: '&fCold Pumpkin Pie'
+    cmd: 3681430
+  cold_pumpkin_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_pumpkin_pie_slice2
+    name: '&fCold Pumpkin Pie'
+    cmd: 3582124
+  cold_pumpkin_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_pumpkin_pie_slice3
+    name: '&fCold Pumpkin Pie'
+    cmd: 3769722
+  cold_raspberry_pie:
+    model: crops:sf/sf/item/cold_raspberry_pie
+    name: <#e8c07a>Raspberry Pie <gray>(Cold)
+    cmd: 3023828
+  cold_raspberry_pie_placed:
+    model: crops:sf/sf/block/cold_raspberry_pie
+    name: '&fCold Raspberry Pie'
+    cmd: 3496743
+  cold_raspberry_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_raspberry_pie_slice1
+    name: '&fCold Raspberry Pie'
+    cmd: 3445207
+  cold_raspberry_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_raspberry_pie_slice2
+    name: '&fCold Raspberry Pie'
+    cmd: 3536109
+  cold_raspberry_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_raspberry_pie_slice3
+    name: '&fCold Raspberry Pie'
+    cmd: 3078459
+  cold_strawberry_pie:
+    model: crops:sf/sf/item/cold_strawberry_pie
+    name: <#e8c07a>Strawberry Pie <gray>(Cold)
+    cmd: 3441882
+  cold_strawberry_pie_placed:
+    model: crops:sf/sf/block/cold_strawberry_pie
+    name: '&fCold Strawberry Pie'
+    cmd: 3609859
+  cold_strawberry_pie_placed_slice1:
+    model: crops:sf/sf/block/cold_strawberry_pie_slice1
+    name: '&fCold Strawberry Pie'
+    cmd: 3729598
+  cold_strawberry_pie_placed_slice2:
+    model: crops:sf/sf/block/cold_strawberry_pie_slice2
+    name: '&fCold Strawberry Pie'
+    cmd: 3374596
+  cold_strawberry_pie_placed_slice3:
+    model: crops:sf/sf/block/cold_strawberry_pie_slice3
+    name: '&fCold Strawberry Pie'
+    cmd: 3523474
+  corn:
+    model: crops:sf/sf/crops/corn/corn
+    name: '&fCorn'
+    cmd: 3108103
+  corn_golden_star:
+    model: crops:sf/sf/crops/corn/corn_golden_star
+    name: '&fCorn (Golden Star)'
+    cmd: 3570344
+  corn_seeds:
+    model: crops:item/corn_seeds
+    name: '&fCorn Seeds'
+    cmd: 3525767
+  corn_silver_star:
+    model: crops:sf/sf/crops/corn/corn_silver_star
+    name: '&fCorn (Silver Star)'
+    cmd: 3645264
+  corn_stage_1:
+    model: crops:sf/ce/item/crops/corn/stage_1
+    name: Corn
+    gui: crops:sf/ce/item/crop_stage_icons/corn_stage_1
+    cmd: 3881884
+  corn_stage_2:
+    model: crops:sf/ce/item/crops/corn/stage_2
+    name: Corn
+    gui: crops:sf/ce/item/crop_stage_icons/corn_stage_2
+    cmd: 3226726
+  corn_stage_3:
+    model: crops:sf/ce/item/crops/corn/stage_3
+    name: Corn
+    gui: crops:sf/ce/item/crop_stage_icons/corn_stage_3
+    cmd: 3724784
+  corn_stage_4:
+    model: crops:sf/ce/item/crops/corn/stage_4
+    name: Corn
+    gui: crops:sf/ce/item/crop_stage_icons/corn_stage_4
+    cmd: 3932499
+  cotton:
+    model: crops:sf/sf/crops/cotton/cotton
+    name: '&fCotton'
+    cmd: 3927291
+  cotton_golden_star:
+    model: crops:sf/sf/crops/cotton/cotton_golden_star
+    name: '&fCotton (Golden Star)'
+    cmd: 3243508
+  cotton_seeds:
+    model: crops:item/cotton_seeds
+    name: '&fCotton Seeds'
+    cmd: 3054559
+  cotton_silver_star:
+    model: crops:sf/sf/crops/cotton/cotton_silver_star
+    name: '&fCotton (Silver Star)'
+    cmd: 3792076
+  cotton_stage_1:
+    model: crops:sf/ce/item/crops/cotton/cotton_stage_1
+    name: Cotton
+    gui: crops:sf/ce/item/crop_stage_icons/cotton_stage_1
+    cmd: 3070409
+  cotton_stage_2:
+    model: crops:sf/ce/item/crops/cotton/cotton_stage_2
+    name: Cotton
+    gui: crops:sf/ce/item/crop_stage_icons/cotton_stage_2
+    cmd: 3503155
+  cotton_stage_3:
+    model: crops:sf/ce/item/crops/cotton/cotton_stage_3
+    name: Cotton
+    gui: crops:sf/ce/item/crop_stage_icons/cotton_stage_3
+    cmd: 3932389
+  cranberries:
+    model: crops:sf/sf/crops/cranberry/cranberries
+    name: '&fCranberries'
+    cmd: 3231432
+  cranberries_golden_star:
+    model: crops:sf/sf/crops/cranberry/cranberries_golden_star
+    name: '&fCranberries (Golden Star)'
+    cmd: 3421407
+  cranberries_silver_star:
+    model: crops:sf/sf/crops/cranberry/cranberries_silver_star
+    name: '&fCranberries (Silver Star)'
+    cmd: 3008487
+  cranberry_bush_1:
+    model: crops:sf/ce/item/crops/cranberry/cranberry_bush_1
+    name: Cranberry
+    gui: crops:sf/ce/item/crop_stage_icons/cranberry_bush_1
+    cmd: 3263543
+  cranberry_bush_2:
+    model: crops:sf/ce/item/crops/cranberry/cranberry_bush_2
+    name: Cranberry
+    gui: crops:sf/ce/item/crop_stage_icons/cranberry_bush_2
+    cmd: 3754637
+  cranberry_bush_3:
+    model: crops:sf/ce/item/crops/cranberry/cranberry_bush_3
+    name: Cranberry
+    gui: crops:sf/ce/item/crop_stage_icons/cranberry_bush_3
+    cmd: 3383963
+  cranberry_bush_4:
+    model: crops:sf/ce/item/crops/cranberry/cranberry_bush_4
+    name: Cranberry
+    gui: crops:sf/ce/item/crop_stage_icons/cranberry_bush_4
+    cmd: 3339512
+  cranberry_pie_filled:
+    model: crops:sf/sf/block/cranberry_pie_filled
+    name: '&fCranberry Pie Filled'
+    cmd: 3709209
+  deep_dish_pizza_cheese:
+    model: crops:sf/sf/block/deep_dish_pizza_cheese
+    name: '&fDeep Dish Pizza Cheese'
+    cmd: 3222610
+  deep_dish_pizza_filled:
+    model: crops:sf/sf/block/deep_dish_pizza_filled
+    name: '&fDeep Dish Pizza with Sauce'
+    cmd: 3513173
+  deep_dish_pizza_spinach:
+    model: crops:sf/sf/block/deep_dish_pizza_spinach
+    name: '&fDeep Dish Pizza Spinach'
+    cmd: 3667158
+  dough:
+    model: crops:item/dough
+    name: <#e8cf9b>Dough
+    cmd: 3919988
+  eggplant:
+    model: crops:sf/sf/crops/eggplant/eggplant
+    name: '&fEggplant'
+    cmd: 3029968
+  eggplant_golden_star:
+    model: crops:sf/sf/crops/eggplant/eggplant_golden_star
+    name: '&fEggplant (Golden Star)'
+    cmd: 3908784
+  eggplant_seeds:
+    model: crops:item/eggplant_seeds
+    name: '&fEggplant Seeds'
+    cmd: 3696443
+  eggplant_silver_star:
+    model: crops:sf/sf/crops/eggplant/eggplant_silver_star
+    name: '&fEggplant (Silver Star)'
+    cmd: 3603720
+  eggplant_stage_1:
+    model: crops:sf/ce/item/crops/eggplant/stage_1
+    name: Eggplant
+    gui: crops:sf/ce/item/crop_stage_icons/eggplant_stage_1
+    cmd: 3317021
+  eggplant_stage_2:
+    model: crops:sf/ce/item/crops/eggplant/stage_2
+    name: Eggplant
+    gui: crops:sf/ce/item/crop_stage_icons/eggplant_stage_2
+    cmd: 3445351
+  eggplant_stage_3:
+    model: crops:sf/ce/item/crops/eggplant/stage_3
+    name: Eggplant
+    gui: crops:sf/ce/item/crop_stage_icons/eggplant_stage_3
+    cmd: 3069937
+  eggplant_stage_4:
+    model: crops:sf/ce/item/crops/eggplant/stage_4
+    name: Eggplant
+    gui: crops:sf/ce/item/crop_stage_icons/eggplant_stage_4
+    cmd: 3814866
+  elderberries:
+    model: crops:sf/sf/crops/elderberry/elderberries
+    name: '&fElderberries'
+    cmd: 3507154
+  elderberries_golden_star:
+    model: crops:sf/sf/crops/elderberry/elderberries_golden_star
+    name: '&fElderberries (Golden Star)'
+    cmd: 3080048
+  elderberries_silver_star:
+    model: crops:sf/sf/crops/elderberry/elderberries_silver_star
+    name: '&fElderberries (Silver Star)'
+    cmd: 3433224
+  elderberry_bush_1:
+    model: crops:sf/ce/item/crops/elderberry/elderberry_bush_1
+    name: Elderberry
+    gui: crops:sf/ce/item/crop_stage_icons/elderberry_bush_1
+    cmd: 3598432
+  elderberry_bush_2:
+    model: crops:sf/ce/item/crops/elderberry/elderberry_bush_2
+    name: Elderberry
+    gui: crops:sf/ce/item/crop_stage_icons/elderberry_bush_2
+    cmd: 3910746
+  elderberry_bush_3:
+    model: crops:sf/ce/item/crops/elderberry/elderberry_bush_3
+    name: Elderberry
+    gui: crops:sf/ce/item/crop_stage_icons/elderberry_bush_3
+    cmd: 3041484
+  elderberry_bush_4:
+    model: crops:sf/ce/item/crops/elderberry/elderberry_bush_4
+    name: Elderberry
+    gui: crops:sf/ce/item/crop_stage_icons/elderberry_bush_4
+    cmd: 3227567
+  elderberry_pie_filled:
+    model: crops:sf/sf/block/elderberry_pie_filled
+    name: '&fElderberry Pie Filled'
+    cmd: 3330753
+  flour:
+    model: crops:item/flour
+    name: <#f3ead2>Flour
+    cmd: 3708277
+  flour_bag:
+    model: crops:item/flour_bag
+    name: <#f3ead2>Flour Bag
+    cmd: 3105154
+  garlic:
+    model: crops:sf/sf/crops/garlic/garlic
+    name: '&fGarlic'
+    cmd: 3093923
+  garlic_golden_star:
+    model: crops:sf/sf/crops/garlic/garlic_golden_star
+    name: '&fGarlic (Golden Star)'
+    cmd: 3795648
+  garlic_seeds:
+    model: crops:item/garlic_seeds
+    name: '&fGarlic Seeds'
+    cmd: 3168207
+  garlic_silver_star:
+    model: crops:sf/sf/crops/garlic/garlic_silver_star
+    name: '&fGarlic (Silver Star)'
+    cmd: 3282296
+  garlic_stage_1:
+    model: crops:sf/ce/item/crops/garlic/stage_1
+    name: Garlic
+    gui: crops:sf/ce/item/crop_stage_icons/garlic_stage_1
+    cmd: 3392412
+  garlic_stage_2:
+    model: crops:sf/ce/item/crops/garlic/stage_2
+    name: Garlic
+    gui: crops:sf/ce/item/crop_stage_icons/garlic_stage_2
+    cmd: 3996838
+  garlic_stage_3:
+    model: crops:sf/ce/item/crops/garlic/stage_3
+    name: Garlic
+    gui: crops:sf/ce/item/crop_stage_icons/garlic_stage_3
+    cmd: 3500848
+  garlic_stage_4:
+    model: crops:sf/ce/item/crops/garlic/stage_4
+    name: Garlic
+    gui: crops:sf/ce/item/crop_stage_icons/garlic_stage_4
+    cmd: 3735315
+  gigantic_cabbage:
+    model: crops:sf/sf/crops/cabbage/gigantic_cabbage
+    name: '&fGigantic Cabbage'
+    cmd: 3400589
+  gigantic_cabbage_stage:
+    model: crops:sf/ce/item/crops/cabbage/gigantic_cabbage_stage
+    name: Cabbage
+    gui: crops:sf/ce/item/crop_stage_icons/gigantic_cabbage_stage
+    cmd: 3297616
+  gigantic_corn:
+    model: crops:sf/ce/item/crops/corn/stage_4
+    name: '&fGigantic Corn'
+    gui: crops:sf/ce/item/crop_stage_icons/corn_stage_4
+    cmd: 3946423
+  gigantic_eggplant:
+    model: crops:sf/ce/item/crops/eggplant/stage_4
+    name: '&fGigantic Eggplant'
+    gui: crops:sf/ce/item/crop_stage_icons/eggplant_stage_4
+    cmd: 3783410
+  gigantic_garlic:
+    model: crops:sf/ce/item/crops/garlic/stage_4
+    name: '&fGigantic Garlic'
+    gui: crops:sf/ce/item/crop_stage_icons/garlic_stage_4
+    cmd: 3948787
+  gigantic_hop:
+    model: crops:sf/ce/item/crops/hop/stage_4
+    name: '&fGigantic Hop'
+    gui: crops:sf/ce/item/crop_stage_icons/hop_stage_4
+    cmd: 3222205
+  gigantic_pineapple:
+    model: crops:sf/ce/item/crops/pineapple/stage_4
+    name: '&fGigantic Pineapple'
+    gui: crops:sf/ce/item/crop_stage_icons/pineapple_stage_4
+    cmd: 3277716
+  gigantic_tomato:
+    model: crops:sf/ce/item/crops/tomato/gigantic_tomato
+    name: '&fGigantic Tomato'
+    cmd: 3730506
+  gigantic_tomato_stage:
+    model: crops:sf/ce/item/crops/tomato/gigantic_tomato_stage
+    name: Tomato
+    gui: crops:sf/ce/item/crop_stage_icons/gigantic_tomato_stage
+    cmd: 3539339
+  golden_cabbage:
+    model: crops:item/golden_cabbage
+    name: '&fGolden cabbage'
+    cmd: 3177692
+  golden_tomato:
+    model: crops:item/golden_tomato
+    name: '&fGolden Tomato'
+    cmd: 3030349
+  grape:
+    model: crops:sf/sf/crops/grape/grape
+    name: '&fGrape'
+    cmd: 3510561
+  grape_golden_star:
+    model: crops:sf/sf/crops/grape/grape_golden_star
+    name: '&fGrape (Golden Star)'
+    cmd: 3845809
+  grape_seeds:
+    model: crops:item/grape_seeds
+    name: '&fGrape Seeds'
+    cmd: 3565413
+  grape_silver_star:
+    model: crops:sf/sf/crops/grape/grape_silver_star
+    name: '&fGrape (Silver Star)'
+    cmd: 3092617
+  grape_stage_1:
+    model: crops:sf/ce/item/crops/grape/stage_1
+    name: Grape
+    gui: crops:sf/ce/item/crop_stage_icons/grape_stage_1
+    cmd: 3368386
+  grape_stage_2:
+    model: crops:sf/ce/item/crops/grape/stage_2
+    name: Grape
+    gui: crops:sf/ce/item/crop_stage_icons/grape_stage_2
+    cmd: 3753912
+  grape_stage_3:
+    model: crops:sf/ce/item/crops/grape/stage_3
+    name: Grape
+    gui: crops:sf/ce/item/crop_stage_icons/grape_stage_3
+    cmd: 3787950
+  grape_stage_4:
+    model: crops:sf/ce/item/crops/grape/stage_4
+    name: Grape
+    gui: crops:sf/ce/item/crop_stage_icons/grape_stage_4
+    cmd: 3659597
+  grape_stage_5:
+    model: crops:sf/ce/item/crops/grape/stage_5
+    name: Grape
+    gui: crops:sf/ce/item/crop_stage_icons/grape_stage_5
+    cmd: 3129435
+  grape_stage_6:
+    model: crops:sf/ce/item/crops/grape/stage_6
+    name: Grape
+    gui: crops:sf/ce/item/crop_stage_icons/grape_stage_6
+    cmd: 3010209
+  hop:
+    model: crops:sf/sf/crops/hop/hop
+    name: '&fHop'
+    cmd: 3575006
+  hop_golden_star:
+    model: crops:sf/sf/crops/hop/hop_golden_star
+    name: '&fHop (Golden Star)'
+    cmd: 3150248
+  hop_seeds:
+    model: crops:item/hop_seeds
+    name: '&fHop Seeds'
+    cmd: 3751628
+  hop_silver_star:
+    model: crops:sf/sf/crops/hop/hop_silver_star
+    name: '&fHop (Silver Star)'
+    cmd: 3156560
+  hop_stage_1:
+    model: crops:sf/ce/item/crops/hop/stage_1
+    name: Hop
+    gui: crops:sf/ce/item/crop_stage_icons/hop_stage_1
+    cmd: 3859359
+  hop_stage_2:
+    model: crops:sf/ce/item/crops/hop/stage_2
+    name: Hop
+    gui: crops:sf/ce/item/crop_stage_icons/hop_stage_2
+    cmd: 3463781
+  hop_stage_3:
+    model: crops:sf/ce/item/crops/hop/stage_3
+    name: Hop
+    gui: crops:sf/ce/item/crop_stage_icons/hop_stage_3
+    cmd: 3971763
+  hop_stage_4:
+    model: crops:sf/ce/item/crops/hop/stage_4
+    name: Hop
+    gui: crops:sf/ce/item/crop_stage_icons/hop_stage_4
+    cmd: 3944336
+  kitchen_stove:
+    model: crops:sf/sf/furniture/kitchen/kitchen_stove
+    name: '&fStove'
+    cmd: 3920371
+  lemon:
+    model: crops:sf/sf/crops/lemon/lemon
+    name: '&fLemon'
+    cmd: 3666788
+  lemon_golden_star:
+    model: crops:sf/sf/crops/lemon/lemon_golden_star
+    name: '&fLemon (Golden Star)'
+    cmd: 3768861
+  lemon_seeds:
+    model: crops:item/lemon_seeds
+    name: '&fLemon Seeds'
+    cmd: 3605849
+  lemon_silver_star:
+    model: crops:sf/sf/crops/lemon/lemon_silver_star
+    name: '&fLemon (Silver Star)'
+    cmd: 3020069
+  lemon_stage_1:
+    model: crops:sf/ce/item/crops/lemon/stage_1
+    name: Lemon
+    gui: crops:sf/ce/item/crop_stage_icons/lemon_stage_1
+    cmd: 3934061
+  lemon_stage_2:
+    model: crops:sf/ce/item/crops/lemon/stage_2
+    name: Lemon
+    gui: crops:sf/ce/item/crop_stage_icons/lemon_stage_2
+    cmd: 3895319
+  lemon_stage_3:
+    model: crops:sf/ce/item/crops/lemon/stage_3
+    name: Lemon
+    gui: crops:sf/ce/item/crop_stage_icons/lemon_stage_3
+    cmd: 3623553
+  lemon_stage_4:
+    model: crops:sf/ce/item/crops/lemon/stage_4
+    name: Lemon
+    gui: crops:sf/ce/item/crop_stage_icons/lemon_stage_4
+    cmd: 3266466
+  lemon_stage_5:
+    model: crops:sf/ce/item/crops/lemon/stage_5
+    name: Lemon
+    gui: crops:sf/ce/item/crop_stage_icons/lemon_stage_5
+    cmd: 3042612
+  lettuce:
+    model: crops:sf/sf/crops/lettuce/lettuce
+    name: '&fLettuce'
+    cmd: 3003914
+  lettuce_golden_star:
+    model: crops:sf/sf/crops/lettuce/lettuce_golden_star
+    name: '&fLettuce (Golden Star)'
+    cmd: 3991305
+  lettuce_seeds:
+    model: crops:item/lettuce_seeds
+    name: '&fLettuce Seeds'
+    cmd: 3510734
+  lettuce_silver_star:
+    model: crops:sf/sf/crops/lettuce/lettuce_silver_star
+    name: '&fLettuce (Silver Star)'
+    cmd: 3455601
+  lettuce_stage_1:
+    model: crops:sf/ce/item/crops/lettuce/stage_1
+    name: Lettuce
+    gui: crops:sf/ce/item/crop_stage_icons/lettuce_stage_1
+    cmd: 3965298
+  lettuce_stage_2:
+    model: crops:sf/ce/item/crops/lettuce/stage_2
+    name: Lettuce
+    gui: crops:sf/ce/item/crop_stage_icons/lettuce_stage_2
+    cmd: 3829000
+  lettuce_stage_3:
+    model: crops:sf/ce/item/crops/lettuce/stage_3
+    name: Lettuce
+    gui: crops:sf/ce/item/crop_stage_icons/lettuce_stage_3
+    cmd: 3107486
+  onion:
+    model: crops:sf/sf/crops/onion/onion
+    name: '&fOnion'
+    cmd: 3650025
+  onion_golden_star:
+    model: crops:sf/sf/crops/onion/onion_golden_star
+    name: '&fOnion (Golden Star)'
+    cmd: 3514119
+  onion_seeds:
+    model: crops:item/onion_seeds
+    name: '&fOnion Seeds'
+    cmd: 3766691
+  onion_silver_star:
+    model: crops:sf/sf/crops/onion/onion_silver_star
+    name: '&fOnion (Silver Star)'
+    cmd: 3942847
+  onion_stage_1:
+    model: crops:sf/ce/item/crops/onion/onion_stage_1
+    name: Onion
+    gui: crops:sf/ce/item/crop_stage_icons/onion_stage_1
+    cmd: 3577583
+  onion_stage_2:
+    model: crops:sf/ce/item/crops/onion/onion_stage_2
+    name: Onion
+    gui: crops:sf/ce/item/crop_stage_icons/onion_stage_2
+    cmd: 3110101
+  onion_stage_3:
+    model: crops:sf/ce/item/crops/onion/onion_stage_3
+    name: Onion
+    gui: crops:sf/ce/item/crop_stage_icons/onion_stage_3
+    cmd: 3258947
+  onion_stage_4:
+    model: crops:sf/ce/item/crops/onion/onion_stage_4
+    name: Onion
+    gui: crops:sf/ce/item/crop_stage_icons/onion_stage_4
+    cmd: 3190816
+  orange:
+    model: crops:sf/sf/crops/orange/orange
+    name: '&fOrange'
+    cmd: 3495288
+  orange_golden_star:
+    model: crops:sf/sf/crops/orange/orange_golden_star
+    name: '&fOrange (Golden Star)'
+    cmd: 3644949
+  orange_seeds:
+    model: crops:item/orange_seeds
+    name: '&fOrange Seeds'
+    cmd: 3711134
+  orange_silver_star:
+    model: crops:sf/sf/crops/orange/orange_silver_star
+    name: '&fOrange (Silver Star)'
+    cmd: 3113965
+  orange_stage_1:
+    model: crops:sf/ce/item/crops/orange/stage_1
+    name: Orange
+    gui: crops:sf/ce/item/crop_stage_icons/orange_stage_1
+    cmd: 3485258
+  orange_stage_2:
+    model: crops:sf/ce/item/crops/orange/stage_2
+    name: Orange
+    gui: crops:sf/ce/item/crop_stage_icons/orange_stage_2
+    cmd: 3870704
+  orange_stage_3:
+    model: crops:sf/ce/item/crops/orange/stage_3
+    name: Orange
+    gui: crops:sf/ce/item/crop_stage_icons/orange_stage_3
+    cmd: 3642598
+  orange_stage_4:
+    model: crops:sf/ce/item/crops/orange/stage_4
+    name: Orange
+    gui: crops:sf/ce/item/crop_stage_icons/orange_stage_4
+    cmd: 3287237
+  orange_stage_5:
+    model: crops:sf/ce/item/crops/orange/stage_5
+    name: Orange
+    gui: crops:sf/ce/item/crop_stage_icons/orange_stage_5
+    cmd: 3019219
+  pepper:
+    model: crops:sf/sf/crops/pepper/pepper
+    name: '&fPepper'
+    cmd: 3799585
+  pepper_golden_star:
+    model: crops:sf/sf/crops/pepper/pepper_golden_star
+    name: '&fPepper (Golden Star)'
+    cmd: 3635785
+  pepper_seeds:
+    model: crops:item/pepper_seeds
+    name: '&fPepper Seeds'
+    cmd: 3015635
+  pepper_silver_star:
+    model: crops:sf/sf/crops/pepper/pepper_silver_star
+    name: '&fPepper (Silver Star)'
+    cmd: 3111793
+  pepper_stage_1:
+    model: crops:sf/ce/item/crops/pepper/stage_1
+    name: Pepper
+    gui: crops:sf/ce/item/crop_stage_icons/pepper_stage_1
+    cmd: 3538825
+  pepper_stage_2:
+    model: crops:sf/ce/item/crops/pepper/stage_2
+    name: Pepper
+    gui: crops:sf/ce/item/crop_stage_icons/pepper_stage_2
+    cmd: 3707827
+  pepper_stage_3:
+    model: crops:sf/ce/item/crops/pepper/stage_3
+    name: Pepper
+    gui: crops:sf/ce/item/crop_stage_icons/pepper_stage_3
+    cmd: 3098981
+  pepper_stage_4:
+    model: crops:sf/ce/item/crops/pepper/stage_4
+    name: Pepper
+    gui: crops:sf/ce/item/crop_stage_icons/pepper_stage_4
+    cmd: 3336518
+  pepper_stage_5:
+    model: crops:sf/ce/item/crops/pepper/stage_5
+    name: Pepper
+    gui: crops:sf/ce/item/crop_stage_icons/pepper_stage_5
+    cmd: 3392912
+  pie_crust:
+    model: crops:sf/sf/item/pie_crust
+    name: <#e8c07a>Pie Crust
+    cmd: 3807594
+  pie_crust_placed:
+    model: crops:sf/sf/block/pie_crust_placed
+    name: '&fPie Crust Placed'
+    cmd: 3987395
+  pineapple:
+    model: crops:sf/sf/crops/pineapple/pineapple
+    name: '&fPineapple'
+    cmd: 3915959
+  pineapple_golden_star:
+    model: crops:sf/sf/crops/pineapple/pineapple_golden_star
+    name: '&fPineapple (Golden Star)'
+    cmd: 3739515
+  pineapple_seeds:
+    model: crops:item/pineapple_seeds
+    name: '&fPineapple Seeds'
+    cmd: 3022133
+  pineapple_silver_star:
+    model: crops:sf/sf/crops/pineapple/pineapple_silver_star
+    name: '&fPineapple (Silver Star)'
+    cmd: 3777347
+  pineapple_stage_1:
+    model: crops:sf/ce/item/crops/pineapple/stage_1
+    name: Pineapple
+    gui: crops:sf/ce/item/crop_stage_icons/pineapple_stage_1
+    cmd: 3688938
+  pineapple_stage_2:
+    model: crops:sf/ce/item/crops/pineapple/stage_2
+    name: Pineapple
+    gui: crops:sf/ce/item/crop_stage_icons/pineapple_stage_2
+    cmd: 3220944
+  pineapple_stage_3:
+    model: crops:sf/ce/item/crops/pineapple/stage_3
+    name: Pineapple
+    gui: crops:sf/ce/item/crop_stage_icons/pineapple_stage_3
+    cmd: 3793670
+  pineapple_stage_4:
+    model: crops:sf/ce/item/crops/pineapple/stage_4
+    name: Pineapple
+    gui: crops:sf/ce/item/crop_stage_icons/pineapple_stage_4
+    cmd: 3094757
+  pitaya:
+    model: crops:sf/sf/crops/pitaya/pitaya
+    name: '&fPitaya'
+    cmd: 3944691
+  pitaya_golden_star:
+    model: crops:sf/sf/crops/pitaya/pitaya_golden_star
+    name: '&fPitaya (Golden Star)'
+    cmd: 3281517
+  pitaya_seeds:
+    model: crops:item/pitaya_seeds
+    name: '&fPitaya Seeds'
+    cmd: 3972331
+  pitaya_silver_star:
+    model: crops:sf/sf/crops/pitaya/pitaya_silver_star
+    name: '&fPitaya (Silver Star)'
+    cmd: 3689493
+  pitaya_stage_1:
+    model: crops:sf/ce/item/crops/pitaya/stage_1
+    name: Pitaya
+    gui: crops:sf/ce/item/crop_stage_icons/pitaya_stage_1
+    cmd: 3387988
+  pitaya_stage_2:
+    model: crops:sf/ce/item/crops/pitaya/stage_2
+    name: Pitaya
+    gui: crops:sf/ce/item/crop_stage_icons/pitaya_stage_2
+    cmd: 3780846
+  pitaya_stage_3:
+    model: crops:sf/ce/item/crops/pitaya/stage_3
+    name: Pitaya
+    gui: crops:sf/ce/item/crop_stage_icons/pitaya_stage_3
+    cmd: 3544824
+  pitaya_stage_4:
+    model: crops:sf/ce/item/crops/pitaya/stage_4
+    name: Pitaya
+    gui: crops:sf/ce/item/crop_stage_icons/pitaya_stage_4
+    cmd: 3390171
+  pitaya_stage_5:
+    model: crops:sf/ce/item/crops/pitaya/stage_5
+    name: Pitaya
+    gui: crops:sf/ce/item/crop_stage_icons/pitaya_stage_5
+    cmd: 3114189
+  pitaya_stage_6:
+    model: crops:sf/ce/item/crops/pitaya/stage_6
+    name: Pitaya
+    gui: crops:sf/ce/item/crop_stage_icons/pitaya_stage_6
+    cmd: 3067895
+  pizza_base:
+    model: crops:sf/sf/item/pie_crust
+    name: <#e8c07a>Deep-Dish Pizza Base
+    cmd: 3687092
+  pizza_base_placed:
+    model: crops:sf/sf/block/pie_crust_placed
+    name: '&fDeep-Dish Pizza Base Placed'
+    cmd: 3954178
+  pomegranate:
+    model: crops:sf/sf/crops/pomegranate/pomegranate
+    name: '&fPomegranate'
+    cmd: 3993616
+  pomegranate_golden_star:
+    model: crops:sf/sf/crops/pomegranate/pomegranate_golden_star
+    name: '&fPomegranate (Golden Star)'
+    cmd: 3161513
+  pomegranate_seeds:
+    model: crops:item/pomegranate_seeds
+    name: '&fPomegranate Seeds'
+    cmd: 3661987
+  pomegranate_silver_star:
+    model: crops:sf/sf/crops/pomegranate/pomegranate_silver_star
+    name: '&fPomegranate (Silver Star)'
+    cmd: 3353873
+  pomegranate_stage_1:
+    model: crops:sf/ce/item/crops/pomegranate/stage_1
+    name: Pomegranate
+    gui: crops:sf/ce/item/crop_stage_icons/pomegranate_stage_1
+    cmd: 3927847
+  pomegranate_stage_2:
+    model: crops:sf/ce/item/crops/pomegranate/stage_2
+    name: Pomegranate
+    gui: crops:sf/ce/item/crop_stage_icons/pomegranate_stage_2
+    cmd: 3041373
+  pomegranate_stage_3:
+    model: crops:sf/ce/item/crops/pomegranate/stage_3
+    name: Pomegranate
+    gui: crops:sf/ce/item/crop_stage_icons/pomegranate_stage_3
+    cmd: 3682635
+  pomegranate_stage_4:
+    model: crops:sf/ce/item/crops/pomegranate/stage_4
+    name: Pomegranate
+    gui: crops:sf/ce/item/crop_stage_icons/pomegranate_stage_4
+    cmd: 3629864
+  pomegranate_stage_5:
+    model: crops:sf/ce/item/crops/pomegranate/stage_5
+    name: Pomegranate
+    gui: crops:sf/ce/item/crop_stage_icons/pomegranate_stage_5
+    cmd: 3977022
+  pumpkin_pie_filled:
+    model: crops:sf/sf/block/pumpkin_pie_filled
+    name: '&fPumpkin Pie Filled'
+    cmd: 3882511
+  raspberries:
+    model: crops:sf/sf/crops/raspberry/raspberries
+    name: '&fRaspberries'
+    cmd: 3156806
+  raspberries_golden_star:
+    model: crops:sf/sf/crops/raspberry/raspberries_golden_star
+    name: '&fRaspberries (Golden Star)'
+    cmd: 3599509
+  raspberries_silver_star:
+    model: crops:sf/sf/crops/raspberry/raspberries_silver_star
+    name: '&fRaspberries (Silver Star)'
+    cmd: 3084845
+  raspberry_bush_1:
+    model: crops:sf/ce/item/crops/raspberry/raspberry_bush_1
+    name: Raspberry
+    gui: crops:sf/ce/item/crop_stage_icons/raspberry_bush_1
+    cmd: 3958949
+  raspberry_bush_2:
+    model: crops:sf/ce/item/crops/raspberry/raspberry_bush_2
+    name: Raspberry
+    gui: crops:sf/ce/item/crop_stage_icons/raspberry_bush_2
+    cmd: 3436447
+  raspberry_bush_3:
+    model: crops:sf/ce/item/crops/raspberry/raspberry_bush_3
+    name: Raspberry
+    gui: crops:sf/ce/item/crop_stage_icons/raspberry_bush_3
+    cmd: 3273289
+  raspberry_bush_4:
+    model: crops:sf/ce/item/crops/raspberry/raspberry_bush_4
+    name: Raspberry
+    gui: crops:sf/ce/item/crop_stage_icons/raspberry_bush_4
+    cmd: 3790954
+  raspberry_pie_filled:
+    model: crops:sf/sf/block/raspberry_pie_filled
+    name: '&fRaspberry Pie Filled'
+    cmd: 3828649
+  salt:
+    model: crops:item/salt
+    name: '&fSalt'
+    cmd: 3649015
+  soybean:
+    model: crops:sf/sf/crops/soybean/soybean
+    name: '&fSoybean'
+    cmd: 3292739
+  soybean_golden_star:
+    model: crops:sf/sf/crops/soybean/soybean_golden_star
+    name: '&fSoybean (Golden Star)'
+    cmd: 3703531
+  soybean_seeds:
+    model: crops:item/soybean_seeds
+    name: '&fSoybean Seeds'
+    cmd: 3234654
+  soybean_silver_star:
+    model: crops:sf/sf/crops/soybean/soybean_silver_star
+    name: '&fSoybean (Silver Star)'
+    cmd: 3332051
+  soybean_stage_1:
+    model: crops:sf/ce/item/crops/soybean/soybean_stage_1
+    name: Soybean
+    gui: crops:sf/ce/item/crop_stage_icons/soybean_stage_1
+    cmd: 3306802
+  soybean_stage_2:
+    model: crops:sf/ce/item/crops/soybean/soybean_stage_2
+    name: Soybean
+    gui: crops:sf/ce/item/crop_stage_icons/soybean_stage_2
+    cmd: 3735048
+  soybean_stage_3:
+    model: crops:sf/ce/item/crops/soybean/soybean_stage_3
+    name: Soybean
+    gui: crops:sf/ce/item/crop_stage_icons/soybean_stage_3
+    cmd: 3545246
+  soybean_stage_4:
+    model: crops:sf/ce/item/crops/soybean/soybean_stage_4
+    name: Soybean
+    gui: crops:sf/ce/item/crop_stage_icons/soybean_stage_4
+    cmd: 3621501
+  spinach:
+    model: crops:sf/sf/crops/spinach/spinach
+    name: '&fSpinach'
+    cmd: 3930780
+  spinach_golden_star:
+    model: crops:sf/sf/crops/spinach/spinach_golden_star
+    name: '&fSpinach (Golden Star)'
+    cmd: 3753213
+  spinach_seeds:
+    model: crops:item/spinach_seeds
+    name: '&fSpinach Seeds'
+    cmd: 3997213
+  spinach_silver_star:
+    model: crops:sf/sf/crops/spinach/spinach_silver_star
+    name: '&fSpinach (Silver Star)'
+    cmd: 3887813
+  spinach_stage_1:
+    model: crops:sf/ce/item/crops/spinach/stage_1
+    name: Spinach
+    gui: crops:sf/ce/item/crop_stage_icons/spinach_stage_1
+    cmd: 3434694
+  spinach_stage_2:
+    model: crops:sf/ce/item/crops/spinach/stage_2
+    name: Spinach
+    gui: crops:sf/ce/item/crop_stage_icons/spinach_stage_2
+    cmd: 3952956
+  spinach_stage_3:
+    model: crops:sf/ce/item/crops/spinach/stage_3
+    name: Spinach
+    gui: crops:sf/ce/item/crop_stage_icons/spinach_stage_3
+    cmd: 3305962
+  spinach_stage_4:
+    model: crops:sf/ce/item/crops/spinach/stage_4
+    name: Spinach
+    gui: crops:sf/ce/item/crop_stage_icons/spinach_stage_4
+    cmd: 3307017
+  strawberry:
+    model: crops:sf/sf/crops/strawberry/strawberry
+    name: '&fStrawberry'
+    cmd: 3645439
+  strawberry_golden_star:
+    model: crops:sf/sf/crops/strawberry/strawberry_golden_star
+    name: '&fStrawberry (Golden Star)'
+    cmd: 3396662
+  strawberry_pie_filled:
+    model: crops:sf/sf/block/strawberry_pie_filled
+    name: '&fStrawberry Pie Filled'
+    cmd: 3403503
+  strawberry_seeds:
+    model: crops:item/strawberry_seeds
+    name: '&fStrawberry Seeds'
+    cmd: 3271888
+  strawberry_silver_star:
+    model: crops:sf/sf/crops/strawberry/strawberry_silver_star
+    name: '&fStrawberry (Silver Star)'
+    cmd: 3073294
+  strawberry_stage_1:
+    model: crops:sf/ce/item/crops/strawberry/stage_1
+    name: Strawberry
+    gui: crops:sf/ce/item/crop_stage_icons/strawberry_stage_1
+    cmd: 3333661
+  strawberry_stage_2:
+    model: crops:sf/ce/item/crops/strawberry/stage_2
+    name: Strawberry
+    gui: crops:sf/ce/item/crop_stage_icons/strawberry_stage_2
+    cmd: 3250919
+  strawberry_stage_3:
+    model: crops:sf/ce/item/crops/strawberry/stage_3
+    name: Strawberry
+    gui: crops:sf/ce/item/crop_stage_icons/strawberry_stage_3
+    cmd: 3023025
+  tomato:
+    model: crops:item/tomato
+    name: '&fTomato'
+    cmd: 3524634
+  tomato_golden_star:
+    model: crops:item/tomato_golden_star
+    name: '&fTomato (Golden Star)'
+    cmd: 3210632
+  tomato_sauce:
+    model: crops:item/tomato_sauce
+    name: <#e85c3d>Tomato Sauce
+    cmd: 3228744
+  tomato_seeds:
+    model: crops:item/tomato_seeds
+    name: '&fTomato Seeds'
+    cmd: 3526521
+  tomato_silver_star:
+    model: crops:item/tomato_silver_star
+    name: '&fTomato (Silver Star)'
+    cmd: 3826032
+  tomato_stage_1:
+    model: crops:sf/ce/item/crops/tomato/stage_1
+    name: Tomato
+    gui: crops:sf/ce/item/crop_stage_icons/tomato_stage_1
+    cmd: 3053917
+  tomato_stage_2:
+    model: crops:sf/ce/item/crops/tomato/stage_2
+    name: Tomato
+    gui: crops:sf/ce/item/crop_stage_icons/tomato_stage_2
+    cmd: 3046759
+  tomato_stage_3:
+    model: crops:sf/ce/item/crops/tomato/stage_3
+    name: Tomato
+    gui: crops:sf/ce/item/crop_stage_icons/tomato_stage_3
+    cmd: 3986033
+  tomato_stage_4:
+    model: crops:sf/ce/item/crops/tomato/stage_4
+    name: Tomato
+    gui: crops:sf/ce/item/crop_stage_icons/tomato_stage_4
+    cmd: 3757906

@@ -122,6 +122,7 @@ public enum Messages {
     CHAT_CHANNEL_JOIN_DENIED("chat.channel-join-denied", "{prefix} &cYou cannot join that channel."),
     CHAT_CHANNELS_LIST("chat.channels-list", "{prefix} &fChannels: &d{channels}"),
     CHAT_ARGUMENT_ERROR("chat.argument-error", "{prefix} &c{message}"),
+    ITEMDB_SHORT_NAMES("utility.itemdb-short-names", "{prefix} &fItem short names: &d{names}"),
     ITEMDB_SELF("utility.itemdb-item", "{prefix} &fItem: &e{item} &7(&f{key}&7), amount &f{amount}/{max}"),
     ITEMDB_OTHER("utility.itemdb-item-other", "{prefix} &fItem: &e{item} &7(&f{key}&7), amount &f{amount}/{max} &7(held by &f{player}&7)"),
     ITEMDB_DURABILITY("utility.itemdb-durability", "{prefix} &fDurability: &a{remaining}/{max} &7(&f{damage} &7damage)"),

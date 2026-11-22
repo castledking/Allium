@@ -175,7 +175,7 @@ public final class CoreCommandSpecs {
     public static String gamemodeAlias(String label) {
         if(label==null)return null;
         String name=label.substring(label.lastIndexOf(':')+1).toLowerCase(java.util.Locale.ROOT);
-        return switch(name){case "gmc","creative","creativemode"->"creative";case "gma","adventure","adventuremode"->"adventure";
+        return switch(name){case "gmt"->"toggle";case "gmc","creative","creativemode"->"creative";case "gma","adventure","adventuremode"->"adventure";
             case "gms","survival","survivalmode"->"survival";case "gmsp","spectator","spectatormode"->"spectator";default->null;};
     }
 
@@ -207,7 +207,7 @@ public final class CoreCommandSpecs {
             "gamemode",
             CommandSpec.DEFAULT_NAMESPACE,
             "essentials",
-            List.of("gm","gmc","gma","gms","gmsp","creative","survival","spectator","adventure",
+            List.of("gm","gmc","gma","gms","gmsp","gmt","creative","survival","spectator","adventure",
                     "creativemode","survivalmode","spectatormode","adventuremode"),
             "Change your gamemode",
             "/gamemode <mode> [player]",
@@ -723,7 +723,7 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg","action")
         .map(name->new CommandSpec(name,CommandSpec.DEFAULT_NAMESPACE,"chat",
-            switch(name){case "nick"->List.of("nickname");case "delmsg"->List.of("deletemsg");case "action"->List.of("me");
+            switch(name){case "nick"->List.of("nickname");case "delmsg"->List.of("deletemsg");case "action"->List.of("me","describe");
                 default->List.of("g","global","shout","l","local","a","ac","amsg","staffchat");},
             describe(name,"Allium chat: "+name),name.equals("action")?"/action <message>":"/"+name,name.equals("action")?"/action <message>":"/"+name,
             switch(name){case "delmsg"->null;case "action"->"allium.me";default->"allium."+name;},null,
@@ -1087,7 +1087,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec CLEAR_CONFIRM_TOGGLE = new CommandSpec(
-            "clearinventoryconfirmtoggle", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("clearconfirm"),
+            "clearinventoryconfirmtoggle", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("clearconfirm", "clearconfirmon", "clearconfirmoff", "clearinventoryconfirmoff"),
             "Toggle inventory clear confirmation",
             "/clearinventoryconfirmtoggle", "/clearinventoryconfirmtoggle",
             "allium.clearinventoryconfirmtoggle", null,
@@ -1181,7 +1181,7 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec WEATHER = new CommandSpec(
-            "weather", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "weather", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("rain", "storm", "sun", "sky"),
             "Change world weather",
             "/weather <clear|sun|rain|storm|thunder> [duration] [world|*]",
             "/weather <clear|sun|rain|storm|thunder> [duration] <world|*>",

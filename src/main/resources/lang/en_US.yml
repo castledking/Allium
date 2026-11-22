@@ -1234,6 +1234,8 @@ utility:
       - "{prefix} &aThunder enabled in &f{world}&a."
     "off":
       - "{prefix} &aThunder disabled in &f{world}&a."
+  itemdb-short-names:
+    - "{prefix} &fItem short names: &d{names}"
   itemdb-behavior:
     - "{prefix} &fAllium ID: &d{id} &7(behavior=&f{behavior}&7)"
   itemdb-id:

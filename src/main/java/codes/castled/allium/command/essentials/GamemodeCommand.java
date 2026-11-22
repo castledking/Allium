@@ -33,7 +33,16 @@ public final class GamemodeCommand implements SpecCommandHandler {
             return;
         }
 
-        GameMode mode = parseGamemode(args[0]);
+        GameMode mode;
+        if (args[0].equalsIgnoreCase("toggle") && args.length == 1 && context.sender() instanceof Player player) {
+            mode = switch (player.getGameMode()) {
+                case SURVIVAL -> GameMode.CREATIVE;
+                case CREATIVE -> GameMode.ADVENTURE;
+                default -> GameMode.SURVIVAL;
+            };
+        } else {
+            mode = parseGamemode(args[0]);
+        }
         if (mode == null) {
             context.sendInvalidArgs(spec().selfUsage());
             return;

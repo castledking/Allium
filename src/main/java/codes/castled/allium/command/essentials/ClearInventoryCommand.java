@@ -66,7 +66,8 @@ public final class ClearInventoryCommand implements SpecCommandHandler {
             if (args.length != 0) {
                 context.sendInvalidArgs(spec.selfUsage());
             } else if (sender instanceof Player player) {
-                toggle(player);
+                String label = context.label().toLowerCase(java.util.Locale.ROOT);
+                setConfirmation(player, label.substring(label.lastIndexOf(':') + 1));
             } else {
                 send(sender, Messages.PLAYER_ONLY);
             }
@@ -144,13 +145,17 @@ public final class ClearInventoryCommand implements SpecCommandHandler {
         }
     }
 
-    private void toggle(Player player) {
+    private void setConfirmation(Player player, String label) {
         var data = player.getPersistentDataContainer();
-        boolean disabled = data.has(confirmationDisabled, PersistentDataType.BYTE);
-        if (disabled) data.remove(confirmationDisabled);
+        boolean enabled = switch (label) {
+            case "clearconfirmon" -> true;
+            case "clearconfirmoff", "clearinventoryconfirmoff" -> false;
+            default -> data.has(confirmationDisabled, PersistentDataType.BYTE);
+        };
+        if (enabled) data.remove(confirmationDisabled);
         else data.set(confirmationDisabled, PersistentDataType.BYTE, (byte) 1);
         pending.remove(player.getUniqueId());
-        send(player, disabled ? Messages.UTILITY_CLEAR_CONFIRM_ON : Messages.UTILITY_CLEAR_CONFIRM_OFF);
+        send(player, enabled ? Messages.UTILITY_CLEAR_CONFIRM_ON : Messages.UTILITY_CLEAR_CONFIRM_OFF);
     }
 
     private boolean confirmed(CommandSender sender, String[] args, Object target) {

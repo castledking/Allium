@@ -1234,6 +1234,8 @@ utility:
       - "{prefix} &aTormenta eléctrica activada en &f{world}&a."
     "off":
       - "{prefix} &aTormenta eléctrica desactivada en &f{world}&a."
+  itemdb-short-names:
+    - "{prefix} &fNombres cortos del objeto: &d{names}"
   itemdb-behavior:
     - "{prefix} &fAllium ID: &d{id} &7(behavior=&f{behavior}&7)"
   itemdb-id:

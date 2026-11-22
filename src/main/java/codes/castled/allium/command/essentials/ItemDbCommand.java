@@ -49,6 +49,12 @@ public final class ItemDbCommand implements SpecCommandHandler {
         UtilitySupport.send(plugin,context.sender(),target==context.sender()?Messages.ITEMDB_SELF:Messages.ITEMDB_OTHER,
                 "{item}",name,"{key}",key,"{amount}",Integer.toString(held.getAmount()),"{max}",Integer.toString(held.getMaxStackSize()),"{player}",target.getName());
 
+        var module = plugin.getModuleManager().getModule("items");
+        if (module instanceof codes.castled.allium.module.ItemsModule items && items.isEnabled()) {
+            UtilitySupport.send(plugin, context.sender(), Messages.ITEMDB_SHORT_NAMES,
+                    "{names}", String.join(", ", items.itemShortNames(held.getType())));
+        }
+
         short maxDurability = held.getType().getMaxDurability();
         var meta = held.getItemMeta();
         if (maxDurability > 0 && meta instanceof Damageable damageable) {

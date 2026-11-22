@@ -67,6 +67,10 @@ public final class ItemsModule extends AbstractModule {
                         .map(type -> type.getKey().getKey()), Stream.of("turtle_master"));
     }
 
+    public java.util.List<String> itemShortNames(org.bukkit.Material material) {
+        return database.shortNames(material);
+    }
+
     public String itemAlias(String reference) {
         return database == null ? null : database.lookup(reference);
     }

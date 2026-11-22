@@ -23,21 +23,30 @@ public final class LegacyItemDatabase {
             "CHAIN", "IRON_CHAIN", "IRON_CHAIN", "CHAIN");
     private final Map<String, String> values;
     private final NavigableSet<String> completions;
+    private final Map<Material, List<String>> plainAliases;
 
     public LegacyItemDatabase(Map<String, String> aliases) {
         values = Map.copyOf(aliases);
         var names = new TreeSet<String>();
+        var byMaterial = new EnumMap<Material, TreeSet<String>>(Material.class);
         for (var entry : aliases.entrySet()) {
             // "POTION potion:long_swiftness" and "SPAWNER;ZOMBIE" both start with the material.
-            Material material = Material.matchMaterial(adapt(entry.getValue()).split("[; ]", 2)[0]);
+            String[] parts = adapt(entry.getValue()).split("[; ]", 2);
+            Material material = Material.matchMaterial(parts[0]);
             if (material != null && material.isItem() && !material.isAir() && !numeric(entry.getKey())) {
                 names.add(entry.getKey());
+                if (parts.length == 1 && Material.matchMaterial(entry.getKey()) == null) {
+                    byMaterial.computeIfAbsent(material, ignored -> new TreeSet<>()).add(entry.getKey());
+                }
             }
         }
         for (Material material : Material.values()) {
             if (material.isItem() && !material.isAir()) names.add(material.name().toLowerCase(Locale.ROOT));
         }
         completions = Collections.unmodifiableNavigableSet(names);
+        var index = new EnumMap<Material, List<String>>(Material.class);
+        byMaterial.forEach((material, aliasesForMaterial) -> index.put(material, List.copyOf(aliasesForMaterial)));
+        plainAliases = Map.copyOf(index);
     }
 
     public static LegacyItemDatabase load(PluginStart plugin) throws IOException, InvalidConfigurationException {
@@ -194,6 +203,13 @@ public final class LegacyItemDatabase {
             return other + value.substring(end);
         }
         return value;
+    }
+
+    public List<String> shortNames(Material material) {
+        var names = new LinkedHashSet<String>();
+        names.add(material.getKey().getKey());
+        names.addAll(plainAliases.getOrDefault(material, List.of()));
+        return List.copyOf(names);
     }
 
     public List<String> complete(String prefix, Collection<String> allium) {

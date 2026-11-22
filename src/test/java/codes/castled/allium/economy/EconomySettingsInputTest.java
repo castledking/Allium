@@ -23,7 +23,7 @@ class EconomySettingsInputTest {
         config.set("economy.starting-balance","1.001");assertThrows(ArithmeticException.class,()->EconomyRuntime.readSettings(plugin));
     }
     @Test void allCommandFamiliesBelongToEconomyAndHaveExplicitPermissions(){
-        assertEquals(7,CoreCommandSpecs.ECONOMY_SPECS.size());
+        assertEquals(8,CoreCommandSpecs.ECONOMY_SPECS.size());
         for(var spec:CoreCommandSpecs.ECONOMY_SPECS){assertEquals("economy",spec.moduleName());assertEquals("allium."+spec.canonicalName(),spec.basePermission());}
     }
     @Test void taxConfigReadsGpExpansionApplyToLayoutAndDefaults(){

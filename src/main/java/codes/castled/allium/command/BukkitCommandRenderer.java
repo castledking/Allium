@@ -87,6 +87,10 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         }
         String fixedSpeed=spec.canonicalName().equals("speed")?CoreCommandSpecs.speedAlias(label):null;
         if(fixedSpeed!=null)args=withMode(fixedSpeed,args);
+        String fixedPayToggle=spec.canonicalName().equals("paytoggle")?CoreCommandSpecs.payToggleAlias(label):null;
+        if(fixedPayToggle!=null)args=withMode(fixedPayToggle,args);
+        String fixedPayConfirm=spec.canonicalName().equals("payconfirmtoggle")?CoreCommandSpecs.payConfirmAlias(label):null;
+        if(fixedPayConfirm!=null)args=withMode(fixedPayConfirm,args);
         handler.execute(new BukkitCommandContext(plugin, spec, sender, label, args));
         return true;
     }
@@ -241,7 +245,13 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
 
         String fixedMode=spec.canonicalName().equals("gamemode")?CoreCommandSpecs.gamemodeAlias(alias):null;
         String fixedSpeed=spec.canonicalName().equals("speed")?CoreCommandSpecs.speedAlias(alias):null;
-        List<String> out=spec.complete(completionContext,fixedMode!=null?withMode(fixedMode,args):fixedSpeed!=null?withMode(fixedSpeed,args):args);
+        String fixedPayToggle=spec.canonicalName().equals("paytoggle")?CoreCommandSpecs.payToggleAlias(alias):null;
+        String fixedPayConfirm=spec.canonicalName().equals("payconfirmtoggle")?CoreCommandSpecs.payConfirmAlias(alias):null;
+        String[] effectiveArgs = fixedMode != null ? withMode(fixedMode, args)
+                : fixedSpeed != null ? withMode(fixedSpeed, args)
+                : fixedPayToggle != null ? withMode(fixedPayToggle, args)
+                : fixedPayConfirm != null ? withMode(fixedPayConfirm, args) : args;
+        List<String> out=spec.complete(completionContext,effectiveArgs);
         if(spec.canonicalName().equals("tp")&&args.length==1&&"~".startsWith(args[0])&&sender.hasPermission("allium.tp.position")){
             out=new ArrayList<>(out);out.add("~");
         }

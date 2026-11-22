@@ -86,6 +86,9 @@ public final class KitService implements Listener {
     public static final String PERMISSION_KIT_OTHERS = "allium.kit.others";
     public static final String PERMISSION_CREATEKIT = "allium.createkit";
     public static final String PERMISSION_DELKIT = "allium.delkit";
+    public static final String PERMISSION_SHOWKIT = "allium.showkit";
+    public static final String PERMISSION_KITRESET = "allium.kitreset";
+    public static final String PERMISSION_KITRESET_OTHERS = "allium.kitreset.others";
     public static final String PERMISSION_GIVE_PRIVILEGED = "allium.give.privileged";
     public static final String PERMISSION_BYPASS_COOLDOWN = "allium.kit.bypass.cooldown";
     public static final String PERMISSION_PREFIX = "allium.kits.";
@@ -210,7 +213,8 @@ public final class KitService implements Listener {
             return List.of();
         }
         if (allAdminKits) {
-            if (!sender.hasPermission(PERMISSION_DELKIT) && !sender.hasPermission(PERMISSION_CREATEKIT)) {
+            if (!sender.hasPermission(PERMISSION_DELKIT) && !sender.hasPermission(PERMISSION_CREATEKIT)
+                    && !sender.hasPermission(PERMISSION_KITRESET)) {
                 return List.of();
             }
             return definitions.keySet().stream()
@@ -220,7 +224,8 @@ public final class KitService implements Listener {
                     .limit(50)
                     .toList();
         }
-        if (!sender.hasPermission(PERMISSION_KIT) && !sender.hasPermission(PERMISSION_KITS)) {
+        if (!sender.hasPermission(PERMISSION_KIT) && !sender.hasPermission(PERMISSION_KITS)
+                && !sender.hasPermission(PERMISSION_SHOWKIT)) {
             return List.of();
         }
         return definitions.values().stream()
@@ -338,6 +343,202 @@ public final class KitService implements Listener {
             return;
         }
         send(actor, Messages.KIT_DELETED, "{name}", name);
+    }
+
+    private static final class PreviewHolder implements org.bukkit.inventory.InventoryHolder {
+        private org.bukkit.inventory.Inventory inventory;
+
+        @Override
+        public @org.jetbrains.annotations.NotNull org.bukkit.inventory.Inventory getInventory() {
+            return inventory;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPreviewClick(org.bukkit.event.inventory.InventoryClickEvent event) {
+        if (event.getView().getTopInventory().getHolder() instanceof PreviewHolder) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPreviewDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
+        if (event.getView().getTopInventory().getHolder() instanceof PreviewHolder) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Opens a read-only preview GUI of a kit's items for a player, or lists them in chat for the console. */
+    public void showKit(CommandSender sender, String rawName) {
+        String name;
+        try {
+            name = KitNames.validate(rawName == null ? null : rawName.toLowerCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            send(sender, Messages.KIT_NOT_FOUND, "{name}", rawName == null ? "" : rawName);
+            return;
+        }
+        KitDefinition def = definitions.get(name);
+        if (def == null || !def.enabled()) {
+            send(sender, Messages.KIT_NOT_FOUND, "{name}", name);
+            return;
+        }
+        if (!(sender instanceof ConsoleCommandSender) && (blockedPermissions.contains(name) || !hasKitAccess(sender, name))) {
+            send(sender, Messages.KIT_NO_PERMISSION, "{name}", name);
+            return;
+        }
+        ItemLibrary itemLibrary = library.get();
+        ItemSpecParser specParser = parser.get();
+        if (itemLibrary == null || specParser == null) {
+            send(sender, Messages.KIT_FAILED);
+            return;
+        }
+        List<ItemLibrary.PreparedItem> preparedItems = new ArrayList<>();
+        List<CompletableFuture<SkullProfiles.Resolved>> pendingSkulls = new ArrayList<>();
+        try {
+            for (String entry : def.items()) {
+                GiveSpec spec = specParser.parse(entry);
+                ItemLibrary.Prepared built = itemLibrary.build(spec, true);
+                for (ItemLibrary.PreparedItem item : built.items()) {
+                    preparedItems.add(item);
+                    if (item.skull() != null && !item.skull().isDone()) {
+                        pendingSkulls.add(item.skull());
+                    }
+                }
+            }
+        } catch (ItemSpecException | ItemBuildException e) {
+            plugin.logger().warning("Kit '" + name + "' could not build preview items: " + e.getMessage());
+            send(sender, Messages.KIT_INVALID, "{name}", name, "{reason}", e.getMessage());
+            return;
+        }
+
+        Runnable present = () -> {
+            List<ItemStack> stacks = materializeStacks(preparedItems);
+            if (!(sender instanceof Player player)) {
+                send(sender, Messages.KIT_SHOW_HEADER, "{name}", def.name(), "{count}", Integer.toString(stacks.size()));
+                for (ItemStack stack : stacks) {
+                    if (stack == null || stack.getType().isAir()) continue;
+                    String label = stack.hasItemMeta() && stack.getItemMeta() != null && stack.getItemMeta().hasDisplayName()
+                            ? stack.getItemMeta().getDisplayName()
+                            : codes.castled.allium.command.essentials.UtilitySupport.formatMaterialName(stack.getType());
+                    send(sender, Messages.KIT_SHOW_ENTRY,
+                            "{amount}", Integer.toString(stack.getAmount()),
+                            "{item}", label);
+                }
+                return;
+            }
+            if (!same(player)) return;
+            int rows = Math.max(1, Math.min(6, (stacks.size() + 8) / 9));
+            int size = rows * 9;
+            String title = "Kit: " + def.name();
+            if (title.length() > 32) title = title.substring(0, 32);
+            PreviewHolder holder = new PreviewHolder();
+            org.bukkit.inventory.Inventory inv = plugin.getServer().createInventory(holder, size, title);
+            holder.inventory = inv;
+            int slot = 0;
+            for (ItemStack stack : stacks) {
+                if (slot >= size) break;
+                if (stack != null && !stack.getType().isAir()) {
+                    inv.setItem(slot++, stack.clone());
+                }
+            }
+            player.openInventory(inv);
+        };
+
+        if (pendingSkulls.isEmpty()) {
+            present.run();
+        } else {
+            CompletableFuture.allOf(pendingSkulls.toArray(CompletableFuture[]::new))
+                    .whenCompleteAsync((ignored, error) -> {
+                        if (error != null) {
+                            send(sender, Messages.KIT_FAILED);
+                            return;
+                        }
+                        present.run();
+                    }, plugin.getScheduler().serverExecutor());
+        }
+    }
+
+    /** Clears a player's cooldown (and one-time usage) for one kit. */
+    public void resetKit(CommandSender actor, String rawName, @Nullable String targetArg) {
+        String name;
+        try {
+            name = KitNames.validate(rawName == null ? null : rawName.toLowerCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            send(actor, Messages.KIT_NOT_FOUND, "{name}", rawName == null ? "" : rawName);
+            return;
+        }
+        if (!definitions.containsKey(name)) {
+            send(actor, Messages.KIT_NOT_FOUND, "{name}", name);
+            return;
+        }
+        if (targetArg == null) {
+            if (!(actor instanceof Player player)) {
+                send(actor, Messages.PLAYER_ONLY);
+                return;
+            }
+            runKitReset(actor, player.getUniqueId(), player.getName(), name, true);
+            return;
+        }
+        boolean targetingSelf = actor instanceof Player p && p.getName() != null && p.getName().equalsIgnoreCase(targetArg);
+        if (!targetingSelf && !actor.hasPermission(PERMISSION_KITRESET_OTHERS)) {
+            send(actor, Messages.NO_PERMISSION);
+            return;
+        }
+        Player online = plugin.getServer().getPlayerExact(targetArg);
+        if (online != null) {
+            if (!codes.castled.allium.naming.PlayerNameVisibility.canSeeTarget(actor, online)) {
+                send(actor, Messages.PLAYER_NOT_FOUND, "{player}", targetArg);
+                return;
+            }
+            runKitReset(actor, online.getUniqueId(), online.getName(), name, actor.equals(online));
+            return;
+        }
+        var names = plugin.getPlayerNames();
+        if (names == null) {
+            send(actor, Messages.PLAYER_NOT_FOUND, "{player}", targetArg);
+            return;
+        }
+        try {
+            names.resolve(targetArg).whenComplete((found, error) -> onServer(() -> {
+                if (error != null) {
+                    send(actor, Messages.KIT_FAILED);
+                    return;
+                }
+                if (found == null || found.isEmpty()) {
+                    send(actor, Messages.PLAYER_NOT_FOUND, "{player}", targetArg);
+                    return;
+                }
+                var entry = found.get();
+                boolean self = actor instanceof Player p && p.getUniqueId().equals(entry.uuid());
+                runKitReset(actor, entry.uuid(), entry.name(), name, self);
+            }));
+        } catch (RejectedExecutionException rejected) {
+            send(actor, Messages.KIT_FAILED);
+        }
+    }
+
+    private void runKitReset(CommandSender actor, UUID targetId, String targetName, String kitName, boolean self) {
+        try {
+            io.execute(() -> {
+                try {
+                    boolean cleared = repository.resetUsage(targetId, kitName);
+                    onServer(() -> {
+                        if (!cleared) {
+                            send(actor, Messages.KIT_RESET_NONE, "{name}", kitName, "{player}", targetName);
+                        } else if (self) {
+                            send(actor, Messages.KIT_RESET_SELF, "{name}", kitName);
+                        } else {
+                            send(actor, Messages.KIT_RESET_OTHER, "{name}", kitName, "{player}", targetName);
+                        }
+                    });
+                } catch (SQLException e) {
+                    plugin.logger().warning("Could not reset kit " + kitName + " for " + targetName + ": " + e.getMessage());
+                    onServer(() -> send(actor, Messages.KIT_FAILED));
+                }
+            });
+        } catch (RejectedExecutionException rejected) {
+            send(actor, Messages.KIT_FAILED);
+        }
     }
 
     public void claim(CommandSender actor, Player target, String rawName) {

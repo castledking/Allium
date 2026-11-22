@@ -113,6 +113,20 @@ public final class KitCommand implements SpecCommandHandler {
                 }
                 service.deleteKit(sender, args[0]);
             }
+            case "showkit" -> {
+                if (args.length != 1) {
+                    context.sendInvalidArgs(spec.selfUsage());
+                    return;
+                }
+                service.showKit(sender, args[0]);
+            }
+            case "kitreset" -> {
+                if (args.length < 1 || args.length > 2) {
+                    context.sendInvalidArgs(sender instanceof Player ? spec.selfUsage() : spec.consoleUsage());
+                    return;
+                }
+                service.resetKit(sender, args[0], args.length == 2 ? args[1] : null);
+            }
             default -> context.sendInvalidArgs(spec.selfUsage());
         }
     }

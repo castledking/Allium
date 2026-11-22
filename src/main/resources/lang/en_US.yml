@@ -190,6 +190,24 @@ teleport:
   toggle-off:
     - "{prefix} &c{player} no longer accepts teleport requests. Incoming requests cancelled."
     - "[sound] block.note_block.bass 0.85"
+  tpaall-sent:
+    - "{prefix} &aSent teleport-here requests for &f{target} &ato &f{count} &aplayer(s)."
+    - "[sound] block.note_block.pling 1.3"
+  tpaall-none:
+    - "{prefix} &7No eligible online players were found for teleport requests."
+    - "[sound] block.note_block.hat 0.9"
+  auto-on:
+    - "{prefix} &aAuto-accept teleport requests enabled for &f{player}&a."
+    - "[sound] block.note_block.pling 1.4"
+  auto-off:
+    - "{prefix} &7Auto-accept teleport requests disabled for &f{player}&7."
+    - "[sound] block.note_block.bass 0.85"
+  auto-accepted:
+    - "{prefix} &aAutomatically accepted teleport request from &f{player}&a."
+    - "[sound] block.note_block.pling 1.5"
+  jump-none:
+    - "{prefix} &cNo block in sight to jump to."
+    - "[sound] block.note_block.bass 0.8"
   all:
     - "{prefix} &aTeleported &f{count} &aplayer(s) to &f{player}&a."
     - "[sound] entity.enderman.teleport 1.1"
@@ -470,7 +488,29 @@ kit:
   capture-unsupported:
     - "{prefix} &cCannot create kit: slot &f{slot} &ccontains unsupported item data (&f{reason}&c). Remove or replace the item so the kit is not degraded."
     - "[sound] block.note_block.bass 0.75"
+  show-header:
+    - "{prefix} &fKit &e{name} &7({count} item(s)):"
+  show-entry:
+    - "&7- &f{amount}x {item}"
+  reset-self:
+    - "{prefix} &aCleared your cooldown for kit &f{name}&a."
+    - "[sound] block.note_block.pling 1.3"
+  reset-other:
+    - "{prefix} &aCleared &f{player}&a's cooldown for kit &f{name}&a."
+    - "[sound] block.note_block.pling 1.3"
+  reset-none:
+    - "{prefix} &7{player} has no recorded cooldown for kit &f{name}&7."
+    - "[sound] block.note_block.hat 0.9"
 economy:
+  pay-confirm:
+    - "{prefix} &eConfirm paying &f{amount} &eto &f{player}&e? Type &f/pay {player} {raw_amount} &eagain within &f30s&e."
+    - "[sound] block.note_block.bell 1.0"
+  pay-confirm-on:
+    - "{prefix} &aPayment confirmation enabled."
+    - "[sound] block.note_block.pling 1.35"
+  pay-confirm-off:
+    - "{prefix} &7Payment confirmation disabled."
+    - "[sound] block.note_block.bass 0.85"
   admin-give:
     - "{prefix} &e{amount} &aadded to &f{player}&a. New balance: &e{balance}"
   admin-take:

@@ -153,4 +153,24 @@ class RequestTrackerTest {
         tracker.put(next);
         assertEquals(next, tracker.incoming(BOB, null, 0).orElseThrow());
     }
+
+    @Test
+    void putAdditionalTracksMultipleRecipientsForTpaAllAndSelectiveRemoveKeepsOthers() {
+        RequestTracker tracker = new RequestTracker();
+        Request toBob = new Request(ALICE, BOB, Kind.HERE, 100);
+        Request toCarol = new Request(ALICE, CAROL, Kind.HERE, 100);
+        tracker.putAdditional(toBob);
+        tracker.putAdditional(toCarol);
+        assertEquals(2, tracker.size());
+        assertEquals(toBob, tracker.incoming(BOB, ALICE, 0).orElseThrow());
+        assertEquals(toCarol, tracker.incoming(CAROL, ALICE, 0).orElseThrow());
+
+        assertEquals(toBob, tracker.remove(ALICE, BOB).orElseThrow());
+        assertEquals(1, tracker.size());
+        assertTrue(tracker.incoming(BOB, ALICE, 0).isEmpty());
+        assertEquals(toCarol, tracker.incoming(CAROL, ALICE, 0).orElseThrow());
+
+        assertTrue(tracker.remove(ALICE).isPresent());
+        assertEquals(0, tracker.size());
+    }
 }

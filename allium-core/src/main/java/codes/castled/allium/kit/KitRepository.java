@@ -340,6 +340,17 @@ public final class KitRepository {
         return plain(c -> findUsage(c, playerUuid, valid));
     }
 
+    /** Clears a player's recorded cooldown and one-time usage for one kit; returns true if a row was removed. */
+    public boolean resetUsage(UUID playerUuid, String kitName) throws SQLException {
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        String valid = KitNames.validate(kitName);
+        return transaction(c -> {
+            lockPlayer(c, playerUuid);
+            return update(c, "DELETE FROM allium_kit_usages WHERE player_uuid = ? AND kit_name = ?",
+                    playerUuid.toString(), valid) > 0;
+        });
+    }
+
     public Map<String, KitUsageRecord> usages(UUID playerUuid) throws SQLException {
         return plain(c -> {
             Map<String, KitUsageRecord> out = new LinkedHashMap<>();

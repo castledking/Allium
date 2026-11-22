@@ -203,4 +203,33 @@ class KitRepositoryTest {
         assertThrows(IllegalArgumentException.class, () ->
                 new KitDefinition("nan", true, 0L, false, "abc", List.of("minecraft:stone 1"), "kits/nan.yml"));
     }
+
+    @Test
+    void resetUsageClearsCooldownAndOneTimeClaim() throws Exception {
+        Path dbFile = dir.resolve("kits-reset.db");
+        KitRepository repo = new KitRepository(
+                () -> java.sql.DriverManager.getConnection("jdbc:sqlite:" + dbFile),
+                SqlDialect.SQLITE,
+                () -> 1_000L
+        );
+        repo.migrate();
+        UUID player = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID token = UUID.randomUUID();
+        KitDeliveryRecord rec = new KitDeliveryRecord(deliveryId, player, "starter", token, "srv-1",
+                "[]", 1, 60_000L, true, false, 1_000L);
+        assertTrue(repo.beginClaim(rec, 1_000L) instanceof KitRepository.BeginOutcome.Claiming);
+        assertTrue(repo.finishClaim(deliveryId, token, "srv-1", 1_000L));
+        assertTrue(repo.usage(player, "starter").isPresent());
+
+        assertTrue(repo.resetUsage(player, "starter"));
+        assertFalse(repo.resetUsage(player, "starter"));
+        assertTrue(repo.usage(player, "starter").isEmpty());
+
+        UUID secondId = UUID.randomUUID();
+        UUID secondToken = UUID.randomUUID();
+        KitDeliveryRecord second = new KitDeliveryRecord(secondId, player, "starter", secondToken, "srv-1",
+                "[]", 1, 60_000L, true, false, 2_000L);
+        assertTrue(repo.beginClaim(second, 2_000L) instanceof KitRepository.BeginOutcome.Claiming);
+    }
 }

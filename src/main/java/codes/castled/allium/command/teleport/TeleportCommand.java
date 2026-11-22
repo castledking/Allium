@@ -19,16 +19,21 @@ public final class TeleportCommand implements SpecCommandHandler {
         if(command.equals("tppos")||(command.equals("tp")||command.equals("tpo"))&&codes.castled.allium.teleport.CoordinateArgs.startsWithPosition(java.util.Arrays.asList(args))){position(context);return;}
         if((command.equals("tp")||command.equals("tpo"))&&args.length>=4&&codes.castled.allium.teleport.CoordinateArgs.startsWithPosition(java.util.Arrays.asList(args).subList(1,args.length))){positionForTarget(context);return;}
         if(java.util.Set.of("tp","tphere","there","tppet","tpent").contains(command)&&!(command.equals("tp")&&java.util.Arrays.stream(args).noneMatch(a->a.startsWith("@")))){extended(context);return;}
-        if(command.equals("tptoggle")){
+        if(command.equals("tptoggle")||command.equals("tpauto")){
             if(args.length>2||args.length>0&&!args[0].equalsIgnoreCase("on")&&!args[0].equalsIgnoreCase("off")){context.sendInvalidArgs(spec.selfUsage());return;}
             Player target=args.length==2?target(sender,args[1]):sender instanceof Player p?p:null;
             if(target==null){if(args.length<2)context.sendInvalidArgs(spec.selfUsage());return;}
-            service.toggle(sender,target,args.length==0?null:args[0].equalsIgnoreCase("on"));return;
+            Boolean state=args.length==0?null:args[0].equalsIgnoreCase("on");
+            if(command.equals("tpauto"))service.toggleAuto(sender,target,state);else service.toggle(sender,target,state);
+            return;
         }
-        if(command.equals("tpall")){
+        if(command.equals("tpall")||command.equals("tpaall")){
             if(args.length>1||args.length==0&&!(sender instanceof Player)){context.sendInvalidArgs(spec.selfUsage());return;}
             Player anchor=args.length==0?(Player)sender:target(sender,args[0]);
-            if(anchor!=null)service.forceAll(sender,anchor);
+            if(anchor!=null){
+                if(command.equals("tpaall"))service.requestAll(sender,anchor);
+                else service.forceAll(sender,anchor);
+            }
             return;
         }
         if(command.equals("tp")||command.equals("tpo")){
@@ -57,6 +62,7 @@ public final class TeleportCommand implements SpecCommandHandler {
             default -> {
                 if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
                 switch(command){case "tpacancel"->service.cancel(player);case "back"->service.back(player);case "spawn"->service.spawn(player);case "setspawn"->service.setSpawn(player);
+                    case "jump"->service.jump(player);
                     case "top","bottom"->{
                         var to=command.equals("top")?codes.castled.allium.teleport.VerticalTeleports.top(player):codes.castled.allium.teleport.VerticalTeleports.bottom(player);
                         if(to.isEmpty()){plugin.getMessageManager().send(player,command.equals("top")?Messages.TELEPORT_TOP_NONE:Messages.TELEPORT_BOTTOM_NONE);return;}

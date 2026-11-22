@@ -29,8 +29,10 @@ public final class RequestTracker {
         }
     }
 
+    private record Key(UUID requester, UUID recipient) {}
+
     private final int maximum;
-    private final Map<UUID, Request> requests = new LinkedHashMap<>();
+    private final Map<Key, Request> requests = new LinkedHashMap<>();
 
     public RequestTracker() {
         this(4096);
@@ -44,26 +46,43 @@ public final class RequestTracker {
     }
 
     /**
-     * Replaces this requester's previous request and makes this request the newest.
+     * Replaces this requester's previous request(s) and makes this request the newest.
      * At capacity, a new requester is rejected without modifying any pending request.
      *
      * @throws IllegalStateException if a new requester would exceed the bound
      */
     public void put(Request request) {
         Objects.requireNonNull(request, "request");
-        if (!requests.containsKey(request.requester()) && requests.size() >= maximum) {
+        boolean hasExisting = requests.keySet().stream().anyMatch(k -> k.requester().equals(request.requester()));
+        if (!hasExisting && requests.size() >= maximum) {
             throw new IllegalStateException("maximum pending teleport requests reached");
         }
-        requests.remove(request.requester());
-        requests.put(request.requester(), request);
+        requests.keySet().removeIf(k -> k.requester().equals(request.requester()));
+        requests.put(new Key(request.requester(), request.recipient()), request);
+    }
+
+    /**
+     * Adds or replaces a single {@code (requester, recipient)} request without clearing requests
+     * addressed to other recipients (used by {@code /tpaall}).
+     *
+     * @throws IllegalStateException if adding a new pair would exceed the bound
+     */
+    public void putAdditional(Request request) {
+        Objects.requireNonNull(request, "request");
+        Key key = new Key(request.requester(), request.recipient());
+        if (!requests.containsKey(key) && requests.size() >= maximum) {
+            throw new IllegalStateException("maximum pending teleport requests reached");
+        }
+        requests.remove(key);
+        requests.put(key, request);
     }
 
     /** Finds an unexpired request; a null requester selects the most recently put request. */
     public Optional<Request> incoming(UUID recipient, UUID requester, long now) {
         Objects.requireNonNull(recipient, "recipient");
         if (requester != null) {
-            Request request = requests.get(requester);
-            return request != null && request.recipient().equals(recipient) && now < request.expiresAt()
+            Request request = requests.get(new Key(requester, recipient));
+            return request != null && now < request.expiresAt()
                     ? Optional.of(request) : Optional.empty();
         }
         Request latest = null;
@@ -88,8 +107,18 @@ public final class RequestTracker {
         return count;
     }
 
+    /** Removes all pending requests sent by {@code requester}, returning the newest removed one if any. */
     public Optional<Request> remove(UUID requester) {
-        return Optional.ofNullable(requests.remove(Objects.requireNonNull(requester, "requester")));
+        Objects.requireNonNull(requester, "requester");
+        List<Request> removed = removeMatching(request -> request.requester().equals(requester));
+        return removed.isEmpty() ? Optional.empty() : Optional.of(removed.get(removed.size() - 1));
+    }
+
+    /** Removes one specific pending request between {@code requester} and {@code recipient}. */
+    public Optional<Request> remove(UUID requester, UUID recipient) {
+        Objects.requireNonNull(requester, "requester");
+        Objects.requireNonNull(recipient, "recipient");
+        return Optional.ofNullable(requests.remove(new Key(requester, recipient)));
     }
 
     /** Removes matching pending requests without notification and returns the removed entries. */

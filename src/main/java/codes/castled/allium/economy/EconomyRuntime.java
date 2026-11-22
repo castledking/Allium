@@ -37,6 +37,9 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     private volatile boolean closed,reloading;
     private volatile EconomyDisplay display;
     private record LogSettings(boolean enabled,boolean uuids,boolean vault){}
+    private record PendingPay(UUID recipient,Money amount,long expiresAt){}
+    private static final long PAY_CONFIRM_WINDOW_MILLIS=30_000L;
+    private final Map<UUID,PendingPay> pendingPayments=new ConcurrentHashMap<>();
     private volatile LogSettings logging;
     private void readPresentation(){
         var config=plugin.getConfig();
@@ -197,6 +200,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         for(Player p:plugin.getServer().getOnlinePlayers())open(p.getUniqueId());
     }
     @EventHandler(priority=EventPriority.MONITOR) public void joined(PlayerJoinEvent e){open(e.getPlayer().getUniqueId());}
+    @EventHandler(priority=EventPriority.MONITOR) public void quit(org.bukkit.event.player.PlayerQuitEvent e){pendingPayments.remove(e.getPlayer().getUniqueId());}
     private void open(UUID id){submit(null,()->{
         if(engine.balance(id) instanceof Missing){
             UUID operation=UUID.nameUUIDFromBytes(("Allium-OPEN:"+id).getBytes(StandardCharsets.US_ASCII));
@@ -218,6 +222,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             switch(action){
                 case "pay" -> pay(sender,args);
                 case "paytoggle" -> toggle(sender,args);
+                case "payconfirmtoggle" -> toggleConfirm(sender,args);
                 case "balance" -> balance(sender,args);
                 case "eco" -> admin(sender,args);
                 case "baltop" -> top(sender,args);
@@ -262,9 +267,23 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             Money taxAmount=taxable?tax.calculateTax(amount):new Money(0);
             Money netAmount=amount.minus(taxAmount);
             if(taxAmount.minor()>0&&netAmount.minor()<=0){tell(sender,Messages.ECO_MINIMUM);return;}
+            String recipientLabel=isTaxAccount?tax.accountName():(target!=null?target.getName():args[0]);
+            if(prefs!=null){
+                var senderEffective=prefs.effective(source);
+                if(senderEffective.isPresent()&&senderEffective.get().payConfirm()){
+                    long now=System.currentTimeMillis();
+                    PendingPay pending=pendingPayments.get(source);
+                    if(pending!=null&&pending.expiresAt()>now&&pending.recipient().equals(recipient)&&pending.amount().equals(amount)){
+                        pendingPayments.remove(source,pending);
+                    }else{
+                        pendingPayments.put(source,new PendingPay(recipient,amount,now+PAY_CONFIRM_WINDOW_MILLIS));
+                        tell(sender,Messages.ECO_PAY_CONFIRM,"{amount}",display.format(amount),"{player}",recipientLabel,"{raw_amount}",args[1]);
+                        return;
+                    }
+                }
+            }
             UUID taxAccount=taxAmount.minor()>0?tax.accountUuid():null;
             var request=engine.request(UUID.randomUUID(),"PAY",UUID.randomUUID().toString(),EconomyRequest.Kind.PAY,source.toString(),source,recipient,amount,taxAccount,taxAmount);
-            String recipientLabel=isTaxAccount?tax.accountName():(target!=null?target.getName():args[0]);
             submit(sender,()->{Mutation result=engine.execute(request);
                 if(result instanceof Committed done){
                     log(request,done,actorName,recipientLabel);
@@ -346,6 +365,25 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             });
         };
         if(targetName!=null){if(!sender.hasPermission("allium.paytoggle.others")){tell(sender,Messages.NO_PERMISSION);return;}resolve(sender,targetName,change);}
+        else{if(!(sender instanceof Player p))throw new IllegalArgumentException("target required");change.accept(p.getUniqueId());}
+    }
+    private void toggleConfirm(CommandSender sender,String[] args){
+        if(args.length>2)throw new IllegalArgumentException("payconfirmtoggle");
+        Boolean parsed=args.length==0?null:args[0].equalsIgnoreCase("on")?true:args[0].equalsIgnoreCase("off")?false:null;
+        String targetName=args.length==2?args[1]:args.length==1&&parsed==null?args[0]:null;
+        if(args.length==2&&parsed==null)throw new IllegalArgumentException("on/off");
+        final Boolean next=parsed;
+        java.util.function.Consumer<UUID> change=id->{
+            var prefs=preferences();if(prefs==null){tell(sender,Messages.ECO_PREFS_UNAVAILABLE);return;}
+            var effective=prefs.effective(id);if(next==null&&effective.isEmpty()){tell(sender,Messages.ECO_PREFS_UNAVAILABLE);return;}
+            boolean confirm=next!=null?next:!effective.orElseThrow().payConfirm();
+            if(!confirm)pendingPayments.remove(id);
+            prefs.sessions().change(id,PreferenceChange.set(PreferenceKey.PAY_CONFIRM,confirm)).whenComplete((stored,error)->{
+                if(error!=null)tell(sender,Messages.ECO_PREFS_FAILED);
+                else tell(sender,confirm?Messages.ECO_PAY_CONFIRM_ON:Messages.ECO_PAY_CONFIRM_OFF);
+            });
+        };
+        if(targetName!=null){if(!sender.hasPermission("allium.payconfirmtoggle.others")){tell(sender,Messages.NO_PERMISSION);return;}resolve(sender,targetName,change);}
         else{if(!(sender instanceof Player p))throw new IllegalArgumentException("target required");change.accept(p.getUniqueId());}
     }
     private void admin(CommandSender sender,String[] args){
@@ -578,7 +616,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         try{accepted.awaitAdvanceInterruptibly(phase,10,TimeUnit.SECONDS);}
         catch(InterruptedException error){Thread.currentThread().interrupt();}
         catch(TimeoutException error){plugin.logger().warning("Economy shutdown has unresolved accepted work; journal recovery remains authoritative.");}
-        var prefs=preferences();if(prefs!=null)prefs.repository().coordinateWritesWith(null);
-        var messages=messaging();if(messages!=null)messages.ignores().repository().coordinateWritesWith(null);
+        var prefs=preferences();if(prefs!=null&&prefs.repository()!=null)prefs.repository().coordinateWritesWith(null);
+        var messages=messaging();if(messages!=null&&messages.ignores()!=null&&messages.ignores().repository()!=null)messages.ignores().repository().coordinateWritesWith(null);
     }
 }

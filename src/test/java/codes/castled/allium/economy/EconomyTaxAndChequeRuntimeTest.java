@@ -283,4 +283,68 @@ public class EconomyTaxAndChequeRuntimeTest {
         assertEquals(2, runtime.placeholders().top().size());
         assertTrue(runtime.placeholders().top().stream().noneMatch(e -> e.id().equals(taxId)));
     }
+
+    @Test
+    void payConfirmationRequiresMatchingSecondPayWithinWindowAndTogglesCleanly() throws Exception {
+        var prefs = mock(codes.castled.allium.module.PreferencesModule.class);
+        var sessions = mock(codes.castled.allium.preference.PreferenceSessions.class);
+        when(prefs.isEnabled()).thenReturn(true);
+        when(prefs.sessions()).thenReturn(sessions);
+        when(prefs.acceptance(any(), any())).thenReturn(codes.castled.allium.preference.PreferenceSessions.Acceptance.ACCEPTS);
+        var payConfirmEnabled = new java.util.concurrent.atomic.AtomicBoolean(false);
+        when(prefs.effective(aliceId)).thenAnswer(c -> Optional.of(
+                new codes.castled.allium.preference.EffectivePreferences(true, true, true, 1.0D, false, false, payConfirmEnabled.get(), false)));
+        when(sessions.change(eq(aliceId), any())).thenAnswer(c -> {
+            codes.castled.allium.preference.PreferenceChange change = c.getArgument(1);
+            var entry = change.entries().get(codes.castled.allium.preference.PreferenceKey.PAY_CONFIRM);
+            if (entry != null) {
+                payConfirmEnabled.set(Boolean.TRUE.equals(entry.orElse(false)));
+            }
+            return CompletableFuture.completedFuture(codes.castled.allium.preference.StoredPreferences.empty(aliceId));
+        });
+        ModuleManager modules = plugin.getModuleManager();
+        when(modules.getModule("preferences")).thenReturn(prefs);
+
+        // Toggle pay confirmation ON
+        runtime.dispatch(alice, "payconfirmtoggle", new String[]{"on"});
+        drainWorker();
+        assertTrue(payConfirmEnabled.get());
+        verify(messages).send(eq(alice), eq(Messages.ECO_PAY_CONFIRM_ON));
+
+        long aliceBefore = balance(aliceId);
+        long bobBefore = balance(bobId);
+
+        // First /pay Bob 20 prompts for confirmation and does NOT debit
+        runtime.dispatch(alice, "pay", new String[]{"Bob", "20"});
+        drainWorker();
+        assertEquals(aliceBefore, balance(aliceId));
+        assertEquals(bobBefore, balance(bobId));
+        verify(messages).send(eq(alice), eq(Messages.ECO_PAY_CONFIRM),
+                eq("{amount}"), eq("$20"), eq("{player}"), eq("Bob"), eq("{raw_amount}"), eq("20"));
+
+        // Different amount re-prompts and still does NOT debit
+        runtime.dispatch(alice, "pay", new String[]{"Bob", "25"});
+        drainWorker();
+        assertEquals(aliceBefore, balance(aliceId));
+        assertEquals(bobBefore, balance(bobId));
+        verify(messages).send(eq(alice), eq(Messages.ECO_PAY_CONFIRM),
+                eq("{amount}"), eq("$25"), eq("{player}"), eq("Bob"), eq("{raw_amount}"), eq("25"));
+
+        // Matching second /pay Bob 25 executes and debits
+        runtime.dispatch(alice, "pay", new String[]{"Bob", "25"});
+        drainWorker();
+        assertEquals(aliceBefore - 2_500L, balance(aliceId));
+        assertTrue(balance(bobId) > bobBefore);
+
+        // Toggle pay confirmation OFF -> subsequent /pay executes immediately
+        runtime.dispatch(alice, "payconfirmtoggle", new String[]{"off"});
+        drainWorker();
+        assertFalse(payConfirmEnabled.get());
+        verify(messages).send(eq(alice), eq(Messages.ECO_PAY_CONFIRM_OFF));
+
+        long aliceMid = balance(aliceId);
+        runtime.dispatch(alice, "pay", new String[]{"Bob", "10"});
+        drainWorker();
+        assertEquals(aliceMid - 1_000L, balance(aliceId));
+    }
 }

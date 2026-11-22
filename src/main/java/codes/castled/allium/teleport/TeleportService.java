@@ -85,7 +85,7 @@ public final class TeleportService implements Listener {
     public TeleportService(PluginStart plugin,TeleportRepository repository,ThreadPoolExecutor io) {
         this(plugin,repository,io,new DestinationSafety());
     }
-    TeleportService(PluginStart plugin,TeleportRepository repository,ThreadPoolExecutor io,DestinationSafety safety) {
+    public TeleportService(PluginStart plugin,TeleportRepository repository,ThreadPoolExecutor io,DestinationSafety safety) {
         this.plugin=plugin;this.repository=repository;this.io=io;
         this.safety=safety;
         settings=TeleportSettings.read(plugin.getConfig());
@@ -162,10 +162,45 @@ public final class TeleportService implements Listener {
         if(!sender.hasPermission(kind==RequestTracker.Kind.TO_TARGET?"allium.tpa":"allium.tpahere")){send(sender,Messages.NO_PERMISSION);return;}
         if(!allowed(sender,recipient,sender,false,true)||!available(sender))return;
         requests.expire(System.currentTimeMillis());
+        if(tpAutoActive(recipient)){
+            Player mover=kind==RequestTracker.Kind.TO_TARGET?sender:recipient;
+            Player anchor=kind==RequestTracker.Kind.TO_TARGET?recipient:sender;
+            if(begin(mover,sender,kind==RequestTracker.Kind.TO_TARGET?"tpa":"tpahere",anchor::getLocation,anchor,null,false)){
+                send(sender,Messages.TELEPORT_REQUEST_SENT,"{player}",recipient.getName());
+                send(recipient,Messages.TELEPORT_AUTO_ACCEPTED,"{player}",sender.getName());
+            }
+            return;
+        }
         var request=new RequestTracker.Request(sender.getUniqueId(),recipient.getUniqueId(),kind,System.currentTimeMillis()+settings.requestExpiryMillis());
         try{requests.put(request);}catch(IllegalStateException full){send(sender,Messages.TELEPORT_BUSY);return;}
         send(sender,Messages.TELEPORT_REQUEST_SENT,"{player}",recipient.getName());
         send(recipient,kind==RequestTracker.Kind.HERE?Messages.TELEPORT_HERE_RECEIVED:Messages.TELEPORT_REQUEST_RECEIVED,"{player}",sender.getName());
+    }
+    /** {@code /tpaall [player]}: sends a teleport-here request from {@code anchor} to every visible online player. */
+    public void requestAll(CommandSender actor,Player anchor) {
+        if(!actor.hasPermission("allium.tpaall")||(actor!=anchor&&!actor.hasPermission("allium.tpaall.others"))){send(actor,Messages.NO_PERMISSION);return;}
+        if(!available(anchor))return;
+        long now=System.currentTimeMillis();
+        requests.expire(now);
+        long expires=now+settings.requestExpiryMillis();
+        int sent=0;
+        for(Player recipient:List.copyOf(plugin.getServer().getOnlinePlayers())){
+            if(recipient==null||!recipient.isOnline()||recipient.equals(anchor))continue;
+            if(!visible(actor,recipient)||!allowed(anchor,recipient,anchor,false,false))continue;
+            if(tpAutoActive(recipient)){
+                if(begin(recipient,anchor,"tpahere",anchor::getLocation,anchor,null,false)){
+                    send(recipient,Messages.TELEPORT_AUTO_ACCEPTED,"{player}",anchor.getName());
+                    sent++;
+                }
+                continue;
+            }
+            var request=new RequestTracker.Request(anchor.getUniqueId(),recipient.getUniqueId(),RequestTracker.Kind.HERE,expires);
+            try{requests.putAdditional(request);}catch(IllegalStateException full){break;}
+            send(recipient,Messages.TELEPORT_HERE_RECEIVED,"{player}",anchor.getName());
+            sent++;
+        }
+        if(sent==0){send(actor,Messages.TELEPORT_TPAALL_NONE);return;}
+        send(actor,Messages.TELEPORT_TPAALL_SENT,"{count}",Integer.toString(sent),"{target}",anchor.getName());
     }
     public void accept(Player recipient,@Nullable Player requester) {
         if(!recipient.hasPermission("allium.tpaccept")){send(recipient,Messages.NO_PERMISSION);return;}
@@ -173,12 +208,12 @@ public final class TeleportService implements Listener {
         if(found.isEmpty()){send(recipient,Messages.TELEPORT_NO_PENDING);return;}
         var request=found.get();
         Player sender=plugin.getServer().getPlayer(request.requester());
-        if(sender==null||!visible(recipient,sender)){requests.remove(request.requester());send(recipient,Messages.TELEPORT_NO_PENDING);return;}
-        if(!allowed(sender,recipient,sender,false,true)){requests.remove(request.requester());return;}
+        if(sender==null||!visible(recipient,sender)){requests.remove(request.requester(),recipient.getUniqueId());send(recipient,Messages.TELEPORT_NO_PENDING);return;}
+        if(!allowed(sender,recipient,sender,false,true)){requests.remove(request.requester(),recipient.getUniqueId());return;}
         Player mover=request.kind()==RequestTracker.Kind.TO_TARGET?sender:recipient;
         Player anchor=request.kind()==RequestTracker.Kind.TO_TARGET?recipient:sender;
         if(begin(mover,sender,request.kind()==RequestTracker.Kind.TO_TARGET?"tpa":"tpahere",anchor::getLocation,anchor,request,false)) {
-            requests.remove(request.requester());send(recipient,Messages.TELEPORT_ACCEPTED);
+            requests.remove(request.requester(),recipient.getUniqueId());send(recipient,Messages.TELEPORT_ACCEPTED);
         }
     }
     public void deny(Player recipient,@Nullable Player requester) {
@@ -187,8 +222,8 @@ public final class TeleportService implements Listener {
         if(found.isEmpty()){send(recipient,Messages.TELEPORT_NO_PENDING);return;}
         var request=found.get();
         Player sender=plugin.getServer().getPlayer(request.requester());
-        if(sender==null||!visible(recipient,sender)){requests.remove(request.requester());send(recipient,Messages.TELEPORT_NO_PENDING);return;}
-        requests.remove(request.requester());send(recipient,Messages.TELEPORT_DENIED);
+        if(sender==null||!visible(recipient,sender)){requests.remove(request.requester(),recipient.getUniqueId());send(recipient,Messages.TELEPORT_NO_PENDING);return;}
+        requests.remove(request.requester(),recipient.getUniqueId());send(recipient,Messages.TELEPORT_DENIED);
         tell(request.requester(),Messages.TELEPORT_DENIED);
     }
     public void cancel(Player sender) {
@@ -232,6 +267,34 @@ public final class TeleportService implements Listener {
             if(error!=null)send(actor,Messages.TELEPORT_STORAGE_FAILED);
             else send(actor,next?Messages.TELEPORT_TOGGLE_ON:Messages.TELEPORT_TOGGLE_OFF,"{player}",target.getName());
         }));
+    }
+    /** {@code /tpauto [on|off] [player]}: automatically accepts incoming teleport requests. */
+    public void toggleAuto(CommandSender actor,Player target,@Nullable Boolean on) {
+        if(!actor.hasPermission("allium.tpauto") || actor!=target&&!actor.hasPermission("allium.tpauto.others")){send(actor,Messages.NO_PERMISSION);return;}
+        PreferencesModule prefs=preferences();
+        if(prefs==null||prefs.effective(target.getUniqueId()).isEmpty()) {
+            send(actor,Messages.PREFERENCES_UNAVAILABLE,"{player}",target.getName());return;
+        }
+        boolean next=on!=null?on:!prefs.effective(target.getUniqueId()).orElseThrow().tpAuto();
+        prefs.sessions().change(target.getUniqueId(),PreferenceChange.set(PreferenceKey.TP_AUTO,next)).whenComplete((row,error)->onServer(()->{
+            if(error!=null)send(actor,Messages.TELEPORT_STORAGE_FAILED);
+            else send(actor,next?Messages.TELEPORT_AUTO_ON:Messages.TELEPORT_AUTO_OFF,"{player}",target.getName());
+        }));
+    }
+    private boolean tpAutoActive(Player recipient) {
+        if(recipient==null||!recipient.hasPermission("allium.tpauto")||!recipient.hasPermission("allium.tpaccept"))return false;
+        PreferencesModule prefs=preferences();
+        return prefs!=null&&prefs.effective(recipient.getUniqueId()).map(e->e.tpAuto()).orElse(false);
+    }
+    /** {@code /jump}: teleports the player onto the block they are looking at. */
+    public void jump(Player player) {
+        if(!player.hasPermission("allium.jump")){send(player,Messages.NO_PERMISSION);return;}
+        var hit=player.rayTraceBlocks(128.0,org.bukkit.FluidCollisionMode.NEVER);
+        if(hit==null||hit.getHitBlock()==null){send(player,Messages.TELEPORT_JUMP_NONE);return;}
+        Location dest=hit.getHitBlock().getLocation().add(0.5,1.0,0.5);
+        dest.setYaw(player.getLocation().getYaw());
+        dest.setPitch(player.getLocation().getPitch());
+        teleport(player,dest,"jump");
     }
     private void cancelIncoming(UUID target) {
         for(var request:requests.cancelIncoming(target))tell(request.requester(),Messages.TELEPORT_REQUEST_CANCELLED);
@@ -494,7 +557,7 @@ public final class TeleportService implements Listener {
         long until=System.currentTimeMillis()+(cooldownBypass(operation.actor(),operation.command())?0:configured);
         session.cooldowns.put(operation.command(),until);
         Location landed=mover.getLocation();
-        boolean position=operation.anchor()==null&&java.util.Set.of("tp","tpo","tppos","top","bottom","rtp").contains(operation.command());
+        boolean position=operation.anchor()==null&&java.util.Set.of("tp","tpo","tppos","top","bottom","jump","rtp").contains(operation.command());
         saveHistory(session,session.back,operation.command(),until,0,()->{
             if(position){send(mover,Messages.TELEPORT_POSITION,"{x}",coordinate(landed.getX()),"{y}",coordinate(landed.getY()),"{z}",coordinate(landed.getZ()),"{world}",landed.getWorld()==null?"?":landed.getWorld().getName());return;}
             send(mover,switch(operation.command()){case "back"->operation.backDeath()?Messages.TELEPORT_BACK_DEATH:Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;case "tpoffline"->Messages.TELEPORT_OFFLINE_SUCCESS;default->Messages.TELEPORT_SUCCESS;},"{target}",offline!=null?offline.name:operation.anchor()==null?operation.command():operation.anchor().getName());

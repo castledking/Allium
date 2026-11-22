@@ -185,6 +185,20 @@ public final class CoreCommandSpecs {
         String name=label.substring(label.lastIndexOf(':')+1).toLowerCase(java.util.Locale.ROOT);
         return name.equals("wspeed")||name.equals("walkspeed")?"walk":null;
     }
+
+    /** {@code /payon} and {@code /payoff} are fixed forms of {@code /paytoggle}. */
+    public static String payToggleAlias(String label) {
+        if (label == null) return null;
+        String name = label.substring(label.lastIndexOf(':') + 1).toLowerCase(java.util.Locale.ROOT);
+        return switch (name) { case "payon" -> "on"; case "payoff" -> "off"; default -> null; };
+    }
+
+    /** {@code /payconfirmon} and {@code /payconfirmoff} are fixed forms of {@code /payconfirmtoggle}. */
+    public static String payConfirmAlias(String label) {
+        if (label == null) return null;
+        String name = label.substring(label.lastIndexOf(':') + 1).toLowerCase(java.util.Locale.ROOT);
+        return switch (name) { case "payconfirmon" -> "on"; case "payconfirmoff" -> "off"; default -> null; };
+    }
     public static final CommandSpec GAMEMODE = new CommandSpec(
             "gamemode",
             CommandSpec.DEFAULT_NAMESPACE,
@@ -474,7 +488,34 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
-    public static final List<CommandSpec> KIT_SPECS = List.of(KIT, KITS, CREATEKIT, DELKIT);
+    public static final CommandSpec SHOWKIT = new CommandSpec(
+            "showkit", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of("kitpreview", "preview", "kitshow"),
+            "Preview the items in a kit",
+            "/showkit <kit>",
+            "/showkit <kit>",
+            "allium.showkit", null,
+            List.of(
+                    CommandArgSpec.required("kit", null, SuggestionSpec.kitNames(false))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final CommandSpec KITRESET = new CommandSpec(
+            "kitreset", CommandSpec.DEFAULT_NAMESPACE, "kits", List.of("kitr", "resetkit"),
+            "Clear a player's cooldown for a kit",
+            "/kitreset <kit> [player]",
+            "/kitreset <kit> <player>",
+            "allium.kitreset", "allium.kitreset.others",
+            List.of(
+                    CommandArgSpec.required("kit", null, SuggestionSpec.kitNames(true)),
+                    CommandArgSpec.optional("player", "allium.kitreset.others", SuggestionSpec.knownPlayers("allium.kitreset.others"))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
+    public static final List<CommandSpec> KIT_SPECS = List.of(KIT, KITS, CREATEKIT, DELKIT, SHOWKIT, KITRESET);
 
     public static final CommandSpec VANISH = new CommandSpec(
             "vanish", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of("v"),
@@ -711,10 +752,15 @@ public final class CoreCommandSpecs {
                     List.of(CommandArgSpec.required("player", null,
                                     SuggestionSpec.knownOrOnlinePlayers(null, "allium.pay.offline")),
                             CommandArgSpec.required("amount", null, SuggestionSpec.literals(MONEY_AMOUNTS, null))), List.of()),
-            economySpec("paytoggle", List.of(), "/paytoggle [on|off] [player]", "allium.paytoggle.others",
+            economySpec("paytoggle", List.of("payon", "payoff"), "/paytoggle [on|off] [player]", "allium.paytoggle.others",
                     List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
                             CommandArgSpec.optional("player", "allium.paytoggle.others",
                                     SuggestionSpec.knownPlayers("allium.paytoggle.others"))), List.of()),
+            economySpec("payconfirmtoggle", List.of("payconfirm", "payconfirmon", "payconfirmoff"),
+                    "/payconfirmtoggle [on|off] [player]", "allium.payconfirmtoggle.others",
+                    List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
+                            CommandArgSpec.optional("player", "allium.payconfirmtoggle.others",
+                                    SuggestionSpec.knownPlayers("allium.payconfirmtoggle.others"))), List.of()),
             economySpec("eco", List.of("money"), "/eco <give|take|set|open|reservations|resolve> ...", null,
                     List.of(),
                     List.of(ecoNode("give", true), ecoNode("take", true), ecoNode("set", true), ecoNode("open", false),
@@ -791,11 +837,14 @@ public final class CoreCommandSpecs {
     public static final List<CommandSpec> TELEPORT_SPECS = List.of(
             teleportSpec("tpa", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("tpahere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
+            teleportSpec("tpaall", List.of(CommandArgSpec.optional("player", "allium.tpaall.others", SuggestionSpec.onlinePlayers("allium.tpaall.others")))),
             teleportSpec("tpaccept", List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("tpdeny", List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("tpacancel", List.of()),
             teleportSpec("tptoggle", List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
                     CommandArgSpec.optional("player", "allium.tptoggle.others", SuggestionSpec.onlinePlayers("allium.tptoggle.others")))),
+            teleportSpec("tpauto", List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
+                    CommandArgSpec.optional("player", "allium.tpauto.others", SuggestionSpec.onlinePlayers("allium.tpauto.others")))),
             teleportSpec("back", List.of()), teleportSpec("spawn", List.of()), teleportSpec("setspawn", List.of()),
             teleportSpec("tp", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
                     CommandArgSpec.optional("target", "allium.tp.others", SuggestionSpec.onlinePlayers("allium.tp.others")))),
@@ -814,6 +863,7 @@ public final class CoreCommandSpecs {
                     CommandArgSpec.optional("pitch", null, SuggestionSpec.literals(List.of("~"), null)),
                     CommandArgSpec.optional("world", null, SuggestionSpec.none()))),
             teleportSpec("tphere", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)))),
+            teleportSpec("jump", List.of()),
             teleportSpec("top", List.of()), teleportSpec("bottom", List.of()));
 
     private static CommandSpec teleportSpec(String command, List<CommandArgSpec> args) {
@@ -821,15 +871,32 @@ public final class CoreCommandSpecs {
             case "tpa", "tpahere", "tpoffline", "tpohere" -> " <player>";
             case "tpo" -> " <player> [target]";
             case "tphere", "there" -> " [players|selectors...]";
-            case "tppet", "tpent", "tpall" -> " [player]";
+            case "tppet", "tpent", "tpall", "tpaall" -> " [player]";
             case "tpaccept", "tpdeny" -> " [requester]";
             case "tp" -> " <player> [target] | /tp <x> <y> <z> [yaw] [pitch] [world]";
             case "tppos" -> " <x> <y> <z> [yaw] [pitch] [world]";
-            case "tptoggle" -> " [on|off] [player]";
+            case "tptoggle", "tpauto" -> " [on|off] [player]";
             default -> "";
         };
-        return new CommandSpec(command, CommandSpec.DEFAULT_NAMESPACE, "teleport", command.equals("tpoffline")?List.of("otp","offlinetp"):command.equals("tphere")?List.of("here","s"):command.equals("there")?List.of("tpthere"):command.equals("tpent")?List.of("tpentity","tpmob","teleportmob","tpm","tpe"):List.of(), describe(command, "Allium safe teleport: " + command),
-                usage, usage, command.equals("tpoffline")?"allium.tp.offline":command.equals("there")?"allium.tpthere":command.equals("tpent")?"allium.tpmob":"allium." + command, null, args, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+        List<String> aliases = switch (command) {
+            case "tp" -> List.of("tp2p", "tele");
+            case "tpaccept" -> List.of("tpyes");
+            case "tpdeny" -> List.of("tpno");
+            case "jump" -> List.of("j", "jumpto");
+            case "tpoffline" -> List.of("otp", "offlinetp");
+            case "tphere" -> List.of("here", "s");
+            case "there" -> List.of("tpthere");
+            case "tpent" -> List.of("tpentity", "tpmob", "teleportmob", "tpm", "tpe");
+            default -> List.of();
+        };
+        String othersPerm = switch (command) {
+            case "tptoggle" -> "allium.tptoggle.others";
+            case "tpauto" -> "allium.tpauto.others";
+            case "tpaall" -> "allium.tpaall.others";
+            default -> null;
+        };
+        return new CommandSpec(command, CommandSpec.DEFAULT_NAMESPACE, "teleport", aliases, describe(command, "Allium safe teleport: " + command),
+                usage, usage, command.equals("tpoffline")?"allium.tp.offline":command.equals("there")?"allium.tpthere":command.equals("tpent")?"allium.tpmob":"allium." + command, othersPerm, args, List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     }
 
     public static final CommandSpec REPAIR = new CommandSpec(

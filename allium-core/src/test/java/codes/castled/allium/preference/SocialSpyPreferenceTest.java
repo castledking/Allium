@@ -134,8 +134,8 @@ class SocialSpyPreferenceTest {
             assertEquals(1, schema.version(PreferenceRepository.COMPONENT), db.name() + ": starts at v1");
 
             PreferenceRepository repository = repository(db);
-            assertEquals(2, repository.migrate(), db.name());
-            assertEquals(2, schema.version(PreferenceRepository.COMPONENT), db.name() + ": v2 is recorded");
+            assertEquals(3, repository.migrate(), db.name());
+            assertEquals(3, schema.version(PreferenceRepository.COMPONENT), db.name() + ": v3 is recorded");
             List<StoredPreferences> migrated = new ArrayList<>();
             for (StoredPreferences before : legacy) {
                 StoredPreferences after = repository.load(before.uuid()).orElseThrow();
@@ -154,7 +154,7 @@ class SocialSpyPreferenceTest {
 
             StoredPreferences enabled = repository.apply(legacy.get(0).uuid(), PreferenceChange.set(PreferenceKey.SOCIAL_SPY, true));
             PreferenceRepository restarted = repository(db);
-            assertEquals(2, restarted.migrate(), db.name() + ": migration is not reapplied on restart");
+            assertEquals(3, restarted.migrate(), db.name() + ": migration is not reapplied on restart");
             assertEquals(Optional.of(enabled), restarted.load(enabled.uuid()), db.name() + ": a later opt-in survives restart");
             for (StoredPreferences untouched : migrated.subList(1, migrated.size())) {
                 assertEquals(Optional.of(untouched), restarted.load(untouched.uuid()), db.name());
@@ -183,13 +183,11 @@ class SocialSpyPreferenceTest {
             SchemaMigrator schema = new SchemaMigrator(db.source(), db.dialect(), System::currentTimeMillis);
             assertEquals(1, schema.version(PreferenceRepository.COMPONENT), db.name() + ": v2 has not been recorded");
             PreferenceRepository restarted = repository(db);
-            assertEquals(Optional.of(legacy), restarted.load(legacy.uuid()), db.name() + ": v2 column already exists");
-            assertEquals(Optional.of(optedIn), restarted.load(optedIn.uuid()), db.name() + ": opt-in exists before retry");
 
             int version = assertDoesNotThrow(restarted::migrate,
                     db.name() + ": retry must tolerate the already-applied column addition");
-            assertEquals(2, version, db.name());
-            assertEquals(2, schema.version(PreferenceRepository.COMPONENT), db.name() + ": retry records v2");
+            assertEquals(3, version, db.name());
+            assertEquals(3, schema.version(PreferenceRepository.COMPONENT), db.name() + ": retry records v3");
             assertEquals(Optional.of(legacy), restarted.load(legacy.uuid()),
                     db.name() + ": retry preserves every legacy override and row version");
             assertFalse(restarted.load(legacy.uuid()).orElseThrow().effective(DEFAULTS).socialSpy(),
@@ -197,7 +195,7 @@ class SocialSpyPreferenceTest {
             assertEquals(Optional.of(optedIn), restarted.load(optedIn.uuid()),
                     db.name() + ": retry preserves the existing opt-in and every other override and row version");
             PreferenceRepository subsequentRestart = repository(db);
-            assertEquals(2, subsequentRestart.migrate(), db.name() + ": subsequent restart succeeds");
+            assertEquals(3, subsequentRestart.migrate(), db.name() + ": subsequent restart succeeds");
             assertEquals(Optional.of(legacy), subsequentRestart.load(legacy.uuid()), db.name());
             assertEquals(Optional.of(optedIn), subsequentRestart.load(optedIn.uuid()),
                     db.name() + ": existing opt-in also survives subsequent restart");

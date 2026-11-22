@@ -36,8 +36,8 @@ class PreferenceStorageTest {
     void migrationsAreIdempotentAndANewerSchemaIsRefused() throws Exception {
         for (Databases.Db db : Databases.all(dir)) {
             PreferenceRepository repository = repository(db);
-            assertEquals(2, repository.migrate(), db.name());
-            assertEquals(2, repository.migrate(), db.name() + " second start");
+            assertEquals(3, repository.migrate(), db.name());
+            assertEquals(3, repository.migrate(), db.name() + " second start");
             try (Connection c = db.source().connection(); Statement s = c.createStatement()) {
                 s.executeUpdate("UPDATE " + SchemaMigrator.TABLE + " SET version = 7 WHERE component = 'preferences'");
             }
@@ -66,8 +66,37 @@ class PreferenceStorageTest {
             assertFalse(three.effective(DEFAULTS).acceptTeleportRequests());
 
             PreferenceRepository restarted = repository(db);
-            assertEquals(2, restarted.migrate());
+            assertEquals(3, restarted.migrate());
             assertEquals(Optional.of(three), restarted.load(uuid), db.name() + " after a restart");
+        }
+    }
+
+    @Test
+    void payConfirmAndTpAutoRoundTripAndDefaultFalse() throws Exception {
+        for (Databases.Db db : Databases.all(dir)) {
+            PreferenceRepository repository = repository(db);
+            repository.migrate();
+            UUID uuid = UUID.randomUUID();
+            EffectivePreferences emptyEff = StoredPreferences.empty(uuid).effective(DEFAULTS);
+            assertFalse(emptyEff.payConfirm(), db.name() + ": pay-confirm defaults false");
+            assertFalse(emptyEff.tpAuto(), db.name() + ": tp-auto defaults false");
+
+            StoredPreferences updated = repository.apply(uuid, PreferenceChange.set(PreferenceKey.PAY_CONFIRM, true)
+                    .andSet(PreferenceKey.TP_AUTO, true));
+            assertEquals(Boolean.TRUE, updated.payConfirm(), db.name());
+            assertEquals(Boolean.TRUE, updated.tpAuto(), db.name());
+            assertTrue(updated.effective(DEFAULTS).payConfirm(), db.name());
+            assertTrue(updated.effective(DEFAULTS).tpAuto(), db.name());
+
+            StoredPreferences reloaded = repository(db).load(uuid).orElseThrow();
+            assertEquals(updated, reloaded, db.name() + " after restart");
+
+            StoredPreferences cleared = repository.apply(uuid, PreferenceChange.set(PreferenceKey.PAY_CONFIRM, false)
+                    .andUnset(PreferenceKey.TP_AUTO));
+            assertEquals(Boolean.FALSE, cleared.payConfirm(), db.name());
+            assertNull(cleared.tpAuto(), db.name());
+            assertFalse(cleared.effective(DEFAULTS).payConfirm(), db.name());
+            assertFalse(cleared.effective(DEFAULTS).tpAuto(), db.name());
         }
     }
 

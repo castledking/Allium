@@ -336,16 +336,26 @@ commands:
     permission: allium.tpahere
   tpaccept:
     description: Accept a teleport request
+    aliases: [tpyes]
     permission: allium.tpaccept
   tpdeny:
     description: Deny a teleport request
+    aliases: [tpno]
     permission: allium.tpdeny
   tpacancel:
     description: Cancel your outgoing teleport request
     permission: allium.tpacancel
+  tpaall:
+    description: Send a teleport-here request to every online player
+    usage: /<command> [player]
+    permission: allium.tpaall
   tptoggle:
     description: Allow or block teleport requests to you
     permission: allium.tptoggle
+  tpauto:
+    description: Automatically accept incoming teleport requests
+    usage: /<command> [on|off] [player]
+    permission: allium.tpauto
   back:
     description: Return to your previous location
     permission: allium.back
@@ -357,8 +367,14 @@ commands:
     permission: allium.setspawn
   tp:
     description: Teleport to a player or coordinates, or move a player
+    aliases: [tp2p, tele]
     usage: /<command> <player> [target] | /<command> <x> <y> <z> [yaw] [pitch] [world]
     permission: allium.tp
+  jump:
+    description: Teleport to the block you are looking at
+    aliases: [j, jumpto]
+    usage: /<command>
+    permission: allium.jump
   tppos:
     description: Teleport to coordinates
     usage: /<command> <x> <y> <z> [yaw] [pitch] [world]
@@ -446,6 +462,16 @@ commands:
     description: Delete a kit
     usage: /<command> <name>
     permission: allium.delkit
+  showkit:
+    description: Preview the items in a kit
+    usage: /<command> <kit>
+    aliases: [kitpreview, preview, kitshow]
+    permission: allium.showkit
+  kitreset:
+    description: Clear a player's cooldown for a kit
+    usage: /<command> <kit> [player]
+    aliases: [kitr, resetkit]
+    permission: allium.kitreset
 
   vanish:
     description: Toggle vanish for yourself or another player
@@ -695,7 +721,13 @@ commands:
     permission: allium.pay
   paytoggle:
     description: Allow or refuse incoming payments
+    aliases: [payon, payoff]
     permission: allium.paytoggle
+  payconfirmtoggle:
+    description: Toggle confirmation prompts before sending /pay payments
+    usage: /<command> [on|off] [player]
+    aliases: [payconfirm, payconfirmon, payconfirmoff]
+    permission: allium.payconfirmtoggle
   eco:
     aliases: [money]
     description: Give, take or set player balances
@@ -813,6 +845,9 @@ permissions:
       allium.kit.others: true
       allium.createkit: true
       allium.delkit: true
+      allium.showkit: true
+      allium.kitreset: true
+      allium.kitreset.others: true
       allium.vanish: true
       allium.vanish.others: true
       allium.vanish.see: true
@@ -931,7 +966,14 @@ permissions:
       allium.tpo: true
       allium.tpohere: true
       allium.tpall: true
+      allium.tpaall: true
+      allium.tpaall.others: true
+      allium.tpauto: true
+      allium.tpauto.others: true
+      allium.jump: true
       allium.back.ondeath: true
+      allium.payconfirmtoggle: true
+      allium.payconfirmtoggle.others: true
       allium.spawnmob: true
       allium.spawnmob.*: true
       allium.spawnmob.stack: true
@@ -1374,6 +1416,21 @@ permissions:
     default: true
   allium.tptoggle:
     default: true
+  allium.tpauto:
+    description: Allows /tpauto to auto-accept incoming teleport requests
+    default: op
+  allium.tpauto.others:
+    description: Allows /tpauto for other players
+    default: op
+  allium.tpaall:
+    description: Allows /tpaall to send teleport-here requests to every online player
+    default: op
+  allium.tpaall.others:
+    description: Allows /tpaall <player> on behalf of another player
+    default: op
+  allium.jump:
+    description: Allows /jump (/j, /jumpto) to teleport to the looked-at block
+    default: op
   allium.back:
     default: true
   allium.back.ondeath:
@@ -1742,6 +1799,15 @@ permissions:
   allium.delkit:
     description: Allows /delkit
     default: op
+  allium.showkit:
+    description: Allows /showkit (/kitpreview, /preview, /kitshow) to preview a kit's items
+    default: true
+  allium.kitreset:
+    description: Allows /kitreset (/kitr, /resetkit) to clear your kit cooldown
+    default: op
+  allium.kitreset.others:
+    description: Allows /kitreset <kit> <player> to clear another player's kit cooldown
+    default: op
   allium.kit.bypass.cooldown:
     description: Explicit kit cooldown bypass (never granted implicitly to operators)
     default: false
@@ -1902,6 +1968,12 @@ permissions:
   allium.paytoggle:
     default: true
   allium.paytoggle.others:
+    default: op
+  allium.payconfirmtoggle:
+    description: Allows /payconfirmtoggle (/payconfirm, /payconfirmon, /payconfirmoff)
+    default: true
+  allium.payconfirmtoggle.others:
+    description: Allows /payconfirmtoggle for other players
     default: op
   allium.eco.admin:
     default: op

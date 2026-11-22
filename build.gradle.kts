@@ -25,6 +25,8 @@ repositories {
     maven("https://oss.sonatype.org/content/repositories/snapshots/")
     maven("https://repo.xenondevs.xyz/releases")
     maven("https://repo.extendedclip.com/releases/")
+    maven("https://repo.codemc.io/repository/maven-releases/")
+    maven("https://nexus.scarsz.me/content/groups/public/")
     maven("https://jitpack.io")
     maven("https://repo.nexomc.com/releases")
     maven("https://repo.oraxen.com/releases")

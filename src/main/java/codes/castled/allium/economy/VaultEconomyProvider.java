@@ -24,7 +24,7 @@ public final class VaultEconomyProvider implements Economy {
         this.engine=engine;this.names=names;this.enabled=enabled;this.balances=balances;this.mutate=mutate;
     }
     private UUID resolve(String name){
-        if(name==null||!name.matches("[A-Za-z0-9_]{1,16}"))return null;
+        if(!codes.castled.allium.naming.NameCache.isValidName(name))return null;
         TaxSettings tax=engine.settings().tax();
         if(name.equalsIgnoreCase(tax.accountName()))return tax.accountUuid();
         return names.apply(name); // Local authoritative name storage only; never OfflinePlayer(String).

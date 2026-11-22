@@ -73,6 +73,10 @@ class SignServiceMatrixTest {
         final TravelService travel=mock(TravelService.class);
         final CommandManager commands=mock(CommandManager.class);
         final codes.castled.allium.command.spec.CommandFamilyPolicy policy=mock(codes.castled.allium.command.spec.CommandFamilyPolicy.class);
+        final org.bukkit.inventory.Inventory freeInventory=mock(org.bukkit.inventory.Inventory.class);
+        final org.bukkit.inventory.PlayerInventory playerInventory=mock(org.bukkit.inventory.PlayerInventory.class);
+        final org.bukkit.inventory.ItemStack handItem=mock(org.bukkit.inventory.ItemStack.class);
+        final World world=mock(World.class);
         final SignIdentity.Type type;
         final SignService service;
         Fixture(SignIdentity.Type type,boolean waxed){
@@ -80,16 +84,26 @@ class SignServiceMatrixTest {
             this.type=type;when(plugin.getName()).thenReturn("Allium");when(plugin.getConfig()).thenReturn(config);
             config.set("enabledSigns",Arrays.stream(SignIdentity.Type.values()).map(SignIdentity.Type::key).toList());
             config.set("sign-use-per-second",4);
+            var server=mock(Server.class);when(plugin.getServer()).thenReturn(server);
+            when(server.createInventory(eq(player),eq(36),anyString())).thenReturn(freeInventory);
+            when(player.getInventory()).thenReturn(playerInventory);
+            when(handItem.getType()).thenReturn(Material.DIAMOND_SWORD);
+            when(handItem.getAmount()).thenReturn(1);
+            when(playerInventory.getItemInMainHand()).thenReturn(handItem);
             var scheduler=mock(TaskScheduler.class);when(plugin.getScheduler()).thenReturn(scheduler);
             doAnswer(call->{callbacks.add(call.getArgument(0));return codes.castled.allium.scheduler.TaskHandle.NONE;}).when(scheduler).runOnServerLater(any(Runnable.class),anyLong());
             when(player.getUniqueId()).thenReturn(UUID.randomUUID());when(player.isOnline()).thenReturn(true);when(player.hasPermission(anyString())).thenReturn(true);
-            var world=mock(World.class);when(player.getEyeLocation()).thenReturn(new Location(world,.5,65,2.5));when(sign.getLocation()).thenReturn(new Location(world,0,64,0));
+            when(player.getEyeLocation()).thenReturn(new Location(world,.5,65,2.5));when(sign.getLocation()).thenReturn(new Location(world,0,64,0));
+            when(player.getLocation()).thenReturn(new Location(world,.5,64,2.5));
+            var spawnedMob=mock(org.bukkit.entity.Zombie.class);
+            when(world.spawn(any(Location.class),eq(org.bukkit.entity.Zombie.class))).thenReturn(spawnedMob);
+            when(world.spawnEntity(any(Location.class),any(org.bukkit.entity.EntityType.class))).thenReturn(spawnedMob);
             var rotation=mock(Rotatable.class);when(rotation.getRotation()).thenReturn(BlockFace.SOUTH);when(sign.getBlockData()).thenReturn(rotation);
             when(block.getState()).thenReturn(sign);when(sign.isWaxed()).thenReturn(waxed);when(sign.getPersistentDataContainer()).thenReturn(pdc);
             when(pdc.get(any(NamespacedKey.class),eq(PersistentDataType.STRING))).thenAnswer(call->data.get(call.getArgument(0)));
             doAnswer(call->{data.put(call.getArgument(0),call.getArgument(2));return null;}).when(pdc).set(any(NamespacedKey.class),eq(PersistentDataType.STRING),anyString());
             doAnswer(call->{data.remove(call.getArgument(0));return null;}).when(pdc).remove(any());
-            data.put(new NamespacedKey("allium","sign_front"),new SignIdentity(UUID.randomUUID(),type,type==SignIdentity.Type.REPAIR?"hand":"paid",false).encode());
+            data.put(new NamespacedKey("allium","sign_front"),new SignIdentity(UUID.randomUUID(),type,defaultArg(),false).encode());
             when(plugin.getCommandManager()).thenReturn(commands);when(commands.getFamilyPolicy()).thenReturn(policy);
             when(commands.getRenderedCommands()).thenReturn(Map.of(command(),renderer));when(plugin.getCommand(command())).thenReturn(mock(PluginCommand.class));
             var modules=mock(ModuleManager.class);when(plugin.getModuleManager()).thenReturn(modules);
@@ -98,18 +112,47 @@ class SignServiceMatrixTest {
             var mail=mock(MailModule.class);when(mail.isEnabled()).thenReturn(true);when(modules.getModule("mail")).thenReturn(mail);
             var economy=mock(EconomyModule.class);when(economy.isEnabled()).thenReturn(true);when(modules.getModule("economy")).thenReturn(economy);
             var warps=mock(TravelModule.class);when(warps.isEnabled()).thenReturn(true);when(warps.travel()).thenReturn(travel);when(modules.getModule("travel")).thenReturn(warps);
+            var rtp=mock(RtpModule.class);when(rtp.isEnabled()).thenReturn(true);when(modules.getModule("rtp")).thenReturn(rtp);
             service=new SignService(plugin);
         }
-        String command(){return type==SignIdentity.Type.COLOR?"color":type.key();}
-        String module(){return switch(type){case WARP->"travel";case KIT->"kits";case MAIL->"mail";case BALANCE->"economy";default->"essentials";};}
+        String defaultArg(){return switch(type){
+            case REPAIR->"hand";case GAMEMODE->"creative";case TIME->"day";case WEATHER->"sun";
+            case FREE->"stone";case ENCHANT->"*|sharpness:1";case SPAWNMOB->"2|zombie";case RANDOMTELEPORT->"wild";
+            default->"paid";
+        };}
+        String command(){return switch(type){
+            case COLOR->"color";case CARTOGRAPHY->"cartographytable";case RANDOMTELEPORT->"rtp";default->type.key();
+        };}
+        String module(){return switch(type){case WARP->"travel";case KIT->"kits";case MAIL->"mail";case BALANCE->"economy";case RANDOMTELEPORT->"rtp";default->"essentials";};}
         PlayerInteractEvent click(){return new PlayerInteractEvent(player,Action.RIGHT_CLICK_BLOCK,null,block,BlockFace.SOUTH,EquipmentSlot.HAND);}
-        SignChangeEvent edit(){data.clear();var event=new SignChangeEvent(block,player,new String[]{"["+type.key()+"]",type==SignIdentity.Type.REPAIR?"hand":"paid","",""},Side.FRONT);var face=mock(SignSide.class);when(face.getLines()).thenAnswer(call->event.getLines());when(sign.getSide(Side.FRONT)).thenReturn(face);return event;}
+        SignChangeEvent edit(){
+            data.clear();
+            String[] lines=switch(type){
+                case ENCHANT->new String[]{"[enchant]","*","sharpness:1",""};
+                case SPAWNMOB->new String[]{"[spawnmob]","2","zombie",""};
+                default->new String[]{"["+type.key()+"]",defaultArg(),"",""};
+            };
+            var event=new SignChangeEvent(block,player,lines,Side.FRONT);
+            var face=mock(SignSide.class);when(face.getLines()).thenAnswer(call->event.getLines());when(sign.getSide(Side.FRONT)).thenReturn(face);return event;
+        }
         void drain(){while(!callbacks.isEmpty())callbacks.remove().run();}
-        void noAction(){verifyNoInteractions(renderer,travel);}
+        void noAction(){verifyNoInteractions(renderer,travel);verify(player,never()).openInventory(any(org.bukkit.inventory.Inventory.class));}
         void action(){
             if(type==SignIdentity.Type.COLOR){noAction();return;}
+            if(type==SignIdentity.Type.FREE){verify(player).openInventory(freeInventory);return;}
+            if(type==SignIdentity.Type.ENCHANT){verify(plugin.getMessageManager(),never()).send(eq(player),eq(codes.castled.allium.message.Messages.UTILITY_HOLD_ITEM));return;}
+            if(type==SignIdentity.Type.SPAWNMOB){verify(plugin.getMessageManager()).send(eq(player),eq(codes.castled.allium.message.Messages.SPAWNMOB_SPAWNED),eq("{count}"),eq("2"),eq("{mob}"),eq("zombie"));return;}
             if(type==SignIdentity.Type.WARP)verify(travel).useSign(player,"paid",false);
-            else verify(renderer).onCommand(eq(player),any(),eq(command()),aryEq(type==SignIdentity.Type.KIT?new String[]{"paid"}:type==SignIdentity.Type.MAIL?new String[]{"read"}:type==SignIdentity.Type.REPAIR?new String[]{"hand"}:new String[0]));
+            else verify(renderer).onCommand(eq(player),any(),eq(command()),aryEq(switch(type){
+                case KIT->new String[]{"paid"};
+                case MAIL->new String[]{"read"};
+                case REPAIR->new String[]{"hand"};
+                case GAMEMODE->new String[]{"creative"};
+                case TIME->new String[]{"set","day"};
+                case WEATHER->new String[]{"sun"};
+                case RANDOMTELEPORT->new String[]{"wild"};
+                default->new String[0];
+            }));
         }
     }
     @ParameterizedTest @EnumSource(SignIdentity.Type.class)
@@ -200,7 +243,7 @@ class SignServiceMatrixTest {
         service.changing(edit);
         f.drain();
         assertEquals("§1[Warp]",edit.getLine(0));
-        assertEquals("$1,000",edit.getLine(3));
+        assertEquals("$1K",edit.getLine(3));
         var stored=SignIdentity.decode(f.data.values().iterator().next()).orElseThrow();
         assertTrue(stored.publicWarp());
         assertEquals(100_000,stored.price().minor());
@@ -208,5 +251,70 @@ class SignServiceMatrixTest {
         service.using(f.click());
         f.drain();
         verify(paidSigns).start(eq(f.player),eq(stored),any(Runnable.class));
+    }
+
+    @org.junit.jupiter.api.Test void spawnmobSignSpawnsTamedWolfOwnedByPlayerAndSupportsShortPrices(){
+        var paidSigns=mock(PaidSignService.class);
+        doAnswer(call->{call.<Runnable>getArgument(2).run();return null;}).when(paidSigns).start(any(),any(),any());
+        var f=new Fixture(SignIdentity.Type.SPAWNMOB,false);
+        var svc=new SignService(f.plugin,null,paidSigns);
+        var edit=f.edit();
+        edit.setLine(0,"[Spawnmob]");
+        edit.setLine(1,"1");
+        edit.setLine(2,"wolf:tamed");
+        edit.setLine(3,"$1100");
+        svc.changing(edit);
+        f.drain();
+        assertEquals("§1[Spawnmob]",edit.getLine(0));
+        assertEquals("$1.1K",edit.getLine(3));
+        var stored=SignIdentity.decode(f.data.values().iterator().next()).orElseThrow();
+        assertEquals("1|wolf:tamed",stored.argument());
+        assertEquals(110_000,stored.price().minor());
+
+        // Survival player only needs allium.signs.use.spawnmob, NOT allium.spawnmob.wolf.
+        when(f.player.hasPermission(anyString())).thenAnswer(inv->"allium.signs.use.spawnmob".equals(inv.getArgument(0)));
+        var wolf=mock(org.bukkit.entity.Wolf.class);
+        when(f.world.spawn(any(Location.class),eq(org.bukkit.entity.Wolf.class))).thenReturn(wolf);
+        svc.using(f.click());
+        f.drain();
+        verify(paidSigns).start(eq(f.player),eq(stored),any());
+        verify(wolf).setTamed(true);
+        verify(wolf).setOwner(f.player);
+        verify(f.plugin.getMessageManager()).send(eq(f.player),eq(codes.castled.allium.message.Messages.SPAWNMOB_SPAWNED),
+                eq("{count}"),eq("1"),eq("{mob}"),eq("wolf"));
+    }
+
+    @org.junit.jupiter.api.Test void shortPriceFormattingRespectsConfigFlag(){
+        var d=codes.castled.allium.economy.EconomyDisplay.DEFAULT;
+        assertEquals("$100",d.formatSign(new codes.castled.allium.economy.Money(10_000),true));
+        assertEquals("$999",d.formatSign(new codes.castled.allium.economy.Money(99_900),true));
+        assertEquals("$1K",d.formatSign(new codes.castled.allium.economy.Money(100_000),true));
+        assertEquals("$1.1K",d.formatSign(new codes.castled.allium.economy.Money(110_000),true));
+        assertEquals("$1.25K",d.formatSign(new codes.castled.allium.economy.Money(125_000),true));
+        assertEquals("$1M",d.formatSign(new codes.castled.allium.economy.Money(100_000_000),true));
+        assertEquals("$1.5M",d.formatSign(new codes.castled.allium.economy.Money(150_000_000),true));
+        assertEquals("$1,000",d.formatSign(new codes.castled.allium.economy.Money(100_000),false));
+        assertEquals("$1,100",d.formatSign(new codes.castled.allium.economy.Money(110_000),false));
+    }
+
+    @org.junit.jupiter.api.Test void legacyEssentialsDarkBlueSignsAdoptIntoAlliumPdc(){
+        var f=new Fixture(SignIdentity.Type.SPAWNMOB,false);
+        f.data.clear();
+        f.config.set("adopt-essentials-signs",true);
+        var svc=new SignService(f.plugin);
+        var front=mock(SignSide.class);
+        when(front.getLines()).thenReturn(new String[]{"§1[Spawnmob]","1","wolf:tamed","$100"});
+        when(f.sign.getSide(Side.FRONT)).thenReturn(front);
+        assertTrue(svc.adoptEssentialsSign(f.sign,Side.FRONT));
+        var adopted=SignIdentity.decode(f.data.get(new NamespacedKey("allium","sign_front"))).orElseThrow();
+        assertEquals(SignIdentity.Type.SPAWNMOB,adopted.type());
+        assertEquals("1|wolf:tamed",adopted.argument());
+        assertEquals(10_000,adopted.price().minor());
+
+        // Plain uncolored [Spawnmob] written by a player is never adopted.
+        f.data.clear();
+        when(front.getLines()).thenReturn(new String[]{"[Spawnmob]","1","wolf:tamed","$100"});
+        assertFalse(svc.adoptEssentialsSign(f.sign,Side.FRONT));
+        assertTrue(f.data.isEmpty());
     }
 }

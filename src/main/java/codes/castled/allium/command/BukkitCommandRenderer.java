@@ -186,6 +186,9 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
                 return creative.manageCommand().complete(sender,java.util.Arrays.copyOfRange(args,1,args.length));
             return List.of();
         }
+        if(spec.canonicalName().equals("allium")&&args.length>=2&&(args[0].equalsIgnoreCase("addon")||args[0].equalsIgnoreCase("addons"))&&handler instanceof AlliumCommand alliumCommand){
+            return alliumCommand.completeAddon(sender,java.util.Arrays.copyOfRange(args,1,args.length));
+        }
         if(spec.canonicalName().equals("allium")&&args.length>=2&&args[0].equalsIgnoreCase("hide")){
             if(plugin.getModuleManager().getModule("hide") instanceof codes.castled.allium.module.HideModule hide&&hide.isEnabled())
                 return hide.hide().complete(sender,java.util.Arrays.copyOfRange(args,1,args.length));

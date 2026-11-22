@@ -40,6 +40,6 @@ recipes:
       weights:
         SIMPLE: 1
 
-# Used by /spawnercraft import with no arguments. The directory can be the
-# plugins folder from an SF backup or a folder containing the Nexo mob catalog.
+# Used by /spawnercraft import with no arguments. Point this to a plugins folder or a
+# directory containing a Nexo mob catalog.
 import-directory: import

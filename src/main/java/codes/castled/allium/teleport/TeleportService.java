@@ -480,7 +480,7 @@ public final class TeleportService implements Listener {
         if(!mover.hasPermission("allium.tp.offline")){send(mover,Messages.NO_PERMISSION);return;}
         if(!available(mover))return;
         if(operations.containsKey(mover.getUniqueId())||offlineLookups.containsKey(mover.getUniqueId())){send(mover,Messages.TELEPORT_BUSY);return;}
-        if(!name.matches("[A-Za-z0-9_]{1,16}")){send(mover,Messages.TELEPORT_OFFLINE_UNAVAILABLE);return;}
+        if(!codes.castled.allium.naming.NameCache.isValidName(name)){send(mover,Messages.TELEPORT_OFFLINE_UNAVAILABLE);return;}
         Player live=plugin.getServer().getPlayerExact(name);
         if(live!=null){if(!visible(mover,live)){send(mover,Messages.TELEPORT_OFFLINE_UNAVAILABLE);return;}force(mover,mover,live,"tp");return;}
         var names=plugin.getPlayerNames();if(names==null){send(mover,Messages.TELEPORT_LOADING);return;}

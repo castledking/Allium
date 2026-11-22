@@ -39,7 +39,7 @@ modules:
   mail: true
   teleport: true
   travel: true
-  # Item library and the M1 /give harness.
+  # Item library and /give.
   items: true
   teleportation: true
   economy: true
@@ -64,6 +64,8 @@ modules:
   worth: true
   # Explosion regeneration and /antioch, /fireball, /beezooka, /kittycannon, /nuke, /explode; explosions.yml.
   explosions: true
+  # Modified-client detection; settings in modguard.yml.
+  modguard: true
 
 # Log committed command and sign transactions to trade.log.
 economy-log-enabled: false
@@ -149,7 +151,7 @@ preferences:
     # one as not saved, and shutdown continues.
     shutdown-timeout-millis: 10000
 
-# Item library and the M1 /give harness.
+# Item library and /give.
 items:
   give:
     # What happens when the target's inventory is full. drop: give what fits and drop the rest at
@@ -182,9 +184,9 @@ resource-pack:
   # From 1.20.3 Allium adds its pack beside others (server.properties, other plugins) by its own UUID.
   owner: none
   # Deliver a local pack instead of the bundled one, relative to plugins/Allium/ (for example
-  # pack/allium-core-pack-sf.zip, built with SF's art by pack/tools/sf_export.py). It must keep the
-  # bundled pack's models and item definitions; only textures may differ. Otherwise Allium warns
-  # and delivers the bundled pack. Leave empty for the bundled pack.
+  # pack/custom-core-pack.zip). It must keep the bundled pack's models and item definitions;
+  # only textures may differ. Otherwise Allium warns and delivers the bundled pack.
+  # Leave empty for the bundled pack.
   pack-file: ""
   standalone:
     # Where you host plugins/Allium/pack/allium-core-pack.zip (http or https).
@@ -220,15 +222,22 @@ resource-pack:
     # Report what would be written and any carrier collisions with other packs, but write nothing.
     dry-run: false
 
-# External addon jars live in plugins/Allium/addons/.
-# These are for heavier features that should not be bundled into the core jar.
+# Official addons live in plugins/Allium/addons/.
+# Set an addon to true under enabled to load it on startup, or false to keep its jar installed in
+# addons/ without starting it. Toggle in-game with /allium addon <list|download|enable|disable>.
+# With auto-download: true, any official addon set to true whose jar is missing from addons/ is
+# downloaded automatically from GitHub Releases on startup.
 addons:
-  # Auto-download should remain opt-in and must verify addon checksums before loading.
   auto-download: false
+  release-base-url: 'https://github.com/castledking/Allium/releases/download'
+  # Leave empty to match this Allium plugin version (e.g. 1.0.0 -> tag v1.0.0).
+  release-version: ''
   enabled:
-    party-locator: false
-    modguard: false
-    custom-items: false
+    crops: false
+    curios: false
+    ores: false
+    partylocator: false
+    spawnercraft: false
 
 # General settings
 settings:
@@ -375,7 +384,7 @@ discord:
       webhook: ''
       mentions: []
 
-# Vanish and mute settings (S17).
+# Moderation, discipline, vanish, and mute settings.
 moderation:
   discipline:
     # DENY keeps known bans effective and refuses new logins when authoritative data is unavailable.
@@ -430,7 +439,7 @@ moderation:
       - /mail gift
       - /allium:mail gift
 
-# Player info utilities (S18): /list, /seen, /whois, /near, /afk.
+# Player info utilities: /list, /seen, /whois, /near, /afk.
 info:
   whois:
     # Clickable lines at the end of /whois for holders of allium.whois.extra. {player} and {uuid}
@@ -481,7 +490,7 @@ playtime:
 
 # The message of the day: plugins/Allium/motd.txt, shown by /motd and on join to holders of
 # allium.motd (default true). /rules shows rules.txt and /info info.txt. All use custom.txt's layout
-# and tags (see docs/customtext.md).
+# and formatting tags.
 motd:
   show-on-join: true
   # Ticks to wait after joining (0-200), so the MOTD follows the join messages.
@@ -506,7 +515,9 @@ broadcasts:
   # Skip a turn while fewer unvanished players than this are online.
   minimum-players: 1
 
-# Opt-in sign types: color, warp, kit, balance, heal, repair, disposal, workbench, anvil, mail, info.
+# Opt-in sign types: color, warp, kit, balance, heal, repair, disposal, workbench, anvil,
+# cartography, grindstone, loom, smithing, mail, info, gamemode, time, weather,
+# randomteleport (alias rtp), free, enchant, spawnmob.
 # Legacy colour is accepted as color. One shared click limit across all types.
 enabledSigns:
   #- color
@@ -518,20 +529,50 @@ enabledSigns:
   #- disposal
   #- workbench
   #- anvil
+  #- cartography
+  #- grindstone
+  #- loom
+  #- smithing
   #- mail
   #- info
+  #- gamemode
+  #- time
+  #- weather
+  #- randomteleport
+  #- free
+  #- enchant
+  #- spawnmob
 sign-use-per-second: 4
+# Display sign prices above 999 in compact K/M/B/T form (for example $1K, $1.1K, $1M).
+sign-short-prices: true
 # When true, admins may place priced kit/command signs costing less than the configured kit/command price.
 unsafe-sign-prices: false
+# Automatically convert legacy Essentials dark-blue [Type] signs into Allium signs when chunks load or players click them.
+# Also enabled automatically after running /allium import essentials apply.
+adopt-essentials-signs: false
 
 # Static safe public chat; formatting does not require Vault. Optional peers supply decorations.
 enable-chat-formatting: true
 chat-format:
   default: '<prefix><display_name>&f: <message>'
+  # Per-group chat formats (matched against the player's primary group).
+  # Replace 'groups: {}' with 'groups:' and uncomment entries to customize per group:
+  #   owner: '&c[Owner] <prefix><display_name>&f: <message>'
+  #   admin: '&4[Admin] <prefix><display_name>&f: <message>'
+  #   default: '<prefix><display_name>&7: <message>'
   groups: {}
 chat-hover:
-  delete-hover-mode: name
+  # Staff see the deletion hint and ID at the bottom of the selected hover.
+  delete-hover-mode: prefix
   groups: {}
+join-and-quit-messages:
+  join:
+    enabled: true
+    format: '&e%name% &7has joined the server'
+  quit:
+    enabled: true
+    format: '&e%name% &7has left the server'
+  broadcast-scope: server
 chat:
   max-message-length: 512
   replay-packets-per-tick: 64
@@ -714,7 +755,6 @@ powertools:
 # drop items, attack or be hurt, or run commands other than these (labels, e.g. msg or allium:msg).
 restraints:
   allowed-commands: []
-  # Run by the console when a restrained player logs out; {player} is their name. Pre-recode
-  # Allium's handcuffs.commands-on-quit.
+  # Run by the console when a restrained player logs out; {player} is their name.
   commands-on-quit:
     - ban {player} Logged out while restrained

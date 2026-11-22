@@ -20,11 +20,16 @@ import java.util.function.Predicate;
  */
 public final class NameCache {
 
+    /** Accepts standard Java usernames and Floodgate/Geyser dot-prefixed Bedrock names (max 16 chars). */
+    public static boolean isValidName(String name) {
+        return name != null && name.length() <= 16 && name.matches("\\.?[A-Za-z0-9_]+");
+    }
+
     public record Entry(UUID uuid, String name, long lastSeen) {
         public Entry {
             Objects.requireNonNull(uuid, "uuid");
             Objects.requireNonNull(name, "name");
-            if (!name.matches("[A-Za-z0-9_]{1,16}")) {
+            if (!isValidName(name)) {
                 throw new IllegalArgumentException("invalid player name");
             }
         }

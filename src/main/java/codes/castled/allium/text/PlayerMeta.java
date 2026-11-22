@@ -14,7 +14,7 @@ import java.util.Objects;
  */
 public final class PlayerMeta {
 
-    record Value(String group, String prefix, String suffix) {
+    public record Value(String group, String prefix, String suffix) {
         static final Value EMPTY = new Value("", "", "");
     }
 
@@ -25,7 +25,7 @@ public final class PlayerMeta {
         return of(plugin, player).group();
     }
 
-    static Value of(PluginStart plugin, Player player) {
+    public static Value of(PluginStart plugin, Player player) {
         PluginManager plugins = plugin.getServer() == null ? null : plugin.getServer().getPluginManager();
         if (plugins == null) {
             return Value.EMPTY;

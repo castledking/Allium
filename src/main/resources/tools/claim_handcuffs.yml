@@ -1,6 +1,5 @@
-# Claim Handcuffs: pre-recode Allium's claim handcuffs, as a powertool (see docs/powertools.md). The
-# item is the core pack's claim handcuffs: a fishing rod that never wears out. They need GPExpansion
-# with GriefPrevention or GriefPrevention3D.
+# Claim Handcuffs: a powertool fishing rod that never wears out. Requires GPExpansion with
+# GriefPrevention or GriefPrevention3D.
 #
 # Cast at an untrusted player standing in a claim you own or manage, and reel them in: they are
 # restrained as with the Handcuffs, and a claim ban counts down. When it ends they are let go and
@@ -19,7 +18,7 @@ appearance:
   aliases: []
 
 permissions:
-  # Pre-recode Allium let anyone holding claim handcuffs use them; who may is up to the claim.
+  # Anyone holding claim handcuffs may use them; claim ownership controls who can be restrained.
   use: allium.claimhandcuffs.use
   bypass: allium.claimhandcuffs.bypass
 

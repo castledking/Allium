@@ -12,6 +12,59 @@ core:
   version:
     - "{prefix} &fEjecutando Allium &dv{version}&f."
     - "[sound] ui.button.click 1.25"
+  modguard:
+    reloaded:
+      - "{prefix} &aConfiguracion de ModGuard recargada."
+      - "[sound] block.note_block.chime 1.35"
+    reload-failed:
+      - "{prefix} &cFallo al recargar ModGuard. Revisa la consola."
+      - "[sound] block.note_block.bass 0.75"
+    alerts-on:
+      - "{prefix} &aAlertas de ModGuard activadas."
+      - "[sound] block.note_block.chime 1.2"
+    alerts-off:
+      - "{prefix} &cAlertas de ModGuard silenciadas."
+      - "[sound] block.note_block.bass 0.9"
+  addon:
+    unknown:
+      - "{prefix} &cAddon desconocido '&f{addon}&c'. Usa &f/allium addon list&c."
+      - "[sound] block.note_block.bass 0.8"
+    list-header:
+      - "{prefix} &dAddons de Allium &7(plugins/Allium/addons/):"
+    list-entry:
+      - " &8- &f{addon} &8(&7{key}&8): {status} &8- &7{description}"
+    already-installed:
+      - "{prefix} &e{addon} &7ya esta instalado (&f{file}&7)."
+      - "[sound] block.note_block.bass 0.9"
+    already-installed-disabled:
+      - "{prefix} &e{addon} &7ya esta instalado en &faddons/&7 pero desactivado. Usa &f/allium addon enable {key} &7y reinicia el servidor."
+      - "[sound] block.note_block.bass 0.9"
+    download-in-progress:
+      - "{prefix} &e{addon} &7ya se esta descargando."
+    download-started:
+      - "{prefix} &7Descargando &f{addon} &7(v{version}) desde GitHub Releases..."
+    download-complete:
+      - "{prefix} &aSe descargo &f{addon} &7(&f{file}&7) y se activo &faddons.enabled.{key}: true &aen config.yml. &eReinicia el servidor para cargarlo."
+      - "[sound] block.note_block.chime 1.35"
+    download-failed:
+      - "{prefix} &cError al descargar &f{addon}&c: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
+    already-enabled:
+      - "{prefix} &e{addon} &7ya esta activado en config.yml."
+    already-disabled:
+      - "{prefix} &e{addon} &7ya esta desactivado en config.yml."
+    enabled-restart:
+      - "{prefix} &aActivado &f{addon} &7(&faddons.enabled.{key}: true&7). &eReinicia el servidor para iniciarlo."
+      - "[sound] block.note_block.chime 1.25"
+    enabled-not-installed:
+      - "{prefix} &aActivado &f{addon} &7en config.yml, pero su jar aun no esta en &faddons/&7. Usa &f/allium addon download {key} &7o activa &faddons.auto-download &7y reinicia."
+      - "[sound] block.note_block.chime 1.1"
+    disabled-restart:
+      - "{prefix} &cDesactivado &f{addon} &7(&faddons.enabled.{key}: false&7). Su jar permanece en &faddons/&7; &ereinicia el servidor para aplicar el cambio."
+      - "[sound] block.note_block.bass 0.9"
+    config-save-failed:
+      - "{prefix} &cNo se pudo guardar config.yml al actualizar &f{addon}&c. Revisa la consola."
+      - "[sound] block.note_block.bass 0.75"
   import:
     lang-no-source:
       - "{prefix} &cNo hay un archivo de idioma anterior en &f{file}&c."
@@ -60,6 +113,20 @@ core:
       - "[sound] block.note_block.bass 0.75"
     legacy-fence:
       - "&cEl servidor esta importando datos antiguos. Intentalo en un minuto."
+    essentials-started:
+      - "{prefix} &7Leyendo datos de Essentials para {mode}..."
+    essentials-dry-run:
+      - "{prefix} &aSimulacion de Essentials &f{run}&a: &f{import} &apor importar, &f{present} &apresentes, &f{conflicts} &aconflictos, &f{blocked} &abloqueados. Revisa &f{summary}&a y ejecuta &f/allium import essentials apply {run}&a."
+      - "[sound] item.book.page_turn 1.0"
+    essentials-applied:
+      - "{prefix} &aImportacion de Essentials &f{run} &aaplicada: &f{applied} &aaplicados, &f{adopted} &aadoptados, &f{conflicts} &aconflictos. Detalles: &f{summary}&a."
+      - "[sound] entity.player.levelup 1.35"
+    essentials-refused:
+      - "{prefix} &cImportacion de Essentials rechazada: &f{reason}"
+      - "[sound] block.note_block.bass 0.8"
+    essentials-failed:
+      - "{prefix} &cFallo la importacion de Essentials: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
   adopt-window:
     opened:
       - "{prefix} &eLas herramientas privilegiadas anteriores al recode se adoptan al primer uso durante los proximos &f{duration}&e. Cada adopcion queda registrada. Cierralo antes con &f/allium adopt-window off&e."

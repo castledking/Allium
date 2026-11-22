@@ -19,11 +19,13 @@ import java.util.*;
 
 /** Face PDC is the sole action authority, with no location cache to survive destruction. */
 public final class SignService implements Listener,AutoCloseable {
+    public static final String ESSENTIALS_SIGN_MARKER = "import/essentials-signs-adopted";
     private final PluginStart plugin;
     private final Set<SignIdentity.Type> enabled=EnumSet.noneOf(SignIdentity.Type.class);
     private final Set<UUID> pending=new HashSet<>();
     private final SignClickBudget clicks=new SignClickBudget();
     private final int limit;
+    private final boolean shortSignPrices;
     private final boolean unsafeSignPrices;
     private boolean closed;
     private SignEditorGuard editorGuard;
@@ -35,6 +37,7 @@ public final class SignService implements Listener,AutoCloseable {
         this.plugin=plugin;this.paidRepairs=paidRepairs;this.paidSigns=paidSigns;
         for(String raw:plugin.getConfig().getStringList("enabledSigns"))enabled.add(SignIdentity.Type.parse(raw));
         limit=plugin.getConfig().getInt("sign-use-per-second",4);if(limit<1||limit>100)throw new IllegalArgumentException("sign-use-per-second must be 1..100");
+        shortSignPrices=plugin.getConfig().getBoolean("sign-short-prices",true);
         unsafeSignPrices=plugin.getConfig().getBoolean("unsafe-sign-prices",false);
     }
     public void enable(){plugin.getServer().getPluginManager().registerEvents(this,plugin);editorGuard=new SignEditorGuard(plugin,this);}
@@ -47,7 +50,8 @@ public final class SignService implements Listener,AutoCloseable {
      * existing style on Paper, so an Allium header arrives as {@code §1[repair]}.
      */
     static SignIdentity.Type header(String line){
-        line=plain(line);
+        if(line==null)return null;
+        line=plain(ChatColor.translateAlternateColorCodes('&',line));
         if(line==null||!line.startsWith("[")||!line.endsWith("]"))return null;
         try{return SignIdentity.Type.parse(line.substring(1,line.length()-1));}catch(IllegalArgumentException error){return null;}
     }
@@ -76,8 +80,88 @@ public final class SignService implements Listener,AutoCloseable {
                 invalid(event,type,2,"<hand|all>","Use hand or all.");
                 return;
             }
+        } else if(type==SignIdentity.Type.GAMEMODE){
+            try{argument=SignIdentity.normalizeGameMode(argument);}
+            catch(IllegalArgumentException bad){
+                invalid(event,type,2,"<gamemode>","Use survival, creative, adventure or spectator.");
+                return;
+            }
+        } else if(type==SignIdentity.Type.TIME){
+            try{argument=SignIdentity.normalizeTime(argument);}
+            catch(IllegalArgumentException bad){
+                invalid(event,type,2,"<day|night>","Use day, night, or leave blank to check time.");
+                return;
+            }
+        } else if(type==SignIdentity.Type.WEATHER){
+            try{argument=SignIdentity.normalizeWeather(argument);}
+            catch(IllegalArgumentException bad){
+                invalid(event,type,2,"<sun|storm>","Use sun, storm, or leave blank to check weather.");
+                return;
+            }
+        } else if(type==SignIdentity.Type.RANDOMTELEPORT){
+            if(!argument.isEmpty()&&!argument.matches("[a-zA-Z0-9_-]{1,32}")){
+                invalid(event,type,2,"<zone>","Enter a zone name or leave blank.");
+                return;
+            }
+        } else if(type==SignIdentity.Type.FREE){
+            if(resolveFreeItem(argument)==null){
+                invalid(event,type,2,"<item>","Enter a valid item name.");
+                return;
+            }
+        } else if(type==SignIdentity.Type.ENCHANT){
+            String itemToken=argument.isEmpty()?"*":argument;
+            if(!itemToken.equals("*")&&!itemToken.equalsIgnoreCase("any")&&Material.matchMaterial(itemToken)==null){
+                invalid(event,type,2,"<item|any>","Enter a material name, '*' or 'any'.");
+                return;
+            }
+            String rawEnchant=Objects.toString(plain(event.getLine(2)),"");
+            String[] parts=rawEnchant.split(":",2);
+            var ench=findEnchantment(parts[0]);
+            if(ench==null){
+                invalid(event,type,3,"<enchant>","Enter a valid enchantment name (optional :level).");
+                return;
+            }
+            int level=1;
+            if(parts.length==2&&!parts[1].isEmpty()){
+                try{level=Integer.parseInt(parts[1].trim());}
+                catch(NumberFormatException bad){
+                    invalid(event,type,3,"<enchant:level>","Enchantment level must be a whole number.");
+                    return;
+                }
+            }
+            boolean allowUnsafe=plugin.getConfig().getBoolean("allow-unsafe-enchants",false)
+                    &&event.getPlayer().hasPermission("allium.enchant.unsafe")
+                    &&event.getPlayer().hasPermission("allium.signs.enchant.allowunsafe");
+            if(level<0||(!allowUnsafe&&level>ench.getMaxLevel())){
+                level=Math.max(1,ench.getMaxLevel());
+                event.setLine(2,parts[0].trim()+":"+level);
+            }
+            argument=itemToken+"|"+parts[0].trim()+":"+level;
+        } else if(type==SignIdentity.Type.SPAWNMOB){
+            int amount;
+            try{amount=Integer.parseInt(argument);}
+            catch(NumberFormatException bad){
+                invalid(event,type,2,"<amount>","Enter an amount from 1 to 256.");
+                return;
+            }
+            if(amount<1||amount>256){
+                invalid(event,type,2,"<amount>","Enter an amount from 1 to 256.");
+                return;
+            }
+            String mob=Objects.toString(plain(event.getLine(2)),"");
+            if(!validMobSpec(mob)){
+                invalid(event,type,3,"<mob>","Enter a valid mob name (e.g. wolf:tamed).");
+                return;
+            }
+            argument=amount+"|"+mob;
         }
-        int priceLine=type==SignIdentity.Type.COLOR?-1:(type==SignIdentity.Type.WARP&&publicWarp?3:2);
+        int priceLine=switch(type){
+            case COLOR->-1;
+            case WARP->publicWarp?3:2;
+            case ENCHANT,SPAWNMOB->3;
+            case TIME,WEATHER->argument.isEmpty()?-1:2;
+            default->2;
+        };
         EconomyDisplay display=EconomyDisplay.read(plugin.getConfig());
         if(priceLine>=0){
             String rawPrice=Objects.toString(plain(event.getLine(priceLine)),"");
@@ -107,9 +191,13 @@ public final class SignService implements Listener,AutoCloseable {
         event.setLine(0,ChatColor.DARK_BLUE+displayHeader(type));
         if(type==SignIdentity.Type.REPAIR){
             event.setLine(1,argument.equals("all")?"All":"Hand");
+        } else if(type==SignIdentity.Type.GAMEMODE){
+            event.setLine(1,Character.toUpperCase(argument.charAt(0))+argument.substring(1));
+        } else if((type==SignIdentity.Type.TIME||type==SignIdentity.Type.WEATHER)&&!argument.isEmpty()){
+            event.setLine(1,ChatColor.DARK_GREEN+""+Character.toUpperCase(argument.charAt(0))+argument.substring(1));
         }
         if(priceOverride&&priceLine>=0){
-            event.setLine(priceLine,display.format(price));
+            event.setLine(priceLine,display.formatSign(price,shortSignPrices));
         }
         // Bukkit applies text after the event. Re-read then update PDC without overwriting either face.
         plugin.getScheduler().runOnServerLater(()->{
@@ -121,8 +209,11 @@ public final class SignService implements Listener,AutoCloseable {
     /** A sign line without color codes (null stays null). */
     static String plain(String line){return line==null?null:ChatColor.stripColor(line).trim();}
     private static String displayHeader(SignIdentity.Type type){
-        String name=type.key();
-        return "["+Character.toUpperCase(name.charAt(0))+name.substring(1)+"]";
+        return switch(type){
+            case GAMEMODE->"[GameMode]";
+            case RANDOMTELEPORT->"[RandomTeleport]";
+            default->{String name=type.key();yield "["+Character.toUpperCase(name.charAt(0))+name.substring(1)+"]";}
+        };
     }
     /** Configured cost of the underlying kit/command, used to enforce {@code unsafe-sign-prices}. */
     private Money configuredCost(SignIdentity.Type type,String argument){
@@ -162,9 +253,23 @@ public final class SignService implements Listener,AutoCloseable {
         return toward.dot(normal)>=0?Side.FRONT:Side.BACK;
     }
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
+    public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent event){
+        if(closed||!adoptEssentialsSignsActive())return;
+        for(BlockState state:event.getChunk().getTileEntities()){
+            if(state instanceof Sign sign){
+                for(Side side:Side.values())adoptEssentialsSign(sign,side);
+            }
+        }
+    }
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
     public void using(PlayerInteractEvent event){
         if(event.getAction()!=Action.RIGHT_CLICK_BLOCK||event.getHand()!=EquipmentSlot.HAND||event.useInteractedBlock()==Event.Result.DENY||event.getClickedBlock()==null||!(event.getClickedBlock().getState() instanceof Sign sign))return;
-        Side side=clickedSide(sign,event.getPlayer());var found=identity(sign,side);if(found.isEmpty())return;
+        Side side=clickedSide(sign,event.getPlayer());
+        var found=identity(sign,side);
+        if(found.isEmpty()&&adoptEssentialsSignsActive()&&adoptEssentialsSign(sign,side)){
+            found=identity(sign,side);
+        }
+        if(found.isEmpty())return;
         var identity=found.get();Player player=event.getPlayer();
         if(!enabled.contains(identity.type())){if(clicks.admit(player.getUniqueId(),System.nanoTime(),limit))disabled(player,identity.type());return;}
         if(pending.contains(player.getUniqueId())||!permission(player,"use",identity.type())||!clicks.admit(player.getUniqueId(),System.nanoTime(),limit))return;
@@ -181,11 +286,28 @@ public final class SignService implements Listener,AutoCloseable {
     private void execute(Player p,SignIdentity identity){
         String command=switch(identity.type()){
             case COLOR->null;case WARP->"warp";case KIT->"kit";case BALANCE->"balance";case MAIL->"mail";case INFO->"info";
+            case CARTOGRAPHY->"cartographytable";case RANDOMTELEPORT->"rtp";case FREE->"free";
             default->identity.type().key();
         };
-        if(!plugin.getConfig().getBoolean("modules.signs",true)||command==null||plugin.getCommandManager().getFamilyPolicy().isDisabled(command))return;
-        String module=switch(identity.type()){case WARP->"travel";case KIT->"kits";case BALANCE->"economy";case MAIL->"mail";default->"essentials";};
+        if(!plugin.getConfig().getBoolean("modules.signs",true)||command==null
+                ||plugin.getCommandManager().getFamilyPolicy().isDisabled(command))return;
+        String module=switch(identity.type()){
+            case WARP->"travel";case KIT->"kits";case BALANCE->"economy";case MAIL->"mail";case RANDOMTELEPORT->"rtp";
+            default->"essentials";
+        };
         var owner=plugin.getModuleManager().getModule(module);if(owner==null||!owner.isEnabled()||!plugin.getConfig().getBoolean("modules."+module,true)||identity.type()==SignIdentity.Type.WARP&&!plugin.getConfig().getBoolean("modules.warps",true))return;
+        if(identity.type()==SignIdentity.Type.FREE){
+            runFree(p,identity);
+            return;
+        }
+        if(identity.type()==SignIdentity.Type.ENCHANT){
+            runEnchant(p,identity);
+            return;
+        }
+        if(identity.type()==SignIdentity.Type.SPAWNMOB){
+            runSpawnMob(p,identity);
+            return;
+        }
         if(identity.type()==SignIdentity.Type.WARP){
             var travel=((TravelModule)owner).travel();
             if(identity.price().minor()>0){
@@ -208,7 +330,13 @@ public final class SignService implements Listener,AutoCloseable {
             else paidRepairs.start(p,identity.argument(),identity.price());
             return;
         }
-        String[] args=switch(identity.type()){case KIT,REPAIR->new String[]{identity.argument()};case MAIL->new String[]{"read"};default->new String[0];};
+        String[] args=switch(identity.type()){
+            case KIT,REPAIR,GAMEMODE->new String[]{identity.argument()};
+            case MAIL->new String[]{"read"};
+            case TIME->identity.argument().isEmpty()?new String[0]:new String[]{"set",identity.argument()};
+            case WEATHER,RANDOMTELEPORT->identity.argument().isEmpty()?new String[0]:new String[]{identity.argument()};
+            default->new String[0];
+        };
         if(identity.price().minor()>0){
             if(!p.hasPermission("allium."+command)){
                 plugin.getMessageManager().send(p,Messages.NO_PERMISSION,"{cmd}",command);
@@ -219,6 +347,287 @@ public final class SignService implements Listener,AutoCloseable {
             return;
         }
         renderer.onCommand(p,registered,command,args);
+    }
+
+    private void runFree(Player p,SignIdentity identity){
+        if(codes.castled.allium.command.essentials.UtilitySupport.isInventoryBusy(plugin,p))return;
+        org.bukkit.inventory.ItemStack resolved=resolveFreeItem(identity.argument());
+        if(resolved==null||resolved.getType().isAir())return;
+        Runnable open=()->{
+            org.bukkit.inventory.ItemStack stack=resolved.clone();
+            stack.setAmount(Math.max(1,stack.getMaxStackSize()));
+            String title=stack.getType().name();
+            if(Bukkit.getServer()!=null&&stack.hasItemMeta()){
+                var meta=stack.getItemMeta();
+                if(meta!=null&&meta.hasDisplayName())title=meta.getDisplayName();
+            }
+            org.bukkit.inventory.Inventory inv=plugin.getServer().createInventory(p,36,title);
+            for(int i=0;i<36;i++)inv.setItem(i,stack.clone());
+            p.openInventory(inv);
+        };
+        if(identity.price().minor()>0){
+            if(paidSigns==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
+            else paidSigns.start(p,identity,open);
+            return;
+        }
+        open.run();
+    }
+
+    private void runEnchant(Player p,SignIdentity identity){
+        int sep=identity.argument().indexOf('|');
+        if(sep<=0||sep>=identity.argument().length()-1)return;
+        String itemToken=identity.argument().substring(0,sep);
+        String[] enchParts=identity.argument().substring(sep+1).split(":",2);
+        var ench=findEnchantment(enchParts[0]);
+        if(ench==null)return;
+        int level=enchParts.length==2?Integer.parseInt(enchParts[1]):1;
+        org.bukkit.inventory.ItemStack hand=p.getInventory().getItemInMainHand();
+        if(hand==null||hand.getType().isAir()||hand.getAmount()!=1){
+            plugin.getMessageManager().send(p,Messages.UTILITY_HOLD_ITEM);
+            return;
+        }
+        String itemLabel=hand.getType().name().toLowerCase(Locale.ROOT);
+        if(!itemToken.equals("*")&&!itemToken.equalsIgnoreCase("any")){
+            Material required=Material.matchMaterial(itemToken);
+            if(required==null||hand.getType()!=required){
+                plugin.getMessageManager().send(p,Messages.ENCHANT_INCOMPATIBLE,"{enchant}",enchParts[0],"{item}",itemLabel);
+                return;
+            }
+        }
+        if(level>0&&hand.containsEnchantment(ench)&&hand.getEnchantmentLevel(ench)==level)return;
+        boolean allowUnsafe=plugin.getConfig().getBoolean("allow-unsafe-enchants",false)
+                &&p.hasPermission("allium.signs.enchant.allowunsafe");
+        if(level>0&&!allowUnsafe&&(level>ench.getMaxLevel()||!ench.canEnchantItem(hand))){
+            plugin.getMessageManager().send(p,Messages.ENCHANT_INCOMPATIBLE,"{enchant}",enchParts[0],"{item}",itemLabel);
+            return;
+        }
+        Runnable apply=()->{
+            org.bukkit.inventory.ItemStack current=p.getInventory().getItemInMainHand();
+            if(current==null||current.getType().isAir()||current.getAmount()!=1)return;
+            String currentLabel=current.getType().name().toLowerCase(Locale.ROOT);
+            if(level==0){
+                current.removeEnchantment(ench);
+                plugin.getMessageManager().send(p,Messages.UTILITY_ENCHANT_REMOVED,"{enchant}",enchParts[0],"{player}",p.getName(),"{item}",currentLabel);
+            } else {
+                if(allowUnsafe)current.addUnsafeEnchantment(ench,level);
+                else current.addEnchantment(ench,level);
+                plugin.getMessageManager().send(p,Messages.UTILITY_ENCHANT_APPLIED,"{enchant}",enchParts[0],"{level}",Integer.toString(level),"{player}",p.getName(),"{item}",currentLabel);
+            }
+            p.updateInventory();
+        };
+        if(identity.price().minor()>0){
+            if(paidSigns==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
+            else paidSigns.start(p,identity,apply);
+            return;
+        }
+        apply.run();
+    }
+
+    private void runSpawnMob(Player p,SignIdentity identity){
+        int sep=identity.argument().indexOf('|');
+        if(sep<=0||sep>=identity.argument().length()-1)return;
+        int requested;
+        try{requested=Integer.parseInt(identity.argument().substring(0,sep));}
+        catch(NumberFormatException bad){return;}
+        String mobSpec=identity.argument().substring(sep+1);
+        var parts=codes.castled.allium.command.essentials.MobSpawner.parseSpec(mobSpec);
+        if(parts.isEmpty())return;
+        List<codes.castled.allium.command.essentials.MobSpawner.MobEntry> entries=new ArrayList<>(parts.size());
+        List<String> datas=new ArrayList<>(parts.size());
+        for(var part:parts){
+            var found=codes.castled.allium.command.essentials.MobSpawner.lookup(part.mobToken());
+            if(found.isEmpty()){
+                plugin.getMessageManager().send(p,Messages.SPAWNMOB_INVALID_MOB,"{mob}",part.mobToken());
+                return;
+            }
+            entries.add(found.get());
+            datas.add(part.rawData());
+        }
+        int serverLimit=Math.max(1,Math.min(256,plugin.getConfig().getInt("spawnmob.limit",10)));
+        if(entries.size()>serverLimit){
+            entries=new ArrayList<>(entries.subList(0,serverLimit));
+            datas=new ArrayList<>(datas.subList(0,serverLimit));
+        }
+        int count=Math.min(requested,Math.max(1,serverLimit/entries.size()));
+        List<codes.castled.allium.command.essentials.MobSpawner.MobEntry> finalEntries=List.copyOf(entries);
+        List<String> finalDatas=Collections.unmodifiableList(new ArrayList<>(datas));
+        Runnable spawn=()->{
+            Location loc=p.getLocation();
+            int spawnedStacks=0;
+            for(int i=0;i<count;i++){
+                if(codes.castled.allium.command.essentials.MobSpawner.spawnStack(loc,finalEntries,finalDatas,p)==null){
+                    plugin.getMessageManager().send(p,Messages.SPAWNMOB_UNABLE);
+                    return;
+                }
+                spawnedStacks++;
+            }
+            int total=spawnedStacks*finalEntries.size();
+            String label=finalEntries.size()==1?finalEntries.get(0).canonicalName()
+                    :finalEntries.stream().map(codes.castled.allium.command.essentials.MobSpawner.MobEntry::canonicalName)
+                    .collect(java.util.stream.Collectors.joining(","));
+            plugin.getMessageManager().send(p,Messages.SPAWNMOB_SPAWNED,"{count}",Integer.toString(total),"{mob}",label);
+        };
+        if(identity.price().minor()>0){
+            if(paidSigns==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
+            else paidSigns.start(p,identity,spawn);
+            return;
+        }
+        spawn.run();
+    }
+
+    private static boolean validMobSpec(String spec){
+        if(spec==null||spec.isBlank())return false;
+        var parts=codes.castled.allium.command.essentials.MobSpawner.parseSpec(spec);
+        if(parts.isEmpty())return false;
+        for(var part:parts){
+            if(codes.castled.allium.command.essentials.MobSpawner.lookup(part.mobToken()).isEmpty())return false;
+        }
+        return true;
+    }
+
+    /** Whether legacy Essentials dark-blue signs should be adopted into Allium PDC automatically. */
+    public boolean adoptEssentialsSignsActive(){
+        if(plugin.getConfig().getBoolean("adopt-essentials-signs",false))return true;
+        var folder=plugin.getDataFolder();
+        return folder!=null&&java.nio.file.Files.isRegularFile(folder.toPath().resolve(ESSENTIALS_SIGN_MARKER));
+    }
+
+    /** Scans all currently loaded chunks and adopts any legacy Essentials dark-blue signs. */
+    public int adoptLoadedChunks(){
+        int adopted=0;
+        var server=plugin.getServer();
+        if(server==null)return 0;
+        for(World world:server.getWorlds()){
+            for(Chunk chunk:world.getLoadedChunks()){
+                for(BlockState state:chunk.getTileEntities()){
+                    if(state instanceof Sign sign){
+                        for(Side side:Side.values()){
+                            if(adoptEssentialsSign(sign,side))adopted++;
+                        }
+                    }
+                }
+            }
+        }
+        return adopted;
+    }
+
+    /** Counts adoptable legacy Essentials signs in currently loaded chunks (read-only, for dry runs). */
+    public int countLoadedEssentialsSigns(){
+        int count=0;
+        var server=plugin.getServer();
+        if(server==null)return 0;
+        for(World world:server.getWorlds()){
+            for(Chunk chunk:world.getLoadedChunks()){
+                for(BlockState state:chunk.getTileEntities()){
+                    if(state instanceof Sign sign){
+                        for(Side side:Side.values()){
+                            if(identity(sign,side).isEmpty()&&parseEssentialsFace(sign.getSide(side).getLines()).isPresent())count++;
+                        }
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    /** Converts one un-migrated Essentials dark-blue sign face into an Allium sign PDC identity. */
+    public boolean adoptEssentialsSign(Sign sign,Side side){
+        if(identity(sign,side).isPresent())return false;
+        var parsed=parseEssentialsFace(sign.getSide(side).getLines());
+        if(parsed.isEmpty())return false;
+        sign.getPersistentDataContainer().set(key(side),PersistentDataType.STRING,parsed.get().encode());
+        sign.update(false,false);
+        return true;
+    }
+
+    /** Parses a legacy Essentials dark-blue sign face (line 0 starts with §1) into a {@link SignIdentity}. */
+    Optional<SignIdentity> parseEssentialsFace(String[] lines){
+        if(lines==null||lines.length<4||lines[0]==null||!lines[0].startsWith(ChatColor.DARK_BLUE.toString()))return Optional.empty();
+        var type=header(lines[0]);
+        if(type==null||type==SignIdentity.Type.COLOR)return Optional.empty();
+        boolean publicWarp=type==SignIdentity.Type.WARP&&"public".equalsIgnoreCase(plain(lines[2]));
+        String argument=Objects.toString(plain(lines[1]),"");
+        if(type==SignIdentity.Type.REPAIR){
+            argument=argument.isEmpty()?"hand":argument.toLowerCase(Locale.ROOT);
+            if(!Set.of("hand","all").contains(argument))return Optional.empty();
+        } else if(type==SignIdentity.Type.GAMEMODE){
+            try{argument=SignIdentity.normalizeGameMode(argument);}catch(IllegalArgumentException bad){return Optional.empty();}
+        } else if(type==SignIdentity.Type.TIME){
+            try{argument=SignIdentity.normalizeTime(argument);}catch(IllegalArgumentException bad){return Optional.empty();}
+        } else if(type==SignIdentity.Type.WEATHER){
+            try{argument=SignIdentity.normalizeWeather(argument);}catch(IllegalArgumentException bad){return Optional.empty();}
+        } else if(type==SignIdentity.Type.RANDOMTELEPORT){
+            if(!argument.isEmpty()&&!argument.matches("[a-zA-Z0-9_-]{1,32}"))return Optional.empty();
+        } else if(type==SignIdentity.Type.FREE){
+            if(resolveFreeItem(argument)==null)return Optional.empty();
+        } else if(type==SignIdentity.Type.ENCHANT){
+            String itemToken=argument.isEmpty()?"*":argument;
+            if(!itemToken.equals("*")&&!itemToken.equalsIgnoreCase("any")&&Material.matchMaterial(itemToken)==null)return Optional.empty();
+            String rawEnchant=Objects.toString(plain(lines[2]),"");
+            String[] parts=rawEnchant.split(":",2);
+            if(findEnchantment(parts[0])==null)return Optional.empty();
+            int level=1;
+            if(parts.length==2&&!parts[1].isEmpty()){
+                try{level=Integer.parseInt(parts[1].trim());}catch(NumberFormatException bad){return Optional.empty();}
+            }
+            if(level<0)return Optional.empty();
+            argument=itemToken+"|"+parts[0].trim()+":"+level;
+        } else if(type==SignIdentity.Type.SPAWNMOB){
+            int amount;
+            try{amount=Integer.parseInt(argument);}catch(NumberFormatException bad){return Optional.empty();}
+            String mob=Objects.toString(plain(lines[2]),"");
+            if(amount<1||amount>256||!validMobSpec(mob))return Optional.empty();
+            argument=amount+"|"+mob;
+        }
+        int priceLine=switch(type){
+            case WARP->publicWarp?3:2;
+            case ENCHANT,SPAWNMOB->3;
+            case TIME,WEATHER->argument.isEmpty()?-1:2;
+            default->2;
+        };
+        Money price=new Money(0);
+        boolean priceOverride=false;
+        if(priceLine>=0){
+            String rawPrice=Objects.toString(plain(lines[priceLine]),"");
+            if(!rawPrice.isEmpty()){
+                try{
+                    price=EconomyDisplay.read(plugin.getConfig()).parsePrice(rawPrice);
+                    priceOverride=true;
+                }catch(IllegalArgumentException|ArithmeticException bad){return Optional.empty();}
+            }
+        }
+        try{return Optional.of(new SignIdentity(UUID.randomUUID(),type,argument,publicWarp,price,priceOverride));}
+        catch(IllegalArgumentException bad){return Optional.empty();}
+    }
+
+    private org.bukkit.inventory.ItemStack resolveFreeItem(String spec){
+        if(spec==null||spec.isBlank())return null;
+        String trimmed=spec.trim();
+        var itemService=plugin.getItemService();
+        if(itemService!=null){
+            try{
+                var ref=itemService.parseRef(trimmed);
+                var result=itemService.create(ref);
+                if(result.itemStack().isPresent()&&!result.itemStack().get().getType().isAir()){
+                    return result.itemStack().get();
+                }
+            }catch(RuntimeException ignored){}
+        }
+        Material mat=Material.matchMaterial(trimmed);
+        return mat==null||mat.isAir()||!mat.isItem()?null:new org.bukkit.inventory.ItemStack(mat,1);
+    }
+
+    private static org.bukkit.enchantments.Enchantment findEnchantment(String raw){
+        if(raw==null||raw.isBlank())return null;
+        try{
+            var found=codes.castled.allium.item.library.EnchantmentAdapter.find(raw.trim());
+            if(found.isPresent())return found.get();
+        }catch(RuntimeException|LinkageError ignored){}
+        try{
+            var byKey=org.bukkit.enchantments.Enchantment.getByKey(NamespacedKey.minecraft(raw.trim().toLowerCase(Locale.ROOT)));
+            if(byKey!=null)return byKey;
+        }catch(RuntimeException|LinkageError ignored){}
+        return org.bukkit.enchantments.Enchantment.getByName(raw.trim().toUpperCase(Locale.ROOT));
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
     public void breaking(BlockBreakEvent event){

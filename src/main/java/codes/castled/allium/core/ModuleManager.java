@@ -52,6 +52,7 @@ public final class ModuleManager {
         // After economy and items, whose prices and payments it uses.
         registerModule(new codes.castled.allium.module.WorthModule(plugin));
         registerModule(new codes.castled.allium.module.ExplosionsModule(plugin));
+        registerModule(new codes.castled.allium.module.ModGuardModule(plugin));
         for (AbstractModule module : modules.values()) {
             String key = module.getName().toLowerCase();
             boolean enabled = plugin.getConfig().getBoolean("modules." + key, true);

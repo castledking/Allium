@@ -1,0 +1,36 @@
+name: Ores
+main: codes.castled.ores.Ores
+version: '1.0.0'
+api-version: '1.20'
+depend: [Allium]
+softdepend: [CraftEngine, packetevents]
+allium-api: '^1.5'
+allium-addon-dir: true
+commands:
+  pregen:
+    description: Pre-generate chunks and place the configured ores in them
+    usage: /pregen <start|world|pause|resume|stop|status>
+    permission: allium.pregen.status
+permissions:
+  allium.pregen:
+    description: Every /pregen action
+    default: op
+    children:
+      allium.pregen.start: true
+      allium.pregen.world: true
+      allium.pregen.pause: true
+      allium.pregen.resume: true
+      allium.pregen.stop: true
+      allium.pregen.status: true
+  allium.pregen.start:
+    default: op
+  allium.pregen.world:
+    default: op
+  allium.pregen.pause:
+    default: op
+  allium.pregen.resume:
+    default: op
+  allium.pregen.stop:
+    default: op
+  allium.pregen.status:
+    default: op

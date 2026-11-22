@@ -4,8 +4,7 @@
 #
 # Keys are item names (diamond_pickaxe); Essentials' worth.yml keys work too (diamondpickaxe,
 # and a section such as {'0': 2.0, '*': 2.5}, where '*' is used), as do Allium item aliases.
-# Defaults ported from EssentialsX's worth.yml (EssentialsX f8724e26e, 2026-11-03) by
-# tools/port-essentials-worth, its old names translated to today's items.
+# Default prices cover standard Minecraft items and can be customized freely.
 
 # Price multipliers: holders of allium.sell.multiplier.<name> sell at that multiple of the
 # price; the highest one held applies. "default" applies to everyone else.

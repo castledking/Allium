@@ -22,6 +22,7 @@ public final class AlliumCommand implements SpecCommandHandler {
 
     private final PluginStart plugin;
     private codes.castled.allium.importer.LegacyImportService legacyImport;
+    private codes.castled.allium.importer.essentials.EssentialsImportService essentialsImport;
 
     public AlliumCommand(PluginStart plugin) {
         this.plugin = plugin;
@@ -58,12 +59,18 @@ public final class AlliumCommand implements SpecCommandHandler {
                     else context.sendInvalidArgs("/allium import legacy [apply <run>]");
                     return;
                 }
+                if (args.length >= 2 && args[1].equalsIgnoreCase("essentials")) {
+                    if (args.length == 2) essentialsImport().dryRun(sender);
+                    else if (args.length == 4 && args[2].equalsIgnoreCase("apply")) essentialsImport().apply(sender, args[3]);
+                    else context.sendInvalidArgs("/allium import essentials [apply <run>]");
+                    return;
+                }
                 boolean apply = args.length == 3 && args[2].equalsIgnoreCase("apply");
                 boolean vouchers = args.length >= 2 && args[1].equalsIgnoreCase("vouchers");
                 boolean config = args.length >= 2 && args[1].equalsIgnoreCase("config");
                 boolean tidy = args.length >= 2 && args[1].equalsIgnoreCase("tidy");
                 if (args.length < 2 || !(tidy || config || vouchers || args[1].equalsIgnoreCase("lang")) || (args.length == 3 && !apply) || args.length > 3) {
-                    context.sendInvalidArgs("/allium import <tidy [apply]|config [apply]|lang [apply]|vouchers [apply]|legacy [apply <run>]>");
+                    context.sendInvalidArgs("/allium import <tidy [apply]|config [apply]|lang [apply]|vouchers [apply]|legacy [apply <run>]|essentials [apply <run>]>");
                     return;
                 }
                 if (tidy) {
@@ -120,7 +127,138 @@ public final class AlliumCommand implements SpecCommandHandler {
                     hide.hide().admin(sender,java.util.Arrays.copyOfRange(context.args(),1,context.args().length),context::sendInvalidArgs);
                 else plugin.getMessageManager().send(sender,Messages.MODULE_DISABLED);
             }
+            case "modguard" -> modguard(context);
+            case "addon", "addons" -> addon(context);
             default -> context.sendInvalidArgs(spec().selfUsage());
+        }
+    }
+
+    private void addon(BukkitCommandContext context) {
+        CommandSender sender = context.sender();
+        if (!sender.hasPermission("allium.addon")) {
+            plugin.getMessageManager().sendByKey(sender, spec().messageKeys().noPermissionKey(), "{cmd}", "allium addon");
+            return;
+        }
+        codes.castled.allium.addon.AddonManager manager = plugin.getAddonManager();
+        if (manager == null) {
+            plugin.getMessageManager().send(sender, Messages.MODULE_DISABLED);
+            return;
+        }
+        String[] args = context.args();
+        if (args.length == 1 || (args.length == 2 && args[1].equalsIgnoreCase("list"))) {
+            manager.listCommand(sender);
+            return;
+        }
+        String sub = args[1].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "download", "install" -> {
+                if (args.length != 3) {
+                    context.sendInvalidArgs("/allium addon download <addon>");
+                    return;
+                }
+                manager.downloadCommand(sender, args[2]);
+            }
+            case "enable" -> {
+                if (args.length != 3) {
+                    context.sendInvalidArgs("/allium addon enable <addon>");
+                    return;
+                }
+                manager.toggleCommand(sender, args[2], true);
+            }
+            case "disable" -> {
+                if (args.length != 3) {
+                    context.sendInvalidArgs("/allium addon disable <addon>");
+                    return;
+                }
+                manager.toggleCommand(sender, args[2], false);
+            }
+            default -> context.sendInvalidArgs("/allium addon <list|download|enable|disable> [addon]");
+        }
+    }
+
+    public List<String> completeAddon(CommandSender sender, String[] subArgs) {
+        if (!sender.hasPermission("allium.addon")) return List.of();
+        codes.castled.allium.addon.AddonManager manager = plugin.getAddonManager();
+        if (manager == null) return List.of();
+        if (subArgs.length <= 1) {
+            String prefix = subArgs.length == 0 ? "" : subArgs[0].toLowerCase(Locale.ROOT);
+            return List.of("list", "download", "enable", "disable").stream()
+                    .filter(v -> v.startsWith(prefix))
+                    .toList();
+        }
+        if (subArgs.length == 2) {
+            String action = subArgs[0].toLowerCase(Locale.ROOT);
+            String prefix = subArgs[1].toLowerCase(Locale.ROOT);
+            List<String> candidates = switch (action) {
+                case "download", "install" -> manager.nonInstalledOfficialKeys();
+                case "enable" -> manager.toggleCandidates(true);
+                case "disable" -> manager.toggleCandidates(false);
+                default -> List.of();
+            };
+            return candidates.stream()
+                    .filter(v -> v.toLowerCase(Locale.ROOT).startsWith(prefix))
+                    .toList();
+        }
+        return List.of();
+    }
+
+    private void modguard(BukkitCommandContext context) {
+        CommandSender sender = context.sender();
+        if (!(plugin.getModuleManager().getModule("modguard") instanceof codes.castled.allium.module.ModGuardModule module)
+                || !module.isEnabled() || module.modGuard() == null) {
+            plugin.getMessageManager().send(sender, Messages.MODULE_DISABLED);
+            return;
+        }
+        String[] args = context.args();
+        if (args.length < 2) {
+            context.sendInvalidArgs("/allium modguard <reload|alerts [on|off]>");
+            return;
+        }
+        String sub = args[1].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "reload" -> {
+                if (!sender.hasPermission("allium.reload")) {
+                    plugin.getMessageManager().sendByKey(sender, spec().messageKeys().noPermissionKey(), "{cmd}", "allium modguard reload");
+                    return;
+                }
+                if (args.length != 2) {
+                    context.sendInvalidArgs("/allium modguard reload");
+                    return;
+                }
+                try {
+                    module.reloadSettings();
+                    plugin.getMessageManager().send(sender, Messages.MODGUARD_RELOADED);
+                } catch (java.io.IOException | org.bukkit.configuration.InvalidConfigurationException e) {
+                    plugin.logger().warning("[ModGuard] Reload failed: " + e.getMessage());
+                    plugin.getMessageManager().send(sender, Messages.MODGUARD_RELOAD_FAILED);
+                }
+            }
+            case "alerts" -> {
+                if (!(sender instanceof org.bukkit.entity.Player player)) {
+                    plugin.getMessageManager().send(sender, Messages.PLAYER_ONLY);
+                    return;
+                }
+                String staffPerm = module.modGuard().staffPermission();
+                if (!player.hasPermission(staffPerm)) {
+                    plugin.getMessageManager().sendByKey(sender, spec().messageKeys().noPermissionKey(), "{cmd}", "allium modguard alerts");
+                    return;
+                }
+                Boolean state = null;
+                if (args.length == 3) {
+                    if (args[2].equalsIgnoreCase("on")) state = Boolean.TRUE;
+                    else if (args[2].equalsIgnoreCase("off")) state = Boolean.FALSE;
+                    else {
+                        context.sendInvalidArgs("/allium modguard alerts [on|off]");
+                        return;
+                    }
+                } else if (args.length > 3) {
+                    context.sendInvalidArgs("/allium modguard alerts [on|off]");
+                    return;
+                }
+                boolean nowOn = module.modGuard().setAlerts(player, state);
+                plugin.getMessageManager().send(player, nowOn ? Messages.MODGUARD_ALERTS_ON : Messages.MODGUARD_ALERTS_OFF);
+            }
+            default -> context.sendInvalidArgs("/allium modguard <reload|alerts [on|off]>");
         }
     }
 
@@ -132,9 +270,16 @@ public final class AlliumCommand implements SpecCommandHandler {
         return legacyImport;
     }
 
+    private synchronized codes.castled.allium.importer.essentials.EssentialsImportService essentialsImport() {
+        if (essentialsImport == null) {
+            essentialsImport = new codes.castled.allium.importer.essentials.EssentialsImportService(plugin, plugin.getScheduler().boundedPool("Allium-Essentials-Import", 1, 2));
+        }
+        return essentialsImport;
+    }
+
     private void tidy(CommandSender sender, boolean apply) {
         var base = plugin.getDataFolder().toPath();
-        if (legacyImport != null && legacyImport.running()) {
+        if ((legacyImport != null && legacyImport.running()) || (essentialsImport != null && essentialsImport.running())) {
             TextSender.send(sender, "&cWait for the active legacy data import before tidying.");
             return;
         }

@@ -5,8 +5,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class SignIdentityTest {
     @Test void identitiesRoundTripAndColourImportsToColor(){
         assertEquals(SignIdentity.Type.COLOR,SignIdentity.Type.parse("colour"));
+        assertEquals(SignIdentity.Type.RANDOMTELEPORT,SignIdentity.Type.parse("rtp"));
         for(var type:SignIdentity.Type.values()){
-            var identity=new SignIdentity(UUID.randomUUID(),type,type==SignIdentity.Type.REPAIR?"hand":"spawn",type==SignIdentity.Type.WARP);
+            String arg=switch(type){
+                case REPAIR->"hand";
+                case GAMEMODE->"creative";
+                case TIME->"day";
+                case WEATHER->"sun";
+                case FREE->"stone";
+                case ENCHANT->"*|sharpness:1";
+                case SPAWNMOB->"1|wolf:tamed";
+                case RANDOMTELEPORT->"wild";
+                default->"spawn";
+            };
+            var identity=new SignIdentity(UUID.randomUUID(),type,arg,type==SignIdentity.Type.WARP);
             assertEquals(identity,SignIdentity.decode(identity.encode()).orElseThrow());
         }
     }

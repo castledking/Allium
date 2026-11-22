@@ -51,6 +51,7 @@ public final class PluginStart extends JavaPlugin {
     private codes.castled.allium.pack.delivery.PackDelivery packDelivery;
     private ResourcePackSettings.Owner startupPackOwner = ResourcePackSettings.Owner.NONE;
     private codes.castled.allium.addon.AlliumApiService addonApi;
+    private codes.castled.allium.addon.AddonManager addonManager;
 
     @Override
     public void onEnable() {
@@ -140,6 +141,7 @@ public final class PluginStart extends JavaPlugin {
         var redeem = new codes.castled.allium.command.RedeemCommand(this);
         commandManager.register(redeem);
         listenerManager.register(redeem);
+        listenerManager.register(new codes.castled.allium.chat.JoinQuitMessages(this));
         autoRestart = new codes.castled.allium.restart.AutoRestart(this);
         autoRestart.reload();
         commandManager.register(autoRestart);
@@ -154,6 +156,8 @@ public final class PluginStart extends JavaPlugin {
         new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(scheduler);
         new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this, scheduler);
         // Addons (depend: [Allium]) are loaded but not yet enabled here, so each is checked before it starts.
+        addonManager = new codes.castled.allium.addon.AddonManager(this);
+        addonManager.ensureAutoDownloaded();
         addonApi = new codes.castled.allium.addon.AlliumApiService(this);
         addonApi.install();
         logger.info("Item signing keyring loaded: active=" + hmacSigner.activeKeyId()
@@ -179,7 +183,14 @@ public final class PluginStart extends JavaPlugin {
      */
     @Override
     public void onLoad() {
-        codes.castled.allium.hide.CommandHintPack.startup(this);
+        codes.castled.allium.addon.AddonManager.ensureAutoDownloaded(
+                getDataFolder().toPath(),
+                getConfig(),
+                getDescription().getVersion(),
+                codes.castled.allium.addon.AddonManager.defaultDownloader(),
+                getLogger()::info,
+                getLogger()::warning
+        );
         ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
         exportPack(settings, new codes.castled.allium.pack.delivery.PackExport.Logs(getLogger()::info, getLogger()::warning));
     }
@@ -209,14 +220,24 @@ public final class PluginStart extends JavaPlugin {
         } else {
             base = codes.castled.allium.pack.delivery.PackSource.bundled(core);
         }
-        return codes.castled.allium.pack.delivery.AddonPacks.mergeIntoBase(base, addonPacks, logs);
+        var merged = codes.castled.allium.pack.delivery.AddonPacks.mergeIntoBase(base, addonPacks, logs);
+        try {
+            byte[] withHint = codes.castled.allium.hide.CommandHintPack.merge(merged.bytes(),
+                    codes.castled.allium.hide.CommandHintPack.configured(this));
+            return withHint == merged.bytes() ? merged : new codes.castled.allium.pack.delivery.PackSource(
+                    withHint, codes.castled.allium.pack.delivery.PackExport.sha1(withHint), merged.source(), merged.override());
+        } catch (IOException | org.bukkit.configuration.InvalidConfigurationException | IllegalArgumentException failure) {
+            logs.warning().accept("Could not merge the configured command hint: " + failure.getMessage());
+            return merged;
+        }
     }
 
     private codes.castled.allium.pack.delivery.PackSource exportPack(ResourcePackSettings settings,
                                                                      codes.castled.allium.pack.delivery.PackExport.Logs logs) {
-        var addonPacks = codes.castled.allium.pack.delivery.AddonPacks.discover(getDataFolder().toPath(), logs);
+        var addonPacks = codes.castled.allium.pack.delivery.AddonPacks.discover(getDataFolder().toPath(), getConfig(), logs);
         codes.castled.allium.pack.delivery.AddonPacks.exportRspm(getDataFolder().toPath().getParent(), settings, addonPacks, logs);
         if (settings.owner() == ResourcePackSettings.Owner.NONE) {
+            cleanupHintPack(settings, logs);
             var waiting = addonPacks.stream()
                     .filter(d -> d.mode() == codes.castled.allium.pack.delivery.AddonPacks.Mode.ALLIUM)
                     .map(codes.castled.allium.pack.delivery.AddonPacks.Discovered::addonName)
@@ -242,10 +263,26 @@ public final class PluginStart extends JavaPlugin {
                 codes.castled.allium.pack.delivery.PackExport.exportToMixer(getDataFolder().toPath().getParent(), settings, source.bytes(),
                         manifest.tools(), logs);
             }
+            if (settings.owner() != ResourcePackSettings.Owner.RPM_EXPORT || !settings.dryRun()) cleanupHintPack(settings, logs);
         } catch (IOException | RuntimeException e) {
             logs.warning().accept("Could not export the core resource pack for " + settings.owner().configName() + ": " + e);
         }
         return source;
+    }
+
+    private void cleanupHintPack(ResourcePackSettings settings, codes.castled.allium.pack.delivery.PackExport.Logs logs) {
+        var root = getDataFolder().toPath().getParent();
+        var rpm = getServer().getPluginManager().getPlugin("ResourcePackManager");
+        var oldMixer = (rpm == null ? root.resolve("ResourcePackManager") : rpm.getDataFolder().toPath()).resolve("mixer");
+        try {
+            codes.castled.allium.hide.CommandHintPack.cleanup(this, oldMixer);
+            if (settings.owner() == ResourcePackSettings.Owner.RPM_EXPORT) {
+                var configured = root.resolve(settings.mixerDirectory()).normalize();
+                if (!configured.equals(oldMixer)) codes.castled.allium.hide.CommandHintPack.cleanup(this, configured);
+            }
+        } catch (IOException failure) {
+            logs.warning().accept("Could not remove the old command hint pack: " + failure.getMessage());
+        }
     }
 
     /** Logs the bundled core pack and, when Allium owns delivery (standalone), starts sending it. */
@@ -274,7 +311,7 @@ public final class PluginStart extends JavaPlugin {
             startupPackOwner = settings.owner();
             if (settings.sendsUrl()) {
                 var quietLogs = new codes.castled.allium.pack.delivery.PackExport.Logs(m -> { }, m -> { });
-                var addonPacks = codes.castled.allium.pack.delivery.AddonPacks.discover(getDataFolder().toPath(), quietLogs);
+                var addonPacks = codes.castled.allium.pack.delivery.AddonPacks.discover(getDataFolder().toPath(), getConfig(), quietLogs);
                 codes.castled.allium.pack.delivery.PackSource source = packSource(settings, quietLogs, addonPacks);
                 if (source != null) {
                     packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, source);
@@ -341,34 +378,40 @@ public final class PluginStart extends JavaPlugin {
                     && !worthModule.reloadSettings()) throw new IllegalArgumentException("invalid worth.yml; previous prices retained");
             if(moduleManager.getModule("explosions") instanceof codes.castled.allium.module.ExplosionsModule explosions && explosions.isEnabled()
                     && !explosions.reloadSettings()) throw new IllegalArgumentException("invalid explosions.yml; previous explosion settings retained");
-            ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
-            settings.warnings().forEach(logger::warning);
-            if (settings.owner() != startupPackOwner) {
-                String message = "resource-pack.owner changed from " + startupPackOwner.configName() + " to " + settings.owner().configName()
-                        + "; owner changes take effect after a restart.";
-                logger.warning(message);
-                reply.accept(message);
-                return true;
-            }
-            codes.castled.allium.pack.delivery.PackSource source = exportPack(settings,
-                    new codes.castled.allium.pack.delivery.PackExport.Logs(logger::info, logger::warning));
-            if (settings.owner() == ResourcePackSettings.Owner.NONE) {
-                return true;
-            }
-            if (settings.owner() == ResourcePackSettings.Owner.RPM_EXPORT) {
-                reply.accept("Re-exported the core resource pack to ResourcePackManager's mixer; reload ResourcePackManager to merge it.");
-            } else if (source != null) {
-                if (packDelivery == null) {
-                    packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, source);
-                    packDelivery.enable();
-                } else {
-                    packDelivery.reload(settings, source, reply);
+            if (moduleManager.getModule("modguard") instanceof codes.castled.allium.module.ModGuardModule modguard && modguard.isEnabled()) {
+                try {
+                    modguard.reloadSettings();
+                } catch (IOException | org.bukkit.configuration.InvalidConfigurationException e) {
+                    throw new IllegalArgumentException("invalid modguard.yml; previous settings retained", e);
                 }
             }
+            refreshResourcePack(reply);
             return true;
         } catch (RuntimeException e) {
             logger.severe("Reload failed: " + e);
             return false;
+        }
+    }
+
+    /** Re-exports or updates the single delivered pack after settings change. Runs on the server thread. */
+    public void refreshResourcePack(java.util.function.Consumer<String> reply) {
+        var settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
+        settings.warnings().forEach(logger::warning);
+        if (settings.owner() != startupPackOwner) {
+            String message = "resource-pack.owner changed from " + startupPackOwner.configName() + " to " + settings.owner().configName()
+                    + "; owner changes take effect after a restart.";
+            logger.warning(message);
+            reply.accept(message);
+            return;
+        }
+        var source = exportPack(settings, new codes.castled.allium.pack.delivery.PackExport.Logs(logger::info, logger::warning));
+        if (settings.owner() == ResourcePackSettings.Owner.RPM_EXPORT) {
+            reply.accept("Re-exported the core resource pack to ResourcePackManager's mixer; reload ResourcePackManager to merge it.");
+        } else if (source != null && settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
+            if (packDelivery == null) {
+                packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, source);
+                packDelivery.enable();
+            } else packDelivery.reload(settings, source, reply);
         }
     }
 
@@ -464,5 +507,15 @@ public final class PluginStart extends JavaPlugin {
 
     public ListenerManager getListenerManager() {
         return listenerManager;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public codes.castled.allium.addon.AlliumApiService getAddonApi() {
+        return addonApi;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public codes.castled.allium.addon.AddonManager getAddonManager() {
+        return addonManager;
     }
 }

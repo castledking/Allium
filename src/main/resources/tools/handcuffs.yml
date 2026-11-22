@@ -1,5 +1,5 @@
-# Handcuffs: pre-recode Allium's staff handcuffs, as a powertool (see docs/powertools.md). The
-# item is the core pack's handcuffs: a fishing rod that never wears out.
+# Handcuffs: staff restraint powertool. The item is the core pack's handcuffs, a fishing rod that
+# never wears out.
 #
 # Cast at a player and reel them in: they ride you, stacked on anyone you already restrained (at
 # most max-riders). A restrained player cannot get down, run commands (but
@@ -21,7 +21,7 @@ appearance:
   aliases: []
 
 permissions:
-  # Pre-recode Allium's node for using staff handcuffs.
+  # Permission required to use staff handcuffs.
   use: allium.restrain
   bypass: allium.handcuffs.bypass
 

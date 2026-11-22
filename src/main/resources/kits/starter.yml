@@ -1,6 +1,6 @@
 # Default starter kit (plugins/Allium/kits/starter.yml).
 # Access requires allium.kits.starter or its parent allium.kits.* (operators hold the parent by default).
-# Paid kits (cost > '0.00') are denied until M3 economy reservations exist.
+# Optional kit price (requires the economy module; '0.00' is free).
 name: starter
 enabled: true
 cooldown-seconds: 300

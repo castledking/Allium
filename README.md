@@ -1,159 +1,112 @@
-# Allium
+[![Allium](https://castled.codes/assets/alliumv2-banner.png?v=3)](https://github.com/castledking/Allium/wiki)
 
-A configurable essentials suite for Bukkit/Spigot and Paper. This repository is
-the recode of [the current Allium](../Allium), with shared item-provider support
-and separately installed gameplay addons.
+<h1 align="center">The modular essentials, economy, moderation &amp; addon suite for modern Minecraft servers</h1>
 
-**Status:** foundation and five basic commands exist. The target is Minecraft
-**1.20–26.3**; that range is a release goal, not a verified compatibility claim.
+<p align="center">
+  <a href="https://discord.gg/D6CeVTtJpF"><img alt="Discord" src="https://img.shields.io/badge/Discord-Community-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
+  <a href="https://github.com/castledking/Allium/releases"><img alt="GitHub Releases" src="https://img.shields.io/badge/GitHub-Releases-181717?style=for-the-badge&logo=github"></a>
+  <a href="https://github.com/castledking/Allium/wiki"><img alt="Wiki" src="https://img.shields.io/badge/GitHub-Wiki-181717?style=for-the-badge&logo=github"></a>
+  <a href="https://castled.codes"><img alt="CASTLED CODEX" src="https://castled.codes/assets/logo-banner.png" width="140" height="35"></a>
+</p>
 
-Start with the [implementation roadmap](docs/roadmap.md) and
-[working checklist](todo.md). They distinguish existing code, planned behavior,
-implementation order and acceptance gates.
+**Allium** replaces fragmented essentials, economy, sign, mail, moderation, and custom-tool plugins with one clean, modular engine built for **Spigot, Paper, Purpur, and Folia (`1.20` – `26.x`)** — backed by an official addon ecosystem for custom crops, trading cards & relics, custom ores, party locator bars, and spawner crafting.
 
-## Core and addons
+Every major system can be toggled independently in `config.yml`, runs with crash-safe SQLite/MySQL persistence, and integrates cleanly with Vault, LuckPerms, PlaceholderAPI, PacketEvents, DiscordSRV, Nexo, CraftEngine, Oraxen, GriefPrevention / GriefPrevention3D, and ResourcePackManager.
 
-Core includes essentials commands, permissions, config migrations, messages and
-sounds, player preferences, storage, signs, optional timed broadcasts, and the
-shared item/resource-pack services. Handcuffs, Mob Disarmer, Phantom Obliterator,
-renaming and the staff CrowBar locator feed remain core features. The default
-distribution includes a resource pack for core tools and works without an external
-item plugin. Nexo, CraftEngine and Oraxen are optional providers used consistently
-wherever a feature accepts or produces items.
+---
 
-Give, Enchant, Skull and Potion will share a reusable item-building library bundled
-inside core. Commands and addons use one API; Allium remains the only required
-plugin, with no separate library plugin or required item editor.
+## Key Features
 
-Gameplay systems ship separately:
+- **Complete Essentials & Travel Suite**
+  Homes, warps, default & per-group spawns, `/tpa`/`/tpahere`/`/back`/`/rtp`, `/fly` (with persistent timed flight), `/heal`, `/feed`, `/repair`, `/enchant`, `/spawnmob`, `/give` with a full custom item library, `/worth` & `/sell`, kits, custom text pages (`/motd`, `/rules`, `/info`, `/customtext`), scheduled broadcasts, and `/autorestart`.
+####
+- **Journaled Economy & Vault Provider**
+  Crash-safe SQLite (WAL `synchronous=FULL`) or MySQL/MariaDB ledger with Vault integration, `/bal`, `/pay`, `/baltop`, `/eco`, `/paytoggle`, `/payconfirm`, transaction taxes with refund audit trails, signed physical bank cheques (`/cheque`), and safe cross-module reservations for paid signs, kits, and mail gifts. Full support for Geyser/Floodgate `.`-prefixed Bedrock usernames.
+  ```yaml
+  economy:
+    vault-provider-enabled: true
+    starting-balance: '100.00'
+  ```
+####
+- **22 Interactive Signs & Short Price Formatting**
+  Full non-shop EssentialsX sign parity: `[Balance]`, `[Warp]`, `[Kit]`, `[Mail]`, `[Heal]`, `[Repair]`, `[Disposal]`, `[Info]`, `[Color]`, `[Workbench]`, `[Anvil]`, `[Cartography]`, `[Grindstone]`, `[Loom]`, `[Smithing]`, `[Gamemode]`, `[Time]`, `[Weather]`, `[RandomTeleport]` (`[RTP]`), `[Free]`, `[Enchant]`, and `[Spawnmob]` (including `wolf:tamed` owned by the clicking player).
+  ```yaml
+  sign-short-prices: true       # $1,100 -> $1.1K, $1,500,000 -> $1.5M
+  adopt-essentials-signs: false # Automatically adopt legacy dark-blue [Type] signs
+  ```
+####
+- **Seamless Essentials / EssentialsX & Legacy Migration**
+  Preview every change with a read-only dry run before applying under an automatic login fence:
+  ```
+  /allium import essentials
+  /allium import essentials apply <run>
+  ```
+  Imports balances, homes, warps, spawns, logout locations, legacy & structured mail, nicknames, ignore lists, preferences, jails, active mutes, jailed players, account names, and `enabledSigns` — and automatically converts existing dark-blue Essentials world signs into Allium signs on load or click. Upgrading from legacy Allium (`0.x`) also migrates `config.yml`, `modguard.yml`, `autorestart.yml`, `explosions.yml`, and addon configs automatically on first boot.
+####
+- **Official Addon Ecosystem & In-Game Installer**
+  Heavier gameplay features ship as modular addons in `plugins/Allium/addons/` and can be installed directly from GitHub Releases or toggled on/off without removing their jars:
+  ```
+  /allium addon list
+  /allium addon download <addon>
+  /allium addon enable <addon>
+  /allium addon disable <addon>
+  ```
+  | Addon | Jar | Description |
+  | --- | --- | --- |
+  | **Crops** | `Addon-Crops-1.0.0.jar` | Custom crops, fertilizers, sprinklers, Kitchen baking & pies, and Jade overlays. |
+  | **Curios** | `Addon-Curios-1.0.0.jar` | Trading cards, 7-slot Relics equipment, textured menus, morphs, `/frame`, and chat hover frames. |
+  | **Ores** | `Addon-Ores-1.0.0.jar` | Deterministic CraftEngine custom ore generation, `/pregen`, and Jade ore overlays. |
+  | **PartyLocator** | `Addon-PartyLocator-1.0.0.jar` | `/party` groups and vanilla `1.21.6+` locator bar integration. |
+  | **SpawnerCraft** | `Addon-SpawnerCraft-1.0.0.jar` | 208+ signed mob head drops, Spawner Changers, and multi-recipe slideshow guides. |
+####
+- **Chat, Hover Tooltips, Message Deletion & Offline Mail**
+  Static RGB/MiniMessage chat formatting with per-group `chat-format.groups`, hover tooltips, packet-level `/deletemsg` resync, `@mentions`, persistent `/nick`, private messaging (`/msg`, `/reply`, `/ignore`, `/msgtoggle`, `/messagesounds`, `/socialspy`), and offline text mail & atomic item gifts (`/mail`).
+####
+- **Moderation, Discord Feeds, `/restore` & ModGuard**
+  - Persistent discipline commands (`/ban`, `/tempban`, `/ipban`, `/mute`, `/jail`, `/freeze`, `/warn`, `/notes`, `/vanish`, `/invsee`, `/enderchest`) with `/report` and `/escalate` Discord webhook/DiscordSRV feeds.
+  - Interactive `/restore` inventory & ender chest snapshot editor with retention pruning.
+  - **ModGuard** (`modguard.yml`): client brand, plugin channel, Forge/Lunar mod list, and PacketEvents sign translation probe detection with `/allium modguard <reload|alerts [on|off]>`.
+  - Command hiding (`hide.yml`) and alt-account detection (`/altexempt`).
+####
+- **Signed Privileged Tools & Regenerating Explosions**
+  HMAC-signed `Mob Disarmer`, `Phantom Obliterator`, `Lazy Axe`, `Handcuffs`, `Claim Handcuffs`, and configurable `/powertool` definitions under `plugins/Allium/tools/*.yml`, plus bottom-up crash-safe regenerating explosions (`explosions.yml`).
+####
+- **Built-in Resource Pack Delivery**
+  Bundles Allium's deterministic core pack, automatically merges enabled official addon packs, and delivers via built-in standalone HTTP self-hosting (`resource-pack.owner: standalone`) or ResourcePackManager (`resource-pack.owner: rpm-export`).
 
-- Curios: custom items with actions, custom enchantments, and equipment slots with relics, on one
-  shared engine. Each part can be turned off.
-- Harvest: crops, soil, growth, fertilizers and sprinklers.
-- Kitchen: cooking and preparation; depends on Harvest.
-- Pregen Ores: generation jobs and ore placement.
-- SpawnerCraft: head/core recipes and typed spawners.
-- Trading Cards: collection, boosts and upgrades.
-- Party Locator: parties and the locator bar.
+---
 
-The planned installation uses ordinary Bukkit plugins, each depending on Allium:
+## Supported Languages
 
-```text
-plugins/
-  Allium-<version>.jar
-  Addon-Harvest-<version>.jar
-  Addon-Kitchen-<version>.jar
-  Addon-Curios-<version>.jar
-```
+Set `settings.locale` in `plugins/Allium/config.yml` or customize messages and `[sound]` cues under `plugins/Allium/lang/`:
 
-Other addons follow the same naming. Publish them as assets on the same GitHub
-release, with compatible API metadata. This replaces the earlier custom
-`plugins/Allium/addons/` loader proposal. Addon loading is not implemented yet;
-the existing runtime config still contains older placeholder keys. Automatic
-downloads remain deferred and off by default.
+| Code | Language |
+| --- | --- |
+| `en_US` | English |
+| `es_ES` | Spanish |
 
-Allium will not build a dialog system; CommandPanels handles dialogs.
-Mod-loader builds and a client companion are deferred
-outside the server-plugin roadmap. The [Harvest design](docs/harvest-addon-plan.md)
-retains the crop-rendering investigation, with Kitchen separated into its own addon.
+---
 
-## Implementation order
+## Supported Platforms: Spigot, Paper, Purpur, and Folia.
+### Allium targets and supports Minecraft `1.20` – `26.x` on Java 17+ (Java 21+ for Paper `1.20.5+` and optional Java 21 item providers).
 
-1. **M0:** reproducible build, Spigot baseline, dependency audit and compatibility checks.
-2. **M1:** minimal shared API, player storage, command ownership, all item providers,
-   default pack and a working Mob Disarmer through the shared service.
-3. **M2:** private messages, persistent preferences, language sound defaults and `/mfx`.
-4. **M3:** teleportation/homes/warps, atomic economy, `/paytoggle`, `/tptoggle` and kits.
-5. **M4:** complete core utilities, staple tools, renamer, CrowBar, signs and timed broadcasts.
-6. **M5:** extract and ship addons against proven APIs.
-7. **M6:** migration rehearsal, profiling, full compatibility validation and release.
+---
 
-The roadmap defines command semantics, data contracts and completion gates. Core
-alpha does not wait for every addon. Import planning starts with M0.
+## Download
+### [⬇ Download Allium and Official Addons from GitHub Releases](https://github.com/castledking/Allium/releases)
+Also available on [Modrinth](https://modrinth.com/plugin/allium-essentials) (with official addons attached as supplementary files) and [SpigotMC](https://www.spigotmc.org/resources/126462/).
 
-## Existing foundation
+## Documentation
+For full setup, configuration, commands, permissions, and addon guides, see the [Allium Wiki](https://github.com/castledking/Allium/wiki).
 
-- Gradle Kotlin DSL with Shadow packaging.
-- Module, command and listener managers.
-- Config loading, backup-before-upgrade, migrations and missing-key insertion.
-- Locale files in `lang/`, a `Messages` enum and English fallback.
-- Native static text formatting and sound playback; Takion has been retired.
-- HikariCP database setup for MySQL/SQLite and economy/Vault scaffolding.
-- Implementations of `/heal`, `/feed`, `/fly`, `/god` and `/gamemode`.
-
-These are scaffolding and implemented code paths, not a production-readiness claim.
-Transactions, asynchronous persistence, provider readiness and lifecycle cleanup
-need the verification described in M0–M4.
-
-## Building
-
+## Building from Source
+Requires JDK 17, JDK 21, and Python 3 with `pyyaml`:
 ```bash
-./gradlew clean build
+./gradlew check shadowJar :addons:crops:build :addons:curios:build :addons:ores:build :addons:partylocator:build :addons:spawnercraft:build -PdistributablePack=true
 ```
 
-Shared code compiles against **Spigot 1.20** and emits **Java 17** bytecode.
-The three optional provider source sets compile against pinned Java 21 APIs but
-also emit Java 17 bytecode; install JDK 17 and 21 for the configured toolchains.
-Provider tests run on Java 21. Output is `build/libs/Allium.jar`.
-
-Provider API pins, actual server runs and open validation rows are documented in
-[the S05 matrix](docs/s05-provider-matrix.md). Native CE reset quantity checks
-require the recorded count-preserving source patch: stock 26.9.1/26.9.2 lose items.
-The patched runtime gate and its exact artifact hashes are recorded separately
-from stock results. Supplied Nexo 1.30-dev-36f4ce686 and Oraxen 1.220.1 are
-explicitly runtime-verified builds. The Nexo 1.29.x and Oraxen 1.211.x API lines
-are compile-only, not runtime-verified support claims; see the matrix for the
-separate source-built Oraxen experiment.
-The Mob Disarmer (S06a) passed its live gate on Spigot 1.20.1, Paper 1.21.8 with all
-three providers, and Paper 26.3 with GriefPrevention3D; see
-[the S06a results](tests/live/tools/disarmer/RESULTS.md). The optional GriefPrevention hook
-compiles against the public GriefPrevention 16.18.2 API (Java 17 bytecode). It loads only
-when GriefPrevention or GriefPrevention3D is enabled.
-`/give` is the M1 item-library harness: it gives vanilla, Allium and provider items (Allium and
-bound provider items arrive stamped and signed), with human tokens, raw `[...]`/`{...}` data per
-server version, and a configurable overflow policy; see
-[the item results](tests/live/items/RESULTS.md).
-The core resource pack (S06b) is generated from [`pack/manifest.json`](pack/README.md) during
-`./gradlew build` and bundled in the jar; Allium does not send it yet (`resource-pack.owner: none`).
-See [the S06b results](tests/live/pack/RESULTS.md) and the
-[manual visual checklist](tests/live/pack/VISUAL-CHECKLIST.md).
-Core remains the only required plugin; external providers are compile-only and
-are not bundled. Current bundled libraries are HikariCP 5.1.0 and InvUI 1.49.
-InvUI's 26.x GUI compatibility remains an explicit later-slice risk.
-
-Servers need the Java version required by their own release and installed provider
-plugins. The shared Java 17 bytecode target does not lower server/provider runtime
-requirements. See the [compatibility plan](docs/roadmap.md#runtime-and-compatibility).
-
-## Source layout
-
-```text
-src/main/java/codes/castled/allium/
-  PluginStart.java
-  command/                 Command registration and current essentials executors
-  core/                    Module lifecycle
-  module/                  Essentials and economy modules
-  config/                  Loading, backup, migrations and default-key sync
-  database/                JDBC setup and economy table
-  message/                 Message keys, locales and delivery
-  listener/                Listener registration and god-mode handling
-  protection/              ProtectionService, hooks and the cancellable check event
-  tool/disarmer/           Mob Disarmer behavior, settings and listener
-  item/library/            Item library: token adapters, skull cache, version-split ComponentAdapter
-  item/delivery/           ItemDeliveryService and ItemGiveEvent
-  pack/                    Manifest-backed core item definitions and resource-pack settings
-  compat/                  Compatibility interfaces/providers
-src/*Adapter/             Isolated Nexo/CraftEngine/Oraxen API source sets
-src/griefpreventionHook/   Isolated GriefPrevention claim hook
-src/paperCommands/        Paper-only Brigadier /give registration (keeps vanilla /execute targeting)
-src/main/resources/        plugin.yml, config.yml and lang/
-allium-core/               Platform-neutral command specs, item identity/signing, tool policy, pack generator/validator
-pack/                      Core pack manifest, original textures and SF inventory/export tools
-```
-
-## License
-
-Project license remains undecided. Essentials and ItemTag are GPLv3 reference
-projects; resolve licensing and attribution before directly incorporating their
-source or configuration prose. Server asset exports must retain provenance and
-redistribution permissions.
+## Support
+- [📖 Documentation Wiki](https://github.com/castledking/Allium/wiki) — Setup guides, commands, permissions, and configuration reference.
+- [🌐 Website](https://castled.codes) — Projects, updates, and downloads from CASTLED CODEX.
+- [🐛 Issue Tracker](https://github.com/castledking/Allium/issues) — Report bugs or request features.
+- [💬 Discord Community](https://discord.gg/D6CeVTtJpF) — Get support and follow development.

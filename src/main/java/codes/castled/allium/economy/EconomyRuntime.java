@@ -233,7 +233,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         }catch(IllegalArgumentException|ArithmeticException error){tell(sender,Messages.ECO_INVALID);}
     }
     private void resolve(CommandSender sender,String name,java.util.function.Consumer<UUID> continuation){
-        if(name==null||!name.matches("[A-Za-z0-9_]{1,16}")){tell(sender,refusal());return;}
+        if(!codes.castled.allium.naming.NameCache.isValidName(name)){tell(sender,refusal());return;}
         TaxSettings tax=taxSettings();
         if(name.equalsIgnoreCase(tax.accountName())){continuation.accept(tax.accountUuid());return;}
         Player online=plugin.getServer().getPlayerExact(name);
@@ -442,11 +442,21 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             catch(SQLException error){tell(sender,Messages.ECO_RES_FAILED);}});
     }
     String resolveDisplayName(UUID id){
+        return resolveDisplayName(null,id);
+    }
+    String resolveDisplayName(java.sql.Connection existing,UUID id){
         TaxSettings tax=taxSettings();
         if(id.equals(tax.accountUuid()))return tax.accountName();
         if(plugin.getPlayerNames()!=null){
             var cached=plugin.getPlayerNames().cache().byUuid(id);
             if(cached.isPresent())return cached.get().name();
+        }
+        if(existing!=null){
+            try(var s=existing.prepareStatement("SELECT name FROM allium_player_names WHERE uuid=?")){
+                s.setString(1,id.toString());
+                try(var r=s.executeQuery()){if(r.next())return r.getString(1);}
+            }catch(SQLException ignored){}
+            return id.toString();
         }
         try(var c=plugin.getDatabaseManager().getConnection();var s=c.prepareStatement("SELECT name FROM allium_player_names WHERE uuid=?")){
             s.setString(1,id.toString());
@@ -479,7 +489,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
                 if(excludeTax){ps.setString(1,tax.accountUuid().toString());ps.setInt(2,PLACEHOLDER_TOP);}
                 else{ps.setInt(1,PLACEHOLDER_TOP);}
                 try(var r=ps.executeQuery()){
-                    while(r.next()){UUID id=UUID.fromString(r.getString(1));top.add(new TopEntry(id,resolveDisplayName(id),new Money(r.getLong(2)).decimal()));}
+                    while(r.next()){UUID id=UUID.fromString(r.getString(1));top.add(new TopEntry(id,resolveDisplayName(c,id),new Money(r.getLong(2)).decimal()));}
                 }
             }catch(SQLException|RuntimeException error){top=placeholders.top();}
             placeholders=new PlaceholderSnapshot(Map.copyOf(balances),List.copyOf(top));
@@ -537,7 +547,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
                         int rank=offset+1;
                         while(r.next()){
                             UUID id=UUID.fromString(r.getString(1));
-                            rows.add(new TopRow(rank++,resolveDisplayName(id),display.format(new Money(r.getLong(2)))));
+                            rows.add(new TopRow(rank++,resolveDisplayName(c,id),display.format(new Money(r.getLong(2)))));
                         }
                     }
                 }

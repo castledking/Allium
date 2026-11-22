@@ -35,6 +35,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     private CardGuiManager cardGui;
     private GiveCommand give;
     private HeldCardBar heldCardBar;
+    private AutoCloseable framePackets;
     private final Map<NamespacedKey, Catalog.Entry> recipes = new HashMap<>();
     private final Map<UUID, Map<Catalog.Slot, ItemStack>> loadouts = new HashMap<>();
     private final Set<UUID> importing = new HashSet<>();
@@ -94,6 +95,19 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         heldCardBar = new HeldCardBar(this);
         getServer().getPluginManager().registerEvents(heldCardBar, this);
         heldCardBar.start();
+        try {
+            getServer().getServicesManager().register(codes.castled.allium.api.ChatHoverFrame.class,
+                    new HoverFrames(this), this, org.bukkit.plugin.ServicePriority.Normal);
+        } catch (NoClassDefFoundError olderAllium) {
+            // Core versions before 1.6 have no chat hover service.
+        }
+        if (texturedMenu() && getServer().getPluginManager().isPluginEnabled("packetevents")) {
+            try {
+                framePackets = new FrameItemPackets(this);
+            } catch (LinkageError | RuntimeException unavailable) {
+                getLogger().warning("Item frame packets are unavailable: " + unavailable);
+            }
+        }
         getServer().getServicesManager().register(CurioExperience.class, this::awardEquipped,
                 this, org.bukkit.plugin.ServicePriority.Normal);
         getServer().getServicesManager().register(CardCrafting.class, new CardCrafting() {
@@ -177,6 +191,13 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
 
     @Override
     protected void onAddonDisable() {
+        if (framePackets != null) {
+            try {
+                framePackets.close();
+            } catch (Exception unavailable) {
+                getLogger().fine("Could not unregister item frame packets: " + unavailable.getMessage());
+            }
+        }
         if (cardGui != null) cardGui.closeAll();
         if (heldCardBar != null) heldCardBar.stop();
         for (Player player : getServer().getOnlinePlayers()) {
@@ -218,9 +239,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         } else if ("frame".equals(action) && args.length == 2) {
             List<String> out = new ArrayList<>();
             if ("list".startsWith(prefix)) out.add("list");
-            for (String name : frames.keySet()) {
-                if ((!(sender instanceof Player p) || canUseFrame(p, name)) && name.startsWith(prefix)) out.add(name);
-            }
+            out.addAll(completeFrameStyles(sender, prefix));
             return out;
         } else if ("import".equals(action) && admin && args.length == 2) {
             List<String> out = new ArrayList<>();
@@ -244,13 +263,17 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
             return List.of("list", "apply").stream().filter(a -> a.startsWith(prefix)).toList();
         }
         if (args.length == 2 && "apply".equalsIgnoreCase(args[0])) {
-            String prefix = args[1].toLowerCase(Locale.ROOT);
-            return frames.keySet().stream()
-                    .filter(name -> !(sender instanceof Player p) || canUseFrame(p, name))
-                    .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(prefix))
-                    .toList();
+            return completeFrameStyles(sender, args[1].toLowerCase(Locale.ROOT));
         }
         return List.of();
+    }
+
+    private List<String> completeFrameStyles(CommandSender sender, String prefix) {
+        var styles = new ArrayList<>(List.of("auto", "off"));
+        for (String name : frames.keySet()) {
+            if (!(sender instanceof Player player) || canUseFrame(player, name)) styles.add(name);
+        }
+        return styles.stream().filter(name -> name.startsWith(prefix)).toList();
     }
 
     private void command(CommandSender sender, String label, String[] args) {
@@ -269,7 +292,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         if (args.length == 0) { open(player, 0); return; }
         String action = args[0].toLowerCase(Locale.ROOT);
         if (action.equals("frame")) {
-            // Legacy /cards frame: list the styles, or apply one to the held curio like /frame apply.
+            // Both legacy forms operate on the held item.
             if (args.length == 1 || args.length == 2 && args[1].equalsIgnoreCase("list")) frame(player, new String[]{"list"});
             else if (args.length == 2) frame(player, new String[]{"apply", args[1].toLowerCase(Locale.ROOT)});
             else tell(player, "Usage: /" + label + " frame [list|<style>]");
@@ -343,17 +366,45 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                     .filter(name -> canUseFrame(player, name)).toList()));
             return;
         }
-        if (args.length != 2 || !args[0].equalsIgnoreCase("apply") || !frames.containsKey(args[1])) {
-            tell(player, "Usage: /frame [list|apply <style>]");
+        if (args.length != 2 || !args[0].equalsIgnoreCase("apply")) {
+            tell(player, "Usage: /frame [list|apply <style|auto|off>]");
             return;
         }
-        if (!canUseFrame(player, args[1])) { tell(player, "You cannot use that frame."); return; }
+        String style = args[1].toLowerCase(Locale.ROOT).replace('-', '_');
+        if (!style.equals("auto") && !style.equals("off") && !canUseFrame(player, style)) {
+            tell(player, "You cannot use that frame.");
+            return;
+        }
         if (!editable(player)) return;
         ItemStack source = player.getInventory().getItemInMainHand();
-        ItemStack styled = changed(source, Map.of("frame", args[1]));
-        if (styled == null) { tell(player, "Hold one valid curio to change its frame."); return; }
-        player.getInventory().setItemInMainHand(styled);
-        tell(player, entry(styled), "Applied the " + args[1] + " frame.");
+        if (source.getType().isAir()) { tell(player, "Hold the item you want to frame."); return; }
+        if (entry(source) != null) {
+            if (style.equals("off")) { tell(player, "This curio has its own frame."); return; }
+            ItemStack styled = changed(source, Map.of("frame", style.equals("auto") ? automaticFrame(player) : style));
+            if (styled == null) return;
+            player.getInventory().setItemInMainHand(styled);
+        } else {
+            var meta = source.getItemMeta();
+            if (meta == null || !ItemFrameMarker.apply(meta, style)) { tell(player, "That item has no frame."); return; }
+            if (!source.setItemMeta(meta)) return;
+            player.getInventory().setItemInMainHand(source);
+        }
+        tell(player, style.equals("off") ? "Frame removed." : "Applied the " + style + " frame.");
+    }
+
+    String automaticFrame(Player player) {
+        for (var frame : frames.entrySet()) {
+            if (!frame.getValue().isEmpty() && canUseFrame(player, frame.getKey())) return frame.getKey();
+        }
+        return "simple";
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void refreshFrames(org.bukkit.event.player.PlayerGameModeChangeEvent event) {
+        if (framePackets != null && (event.getPlayer().getGameMode() == org.bukkit.GameMode.CREATIVE
+                || event.getNewGameMode() == org.bukkit.GameMode.CREATIVE)) {
+            core.scheduler().runOnServerLater(event.getPlayer()::updateInventory, 50);
+        }
     }
 
     private boolean canUseFrame(Player player, String name) {

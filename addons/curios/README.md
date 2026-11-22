@@ -2,7 +2,7 @@
 
 Curios is an Allium addon that requires Allium (API 1.1) and must be placed inside
 `plugins/Allium/addons/`. Put `Allium.jar` in the server's top-level `plugins/` directory, put
-`Addon-Curios-1.0.0-SNAPSHOT.jar` (or `Curios.jar`) in `plugins/Allium/addons/`, then restart the
+`Addon-Curios-1.0.0.jar` in `plugins/Allium/addons/`, then restart the
 server. Allium discovers, validates, and enables addons from `plugins/Allium/addons/` on startup.
 If Curios is placed directly in `plugins/`, Allium refuses it and Curios disables itself before
 registering anything; without Allium, Curios cannot load (`depend: [Allium]`). Startup should show
@@ -89,7 +89,12 @@ item name in the creative inventory, and at the end of the tooltip elsewhere.
   skeleton, piglin, ...). A mob with neither pays the card's `trade-item`. Set
   `card-menu.trade-in-pays: item` to always pay the `trade-item`.
 - `/frame list` lists styles the player can use. `/frame apply <style>` changes the held
-  curio's signed frame. `/cards frame [style]` does the same, as legacy's command did. Imported
+  curio's signed frame. On any other item it writes a `[frame:<style>]` marker as the first lore
+  line (`auto` for each viewer's own frame, `off` to remove it). `/cards frame [style]` does the
+  same, as legacy's command did. A marker written by hand, or by another plugin's lore, frames the
+  item too: with PacketEvents installed, Curios draws the frame on the copy each player is sent,
+  so the item on the server keeps its own lore. Creative players are sent the item unframed,
+  because a creative client sends items back as it was shown them. Imported
   decorative styles retain their legacy permissions.
 - Right-click a held card, in the air or at a block, to open its menu. Right-clicking a card in
   your inventory works too, as does right-clicking an equipped card or any card in your inventory
@@ -131,5 +136,5 @@ the card family, tier, level, XP, bound flag, quality, rerolls and legacy boost 
 Antiquities items are recognized by their known legacy IDs. Arbitrary third-party item components
 and slot extensions require an explicit mapping.
 
-The legacy card boost executors, quest and economy bridges, pending payout recovery, chat-hover frame injection, and the other Antiquities effects remain follow-up work.
+The legacy card boost executors, quest and economy bridges, pending payout recovery, and the other Antiquities effects remain follow-up work. Chat hovers are framed through Allium's `ChatHoverFrame` service (API 1.6).
 The addon does not implement custom enchantments.

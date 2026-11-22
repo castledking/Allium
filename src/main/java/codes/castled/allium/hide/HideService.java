@@ -228,12 +228,21 @@ public final class HideService implements Listener,AutoCloseable {
             try{YamlConfiguration next=read();if(edit!=null)edit.accept(next);
                 plugin.getScheduler().runOnServer(()->{
                     if(closed)return;
-                    try{HideSettings prepared=prepare(next);var packTargets=CommandHintPack.targets(plugin);
+                    try{HideSettings prepared=prepare(next);
                         io.execute(()->{try{
                             if(edit!=null)save(next);
-                            boolean hintFailed;try{CommandHintPack.export(packTargets,prepared.enabled()?prepared.hint():"");hintFailed=false;}catch(IOException|RuntimeException packFailure){hintFailed=true;plugin.logger().warning("Hide rules updated, but command hint pack export failed: "+packFailure.getClass().getSimpleName());}
-                            final boolean packFailed=hintFailed;
-                            plugin.getScheduler().runOnServer(()->{if(closed)return;config=next;settings=prepared;refreshLabels();updating=false;for(Player p:plugin.getServer().getOnlinePlayers())refresh(p,true);logCapability();if(actor!=null){send(actor,edit==null?Messages.HIDE_RELOADED:Messages.HIDE_UPDATED);if(packFailed)send(actor,Messages.HIDE_HINT_FAILED);audit(actor,"applied");}});
+                            plugin.getScheduler().runOnServer(()->{
+                                if(closed)return;
+                                String oldHint = settings.enabled() ? settings.hint() : "";
+                                String newHint = prepared.enabled() ? prepared.hint() : "";
+                                config=next;settings=prepared;refreshLabels();updating=false;
+                                for(Player p:plugin.getServer().getOnlinePlayers())refresh(p,true);
+                                logCapability();
+                                if (!Objects.equals(oldHint, newHint)) {
+                                    plugin.refreshResourcePack(line -> { if (actor != null) codes.castled.allium.text.TextSender.send(actor, line); });
+                                }
+                                if(actor!=null){send(actor,edit==null?Messages.HIDE_RELOADED:Messages.HIDE_UPDATED);audit(actor,"applied");}
+                            });
                         }catch(Exception failure){failed(actor,failure);}});
                     }catch(Exception invalid){updating=false;plugin.logger().warning("Hide reload refused: "+invalid.getMessage());if(actor!=null)send(actor,Messages.HIDE_FAILED);}
                 });

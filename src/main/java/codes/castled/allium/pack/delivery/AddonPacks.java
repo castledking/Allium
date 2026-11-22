@@ -66,6 +66,16 @@ public final class AddonPacks {
 
     /** Scans {@code <dataFolder>/addons/*.jar} in sorted order for {@code allium-pack} contributions. */
     public static List<Discovered> discover(Path dataFolder, PackExport.Logs logs) {
+        return discover(dataFolder, null, logs);
+    }
+
+    /**
+     * Scans {@code <dataFolder>/addons/*.jar} in sorted order for {@code allium-pack} contributions,
+     * skipping addons disabled under {@code addons.enabled.*} in {@code config}.
+     */
+    public static List<Discovered> discover(Path dataFolder,
+                                            @Nullable org.bukkit.configuration.file.FileConfiguration config,
+                                            PackExport.Logs logs) {
         if (dataFolder == null) {
             return List.of();
         }
@@ -93,6 +103,9 @@ public final class AddonPacks {
                 String name = trimToNull(pluginYml.getString("name"));
                 String packResource = trimToNull(pluginYml.getString("allium-pack"));
                 if (name == null || packResource == null) continue;
+                if (config != null && !codes.castled.allium.addon.AddonCatalog.isEnabledInConfig(config, name)) {
+                    continue;
+                }
 
                 Mode mode = readDeliveryMode(dataFolder.toAbsolutePath().getParent(), addonsDir, jar, name, logs);
                 if (mode == Mode.NONE) {

@@ -90,6 +90,32 @@ public final class PackMerger {
         return new Result(writeZip(files), List.copyOf(warnings));
     }
 
+    /** Writes one configured translation while preserving the pack's other entries. */
+    public static byte[] setTranslations(byte[] baseZip, List<String> paths, String key, String value) throws IOException {
+        var files = readZip(baseZip);
+        var overlays = overlayDirectories(files.get("pack.mcmeta"));
+        for (String path : paths) {
+            setTranslation(files, path, key, value);
+            for (String overlay : overlays) {
+                String shadow = overlay + "/" + path;
+                if (files.containsKey(shadow)) setTranslation(files, shadow, key, value);
+            }
+        }
+        return writeZip(files);
+    }
+
+    private static void setTranslation(Map<String, byte[]> files, String path, String key, String value) throws IOException {
+        byte[] existing = files.get(path);
+        Map<String, Object> language;
+        try {
+            language = existing == null ? new LinkedHashMap<>() : new LinkedHashMap<>(Json.parseObject(utf8(existing)));
+        } catch (RuntimeException invalid) {
+            throw new IOException("Invalid pack language entry " + path, invalid);
+        }
+        language.put(key, value);
+        files.put(path, utf8Bytes(Json.write(language)));
+    }
+
     private static byte[] mergeEntry(String path, byte[] baseBytes, byte[] addonBytes, String addon, List<String> warnings) {
         if (isItemModel(path)) {
             return mergeItemModel(path, baseBytes, addonBytes, addon, warnings);

@@ -1,4 +1,4 @@
-# Command execution and completion rules are independent. See docs/hide.md.
+# Command execution and completion rules are independent.
 # Opt in after configuring groups for your server; native permissions always apply.
 settings:
   enabled: false

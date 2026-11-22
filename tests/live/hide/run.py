@@ -42,6 +42,14 @@ def run_suite(lane):
         'alt':{'whitelist':False,'commands':['party invite','hgparty invite'],'tabcompletes':['party invite','hgparty invite']},
         'vip':{'whitelist':True,'commands':['hideghost'],'tabcompletes':['^']}}}
     (lane.path/'plugins/Allium/hide.yml').write_text(yaml.safe_dump(cfg,sort_keys=False,default_flow_style=True))
+    config_path=lane.path/'plugins/Allium/config.yml'
+    config=yaml.safe_load(config_path.read_text())
+    config['resource-pack']['owner']='standalone'
+    config_path.write_text(yaml.safe_dump(config,sort_keys=False))
+    helper=lane.path/'plugins/Allium/generated/Allium_unknown_command_resource_pack.zip'
+    helper.parent.mkdir()
+    with zipfile.ZipFile(helper,'w') as old:
+        old.writestr('pack.mcmeta','{"allium-command-hints":1}')
     lane.boot();lane.console_cmd('allium hide status','packet-filter=true')
     bot=Bot(lane,'InfoNorm');lane.bots[bot.name]=bot;bot.connect();window(1)
     trees=[json.loads(s.split(' ',1)[1]) for s in bot.lines if s.startswith('HIDE-TREE ')]
@@ -93,9 +101,12 @@ def run_suite(lane):
     lane.fixture('perm InfoNorm group.alt false');lane.fixture('perm InfoNorm allium.hide.bypass false')
     bad=lane.path/'plugins/Allium/hide.yml';before=bad.read_bytes();bad.write_text('groups: [invalid\n')
     lane.console_cmd('core hide reload','Hide configuration was refused');bot.chat(bot.cmd('party kick'),'Unknown command');bad.write_bytes(before);require(True,'invalid reload preserves active rules')
-    helper=lane.path/'plugins/Allium/generated/Allium_unknown_command_resource_pack.zip'
-    with zipfile.ZipFile(helper) as z:
-        require('100%%' in json.loads(z.read('assets/minecraft/lang/en_us.json'))['command.unknown.command'] and len(z.namelist())==143,'helper covers 142 locales and escapes percent')
+    pack=lane.path/'plugins/Allium/pack/allium-core-pack.zip'
+    with zipfile.ZipFile(pack) as z:
+        locales=[name for name in z.namelist() if name.startswith('assets/minecraft/lang/') and name.endswith('.json')]
+        require(len(locales)>=142 and all('100%%' in json.loads(z.read(name))['command.unknown.command'] for name in locales),
+                'configured hint is merged into 142 locales in the standalone pack')
+    require(not helper.parent.exists(),'old owned helper and empty generated directory removed')
     bot.disconnect();lane.bots.clear();lane.stop();(lane.path/'plugins/PacketEvents.jar').unlink()
     lane.boot();lane.console_cmd('allium hide status','packet-filter=false')
     bot=Bot(lane,'InfoNorm');lane.bots[bot.name]=bot;bot.connect();window(.5)

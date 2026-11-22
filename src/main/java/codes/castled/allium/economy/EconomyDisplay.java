@@ -24,6 +24,35 @@ public record EconomyDisplay(String symbol, boolean suffix) {
         return (amount.signum() < 0 ? "-" : "") + (suffix ? value + symbol : symbol + value);
     }
 
+    /** Formats a price for a sign line: when {@code shortForm} is true, values above $999 render as 1K, 1.1K, 1M, etc. */
+    public String formatSign(Money amount, boolean shortForm) {
+        if (!shortForm) return format(amount);
+        return formatShort(amount.decimal());
+    }
+
+    public String formatShort(BigDecimal amount) {
+        BigDecimal abs = amount.abs();
+        if (abs.compareTo(BigDecimal.valueOf(1_000L)) < 0) return format(amount);
+        BigDecimal divisor;
+        String unit;
+        if (abs.compareTo(BigDecimal.valueOf(1_000_000_000_000L)) >= 0) {
+            divisor = BigDecimal.valueOf(1_000_000_000_000L);
+            unit = "T";
+        } else if (abs.compareTo(BigDecimal.valueOf(1_000_000_000L)) >= 0) {
+            divisor = BigDecimal.valueOf(1_000_000_000L);
+            unit = "B";
+        } else if (abs.compareTo(BigDecimal.valueOf(1_000_000L)) >= 0) {
+            divisor = BigDecimal.valueOf(1_000_000L);
+            unit = "M";
+        } else {
+            divisor = BigDecimal.valueOf(1_000L);
+            unit = "K";
+        }
+        BigDecimal scaled = abs.divide(divisor, 2, java.math.RoundingMode.DOWN).stripTrailingZeros();
+        String value = scaled.toPlainString() + unit;
+        return (amount.signum() < 0 ? "-" : "") + (suffix ? value + symbol : symbol + value);
+    }
+
     public Money parsePrice(String line) {
         String text = line.trim();
         if (text.isEmpty()) return new Money(0);

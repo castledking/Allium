@@ -16,12 +16,12 @@ kill-xp: 5
 textured-menu: true
 migration-directory: config/relique/entities
 card-menu:
-  # Legacy's action bar: the held card's title above the hotbar while a card is in the main hand.
+  # Show the held card's title above the hotbar while a card is in the main hand.
   held-card-action-bar: true
   # What trading in a card pays, as many as its quality band's heads:
-  # heads: the card's mob head, as legacy did. SpawnerCraft's head when SpawnerCraft is installed,
-  #        else the vanilla head (zombie, skeleton, piglin, ...); the card's trade-item for a mob
-  #        with neither.
+  # heads: the card's mob head (SpawnerCraft's head when SpawnerCraft is installed,
+  #        else the vanilla head such as zombie, skeleton, or piglin; falls back to the
+  #        card's trade-item for a mob with neither).
   # item:  always the card's trade-item.
   trade-in-pays: heads
   allow-drop: true
@@ -34,7 +34,7 @@ card-menu:
     50: 600
     75: 2400
     100: 9000
-  # Rolling a bonus slot costs money from Allium's economy (the "economy" module), legacy's ladder:
+  # Rolling a bonus slot costs money from Allium's economy (the "economy" module):
   # each roll of a slot costs more than the last, so rolling until satisfied is never free, and
   # the bonus menu shows the next price before the player clicks. A slot's next roll costs
   #   cost x escalation^(rolls of that slot so far) x the card tier's multiplier,

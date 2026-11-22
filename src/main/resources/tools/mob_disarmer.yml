@@ -7,7 +7,7 @@
 # back if the tool cannot be updated, spends a charge only on a successful disarm, and asks
 # protection plugins first. A definition with any invalid setting is not loaded at all, and the
 # log names the file and the setting.
-# Settings left out use the defaults shown here. See docs/tools.md for every setting.
+# Settings left out use the defaults shown here.
 schema: 1
 
 # The tool's signed item identity. Never change it once tools exist: stacks carry it.
@@ -27,7 +27,7 @@ appearance:
   # instance UUID and MAC. Counts without an entry and items in no set keep their appearance.
   # Swapping rebuilds the item from its provider definition, so custom names are not kept.
   charge-variants: {}
-  #  sf:
+  #  example:
   #    '3': nexo:mob_disarmer
   #    '2': nexo:mob_disarmer_2-3
   #    '1': nexo:mob_disarmer_1-3
@@ -38,7 +38,7 @@ charges:
   # Spending the last charge starts one timer; the tool refills completely when it ends.
   recharge-seconds: 120
   break-chance:
-    # none: never breaks. legacy: 3% per spent charge, 5% on the final charge (pre-recode Allium).
+    # none: never breaks. legacy: 3% per spent charge, 5% on the final charge.
     # custom: the values below. Each charge-spending disarm rolls once.
     preset: none
     per-charge: 0.0
@@ -57,7 +57,6 @@ disarm:
   # then set to 0, so killing the mob cannot drop them again.
   # slot-chance: each piece rolls its slot's own drop chance once (2.0 for gear a mob picked up,
   #   0.085 for natural spawn gear). Villager gear and an enderman's carried block always drop.
-  #   This is pre-recode Allium's behavior.
   # always: every removed piece drops.
   drop-rule: slot-chance
   # Seconds a disarmed mob cannot pick items up, so it cannot re-equip at once. 0 disables.

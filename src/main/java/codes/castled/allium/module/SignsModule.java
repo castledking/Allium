@@ -22,6 +22,7 @@ public final class SignsModule extends AbstractModule {
         if(paidSigns!=null){paidSigns.close();paidSigns=null;}
         if(paidRepairs!=null){paidRepairs.close();paidRepairs=null;}
     }
+    public SignService signs(){return signs;}
     public codes.castled.allium.sign.PaidRepairService paidRepairs(){return paidRepairs;}
     public PaidSignService paidSigns(){return paidSigns;}
 }

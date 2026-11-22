@@ -1,0 +1,60 @@
+name: Build
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Install Python pack dependencies
+        run: python3 -m pip install --disable-pip-version-check pyyaml pillow
+
+      - name: Build and test Allium and all addons
+        run: |
+          chmod +x gradlew
+          ./gradlew check shadowJar \
+            :addons:crops:build \
+            :addons:curios:build \
+            :addons:ores:build \
+            :addons:partylocator:build \
+            :addons:spawnercraft:build \
+            -PdistributablePack=true \
+            -Dorg.gradle.java.installations.paths= \
+            --no-daemon
+
+      - name: Stage release-named artifacts
+        run: |
+          VERSION=$(awk -F= '$1 == "version" { print $2 }' gradle.properties)
+          mkdir -p dist
+          cp build/libs/Allium.jar "dist/Allium-${VERSION}.jar"
+          cp "addons/crops/build/libs/Addon-Crops-${VERSION}.jar" dist/
+          cp "addons/curios/build/libs/Addon-Curios-${VERSION}.jar" dist/
+          cp "addons/ores/build/libs/Addon-Ores-${VERSION}.jar" dist/
+          cp "addons/partylocator/build/libs/Addon-PartyLocator-${VERSION}.jar" dist/
+          cp "addons/spawnercraft/build/libs/Addon-SpawnerCraft-${VERSION}.jar" dist/
+
+      - name: Upload Allium and Addon jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: Allium-jars
+          path: dist/*.jar

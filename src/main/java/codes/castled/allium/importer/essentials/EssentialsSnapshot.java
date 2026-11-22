@@ -1,0 +1,411 @@
+package codes.castled.allium.importer.essentials;
+
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Stream;
+
+/**
+ * Immutable read-only snapshot of an Essentials/EssentialsX plugin folder ({@code userdata/*.yml},
+ * {@code warps/*.yml}, {@code jail.yml}/{@code jails.yml}, {@code spawn.yml}, and {@code config.yml}
+ * {@code enabledSigns}). Never mutates source files.
+ */
+public record EssentialsSnapshot(
+        String sourceSha256,
+        List<UserFile> users,
+        List<SkippedFile> skippedUserFiles,
+        List<WarpFile> warps,
+        List<JailEntry> jails,
+        List<SpawnEntry> spawns,
+        List<String> enabledSigns,
+        List<String> notes
+) {
+
+    public record RawLocation(
+            @Nullable String world,
+            @Nullable String worldName,
+            double x,
+            double y,
+            double z,
+            float yaw,
+            float pitch
+    ) {}
+
+    public record RawMail(
+            int index,
+            boolean legacy,
+            boolean read,
+            @Nullable String senderName,
+            @Nullable String senderUuid,
+            long timestamp,
+            long expire,
+            @Nullable String message
+    ) {}
+
+    public record UserFile(
+            String fileName,
+            UUID uuid,
+            boolean npc,
+            @Nullable String lastAccountName,
+            @Nullable String moneyRaw,
+            boolean moneyPresent,
+            Map<String, RawLocation> homes,
+            @Nullable RawLocation logoutLocation,
+            long logoutTimestamp,
+            @Nullable RawLocation lastLocation,
+            List<RawMail> mail,
+            @Nullable String nickname,
+            List<String> ignores,
+            boolean muted,
+            @Nullable String muteReason,
+            long muteTimestamp,
+            boolean jailed,
+            @Nullable String jailName,
+            long jailTimestamp,
+            long onlineJailMillis,
+            @Nullable Boolean acceptingPay,
+            @Nullable Boolean teleportEnabled,
+            @Nullable Boolean teleportAuto,
+            @Nullable Boolean confirmPay,
+            @Nullable Boolean socialSpy,
+            @Nullable Boolean msgToggle,
+            List<String> parseErrors
+    ) {}
+
+    public record SkippedFile(String fileName, String reason) {}
+
+    public record WarpFile(String fileName, String name, @Nullable RawLocation location, @Nullable String error) {}
+
+    public record JailEntry(String name, @Nullable RawLocation location, @Nullable String error) {}
+
+    public record SpawnEntry(String group, @Nullable RawLocation location, @Nullable String error) {}
+
+    public static EssentialsSnapshot read(Path root) throws IOException {
+        if (!Files.isDirectory(root)) {
+            throw new IOException("Essentials directory not found: " + root);
+        }
+        MessageDigest digest = sha256();
+        List<UserFile> users = new ArrayList<>();
+        List<SkippedFile> skippedUsers = new ArrayList<>();
+        List<WarpFile> warps = new ArrayList<>();
+        List<JailEntry> jails = new ArrayList<>();
+        List<SpawnEntry> spawns = new ArrayList<>();
+        List<String> enabledSigns = new ArrayList<>();
+        List<String> notes = new ArrayList<>();
+
+        Path userdataDir = root.resolve("userdata");
+        if (Files.isDirectory(userdataDir)) {
+            for (Path file : sortedYml(userdataDir)) {
+                String name = file.getFileName().toString();
+                byte[] raw = Files.readAllBytes(file);
+                hashFile(digest, "userdata/" + name, raw);
+                String stem = name.substring(0, name.length() - 4);
+                UUID uuid;
+                try {
+                    uuid = UUID.fromString(stem);
+                } catch (IllegalArgumentException notUuid) {
+                    skippedUsers.add(new SkippedFile(name, "non-UUID filename (needs explicit UUID map; never guessed from name)"));
+                    continue;
+                }
+                YamlConfiguration yaml = new YamlConfiguration();
+                try {
+                    yaml.loadFromString(new String(raw, StandardCharsets.UTF_8));
+                } catch (InvalidConfigurationException malformed) {
+                    skippedUsers.add(new SkippedFile(name, "malformed YAML: " + firstLine(malformed.getMessage())));
+                    continue;
+                }
+                users.add(parseUser(name, uuid, yaml));
+            }
+        } else {
+            notes.add("No userdata/ directory found under " + root);
+        }
+
+        Path warpsDir = root.resolve("warps");
+        if (Files.isDirectory(warpsDir)) {
+            for (Path file : sortedYml(warpsDir)) {
+                String name = file.getFileName().toString();
+                byte[] raw = Files.readAllBytes(file);
+                hashFile(digest, "warps/" + name, raw);
+                String stem = name.substring(0, name.length() - 4);
+                YamlConfiguration yaml = new YamlConfiguration();
+                try {
+                    yaml.loadFromString(new String(raw, StandardCharsets.UTF_8));
+                } catch (InvalidConfigurationException malformed) {
+                    warps.add(new WarpFile(name, stem, null, "malformed YAML: " + firstLine(malformed.getMessage())));
+                    continue;
+                }
+                String warpName = yaml.getString("name");
+                if (warpName == null || warpName.isBlank()) warpName = stem;
+                RawLocation loc = parseLocation(yaml);
+                if (loc == null) {
+                    warps.add(new WarpFile(name, warpName, null, "missing world or coordinates"));
+                } else {
+                    warps.add(new WarpFile(name, warpName, loc, null));
+                }
+            }
+        }
+
+        // EssentialsX uses jail.yml (singular); older forks sometimes use jails.yml.
+        Path jailsFile = Files.isRegularFile(root.resolve("jail.yml")) ? root.resolve("jail.yml") : root.resolve("jails.yml");
+        if (Files.isRegularFile(jailsFile)) {
+            byte[] raw = Files.readAllBytes(jailsFile);
+            hashFile(digest, jailsFile.getFileName().toString(), raw);
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.loadFromString(new String(raw, StandardCharsets.UTF_8));
+                ConfigurationSection section = yaml.getConfigurationSection("jails");
+                if (section != null) {
+                    for (String jailName : section.getKeys(false).stream().sorted().toList()) {
+                        ConfigurationSection row = section.getConfigurationSection(jailName);
+                        RawLocation loc = row == null ? null : parseLocation(row);
+                        jails.add(new JailEntry(jailName, loc, loc == null ? "missing world or coordinates" : null));
+                    }
+                }
+            } catch (InvalidConfigurationException malformed) {
+                notes.add(jailsFile.getFileName() + " could not be parsed: " + firstLine(malformed.getMessage()));
+            }
+        }
+
+        Path spawnFile = root.resolve("spawn.yml");
+        if (Files.isRegularFile(spawnFile)) {
+            byte[] raw = Files.readAllBytes(spawnFile);
+            hashFile(digest, "spawn.yml", raw);
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.loadFromString(new String(raw, StandardCharsets.UTF_8));
+                ConfigurationSection section = yaml.getConfigurationSection("spawns");
+                if (section != null) {
+                    for (String group : section.getKeys(false).stream().sorted().toList()) {
+                        ConfigurationSection row = section.getConfigurationSection(group);
+                        RawLocation loc = row == null ? null : parseLocation(row);
+                        spawns.add(new SpawnEntry(group, loc, loc == null ? "missing world or coordinates" : null));
+                    }
+                }
+            } catch (InvalidConfigurationException malformed) {
+                notes.add("spawn.yml could not be parsed: " + firstLine(malformed.getMessage()));
+            }
+        }
+
+        Path configFile = root.resolve("config.yml");
+        if (Files.isRegularFile(configFile)) {
+            byte[] raw = Files.readAllBytes(configFile);
+            hashFile(digest, "config.yml", raw);
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.loadFromString(new String(raw, StandardCharsets.UTF_8));
+                for (String sign : yaml.getStringList("enabledSigns")) {
+                    if (sign != null && !sign.isBlank()) enabledSigns.add(sign.trim().toLowerCase(Locale.ROOT));
+                }
+            } catch (InvalidConfigurationException malformed) {
+                notes.add("config.yml could not be parsed for enabledSigns: " + firstLine(malformed.getMessage()));
+            }
+        }
+
+        return new EssentialsSnapshot(
+                HexFormat.of().formatHex(digest.digest()),
+                List.copyOf(users),
+                List.copyOf(skippedUsers),
+                List.copyOf(warps),
+                List.copyOf(jails),
+                List.copyOf(spawns),
+                List.copyOf(enabledSigns),
+                List.copyOf(notes)
+        );
+    }
+
+    private static UserFile parseUser(String fileName, UUID uuid, YamlConfiguration yaml) {
+        List<String> errors = new ArrayList<>();
+        boolean npc = yaml.getBoolean("npc", false);
+        String lastAccountName = trimToNull(yaml.getString("last-account-name"));
+        if (lastAccountName == null) lastAccountName = trimToNull(yaml.getString("lastAccountName"));
+
+        boolean moneyPresent = yaml.contains("money");
+        String moneyRaw = null;
+        if (moneyPresent) {
+            Object raw = yaml.get("money");
+            if (raw != null) moneyRaw = String.valueOf(raw).trim();
+        }
+
+        Map<String, RawLocation> homes = new LinkedHashMap<>();
+        ConfigurationSection homesSection = yaml.getConfigurationSection("homes");
+        if (homesSection != null) {
+            for (String homeName : homesSection.getKeys(false).stream().sorted().toList()) {
+                ConfigurationSection row = homesSection.getConfigurationSection(homeName);
+                RawLocation loc = row == null ? null : parseLocation(row);
+                if (loc != null) homes.put(homeName, loc);
+                else errors.add("home '" + homeName + "' has missing world/coordinates");
+            }
+        }
+
+        RawLocation logoutLoc = parseLocation(yaml.getConfigurationSection("logoutlocation"));
+        long logoutTs = yaml.getLong("timestamps.logout", 0L);
+        RawLocation lastLoc = parseLocation(yaml.getConfigurationSection("lastlocation"));
+
+        List<RawMail> mail = parseMail(yaml, errors);
+        String nickname = trimToNull(yaml.getString("nickname"));
+
+        List<String> ignores = new ArrayList<>();
+        if (yaml.isList("ignore")) {
+            for (Object item : yaml.getList("ignore", List.of())) {
+                if (item != null) ignores.add(String.valueOf(item).trim());
+            }
+        }
+
+        boolean muted = yaml.getBoolean("muted", false);
+        String muteReason = trimToNull(yaml.getString("mute-reason"));
+        if (muteReason == null) muteReason = trimToNull(yaml.getString("muteReason"));
+        long muteTs = yaml.getLong("timestamps.mute", 0L);
+
+        boolean jailed = yaml.getBoolean("jailed", false);
+        String jailName = trimToNull(yaml.getString("jail"));
+        long jailTs = yaml.getLong("timestamps.jail", 0L);
+        long onlineJail = yaml.getLong("timestamps.onlinejail", 0L);
+
+        Boolean acceptingPay = optionalBoolean(yaml, "accepting-pay", "acceptingPay", errors);
+        Boolean teleportEnabled = optionalBoolean(yaml, "teleportenabled", "teleport-enabled", errors);
+        Boolean teleportAuto = optionalBoolean(yaml, "teleportauto", "teleport-auto", errors);
+        Boolean confirmPay = optionalBoolean(yaml, "confirm-pay", "confirmPay", errors);
+        Boolean socialSpy = optionalBoolean(yaml, "socialspy", "social-spy", errors);
+        Boolean msgToggle = optionalBoolean(yaml, "msgtoggle", "msg-toggle", errors);
+
+        return new UserFile(
+                fileName, uuid, npc, lastAccountName, moneyRaw, moneyPresent,
+                Map.copyOf(homes), logoutLoc, logoutTs, lastLoc,
+                List.copyOf(mail), nickname, List.copyOf(ignores),
+                muted, muteReason, muteTs, jailed, jailName, jailTs, onlineJail,
+                acceptingPay, teleportEnabled, teleportAuto, confirmPay, socialSpy, msgToggle,
+                List.copyOf(errors)
+        );
+    }
+
+    private static List<RawMail> parseMail(YamlConfiguration yaml, List<String> errors) {
+        List<?> rawList = yaml.getList("mail");
+        if (rawList == null || rawList.isEmpty()) return List.of();
+        List<RawMail> out = new ArrayList<>();
+        for (int i = 0; i < rawList.size(); i++) {
+            Object entry = rawList.get(i);
+            if (entry instanceof String legacyText) {
+                if (!legacyText.isBlank()) {
+                    out.add(new RawMail(i, true, false, null, null, 0L, 0L, legacyText));
+                }
+            } else if (entry instanceof Map<?, ?> map) {
+                boolean legacy = boolValue(map.get("legacy"), false);
+                boolean read = boolValue(map.get("read"), false);
+                String msg = map.get("message") == null ? null : String.valueOf(map.get("message"));
+                String senderName = map.get("sender-name") == null ? null : trimToNull(String.valueOf(map.get("sender-name")));
+                String senderUuid = map.get("sender-uuid") == null ? null : trimToNull(String.valueOf(map.get("sender-uuid")));
+                if ("null".equalsIgnoreCase(senderUuid)) senderUuid = null;
+                long ts = longValue(map.get("timestamp"), 0L);
+                long expire = longValue(map.get("expire"), 0L);
+                if (msg == null || msg.isBlank()) {
+                    errors.add("mail[" + i + "] has empty message");
+                } else {
+                    out.add(new RawMail(i, legacy, read, senderName, senderUuid, ts, expire, msg));
+                }
+            } else {
+                errors.add("mail[" + i + "] has unsupported entry type");
+            }
+        }
+        return out;
+    }
+
+    @Nullable
+    private static RawLocation parseLocation(@Nullable ConfigurationSection section) {
+        if (section == null) return null;
+        String world = trimToNull(section.getString("world"));
+        String worldName = trimToNull(section.getString("world-name"));
+        if (world == null && worldName == null) return null;
+        if (!section.isSet("x") || !section.isSet("y") || !section.isSet("z")) return null;
+        double x = section.getDouble("x");
+        double y = section.getDouble("y");
+        double z = section.getDouble("z");
+        float yaw = (float) section.getDouble("yaw", 0.0);
+        float pitch = (float) section.getDouble("pitch", 0.0);
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)
+                || !Float.isFinite(yaw) || !Float.isFinite(pitch)) {
+            return null;
+        }
+        return new RawLocation(world, worldName, x, y, z, yaw, pitch);
+    }
+
+    @Nullable
+    private static Boolean optionalBoolean(YamlConfiguration yaml, String primary, String alternate, List<String> errors) {
+        String key = yaml.contains(primary) ? primary : (yaml.contains(alternate) ? alternate : null);
+        if (key == null) return null;
+        Object raw = yaml.get(key);
+        if (raw instanceof Boolean b) return b;
+        errors.add(key + " is not a boolean (" + raw + ")");
+        return null;
+    }
+
+    private static boolean boolValue(@Nullable Object v, boolean fallback) {
+        if (v instanceof Boolean b) return b;
+        if (v instanceof String s) return Boolean.parseBoolean(s.trim());
+        return fallback;
+    }
+
+    private static long longValue(@Nullable Object v, long fallback) {
+        if (v instanceof Number n) return n.longValue();
+        if (v instanceof String s) {
+            try {
+                return Long.parseLong(s.trim());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private static List<Path> sortedYml(Path dir) throws IOException {
+        try (Stream<Path> stream = Files.list(dir)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".yml"))
+                    .sorted(Comparator.comparing(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)))
+                    .toList();
+        }
+    }
+
+    private static void hashFile(MessageDigest digest, String relPath, byte[] raw) {
+        digest.update(relPath.getBytes(StandardCharsets.UTF_8));
+        digest.update((byte) 0);
+        digest.update(raw);
+        digest.update((byte) 0);
+    }
+
+    private static MessageDigest sha256() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new AssertionError(impossible);
+        }
+    }
+
+    @Nullable
+    private static String trimToNull(@Nullable String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private static String firstLine(@Nullable String message) {
+        if (message == null || message.isBlank()) return "unreadable";
+        return message.lines().findFirst().orElse("unreadable");
+    }
+}

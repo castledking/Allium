@@ -47,22 +47,73 @@ public final class ConfigManager {
         backupManager.pruneOldBackups(10);
     }
 
+    /**
+     * Carries a legacy config.yml into this Allium's layout on its first load, and moves legacy
+     * sections out of a config.yml that an earlier version carried over whole. The legacy file is
+     * kept untouched as config.legacy.yml (an earlier carry-over keeps config.yml.before-legacy-cleanup).
+     */
     private void migrateInstalledLegacyConfig() {
-        Path file = plugin.getDataFolder().toPath().resolve("config.yml");
+        Path folder = plugin.getDataFolder().toPath();
+        Path file = folder.resolve("config.yml");
         try {
-            var original = LegacyConfigMigration.read(file);
-            if (original.isSet("config-version") || !LegacyConfigMigration.legacy(original)) return;
-            LegacyConfigMigration.backup(file, file.resolveSibling(LegacyConfigMigration.SOURCE));
-            var migrated = LegacyConfigMigration.read(file);
-            LegacyConfigMigration.merge(original, migrated, bundled("config.yml"));
-            migrated.set("config-version", ConfigVersionManager.CURRENT_VERSION);
-            YamlFiles.normalize(file, migrated);
-            plugin.logger().info("Preserved the pre-recode config in " + LegacyConfigMigration.SOURCE + ".");
+            var current = LegacyConfigMigration.read(file);
+            var defaults = bundled("config.yml");
+            boolean firstLoad = LegacyConfigMigration.legacy(current);
+            var leftovers = firstLoad ? java.util.List.<String>of() : LegacyConfigMigration.leftovers(current, defaults);
+            if (!firstLoad && leftovers.isEmpty()) return;
+            YamlConfiguration source = current;
+            if (!firstLoad) {
+                source = new YamlConfiguration();
+                for (String key : leftovers) source.set(key, current.get(key));
+                // A carried-over legacy file kept these leaves under sections this Allium also has.
+                for (String path : LegacyConfigMigration.RENAMED.keySet()) {
+                    if (current.isSet(path) && !defaults.isSet(path)) source.set(path, current.get(path));
+                }
+                for (String path : LegacyConfigMigration.RETIRED.keySet()) {
+                    if (path.contains(".") && current.isSet(path) && !defaults.isSet(path)) source.set(path, current.get(path));
+                }
+            }
+            var plan = LegacyConfigMigration.plan(source, defaults);
+            YamlConfiguration target;
+            if (firstLoad) {
+                LegacyConfigMigration.backup(file, file.resolveSibling(LegacyConfigMigration.SOURCE));
+                target = defaults;
+                LegacyConfigMigration.apply(plan.into("config.yml"), target, null);
+                target.set("config-version", ConfigVersionManager.CURRENT_VERSION);
+            } else {
+                LegacyConfigMigration.backup(file, file.resolveSibling(LegacyConfigMigration.CLEANUP_BACKUP));
+                if (!Files.exists(file.resolveSibling(LegacyConfigMigration.SOURCE))) {
+                    Files.copy(file, file.resolveSibling(LegacyConfigMigration.SOURCE));
+                }
+                target = current;
+                LegacyConfigMigration.apply(plan.into("config.yml"), target, defaults);
+                LegacyConfigMigration.removeLegacy(target, plan, defaults);
+            }
+            for (String other : java.util.List.of("autorestart.yml", "explosions.yml")) {
+                var moves = plan.into(other);
+                if (moves.isEmpty()) continue;
+                Path otherFile = folder.resolve(other);
+                if (!Files.exists(otherFile)) plugin.saveResource(other, false);
+                var otherConfig = LegacyConfigMigration.read(otherFile);
+                var result = LegacyConfigMigration.apply(moves, otherConfig, bundled(other));
+                if (!result.changed().isEmpty()) YamlFiles.replace(otherFile, otherConfig);
+            }
+            YamlFiles.replace(file, target);
+            Path report = folder.resolve(LegacyConfigMigration.REPORT);
+            Files.createDirectories(report.getParent());
+            Files.writeString(report, LegacyConfigMigration.report(plan, (firstLoad
+                    ? "Legacy Allium's config.yml, carried into this Allium's config.yml on "
+                    : "Legacy sections moved out of config.yml on ") + java.time.LocalDate.now() + "."));
+            plugin.logger().info((firstLoad ? "Carried the legacy config.yml into this Allium's layout: "
+                    : "Moved legacy sections out of config.yml: ") + plan.moves().size() + " setting(s) kept, "
+                    + plan.retired().size() + " retired or handed to their owner. The legacy file is "
+                    + LegacyConfigMigration.SOURCE + "; see " + LegacyConfigMigration.REPORT + ".");
         } catch (IOException | InvalidConfigurationException error) {
-            throw new IllegalStateException("Could not read or preserve config.yml", error);
+            throw new IllegalStateException("Could not read or carry over config.yml", error);
         }
     }
 
+    /** {@code /allium import config [apply]}: carries legacy settings into the current config again, keeping local edits. */
     public void importLegacyConfig(boolean apply, Consumer<String> reply) throws IOException, InvalidConfigurationException {
         Path folder = plugin.getDataFolder().toPath();
         Path file = folder.resolve("config.yml");
@@ -76,29 +127,38 @@ public final class ConfigManager {
             reply.accept("&cPut the pre-recode settings in plugins/Allium/" + LegacyConfigMigration.SOURCE + " first.");
             return;
         }
-        var source = LegacyConfigMigration.read(sourceFile);
+        var defaults = bundled("config.yml");
+        var plan = LegacyConfigMigration.plan(LegacyConfigMigration.read(sourceFile), defaults);
         var target = LegacyConfigMigration.read(file);
-        var result = LegacyConfigMigration.merge(source, target, bundled("config.yml"));
-        var restartSource = source.getConfigurationSection("auto-restart");
-        Path restartFile = folder.resolve("autorestart.yml");
-        var restartDefaults = bundled("autorestart.yml");
-        var restart = Files.exists(restartFile) ? LegacyConfigMigration.read(restartFile) : bundled("autorestart.yml");
-        var restartResult = restartSource == null ? new LegacyConfigMigration.Result(java.util.List.of(), java.util.List.of())
-                : LegacyConfigMigration.merge(restartSource, restart, restartDefaults);
-        int changed = result.changed().size() + restartResult.changed().size();
-        int kept = result.kept().size() + restartResult.kept().size();
-        reply.accept("&7Legacy config: &f" + changed + " &7settings to write, &f" + kept + " &7custom settings kept.");
-        plugin.logger().info("Legacy config import paths: " + result.changed() + "; kept: " + result.kept()
-                + "; autorestart.yml: " + restartResult.changed() + "; kept: " + restartResult.kept());
+        var result = LegacyConfigMigration.apply(plan.into("config.yml"), target, defaults);
+        Map<String, YamlConfiguration> others = new java.util.LinkedHashMap<>();
+        Map<String, LegacyConfigMigration.Result> otherResults = new java.util.LinkedHashMap<>();
+        for (String other : java.util.List.of("autorestart.yml", "explosions.yml")) {
+            var moves = plan.into(other);
+            if (moves.isEmpty()) continue;
+            Path otherFile = folder.resolve(other);
+            var otherConfig = Files.exists(otherFile) ? LegacyConfigMigration.read(otherFile) : bundled(other);
+            others.put(other, otherConfig);
+            otherResults.put(other, LegacyConfigMigration.apply(moves, otherConfig, bundled(other)));
+        }
+        int changed = result.changed().size() + otherResults.values().stream().mapToInt(r -> r.changed().size()).sum();
+        int kept = result.kept().size() + otherResults.values().stream().mapToInt(r -> r.kept().size()).sum();
+        reply.accept("&7Legacy config: &f" + changed + " &7settings to write, &f" + kept + " &7custom settings kept, &f"
+                + plan.retired().size() + " &7retired or owned elsewhere.");
+        plugin.logger().info("Legacy config import: config.yml " + result.changed() + ", kept " + result.kept()
+                + "; " + otherResults);
         if (!apply || changed == 0) return;
         LegacyConfigMigration.backup(file, file.resolveSibling("config.yml.before-legacy-import"));
-        if (!restartResult.changed().isEmpty() && Files.exists(restartFile)) {
-            LegacyConfigMigration.backup(restartFile, restartFile.resolveSibling("autorestart.yml.before-legacy-import"));
-        }
         if (!result.changed().isEmpty()) YamlFiles.normalize(file, target);
-        if (!restartResult.changed().isEmpty()) {
-            if (!Files.exists(restartFile)) plugin.saveResource("autorestart.yml", false);
-            YamlFiles.normalize(restartFile, restart);
+        for (var entry : others.entrySet()) {
+            if (otherResults.get(entry.getKey()).changed().isEmpty()) continue;
+            Path otherFile = folder.resolve(entry.getKey());
+            if (Files.exists(otherFile)) {
+                LegacyConfigMigration.backup(otherFile, otherFile.resolveSibling(entry.getKey() + ".before-legacy-import"));
+            } else {
+                plugin.saveResource(entry.getKey(), false);
+            }
+            YamlFiles.normalize(otherFile, entry.getValue());
         }
         reply.accept("&aSaved legacy settings. Restart Allium's server to activate the imported configuration.");
     }

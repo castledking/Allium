@@ -1,6 +1,7 @@
 package codes.castled.allium.hide;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.pack.PackMerger;
 import codes.castled.allium.text.*;
 import com.google.gson.*;
 import java.io.*;
@@ -23,43 +24,43 @@ public final class CommandHintPack {
             }}glyphs.add(new FormattedText.StyledGlyph(g.codePoint(),-1,color,g.decorations()));
         }return new FormattedText(glyphs).toLegacy().replace("%","%%");
     }
-    public static byte[] build(String text)throws IOException{
-        if(text.length()>4096)throw new IllegalArgumentException("command hint too long");
-        var metadata=new JsonObject();metadata.addProperty("allium-command-hints",1);var pack=new JsonObject();pack.addProperty("pack_format",15);var range=new JsonArray();range.add(15);range.add(999);pack.add("supported_formats",range);pack.addProperty("min_format",15);pack.addProperty("max_format",999);pack.addProperty("description","Allium command completion helper");metadata.add("pack",pack);
-        var lang=new JsonObject();lang.addProperty(KEY,languageText(text));byte[] translated=lang.toString().getBytes(StandardCharsets.UTF_8);
-        var bytes=new ByteArrayOutputStream();try(var zip=new ZipOutputStream(bytes)){
-            entry(zip,"pack.mcmeta",metadata.toString().getBytes(StandardCharsets.UTF_8));for(String locale:LOCALES)entry(zip,"assets/minecraft/lang/"+locale+".json",translated);
-        }return bytes.toByteArray();
-    }
-    private static void entry(ZipOutputStream zip,String name,byte[] data)throws IOException{var e=new ZipEntry(name);e.setTime(1704067200000L);zip.putNextEntry(e);zip.write(data);zip.closeEntry();}
-    /** Called before other plugins enable so the mixer can see this helper at startup. */
-    public static void startup(PluginStart plugin){
-        try{
-            var file=new File(plugin.getDataFolder(),"hide.yml");org.bukkit.configuration.file.YamlConfiguration c;
-            if(file.isFile()){c=new org.bukkit.configuration.file.YamlConfiguration();c.load(file);}else try(var in=plugin.getResource("hide.yml")){if(in==null)return;c=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new InputStreamReader(in,StandardCharsets.UTF_8));}
-            boolean enabled=plugin.getConfig().getBoolean("modules.hide",true)&&c.getBoolean("settings.enabled",false);
-            export(plugin,enabled?c.getString("settings.unknown-command-completion-help-message",""):"");
-        }catch(Exception error){plugin.getLogger().warning("Command hint pack export unavailable: "+error.getClass().getSimpleName());}
-    }
-    public record Targets(Path generated,Path mixer,boolean hasMixer) {}
-    public static Targets targets(PluginStart plugin){
-        var rpm=plugin.getServer().getPluginManager().getPlugin("ResourcePackManager");
-        return new Targets(plugin.getDataFolder().toPath().resolve("generated").resolve(FILE),(rpm==null?plugin.getDataFolder().toPath().getParent().resolve("ResourcePackManager"):rpm.getDataFolder().toPath()).resolve("mixer").resolve(FILE),rpm!=null);
-    }
-    public static Path export(PluginStart plugin,String text)throws IOException{return export(targets(plugin),text);}
-    public static Path export(Targets targets,String text)throws IOException{
-        Path generated=targets.generated(),mixer=targets.mixer();
-        Path target=targets.hasMixer()?mixer:generated,other=targets.hasMixer()?generated:mixer;
-        if(text.isEmpty()){removeOwned(generated);removeOwned(mixer);return target;}
-        byte[] content=build(text);if(Files.exists(target)){
-            if(!owned(target))throw new IOException("helper target belongs to another pack");
-            if(Arrays.equals(Files.readAllBytes(target),content)){removeOwned(other);return target;}
+    /** Reads the same hint used by the hide module without depending on module startup. */
+    public static String configured(PluginStart plugin) throws IOException, org.bukkit.configuration.InvalidConfigurationException {
+        if (!plugin.getConfig().getBoolean("modules.hide", true)) return "";
+        var file = new File(plugin.getDataFolder(), "hide.yml");
+        var config = new org.bukkit.configuration.file.YamlConfiguration();
+        if (file.isFile()) config.load(file);
+        else try (var in = plugin.getResource("hide.yml")) {
+            if (in == null) return "";
+            config.load(new InputStreamReader(in, StandardCharsets.UTF_8));
         }
-        Files.createDirectories(target.getParent());Path temp=Files.createTempFile(target.getParent(),".allium-command-hint-",".tmp");
-        try{Files.write(temp,content);Files.move(temp,target,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}finally{Files.deleteIfExists(temp);}
-        removeOwned(other);return target;
+        return config.getBoolean("settings.enabled", false)
+                ? config.getString("settings.unknown-command-completion-help-message", "") : "";
     }
-    private static void removeOwned(Path file)throws IOException{if(Files.exists(file)&&owned(file))Files.delete(file);}
+
+    public static byte[] merge(byte[] pack, String text) throws IOException {
+        if (text.isEmpty()) return pack;
+        if (text.length() > 4096) throw new IllegalArgumentException("command hint too long");
+        var paths = LOCALES.stream().map(locale -> "assets/minecraft/lang/" + locale + ".json").toList();
+        return PackMerger.setTranslations(pack, paths, KEY, languageText(text));
+    }
+
+    public static void cleanup(PluginStart plugin, Path mixer) throws IOException {
+        Path generated = plugin.getDataFolder().toPath().resolve("generated");
+        cleanup(generated, mixer);
+    }
+
+    static void cleanup(Path generated, Path mixer) throws IOException {
+        if (Files.isDirectory(generated, LinkOption.NOFOLLOW_LINKS)) {
+            removeOwned(generated.resolve(FILE));
+            try { Files.delete(generated); } catch (DirectoryNotEmptyException preserved) { }
+        }
+        if (mixer != null && !Files.isSymbolicLink(mixer)) removeOwned(mixer.resolve(FILE));
+    }
+
+    private static void removeOwned(Path file) throws IOException {
+        if (Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) && owned(file)) Files.delete(file);
+    }
     static boolean owned(Path file)throws IOException{
         if(!Files.isRegularFile(file)||Files.size(file)>2_000_000)return false;
         try(var zip=new ZipFile(file.toFile())){

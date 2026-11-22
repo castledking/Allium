@@ -1,0 +1,939 @@
+# ModGuard: spots modified clients from what they tell the server (their brand, plugin channels,
+# and the mod lists Forge and Lunar Client send) and, with PacketEvents, from a sign translation
+# probe that checks which mods' keybinds and texts the client knows. Clients can hide or fake all
+# of this, so treat a detection as strong evidence, not proof.
+#
+# Operators are never checked. Players with the bypass permission are not checked either.
+# On its first start ModGuard takes legacy Allium's settings from modguard/config.yml and
+# modguard/rules.yml (or the modguard section of config.legacy.yml).
+
+# Turn detection on or off. The module itself is modules.modguard in config.yml.
+enabled: true
+
+# Staff with this permission get alerts in chat; the console always gets them.
+staff-permission: modguard.notify
+bypass-permission: modguard.bypass
+
+alerts:
+  # INFO, WARNING or CRITICAL: alerts for detections at least this severe. One alert per mod
+  # per session; reconnecting allows a new one.
+  minimum-severity: WARNING
+
+# {player}, {mod}, {rule} and {severity} are filled in.
+staff-alert: '&7[&c&lModGuard&7] &e{player} &7was disconnected for using: &c{mod}'
+kick-message: |-
+  &c&lMODIFIED CLIENT DETECTED
+
+  &7You cannot join with these mods installed:
+  &c{mod}
+
+  &7Please disable or remove them, then reconnect.
+
+access-control:
+  # Disconnect players for WARNING and CRITICAL detections. Operators and bypass holders stay.
+  enabled: true
+  # AUTO uses the proxy when spigot.yml's bungeecord setting is on, so the player leaves the whole
+  # network; PROXY always does; SERVER only kicks from this server. For Velocity, use PROXY and
+  # turn on bungee-plugin-message-channel on the proxy.
+  disconnect-mode: AUTO
+  # Per rule id: allow-join true lets players with that mod join. Rules not listed here let
+  # players join only for INFO detections.
+  mods:
+    freecam:
+      allow-join: false
+    meteor:
+      allow-join: false
+    tweakeroo:
+      allow-join: false
+
+# Lunar Client tells servers its installed mods when asked over its Apollo channel.
+lunar:
+  apollo-integration: true
+  direct-json: true
+
+# The sign translation probe (needs PacketEvents). A sign the player never sees is opened and
+# closed under them a moment after they join; what their client fills in shows which mods it has.
+# Each check names a translation or keybind key a mod adds. action: kick, alert or none.
+translation-probe:
+  enabled: true
+  default-action: kick
+  delay-ticks: 10
+  timeout-ticks: 60
+  fallback-prefix: allium_probe_
+  checks:
+    meteor-client:
+      enabled: true
+      mode: meteor
+      key: key.meteor-client.open-gui
+      display-name: Meteor Client
+      action: kick
+      require-corroboration-for-kick: false
+    meteor-client-commands:
+      enabled: true
+      mode: meteor
+      key: key.meteor-client.open-commands
+      display-name: Meteor Client
+      action: kick
+      require-corroboration-for-kick: false
+    meteor-client-category:
+      enabled: true
+      mode: meteor
+      key: key.category.meteor-client.meteor-client
+      display-name: Meteor Client
+      action: kick
+      require-corroboration-for-kick: false
+    wurst:
+      enabled: true
+      mode: keybind
+      key: key.wurst.zoom
+      display-name: Wurst Client
+      action: kick
+      require-corroboration-for-kick: false
+    wurst-gui:
+      enabled: true
+      mode: translate
+      key: description.wurst.hack.clickgui
+      display-name: Wurst Client
+      action: kick
+      require-corroboration-for-kick: false
+    liquidbounce-killaura:
+      enabled: false
+      mode: translate
+      key: liquidbounce.module.killAura.description
+      display-name: LiquidBounce
+      action: kick
+      require-corroboration-for-kick: false
+    baritone:
+      enabled: true
+      mode: translate
+      key: baritone.command.help.title
+      display-name: Baritone
+      action: alert
+      require-corroboration-for-kick: true
+    freecam:
+      enabled: true
+      mode: keybind
+      key: key.freecam.toggle
+      display-name: Freecam
+      action: kick
+      require-corroboration-for-kick: false
+    xray-fabric:
+      enabled: true
+      mode: keybind
+      key: xray.config.toggle
+      display-name: XRay (Fabric)
+      action: kick
+      require-corroboration-for-kick: false
+    chestesp:
+      enabled: true
+      mode: keybind
+      key: key.chestesp.toggle
+      display-name: ChestESP
+      action: kick
+      require-corroboration-for-kick: false
+    killaura-fabric:
+      enabled: true
+      mode: keybind
+      key: key.killaura
+      display-name: KillAura (Fabric)
+      action: kick
+      require-corroboration-for-kick: false
+    autofish:
+      enabled: true
+      mode: keybind
+      key: key.autofish.open_gui
+      display-name: AutoFish
+      action: kick
+      require-corroboration-for-kick: false
+    lumina:
+      enabled: true
+      mode: keybind
+      key: key.lumina.open_click_gui
+      display-name: Lumina
+      action: kick
+      require-corroboration-for-kick: false
+    autoswitch:
+      enabled: true
+      mode: keybind
+      key: key.autoswitch.toggle
+      display-name: AutoSwitch
+      action: kick
+      require-corroboration-for-kick: false
+    auto-clicker-mc:
+      enabled: true
+      mode: keybind
+      key: key.auto-clicker_.toggle
+      display-name: Auto Clicker (p1k0chu)
+      action: kick
+      require-corroboration-for-kick: false
+    bleachhack:
+      enabled: true
+      mode: translate
+      key: bleachhack.module.killaura
+      display-name: BleachHack
+      action: kick
+      require-corroboration-for-kick: false
+    aristois:
+      enabled: true
+      mode: translate
+      key: emc.module.killaura.name
+      display-name: Aristois
+      action: kick
+      require-corroboration-for-kick: false
+    coffee:
+      enabled: true
+      mode: translate
+      key: coffee.module.killaura.name
+      display-name: Coffee Client
+      action: kick
+      require-corroboration-for-kick: false
+    world-downloader:
+      enabled: true
+      mode: translate
+      key: key.wdl.startStop
+      display-name: World Downloader
+      action: kick
+      require-corroboration-for-kick: false
+    autoclicker-fabric:
+      enabled: true
+      mode: translate
+      key: autoclicker-fabric.hud.holding
+      display-name: AutoClicker (Fabric)
+      action: kick
+      require-corroboration-for-kick: false
+    antiafk:
+      enabled: true
+      mode: translate
+      key: key.antiafk.toggle
+      display-name: AntiAFK
+      action: kick
+      require-corroboration-for-kick: false
+    trouser-streak:
+      enabled: true
+      mode: translate
+      key: addon.trouser-streak.name
+      display-name: Trouser Streak
+      action: kick
+      require-corroboration-for-kick: false
+    trouser-streak-newchunks:
+      enabled: true
+      mode: translate
+      key: module.trouser-streak.NewerNewChunks.description
+      display-name: Trouser Streak (NewerNewChunks)
+      action: kick
+      require-corroboration-for-kick: false
+    trouser-streak-anhero:
+      enabled: true
+      mode: translate
+      key: module.trouser-streak.AnHero.description
+      display-name: Trouser Streak (AnHero)
+      action: kick
+      require-corroboration-for-kick: false
+    ui-utils:
+      enabled: true
+      mode: translate
+      key: key.ui-utils.restore_screen
+      display-name: Ui Utils
+      action: kick
+      require-corroboration-for-kick: false
+    seedcrackerx:
+      enabled: true
+      mode: translate
+      key: cracker.already
+      display-name: SeedCrackerX
+      action: kick
+      require-corroboration-for-kick: false
+    simple-world-downloader:
+      enabled: true
+      mode: translate
+      key: swd.screen.config.title
+      display-name: Simple World Downloader
+      action: kick
+      require-corroboration-for-kick: false
+    glazed:
+      enabled: true
+      mode: translate
+      key: addon.glazed.name
+      display-name: Glazed
+      action: kick
+      require-corroboration-for-kick: false
+    litematica:
+      enabled: true
+      mode: translate
+      key: litematica.hotkey.name.openmainmenuscreen
+      display-name: Litematica
+      action: kick
+      require-corroboration-for-kick: false
+    itemscroller:
+      enabled: true
+      mode: translate
+      key: itemscroller.hotkey.name.openconfigscreen
+      display-name: Item Scroller
+      action: kick
+      require-corroboration-for-kick: false
+    xaeros-minimap:
+      enabled: true
+      mode: translate
+      key: gui.xaero_minimap
+      display-name: Xaero's Minimap
+      action: kick
+      require-corroboration-for-kick: false
+    tweakeroo-left-click:
+      enabled: true
+      mode: translate
+      key: tweakeroo.config.feature_toggle.prettyName.tweakFastLeftClick
+      display-name: Tweakeroo
+      action: kick
+      require-corroboration-for-kick: false
+    tweakeroo-periodic-attack:
+      enabled: true
+      mode: translate
+      key: tweakeroo.feature_toggle.name.tweakperiodicattack
+      display-name: Tweakeroo
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-sort-inventory:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.sort_inventory
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-sort-columns:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.sort_inventory_in_columns
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-sort-rows:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.sort_inventory_in_rows
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-move-all:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.move_all_items
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-throw-all:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.throw_all_items
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-config-menu:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.open_config_menu
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-lock-slots:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.enable_lock_slots
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-auto-refill:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.enable_auto_refill
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-profiles:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.config.name.enable_profiles
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-tweaks:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.gui.config.Tweaks
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-tooltip-sort:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.tooltip.sort_button
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-tooltip-settings:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.tooltip.settings_open
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    ipn-title:
+      enabled: true
+      mode: translate
+      key: inventoryprofiles.gui.config.title
+      display-name: Inventory Profiles Next
+      action: kick
+      require-corroboration-for-kick: false
+    waylandcraft-window-manager:
+      enabled: true
+      mode: keybind
+      key: waylandcraft.key.windowManager
+      display-name: WaylandCraft
+      action: kick
+      require-corroboration-for-kick: false
+    waylandcraft-app-launcher:
+      enabled: true
+      mode: keybind
+      key: waylandcraft.key.appLauncher
+      display-name: WaylandCraft
+      action: kick
+      require-corroboration-for-kick: false
+    waylandcraft-capture-keyboard:
+      enabled: true
+      mode: keybind
+      key: waylandcraft.key.captureKeyboard
+      display-name: WaylandCraft
+      action: kick
+      require-corroboration-for-kick: false
+    libipn-advanced-keys:
+      enabled: true
+      mode: translate
+      key: libipn.common.gui.config.advanced_keybind_settings
+      display-name: libIPN
+      action: alert
+    libipn-keybind-tips:
+      enabled: true
+      mode: translate
+      key: libipn.common.gui.config.keybind_settings_tips
+      display-name: libIPN
+      action: alert
+
+# Detection rules for the brand, channels and mod lists. * matches anything; exact mod ids avoid
+# matching other mods by accident. severity: INFO, WARNING or CRITICAL.
+signature-pack-version: 3
+rules:
+  meteor:
+    enabled: true
+    name: Meteor Client
+    severity: CRITICAL
+    brands:
+    - meteor-client
+    - meteor
+    channels:
+    - meteor-client:*
+    - meteor:*
+    mods:
+    - meteor-client
+    - meteor
+  wurst:
+    enabled: true
+    name: Wurst Client
+    severity: CRITICAL
+    brands:
+    - wurst
+    - wurst-client
+    channels:
+    - wurst:*
+    - wurst-client:*
+    mods:
+    - wurst
+    - wurst-client
+  liquidbounce:
+    enabled: true
+    name: LiquidBounce
+    severity: CRITICAL
+    brands:
+    - liquidbounce
+    - liquidbounce-client
+    channels:
+    - liquidbounce:*
+    - liquidbounce-client:*
+    mods:
+    - liquidbounce
+    - liquidbounce-client
+  aristois:
+    enabled: true
+    name: Aristois
+    severity: CRITICAL
+    brands:
+    - aristois
+    channels:
+    - aristois:*
+    mods:
+    - aristois
+  impact:
+    enabled: true
+    name: Impact Client
+    severity: CRITICAL
+    brands:
+    - impact
+    channels:
+    - impact:*
+    mods:
+    - impact
+  future:
+    enabled: true
+    name: Future Client
+    severity: CRITICAL
+    brands:
+    - future
+    - futureclient
+    channels:
+    - future:*
+    - futureclient:*
+    mods:
+    - future
+    - futureclient
+  rusherhack:
+    enabled: true
+    name: RusherHack
+    severity: CRITICAL
+    brands:
+    - rusherhack
+    channels:
+    - rusherhack:*
+    mods:
+    - rusherhack
+  thunderhack:
+    enabled: true
+    name: ThunderHack
+    severity: CRITICAL
+    brands:
+    - thunderhack
+    - thunderhack-recode
+    channels:
+    - thunderhack:*
+    - thunderhack-recode:*
+    mods:
+    - thunderhack
+    - thunderhack-recode
+  bleachhack:
+    enabled: true
+    name: BleachHack
+    severity: CRITICAL
+    brands:
+    - bleachhack
+    channels:
+    - bleachhack:*
+    mods:
+    - bleachhack
+  inertia:
+    enabled: true
+    name: Inertia Client
+    severity: CRITICAL
+    brands:
+    - inertia
+    channels:
+    - inertia:*
+    mods:
+    - inertia
+  wolfram:
+    enabled: true
+    name: Wolfram Client
+    severity: CRITICAL
+    brands:
+    - wolfram
+    channels:
+    - wolfram:*
+    mods:
+    - wolfram
+  freecam:
+    enabled: true
+    name: Freecam
+    severity: WARNING
+    brands:
+    - freecam
+    channels:
+    - freecam:*
+    mods:
+    - freecam
+  baritone:
+    enabled: true
+    name: Baritone / automated pathfinding
+    severity: WARNING
+    brands: []
+    channels:
+    - baritone:*
+    mods:
+    - baritone
+    - baritone-api
+    - baritone-standalone
+    - baritone-meteor
+  xray:
+    enabled: true
+    name: X-ray mod signature
+    severity: WARNING
+    brands: []
+    channels:
+    - xray:*
+    mods:
+    - xray
+    - advanced-xray
+    - advanced_xray
+  opsec:
+    enabled: true
+    name: OpSec privacy / fingerprint protection
+    severity: INFO
+    brands: []
+    channels:
+    - opsec:*
+    mods:
+    - opsec
+    - opsec-enhanced
+  fabric:
+    enabled: true
+    name: Fabric loader
+    severity: INFO
+    brands:
+    - fabric
+    channels:
+    - fabric:*
+    - fabric-*:*
+    mods: []
+  forge:
+    enabled: true
+    name: Forge loader
+    severity: INFO
+    brands:
+    - forge
+    - fml,forge
+    - fml,forge,*
+    channels:
+    - forge:*
+    - fml:*
+    - FML|HS
+    - l:fmlhs
+    - legacy:fml
+    mods: []
+  neoforge:
+    enabled: true
+    name: NeoForge loader
+    severity: INFO
+    brands:
+    - neoforge
+    channels:
+    - neoforge:*
+    - neoform:*
+    mods: []
+  lunar:
+    enabled: true
+    name: Lunar Client
+    severity: INFO
+    brands:
+    - lunarclient
+    - lunarclient:*
+    - lunarclient *
+    channels:
+    - lunar:*
+    mods: []
+  feather:
+    enabled: true
+    name: Feather Client
+    severity: INFO
+    brands:
+    - feather
+    - feather fabric
+    - feather forge
+    channels:
+    - feather:*
+    mods: []
+  badlion:
+    enabled: true
+    name: Badlion Client
+    severity: INFO
+    brands:
+    - badlion
+    - badlion client
+    channels:
+    - badlion:*
+    - badlionclient:*
+    mods: []
+  laby:
+    enabled: true
+    name: LabyMod
+    severity: INFO
+    brands:
+    - labymod
+    - labymod*
+    channels:
+    - labymod:*
+    - LABYMOD
+    - LMC
+    - labymod3:main
+    mods: []
+  xaero-map:
+    enabled: true
+    name: Xaero map channel
+    severity: INFO
+    brands: []
+    channels:
+    - xaerominimap:*
+    - xaeroworldmap:*
+    - XaeroMinimap
+    mods:
+    - xaerominimap
+    - xaeroworldmap
+  journeymap:
+    enabled: true
+    name: JourneyMap
+    severity: INFO
+    brands: []
+    channels:
+    - journeymap:*
+    - journeymap_channel
+    mods:
+    - journeymap
+  voicechat:
+    enabled: true
+    name: Simple Voice Chat
+    severity: INFO
+    brands: []
+    channels:
+    - voicechat:*
+    mods:
+    - voicechat
+  servux:
+    enabled: true
+    name: Servux-compatible tools (not a specific mod list)
+    severity: INFO
+    brands: []
+    channels:
+    - servux:*
+    mods:
+    - servux
+  jade:
+    enabled: true
+    name: Jade
+    severity: INFO
+    brands: []
+    channels:
+    - jade:*
+    mods:
+    - jade
+  wthit:
+    enabled: true
+    name: WTHIT
+    severity: INFO
+    brands: []
+    channels:
+    - wthit:*
+    mods:
+    - wthit
+  replay:
+    enabled: true
+    name: ReplayMod
+    severity: INFO
+    brands: []
+    channels:
+    - replaymod:*
+    mods:
+    - replaymod
+  flashback:
+    enabled: true
+    name: Flashback
+    severity: INFO
+    brands: []
+    channels:
+    - flashback:*
+    mods:
+    - flashback
+  noxesium:
+    enabled: true
+    name: Noxesium
+    severity: INFO
+    brands: []
+    channels:
+    - noxesium:*
+    mods:
+    - noxesium
+  sodium:
+    enabled: true
+    name: Sodium
+    severity: INFO
+    brands: []
+    channels: []
+    mods:
+    - sodium
+  iris:
+    enabled: true
+    name: Iris Shaders
+    severity: INFO
+    brands: []
+    channels: []
+    mods:
+    - iris
+  forgehax:
+    enabled: true
+    name: ForgeHax
+    severity: CRITICAL
+    brands:
+    - forgehax
+    channels:
+    - forgehax:*
+    mods:
+    - forgehax
+  forgewurst:
+    enabled: true
+    name: ForgeWurst
+    severity: CRITICAL
+    brands:
+    - forgewurst
+    channels:
+    - forgewurst:*
+    mods:
+    - forgewurst
+  vape:
+    enabled: true
+    name: Vape client signature
+    severity: CRITICAL
+    brands:
+    - vape
+    channels:
+    - LOLIMAHCKER
+    - vape:*
+    mods:
+    - vape
+  world-downloader:
+    enabled: true
+    name: World Downloader
+    severity: WARNING
+    brands:
+    - '*WorldDownloader*'
+    channels:
+    - WDL|INIT
+    - WDL|CONTROL
+    - wdl:*
+    mods:
+    - worlddownloader
+    - world_downloader
+    - wdl
+  liteloader:
+    enabled: true
+    name: LiteLoader
+    severity: INFO
+    brands:
+    - liteloader
+    - liteloader,*
+    - '*,liteloader'
+    - '*,liteloader,*'
+    channels: []
+    mods: []
+  optifine:
+    enabled: true
+    name: OptiFine
+    severity: INFO
+    brands:
+    - optifine
+    - vanilla,optifine
+    channels: []
+    mods:
+    - optifine
+  5zig:
+    enabled: true
+    name: 5zig Mod
+    severity: INFO
+    brands: []
+    channels:
+    - 5zig_Set
+    mods:
+    - the5zigmod
+  better-sprinting:
+    enabled: true
+    name: Better Sprinting
+    severity: INFO
+    brands: []
+    channels:
+    - BSprint
+    mods:
+    - bettersprinting
+  inventory-tweaks:
+    enabled: true
+    name: Inventory Tweaks
+    severity: INFO
+    brands: []
+    channels:
+    - InventoryTweaks
+    mods:
+    - inventorytweaks
+    - invtweaks
+  worldedit-cui:
+    enabled: true
+    name: WorldEdit CUI
+    severity: INFO
+    brands: []
+    channels:
+    - WECUI
+    - worldedit:cui
+    mods:
+    - worldeditcui
+  hyperium:
+    enabled: true
+    name: Hyperium
+    severity: INFO
+    brands:
+    - hyperium
+    channels:
+    - hyperium
+    mods: []
+  pvplounge:
+    enabled: true
+    name: PvPLounge Client
+    severity: INFO
+    brands:
+    - PLC18
+    channels: []
+    mods: []
+  waila:
+    enabled: true
+    name: Waila
+    severity: INFO
+    brands: []
+    channels:
+    - waila
+    - waila:*
+    mods:
+    - waila
+  embeddium:
+    enabled: true
+    name: Embeddium
+    severity: INFO
+    brands: []
+    channels: []
+    mods:
+    - embeddium
+  rubidium:
+    enabled: true
+    name: Rubidium
+    severity: INFO
+    brands: []
+    channels: []
+    mods:
+    - rubidium
+  oculus:
+    enabled: true
+    name: Oculus
+    severity: INFO
+    brands: []
+    channels: []
+    mods:
+    - oculus
+  tweakeroo:
+    enabled: true
+    name: Tweakeroo
+    severity: WARNING
+    brands: []
+    channels: []
+    mods:
+    - tweakeroo
+
+# Log every probe result and detection to the console.
+debug: false

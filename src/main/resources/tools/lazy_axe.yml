@@ -1,6 +1,6 @@
 # Lazy Axe: a tool definition (see mob_disarmer.yml and phantom_obliterator.yml for how
-# definitions work, and docs/lazy-axe-design.md for every setting). Breaking one log of a
-# natural tree with it in your main hand fells the entire tree bottom up.
+# definitions work). Breaking one log of a natural tree with it in your main hand fells the
+# entire tree bottom up.
 #
 # The behavior, allium:fell_tree, owns the steps:
 # - Detection verifies natural leaves, ground and structure isolation.

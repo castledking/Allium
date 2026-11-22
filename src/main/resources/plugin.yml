@@ -1124,17 +1124,27 @@ permissions:
       allium.delhome.others: true
       allium.reload: true
       allium.import: true
+      modguard.notify: true
+  modguard.notify:
+    description: Receives ModGuard staff alerts and allows toggling them via /allium modguard alerts
+    default: op
+  modguard.bypass:
+    description: Exempts this player from ModGuard kicks and translation probes
+    default: false
   allium.reload:
     description: Allows /allium reload
     default: op
+  allium.addon:
+    description: Allows /allium addon <list|download|enable|disable>
+    default: op
   allium.import:
-    description: Allows /allium import (pre-recode data imports; dry run unless 'apply')
+    description: Allows /allium import (import legacy Allium, Essentials, or language data; dry run unless 'apply')
     default: op
   allium.adoptwindow:
-    description: Allows /allium adopt-window (adopt pre-recode privileged tools on first use for a short time). No one has it by default, so only the console can use it.
+    description: Allows /allium adopt-window (adopt legacy privileged tools on first use for a short time). No one has it by default, so only the console can use it.
     default: false
   allium.treeaxe.use:
-    description: Lets the Lazy Axe fell whole trees (the pre-recode node)
+    description: Lets the Lazy Axe fell whole trees
     default: true
   allium.mail:
     description: Allows /mail read, claim, delete and clear for your own mailbox
@@ -1517,7 +1527,7 @@ permissions:
     description: Receive security alerts (gamemode audits, alt-account notices)
     default: op
   allium.give:
-    description: Allows /give (M1 item-library harness)
+    description: Allows giving items with /give
     default: op
   allium.give.privileged:
     description: Allows /give to mint privileged items such as handcuffs
@@ -2398,6 +2408,31 @@ permissions:
     default: op
   allium.signs.create.info:
     default: op
+  allium.signs.create.cartography:
+    default: op
+  allium.signs.create.grindstone:
+    default: op
+  allium.signs.create.loom:
+    default: op
+  allium.signs.create.smithing:
+    default: op
+  allium.signs.create.gamemode:
+    default: op
+  allium.signs.create.time:
+    default: op
+  allium.signs.create.weather:
+    default: op
+  allium.signs.create.randomteleport:
+    default: op
+  allium.signs.create.free:
+    default: op
+  allium.signs.create.enchant:
+    default: op
+  allium.signs.create.spawnmob:
+    default: op
+  allium.signs.enchant.allowunsafe:
+    description: Allows creating or using unsafe levels/enchantments on [Enchant] signs when allow-unsafe-enchants is true
+    default: false
   allium.signs.use.color:
     default: op
   allium.signs.use.warp:
@@ -2420,6 +2455,28 @@ permissions:
     default: op
   allium.signs.use.info:
     default: op
+  allium.signs.use.cartography:
+    default: op
+  allium.signs.use.grindstone:
+    default: op
+  allium.signs.use.loom:
+    default: op
+  allium.signs.use.smithing:
+    default: op
+  allium.signs.use.gamemode:
+    default: op
+  allium.signs.use.time:
+    default: op
+  allium.signs.use.weather:
+    default: op
+  allium.signs.use.randomteleport:
+    default: op
+  allium.signs.use.free:
+    default: op
+  allium.signs.use.enchant:
+    default: op
+  allium.signs.use.spawnmob:
+    default: op
   allium.signs.break.color:
     default: op
   allium.signs.break.warp:
@@ -2441,6 +2498,28 @@ permissions:
   allium.signs.break.mail:
     default: op
   allium.signs.break.info:
+    default: op
+  allium.signs.break.cartography:
+    default: op
+  allium.signs.break.grindstone:
+    default: op
+  allium.signs.break.loom:
+    default: op
+  allium.signs.break.smithing:
+    default: op
+  allium.signs.break.gamemode:
+    default: op
+  allium.signs.break.time:
+    default: op
+  allium.signs.break.weather:
+    default: op
+  allium.signs.break.randomteleport:
+    default: op
+  allium.signs.break.free:
+    default: op
+  allium.signs.break.enchant:
+    default: op
+  allium.signs.break.spawnmob:
     default: op
 
   allium.nick:

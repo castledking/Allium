@@ -217,8 +217,9 @@ public final class ChatService implements Listener,AutoCloseable {
         String format=question?settings.questionFormat():(c.id().equals(settings.defaultChannel())?settings.groups().getOrDefault(s.decor.group(),c.format()):c.format());
         if(!settings.formatting())format="{name}: {message}";
         var values=values(s,body);
+        var rendered = ChatOutput.prepare(format, values, id, p.getName(), s.decor.group(), plugin.getConfig(), decorations.hooks(p));
         for(Session viewer:recipients){
-            render.put(viewer.player.getUniqueId(),ChatOutput.render(format,values,viewer.player,id,p.getName(),s.decor.group(),plugin.getConfig()));
+            render.put(viewer.player.getUniqueId(),rendered.forViewer(viewer.player));
         }
         var message=history.add(id,p.getUniqueId(),p.getName(),c.id(),System.currentTimeMillis(),render);
         for(var entry:render.entrySet()){Session viewer=sessions.get(entry.getKey());if(viewer!=null&&!replays.containsKey(entry.getKey())&&!message.deleted().get())ChatOutput.send(viewer.player,entry.getValue());}
@@ -294,7 +295,8 @@ public final class ChatService implements Listener,AutoCloseable {
         FormattedText body=UntrustedText.parse(raw,new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient")));
         String format=plugin.getConfig().getString("chat.action-format","&5* <display_name> &5<message>");
         String id=history.nextId();var render=new LinkedHashMap<UUID,String>();var values=values(s,body);
-        for(Session viewer:sessions.values())if(viewer.ready&&same(viewer))render.put(viewer.player.getUniqueId(),ChatOutput.render(format,values,viewer.player,id,p.getName(),s.decor.group(),plugin.getConfig()));
+        var rendered = ChatOutput.prepare(format, values, id, p.getName(), s.decor.group(), plugin.getConfig(), decorations.hooks(p));
+        for(Session viewer:sessions.values())if(viewer.ready&&same(viewer))render.put(viewer.player.getUniqueId(),rendered.forViewer(viewer.player));
         var message=history.add(id,p.getUniqueId(),p.getName(),"action",System.currentTimeMillis(),render);
         for(var entry:render.entrySet()){Session viewer=sessions.get(entry.getKey());if(viewer!=null&&!replays.containsKey(entry.getKey())&&!message.deleted().get())ChatOutput.send(viewer.player,entry.getValue());}
         plugin.getServer().getConsoleSender().sendMessage("[action] * "+p.getName()+" "+body.toPlainText()+" ["+id+"]");
@@ -309,7 +311,8 @@ public final class ChatService implements Listener,AutoCloseable {
             var c=settings.channels().values().stream().filter(v->!v.local()&&!v.discordId().isEmpty()&&v.discordId().equals(destination)).findFirst().orElse(null);if(c==null)return;
             String incomingBody=body.length()>settings.maxBody()?body.substring(0,settings.maxBody()):body;
             String id=history.nextId();var render=new LinkedHashMap<UUID,String>();Map<String,FormattedText> values=Map.of("discord_username",UntrustedText.parse(author,UntrustedText.Allow.NONE),"message",UntrustedText.parse(incomingBody,UntrustedText.Allow.NONE));
-            for(Session s:sessions.values())if(s.ready&&same(s)&&listening(s,c))render.put(s.player.getUniqueId(),ChatOutput.render(c.discordIn(),values,s.player,id,"Discord","default",plugin.getConfig()));
+            var rendered = ChatOutput.prepare(c.discordIn(), values, id, "Discord", "default", plugin.getConfig(), ChatOutput.Hooks.PLAIN);
+            for(Session s:sessions.values())if(s.ready&&same(s)&&listening(s,c))render.put(s.player.getUniqueId(),rendered.forViewer(s.player));
             var message=history.add(id,new UUID(0,0),author,c.id(),System.currentTimeMillis(),render);discordLinks.put(discordId,id);while(discordLinks.size()>4096)discordLinks.remove(discordLinks.keySet().iterator().next());
             plugin.getServer().getConsoleSender().sendMessage("[Discord/"+c.id()+"] "+UntrustedText.clean(author)+": "+UntrustedText.clean(incomingBody)+" ["+id+"]");
             render.forEach((viewer,json)->{var s=sessions.get(viewer);if(s!=null&&!replays.containsKey(viewer)&&!message.deleted().get())ChatOutput.send(s.player,json);});

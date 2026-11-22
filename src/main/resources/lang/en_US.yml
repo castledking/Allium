@@ -12,6 +12,59 @@ core:
   version:
     - "{prefix} &fRunning Allium &dv{version}&f."
     - "[sound] ui.button.click 1.25"
+  modguard:
+    reloaded:
+      - "{prefix} &aModGuard settings reloaded."
+      - "[sound] block.note_block.chime 1.35"
+    reload-failed:
+      - "{prefix} &cModGuard reload failed. Check console for details."
+      - "[sound] block.note_block.bass 0.75"
+    alerts-on:
+      - "{prefix} &aModGuard alerts enabled."
+      - "[sound] block.note_block.chime 1.2"
+    alerts-off:
+      - "{prefix} &cModGuard alerts muted."
+      - "[sound] block.note_block.bass 0.9"
+  addon:
+    unknown:
+      - "{prefix} &cUnknown addon '&f{addon}&c'. Use &f/allium addon list&c."
+      - "[sound] block.note_block.bass 0.8"
+    list-header:
+      - "{prefix} &dAllium Addons &7(plugins/Allium/addons/):"
+    list-entry:
+      - " &8- &f{addon} &8(&7{key}&8): {status} &8- &7{description}"
+    already-installed:
+      - "{prefix} &e{addon} &7is already installed (&f{file}&7)."
+      - "[sound] block.note_block.bass 0.9"
+    already-installed-disabled:
+      - "{prefix} &e{addon} &7is already installed in &faddons/&7 but disabled. Run &f/allium addon enable {key} &7and restart the server."
+      - "[sound] block.note_block.bass 0.9"
+    download-in-progress:
+      - "{prefix} &e{addon} &7is already downloading."
+    download-started:
+      - "{prefix} &7Downloading &f{addon} &7(v{version}) from GitHub Releases..."
+    download-complete:
+      - "{prefix} &aDownloaded &f{addon} &7(&f{file}&7) and set &faddons.enabled.{key}: true &ain config.yml. &eRestart the server to load it."
+      - "[sound] block.note_block.chime 1.35"
+    download-failed:
+      - "{prefix} &cFailed to download &f{addon}&c: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
+    already-enabled:
+      - "{prefix} &e{addon} &7is already enabled in config.yml."
+    already-disabled:
+      - "{prefix} &e{addon} &7is already disabled in config.yml."
+    enabled-restart:
+      - "{prefix} &aEnabled &f{addon} &7(&faddons.enabled.{key}: true&7). &eRestart the server to start it."
+      - "[sound] block.note_block.chime 1.25"
+    enabled-not-installed:
+      - "{prefix} &aEnabled &f{addon} &7in config.yml, but its jar is not in &faddons/&7 yet. Run &f/allium addon download {key} &7or enable &faddons.auto-download &7and restart."
+      - "[sound] block.note_block.chime 1.1"
+    disabled-restart:
+      - "{prefix} &cDisabled &f{addon} &7(&faddons.enabled.{key}: false&7). Its jar stays in &faddons/&7; &erestart the server for the change to take effect."
+      - "[sound] block.note_block.bass 0.9"
+    config-save-failed:
+      - "{prefix} &cCould not save config.yml while updating &f{addon}&c. Check console for details."
+      - "[sound] block.note_block.bass 0.75"
   import:
     lang-no-source:
       - "{prefix} &cNo pre-recode lang file at &f{file}&c."
@@ -60,6 +113,20 @@ core:
       - "[sound] block.note_block.bass 0.75"
     legacy-fence:
       - "&cThe server is importing legacy data. Try again in a minute."
+    essentials-started:
+      - "{prefix} &7Reading Essentials data for {mode}..."
+    essentials-dry-run:
+      - "{prefix} &aEssentials dry run &f{run}&a: &f{import} &ato import, &f{present} &apresent, &f{conflicts} &aconflicts, &f{blocked} &ablocked. Review &f{summary}&a, then run &f/allium import essentials apply {run}&a."
+      - "[sound] item.book.page_turn 1.0"
+    essentials-applied:
+      - "{prefix} &aEssentials import &f{run} &aapplied: &f{applied} &aapplied, &f{adopted} &aadopted, &f{conflicts} &aconflicts. Details: &f{summary}&a."
+      - "[sound] entity.player.levelup 1.35"
+    essentials-refused:
+      - "{prefix} &cEssentials import refused: &f{reason}"
+      - "[sound] block.note_block.bass 0.8"
+    essentials-failed:
+      - "{prefix} &cEssentials import failed: &f{reason}"
+      - "[sound] block.note_block.bass 0.75"
   adopt-window:
     opened:
       - "{prefix} &ePre-recode privileged tools are adopted on first use for the next &f{duration}&e. Every adoption is logged. Close it early with &f/allium adopt-window off&e."

@@ -301,7 +301,7 @@ public final class TravelService implements Listener {
             runSethomesAdmin(sender,onlineExact.getUniqueId(),onlineExact.getName(),rawValue);
             return;
         }
-        if(!rawPlayer.matches("[A-Za-z0-9_]{1,16}")){send(sender,Messages.PLAYER_NOT_FOUND,"{player}",rawPlayer);return;}
+        if(!codes.castled.allium.naming.NameCache.isValidName(rawPlayer)){send(sender,Messages.PLAYER_NOT_FOUND,"{player}",rawPlayer);return;}
         var names=plugin.getPlayerNames();
         if(names==null){send(sender,Messages.TRAVEL_LOADING);return;}
         names.resolve(rawPlayer).whenComplete((found,error)->server(()->{
@@ -494,7 +494,7 @@ public final class TravelService implements Listener {
     }
     /** Name lookups go through the shared name index, so offline players resolve too. */
     private void resolveOwner(Player p,String owner,java.util.function.BiConsumer<UUID,String> then){
-        if(!owner.matches("[A-Za-z0-9_]{1,16}")){send(p,Messages.PLAYER_NOT_FOUND,"{player}",owner);return;}
+        if(!codes.castled.allium.naming.NameCache.isValidName(owner)){send(p,Messages.PLAYER_NOT_FOUND,"{player}",owner);return;}
         var names=plugin.getPlayerNames();if(names==null){send(p,Messages.TRAVEL_LOADING);return;}
         names.resolve(owner).whenComplete((found,error)->server(()->{
             if(!p.isOnline())return;

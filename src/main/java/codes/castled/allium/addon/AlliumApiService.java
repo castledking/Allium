@@ -55,7 +55,7 @@ import java.util.stream.Stream;
 public final class AlliumApiService implements AlliumApi, Listener {
 
     /** The API version this Allium provides; kept equal to {@code alliumApiVersion} in gradle.properties. */
-    public static final ApiVersion API_VERSION = new ApiVersion(1, 5, 0);
+    public static final ApiVersion API_VERSION = new ApiVersion(1, 6, 0);
 
     /** Classes whose presence in an addon's own jar means it shaded the API. */
     static final List<Class<?>> API_PROBES = List.of(AlliumApi.class, CommandSpec.class, TaskScheduler.class);
@@ -136,6 +136,12 @@ public final class AlliumApiService implements AlliumApi, Listener {
             String name = trimToNull(meta.getString("name"));
             if (name == null) {
                 allium.logger().warning("Ignoring " + fileName + " in plugins/Allium/addons/: plugin.yml has no name.");
+                continue;
+            }
+            if (!AddonCatalog.isEnabledInConfig(allium.getConfig(), name)) {
+                allium.logger().info("Skipping disabled addon " + name + " (" + fileName
+                        + "): addons.enabled." + AddonCatalog.configKey(name)
+                        + " is false in config.yml (run /allium addon enable " + AddonCatalog.configKey(name) + " and restart to enable).");
                 continue;
             }
             String declared = trimToNull(meta.getString("allium-api"));
@@ -382,6 +388,16 @@ public final class AlliumApiService implements AlliumApi, Listener {
         sessions.values().forEach(AddonSession::close);
         sessions.clear();
         allium.getServer().getServicesManager().unregister(AlliumApi.class, this);
+    }
+
+    /** Returns whether an addon with this name is currently loaded and enabled. */
+    public boolean isLoaded(String addonName) {
+        if (addonName == null) return false;
+        for (Plugin p : managedAddons) {
+            if (p.getName().equalsIgnoreCase(addonName) && p.isEnabled()) return true;
+        }
+        Plugin existing = allium.getServer().getPluginManager().getPlugin(addonName);
+        return existing != null && existing.isEnabled();
     }
 
     public Map<String, AddonVerdict> verdicts() {

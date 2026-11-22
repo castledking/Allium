@@ -60,11 +60,20 @@ public final class AlliumCommand implements SpecCommandHandler {
                 }
                 boolean apply = args.length == 3 && args[2].equalsIgnoreCase("apply");
                 boolean vouchers = args.length >= 2 && args[1].equalsIgnoreCase("vouchers");
-                if (args.length < 2 || !(vouchers || args[1].equalsIgnoreCase("lang")) || (args.length == 3 && !apply) || args.length > 3) {
-                    context.sendInvalidArgs("/allium import <lang [apply]|vouchers [apply]|legacy [apply <run>]>");
+                boolean config = args.length >= 2 && args[1].equalsIgnoreCase("config");
+                if (args.length < 2 || !(config || vouchers || args[1].equalsIgnoreCase("lang")) || (args.length == 3 && !apply) || args.length > 3) {
+                    context.sendInvalidArgs("/allium import <config [apply]|lang [apply]|vouchers [apply]|legacy [apply <run>]>");
                     return;
                 }
-                if (vouchers) importVouchers(sender, apply);
+                if (config) {
+                    try {
+                        plugin.getConfigManager().importLegacyConfig(apply, line -> TextSender.send(sender, line));
+                    } catch (java.io.IOException | org.bukkit.configuration.InvalidConfigurationException error) {
+                        plugin.logger().warning("Legacy config import failed: " + error.getClass().getSimpleName());
+                        TextSender.send(sender, "&cConfig import failed. Check the YAML files and their permissions.");
+                    }
+                }
+                else if (vouchers) importVouchers(sender, apply);
                 else importLang(sender, apply);
             }
             case "adopt-window" -> adoptWindow(context);

@@ -47,8 +47,16 @@ public final class ChatService implements Listener,AutoCloseable {
         Session(Player p){player=p;display=p.getName();gradient=p.getName();}
     }
     private static final class Replay {
-        final Player player;int clear;final Set<String> sent=new HashSet<>();boolean dirty;
-        Replay(Player player){this.player=player;}
+        final Player player;
+        final boolean clearing;
+        int clear;
+        boolean headerSent;
+        final Set<String> sent = new HashSet<>();
+        boolean dirty;
+        Replay(Player player, boolean clearing) {
+            this.player = player;
+            this.clearing = clearing;
+        }
     }
     public ChatService(PluginStart plugin,ChatRepository repository,Executor io){this.plugin=plugin;this.repository=repository;this.io=io;settings=ChatSettings.read(plugin.getConfig());decorations=new ChatDecorations(plugin);}
     public void enable(){
@@ -310,22 +318,78 @@ public final class ChatService implements Listener,AutoCloseable {
     public void discordDeleted(String id){plugin.getScheduler().runOnServer(()->{String linked=discordLinks.get(id);if(linked!=null)deleteIds(List.of(linked));});}
     private void deleteIds(List<String> ids){
         Set<UUID> affected=new HashSet<>();
-        for(String id:ids)if(history.delete(id)){history.find(id).ifPresent(m->affected.addAll(m.rendered().keySet()));relay.delete(id);}
-        for(UUID viewer:affected){Session s=sessions.get(viewer);if(s==null||!same(s))continue;var existing=replays.get(viewer);if(existing!=null)existing.dirty=true;else replays.put(viewer,new Replay(s.player));}
+        for (String id : ids) {
+            if (!history.delete(id)) continue;
+            history.find(id).ifPresent(message -> message.rendered().keySet().stream()
+                    .filter(viewer -> history.retained(viewer, id)).forEach(affected::add));
+            relay.delete(id);
+        }
+        for(UUID viewer:affected){Session s=sessions.get(viewer);if(s==null||!same(s))continue;var existing=replays.get(viewer);if(existing!=null){if(!existing.clearing||!existing.sent.isEmpty())existing.dirty=true;}else replays.put(viewer,new Replay(s.player,false));}
     }
     private void replayTick(){
         int budget=settings.packetBudget();var jobs=new ArrayList<>(replays.entrySet());
         for(var entry:jobs){if(budget<=0)break;Replay job=entry.getValue();Session s=sessions.get(entry.getKey());if(s==null||s.player!=job.player||!same(s)){replays.remove(entry.getKey());continue;}
             while(budget>0&&job.clear<settings.clearEntries()){ChatOutput.send(job.player,ChatOutput.blank(job.clear++));budget--;}
             if(job.clear<settings.clearEntries())continue;
+            if (!job.clearing && !job.headerSent && plugin.getConfig().getBoolean("chat.deletion_resend.header_enabled")) {
+                if (budget == 0) continue;
+                String header = plugin.getConfig().getString("chat.deletion_resend.header", "");
+                if (!header.isEmpty()) {
+                    ChatOutput.replay(job.player, net.md_5.bungee.chat.ComponentSerializer.toString(
+                            SpigotComponents.of(TextFormatter.parse(header))));
+                    budget--;
+                }
+                job.headerSent = true;
+            }
             boolean exhausted=true;
             for(var message:history.visible(entry.getKey(),System.currentTimeMillis())){
                 if(job.sent.contains(message.id())||message.deleted().get())continue;
+                // Foreign packets reached the client already. Only Allium messages queued during a clear need delivery.
+                if (job.clearing && message.channel().equals("external")) continue;
                 if(budget<=0){exhausted=false;break;}
                 ChatOutput.replay(job.player,message.rendered().get(entry.getKey()));job.sent.add(message.id());budget--;
             }
-            if(exhausted){if(job.dirty)replays.put(entry.getKey(),new Replay(job.player));else replays.remove(entry.getKey());}
+            if(exhausted){if(job.dirty)replays.put(entry.getKey(),new Replay(job.player,false));else replays.remove(entry.getKey());}
         }
+    }
+
+    public void clearChat(BukkitCommandContext context) {
+        CommandSender sender = context.sender();
+        if (!settings.enabled()) {
+            tell(sender, Messages.CHAT_MODULE_DISABLED);
+            return;
+        }
+        if (context.args().length > 1) {
+            context.sendInvalidArgs(context.spec().selfUsage());
+            return;
+        }
+        Collection<? extends Player> audience;
+        if (context.args().length == 0) {
+            audience = plugin.getServer().getOnlinePlayers();
+        } else {
+            if (!(sender instanceof Player player && player.getName().equalsIgnoreCase(context.args()[0]))
+                    && !sender.hasPermission("allium.clearchat.others")) {
+                tell(sender, Messages.NO_PERMISSION, "{cmd}", "clearchat");
+                return;
+            }
+            Player target = plugin.getServer().getPlayerExact(context.args()[0]);
+            if (target == null) {
+                tell(sender, Messages.CHAT_PLAYER_NOT_FOUND);
+                return;
+            }
+            audience = List.of(target);
+        }
+        if (settings.clearEntries() == 0) {
+            tell(sender, Messages.CHAT_CLEAR_DISABLED);
+            return;
+        }
+        for (Player viewer : audience) {
+            history.forget(viewer.getUniqueId());
+            replays.put(viewer.getUniqueId(), new Replay(viewer, true));
+        }
+        plugin.logger().info("Chat clear by " + sender.getName() + " for "
+                + (context.args().length == 0 ? "all online players" : context.args()[0]));
+        if (!audience.contains(sender)) tell(sender, Messages.CHAT_CLEAR_SUCCESS);
     }
     public void dispatch(BukkitCommandContext context){
         if(!settings.enabled()){tell(context.sender(),Messages.CHAT_MODULE_DISABLED);return;}

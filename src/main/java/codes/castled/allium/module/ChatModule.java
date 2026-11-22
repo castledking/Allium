@@ -18,6 +18,10 @@ public final class ChatModule extends AbstractModule {
             public CommandSpec spec() { return CoreCommandSpecs.REALNAME; }
             public void execute(BukkitCommandContext context) { service.realName(context); }
         });
+        plugin.getCommandManager().register(new SpecCommandHandler() {
+            public CommandSpec spec() { return CoreCommandSpecs.CLEAR_CHAT; }
+            public void execute(BukkitCommandContext context) { service.clearChat(context); }
+        });
         for(var spec:CoreCommandSpecs.CHAT_SPECS)plugin.getCommandManager().register(new SpecCommandHandler(){public CommandSpec spec(){return spec;}public void execute(BukkitCommandContext context){service.dispatch(context);}});
     }
     @Override public void onDisable(){if(service!=null)service.close();}

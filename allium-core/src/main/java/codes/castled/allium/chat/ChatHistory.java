@@ -23,6 +23,10 @@ public final class ChatHistory {
         trim(time);return message;
     }
     public synchronized Optional<Message> find(String id){return Optional.ofNullable(messages.get(id));}
+    public synchronized boolean retained(UUID viewer, String id) {
+        var index = viewers.get(viewer);
+        return index != null && index.contains(id);
+    }
     public synchronized List<Message> visible(UUID viewer,long now){trim(now);var out=new ArrayList<Message>();for(String id:viewers.getOrDefault(viewer,new ArrayDeque<>())){var m=messages.get(id);if(m!=null&&!m.deleted().get())out.add(m);}return List.copyOf(out);}
     public synchronized List<Message> recentBySender(UUID sender,int count){return messages.values().stream().filter(m->m.sender().equals(sender)&&!m.deleted().get()).sorted(Comparator.comparingLong(Message::time).reversed()).limit(count).toList();}
     public synchronized boolean delete(String id){var message=messages.get(id);return message!=null&&message.deleted().compareAndSet(false,true);}

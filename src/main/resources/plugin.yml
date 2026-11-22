@@ -120,6 +120,20 @@ commands:
   delmsg:
     description: Delete a chat message for everyone
     aliases: [deletemsg]
+  clearchat:
+    description: Clear the chat window for everyone or one player
+    usage: /<command> [player]
+    permission: allium.clearchat
+  redeem:
+    description: Claim configured rank rewards
+    aliases: [claimrank]
+    permission: allium.redeem
+  autorestart:
+    description: Schedule or manage server restarts
+    aliases: [ar]
+  voterestart:
+    description: Vote for a server restart
+    permission: allium.autorestart.vote.yes
   repair:
     description: Repair the held item, or your whole inventory
     usage: /<command> [hand|all]
@@ -2447,6 +2461,26 @@ permissions:
     default: op
   allium.deletemsg:
     default: op
+  allium.clearchat:
+    default: op
+  allium.clearchat.others:
+    default: op
+  allium.redeem:
+    default: true
+  allium.autorestart.help:
+    default: op
+  allium.autorestart.time:
+    default: op
+  allium.autorestart.now:
+    default: op
+  allium.autorestart.stop:
+    default: op
+  allium.autorestart.reload:
+    default: op
+  allium.autorestart.vote:
+    default: op
+  allium.autorestart.vote.yes:
+    default: true
   allium.gradientname:
     default: op
   allium.chat.color:

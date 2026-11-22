@@ -319,7 +319,10 @@ public final class CoreCommandSpecs {
                             List.of()),
                     new CommandNodeSpec("reload", List.of(), "allium.reload", "/allium reload", List.of(), List.of()),
                     new CommandNodeSpec("version", List.of(), null, "/allium version", List.of(), List.of()),
-                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import <lang [apply]|vouchers [apply]|legacy [apply <run>]>", List.of(), List.of(
+                    new CommandNodeSpec("import", List.of(), "allium.import", "/allium import <config [apply]|lang [apply]|vouchers [apply]|legacy [apply <run>]>", List.of(), List.of(
+                            new CommandNodeSpec("config", List.of(), "allium.import", "/allium import config [apply]",
+                                    List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
+                                    List.of()),
                             new CommandNodeSpec("lang", List.of(), "allium.import", "/allium import lang [apply]",
                                     List.of(CommandArgSpec.optional("mode", "allium.import", SuggestionSpec.literals(List.of("apply"), null))),
                                     List.of()),
@@ -741,6 +744,12 @@ public final class CoreCommandSpecs {
             describe(name,"Allium chat: "+name),name.equals("action")?"/action <message>":"/"+name,name.equals("action")?"/action <message>":"/"+name,
             switch(name){case "delmsg"->null;case "action"->"allium.me";default->"allium."+name;},null,
             List.of(CommandArgSpec.optional(name.equals("action")?"message":"arguments",null,null)),List.of(),CommandMessageKeys.ofOutcomes(Map.of()))).toList();
+
+    public static final CommandSpec CLEAR_CHAT = new CommandSpec("clearchat", CommandSpec.DEFAULT_NAMESPACE, "chat", List.of(),
+            "Clear the chat window for everyone or one player", "/clearchat [player]", "/clearchat [player]",
+            "allium.clearchat", "allium.clearchat.others",
+            List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers("allium.clearchat.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
 
     private static final List<String> MONEY_AMOUNTS = List.of("1", "10", "100", "1k", "100k", "1M");
     private static final List<String> TAX_PERCENTS = List.of("5", "10", "25", "50", "100");

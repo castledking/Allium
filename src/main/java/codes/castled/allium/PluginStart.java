@@ -35,6 +35,7 @@ public final class PluginStart extends JavaPlugin {
 
     private AlliumLogger logger;
     private ConfigManager configManager;
+    private codes.castled.allium.restart.AutoRestart autoRestart;
     private LanguageManager languageManager;
     private MessageManager messageManager;
     private codes.castled.allium.naming.PlayerNameService playerNames;
@@ -136,9 +137,19 @@ public final class PluginStart extends JavaPlugin {
 
         commandManager.register(new codes.castled.allium.command.AlliumCommand(this));
         commandManager.register(new codes.castled.allium.command.HelpCommand(this));
+        var redeem = new codes.castled.allium.command.RedeemCommand(this);
+        commandManager.register(redeem);
+        listenerManager.register(redeem);
+        autoRestart = new codes.castled.allium.restart.AutoRestart(this);
+        autoRestart.reload();
+        commandManager.register(autoRestart);
+        commandManager.register(autoRestart.voteCommand());
         commandManager.registerAll();
         listenerManager.registerAll();
         placeholders = new codes.castled.allium.placeholder.AlliumPlaceholders(this);
+        for (String key : java.util.List.of("restart_time", "restart_seconds", "restart_scheduled")) {
+            placeholders.register(key, ignored -> autoRestart.placeholder(key));
+        }
         placeholders.start();
         new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(scheduler);
         new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this, scheduler);
@@ -287,6 +298,7 @@ public final class PluginStart extends JavaPlugin {
     public boolean reloadConfiguration(java.util.function.Consumer<String> reply) {
         try {
             configManager.reloadAll();
+            if (autoRestart != null && !autoRestart.reload()) throw new IllegalArgumentException("invalid autorestart.yml");
             if(moduleManager.getModule("economy") instanceof codes.castled.allium.module.EconomyModule economy
                     && economy.isEnabled() && economy.runtime()!=null && !economy.runtime().reload())
                 throw new IllegalArgumentException("invalid/busy economy settings; previous settings retained");
@@ -374,6 +386,7 @@ public final class PluginStart extends JavaPlugin {
             placeholders.stop();
             placeholders = null;
         }
+        if (autoRestart != null) autoRestart.close();
         if (moduleManager != null) moduleManager.unloadModules();
         if (databaseManager != null) databaseManager.shutdown();
         if (scheduler != null) {

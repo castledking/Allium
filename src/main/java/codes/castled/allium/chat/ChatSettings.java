@@ -19,7 +19,11 @@ public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEn
         channels.putIfAbsent(staff,new Channel(staff,"Staff",Set.of("a","ac","amsg","staffchat"),"&8[Staff] <display_name>&f: <message>",0,"","{discord_username}: {message}","{player}: {message}",false));
         var local=root==null?null:root.getConfigurationSection("local-channel");double radius=local==null?100:local.getDouble("radius",100);
         if(!Double.isFinite(radius)||radius<=0||radius>10000)throw new IllegalArgumentException("invalid local radius");
-        channels.put("local",new Channel("local","Local",Set.of("l","local"),local==null?"&8[Local] <display_name>&f: <message>":local.getString("format","&8[Local] <display_name>&f: <message>"),radius,"","","",false));
+        var localAliases = new LinkedHashSet<>(Set.of("l", "local"));
+        if (local != null) {
+            for (String alias : local.getStringList("aliases")) localAliases.add(ChatRepository.channel(alias));
+        }
+        channels.put("local",new Channel("local","Local",Set.copyOf(localAliases),local==null?"&8[Local] <display_name>&f: <message>":local.getString("format","&8[Local] <display_name>&f: <message>"),radius,"","","",false));
         if(channels.size()>64)throw new IllegalArgumentException("too many channels");
         var labels=new HashMap<String,String>();var discord=new HashSet<String>();
         for(var c:channels.values()){

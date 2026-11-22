@@ -683,6 +683,60 @@ economy:
   invalid-amount:
     - "{prefix} &cAmount must be greater than zero."
     - "[sound] block.note_block.bass 0.8"
+redeem:
+  join:
+    - "{prefix} &aWelcome back, &e{name}&a. Use &f/redeem &ato claim your {rank} rewards."
+  success:
+    - "{prefix} &aClaimed your &e{rank} &arewards."
+  unavailable:
+    - "{prefix} &cYou have no rank rewards to claim."
+  failed:
+    - "{prefix} &cYour rewards could not be delivered. Contact staff."
+
+autorestart:
+  help:
+    - "{prefix} &f/ar help &7| &f/ar time &7| &f/ar now [delay] [--dry-run] &7| &f/ar stop &7| &f/ar reload &7| &f/ar vote [start|yes|no]"
+  time-remaining:
+    - "{prefix} &7Next restart in &f{time}&7."
+  no-restart-scheduled:
+    - "{prefix} &7No restart is scheduled."
+  scheduled:
+    - "{prefix} &eServer restart scheduled in {time}."
+  countdown:
+    - "{prefix} &eServer restarting in {time} second{plural}."
+  cancelled:
+    - "{prefix} &aThe scheduled restart was cancelled."
+  reloaded:
+    - "{prefix} &aReloaded autorestart.yml."
+  config-error:
+    - "{prefix} &cCould not load autorestart.yml. Check the server log."
+  invalid-time-format:
+    - "{prefix} &cEnter a delay such as 30s, 5m, or 1h."
+  dry-run:
+    - "{prefix} &eRestart dry run begins in {time}."
+  dry-complete:
+    - "{prefix} &aRestart dry run complete."
+  warning:
+    - "{prefix} &eThe server is restarting now."
+  server-stopped-message:
+    - "{prefix} &7The server is shutting down for restart."
+  kick-message:
+    - "&eThe server is restarting. Please rejoin in a moment."
+  vote-prompt:
+    - "{prefix} &eVote on a server restart with /voterestart yes or /voterestart no."
+  vote-already-active:
+    - "{prefix} &cA restart vote is already active."
+  vote-none-active:
+    - "{prefix} &7No restart vote is active."
+  vote-duplicate:
+    - "{prefix} &cYou already voted."
+  vote-cast:
+    - "{prefix} &aYour vote was counted: {vote}."
+  vote-passed:
+    - "{prefix} &aRestart vote passed ({yes} yes, {no} no). Restarting within two minutes."
+  vote-failed:
+    - "{prefix} &7Restart vote failed ({yes} yes, {no} no)."
+
 chat:
   argument-error:
     - "{prefix} &c{message}"
@@ -779,6 +833,11 @@ chat:
     - "[sound] block.note_block.hat 1.0"
   channel-save-failed:
     - "{prefix} &cChannel preference could not be saved."
+  clear:
+    success:
+      - "{prefix} &aChat cleared."
+    disabled:
+      - "{prefix} &cChat clearing is disabled."
   delete:
     success:
       - "{prefix} &aMessage deleted."

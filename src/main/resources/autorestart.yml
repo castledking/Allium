@@ -1,0 +1,11 @@
+# Use a server wrapper that starts the server again after a clean shutdown.
+enabled: false
+timezone: UTC
+times: ['04:00', '12:00', '20:00']
+pre-commands: ['save-all']
+command-delay: 30
+countdown-times: [60, 30, 15, 10, 5, 4, 3, 2, 1]
+save-before-restart: true
+send-final-server-stopped-message: true
+relay-to-discord: true
+discord-warning-seconds: 60

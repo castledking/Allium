@@ -683,6 +683,60 @@ economy:
   invalid-amount:
     - "{prefix} &cLa cantidad debe ser mayor que cero."
     - "[sound] block.note_block.bass 0.8"
+redeem:
+  join:
+    - "{prefix} &aBienvenido, &e{name}&a. Usa &f/redeem &apara reclamar tus recompensas de {rank}."
+  success:
+    - "{prefix} &aReclamaste tus recompensas de &e{rank}&a."
+  unavailable:
+    - "{prefix} &cNo tienes recompensas de rango pendientes."
+  failed:
+    - "{prefix} &cNo se pudieron entregar tus recompensas. Contacta al equipo."
+
+autorestart:
+  help:
+    - "{prefix} &f/ar help &7| &f/ar time &7| &f/ar now [delay] [--dry-run] &7| &f/ar stop &7| &f/ar reload &7| &f/ar vote [start|yes|no]"
+  time-remaining:
+    - "{prefix} &7Próximo reinicio en &f{time}&7."
+  no-restart-scheduled:
+    - "{prefix} &7No hay ningún reinicio programado."
+  scheduled:
+    - "{prefix} &eReinicio programado en {time}."
+  countdown:
+    - "{prefix} &eEl servidor se reiniciará en {time} segundo{plural}."
+  cancelled:
+    - "{prefix} &aSe canceló el reinicio programado."
+  reloaded:
+    - "{prefix} &aSe recargó autorestart.yml."
+  config-error:
+    - "{prefix} &cNo se pudo cargar autorestart.yml. Consulta el registro del servidor."
+  invalid-time-format:
+    - "{prefix} &cIndica un tiempo como 30s, 5m o 1h."
+  dry-run:
+    - "{prefix} &eLa prueba de reinicio empieza en {time}."
+  dry-complete:
+    - "{prefix} &aTerminó la prueba de reinicio."
+  warning:
+    - "{prefix} &eEl servidor se está reiniciando."
+  server-stopped-message:
+    - "{prefix} &7El servidor se está apagando para reiniciarse."
+  kick-message:
+    - "&eEl servidor se está reiniciando. Vuelve en un momento."
+  vote-prompt:
+    - "{prefix} &eVota por un reinicio con /voterestart yes o /voterestart no."
+  vote-already-active:
+    - "{prefix} &cYa hay una votación de reinicio activa."
+  vote-none-active:
+    - "{prefix} &7No hay una votación de reinicio activa."
+  vote-duplicate:
+    - "{prefix} &cYa votaste."
+  vote-cast:
+    - "{prefix} &aSe contó tu voto: {vote}."
+  vote-passed:
+    - "{prefix} &aSe aprobó el reinicio ({yes} a favor, {no} en contra). Será en dos minutos como máximo."
+  vote-failed:
+    - "{prefix} &7No se aprobó el reinicio ({yes} a favor, {no} en contra)."
+
 chat:
   argument-error:
     - "{prefix} &c{message}"
@@ -779,6 +833,11 @@ chat:
     - "[sound] block.note_block.hat 1.0"
   channel-save-failed:
     - "{prefix} &cChannel preference could not be saved."
+  clear:
+    success:
+      - "{prefix} &aSe limpió el chat."
+    disabled:
+      - "{prefix} &cLa limpieza del chat está desactivada."
   delete:
     success:
       - "{prefix} &aMensaje eliminado."

@@ -537,6 +537,8 @@ chat:
   replay-packets-per-tick: 64
   deletion_resend:
     clear_lines: 500
+    header_enabled: false
+    header: '&8&oChat re-synced by staff; a message was deleted'
   channels:
     enabled: true
     default-write-channel: default
@@ -575,6 +577,13 @@ chat:
   # Require allium.chat.url (default op) to post links in chat.
   urls:
     enabled: true
+
+# UUID:rank entries are one-time claims. The console runs the selected rank's commands in order.
+# Commands can use {player} and {uuid}. The claimed list is maintained by Allium.
+redeem-settings:
+  players-to-redeem: []
+  commands-to-run: {}
+  claimed: []
 # Commands run by console when staff runs /spectate <player>.
 # Placeholders: {player} (spectator), {target} (target). Prefix with "player:" to run as the spectator.
 spectate-commands:

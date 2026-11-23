@@ -34,6 +34,96 @@ import static org.junit.jupiter.api.Assertions.*;
 class EssentialsImportTest {
 
     @Test
+    void malformedLocationsAreOmittedAndDryRunIdentifiesTheirSourceFields(@TempDir Path source) throws Exception {
+        Path userdata = Files.createDirectory(source.resolve("userdata"));
+        Path warps = Files.createDirectory(source.resolve("warps"));
+        UUID player = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+
+        Files.writeString(warps.resolve("bad.yml"), "world: world\nx: not-a-number\ny: 64\nz: 24\n");
+        Files.writeString(warps.resolve("missing.yml"), "world: world\nx: 0\nz: -24\n");
+        Files.writeString(warps.resolve("valid.yml"), "world: world\nx: 0\ny: 64\nz: -24.5\n");
+        Files.writeString(source.resolve("jail.yml"), """
+                jails:
+                  broken:
+                    world: world
+                    x: 0
+                    y: 64
+                    z: 0
+                    yaw: '90'
+                  cell:
+                    world: world
+                    x: 0
+                    y: 64
+                    z: 0
+                """);
+        Files.writeString(source.resolve("spawn.yml"), """
+                spawns:
+                  default:
+                    world: world
+                    x: 0
+                    y: 64
+                    z: 24
+                    pitch: 1.0E39
+                """);
+        Files.writeString(userdata.resolve(player + ".yml"), """
+                jailed: true
+                jail: cell
+                homes:
+                  good:
+                    world-name: world
+                    x: -10
+                    y: 64.5
+                    z: 0
+                  broken:
+                    world: world
+                    x: 0
+                    y: 64
+                    z: .inf
+                logoutlocation:
+                  world: world
+                  x: 0
+                  y: false
+                  z: 0
+                lastlocation:
+                  world: world
+                  x: 0
+                  y: 64
+                  z: 0
+                  pitch: .nan
+                """);
+
+        var snapshot = EssentialsSnapshot.read(source);
+        var plan = EssentialsImportPlan.build(snapshot, (id, name) -> Optional.of(new ResolvedWorld(worldId, "world")),
+                Destination.empty(), 1_800_000_000_000L, new Money(0), new Money(Money.HARD));
+        var blocked = plan.records().stream().filter(record -> record.status() == Status.BLOCKED).toList();
+        assertTrue(blocked.stream().anyMatch(r -> r.domain() == Domain.WARP
+                && r.reason().equals("warps/bad.yml: x must be a finite number")));
+        assertTrue(blocked.stream().anyMatch(r -> r.domain() == Domain.WARP
+                && r.reason().equals("warps/missing.yml: y is required")));
+        assertTrue(blocked.stream().anyMatch(r -> r.domain() == Domain.JAIL
+                && r.reason().equals("jail.yml: jails.broken.yaw must be a finite number")));
+        assertTrue(blocked.stream().anyMatch(r -> r.domain() == Domain.SPAWN
+                && r.reason().equals("spawn.yml: spawns.default.pitch is outside the finite float range")));
+        assertTrue(blocked.stream().anyMatch(r -> r.domain() == Domain.JAILED
+                && r.reason().startsWith("no valid return location")));
+
+        String userFile = "userdata/" + player + ".yml: ";
+        assertTrue(plan.notes().contains(userFile + "homes.broken.z must be a finite number"));
+        assertTrue(plan.notes().contains(userFile + "logoutlocation.y must be a finite number"));
+        assertTrue(plan.notes().contains(userFile + "lastlocation.pitch must be a finite number"));
+        assertEquals(1L, plan.counts(Domain.HOME).get(Status.IMPORT));
+        assertEquals(0L, plan.counts(Domain.LOGOUT).get(Status.IMPORT));
+
+        var valid = plan.records().stream().filter(r -> r.domain() == Domain.WARP && r.status() == Status.IMPORT)
+                .findFirst().orElseThrow().location();
+        assertEquals(0.0, valid.x());
+        assertEquals(-24.5, valid.z());
+        assertEquals(0.0f, valid.yaw());
+        assertEquals(0.0f, valid.pitch());
+    }
+
+    @Test
     void fullEssentialsSnapshotPlansAppliesAndReplaysIdempotently(@TempDir Path dir) throws Exception {
         Path ess = dir.resolve("Essentials");
         Files.createDirectories(ess.resolve("userdata"));

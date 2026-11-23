@@ -662,7 +662,7 @@ public record EssentialsImportPlan(
         EssentialsSnapshot.RawLocation rawReturn = user.logoutLocation() != null ? user.logoutLocation() : user.lastLocation();
         if (rawReturn == null) {
             records.add(Record.simple(Domain.JAILED, key, Status.BLOCKED,
-                    "no valid return location (missing logoutlocation/lastlocation)", hash("jailed:noreturn:" + owner), owner));
+                    "no valid return location (check logoutlocation or lastlocation)", hash("jailed:noreturn:" + owner), owner));
             return;
         }
         Optional<ResolvedWorld> world = worlds.resolve(rawReturn.world(), rawReturn.worldName());

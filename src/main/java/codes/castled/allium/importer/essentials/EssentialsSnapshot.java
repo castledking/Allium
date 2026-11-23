@@ -152,12 +152,8 @@ public record EssentialsSnapshot(
                 }
                 String warpName = yaml.getString("name");
                 if (warpName == null || warpName.isBlank()) warpName = stem;
-                RawLocation loc = parseLocation(yaml);
-                if (loc == null) {
-                    warps.add(new WarpFile(name, warpName, null, "missing world or coordinates"));
-                } else {
-                    warps.add(new WarpFile(name, warpName, loc, null));
-                }
+                ParsedLocation parsed = parseLocation(yaml, "");
+                warps.add(new WarpFile(name, warpName, parsed.location(), parsed.errorIn("warps/" + name)));
             }
         }
 
@@ -172,9 +168,8 @@ public record EssentialsSnapshot(
                 ConfigurationSection section = yaml.getConfigurationSection("jails");
                 if (section != null) {
                     for (String jailName : section.getKeys(false).stream().sorted().toList()) {
-                        ConfigurationSection row = section.getConfigurationSection(jailName);
-                        RawLocation loc = row == null ? null : parseLocation(row);
-                        jails.add(new JailEntry(jailName, loc, loc == null ? "missing world or coordinates" : null));
+                        ParsedLocation parsed = parseLocation(yaml, "jails." + jailName);
+                        jails.add(new JailEntry(jailName, parsed.location(), parsed.errorIn(jailsFile.getFileName().toString())));
                     }
                 }
             } catch (InvalidConfigurationException malformed) {
@@ -192,9 +187,8 @@ public record EssentialsSnapshot(
                 ConfigurationSection section = yaml.getConfigurationSection("spawns");
                 if (section != null) {
                     for (String group : section.getKeys(false).stream().sorted().toList()) {
-                        ConfigurationSection row = section.getConfigurationSection(group);
-                        RawLocation loc = row == null ? null : parseLocation(row);
-                        spawns.add(new SpawnEntry(group, loc, loc == null ? "missing world or coordinates" : null));
+                        ParsedLocation parsed = parseLocation(yaml, "spawns." + group);
+                        spawns.add(new SpawnEntry(group, parsed.location(), parsed.errorIn("spawn.yml")));
                     }
                 }
             } catch (InvalidConfigurationException malformed) {
@@ -246,16 +240,14 @@ public record EssentialsSnapshot(
         ConfigurationSection homesSection = yaml.getConfigurationSection("homes");
         if (homesSection != null) {
             for (String homeName : homesSection.getKeys(false).stream().sorted().toList()) {
-                ConfigurationSection row = homesSection.getConfigurationSection(homeName);
-                RawLocation loc = row == null ? null : parseLocation(row);
+                RawLocation loc = readUserLocation(yaml, "homes." + homeName, errors);
                 if (loc != null) homes.put(homeName, loc);
-                else errors.add("home '" + homeName + "' has missing world/coordinates");
             }
         }
 
-        RawLocation logoutLoc = parseLocation(yaml.getConfigurationSection("logoutlocation"));
+        RawLocation logoutLoc = readUserLocation(yaml, "logoutlocation", errors);
         long logoutTs = yaml.getLong("timestamps.logout", 0L);
-        RawLocation lastLoc = parseLocation(yaml.getConfigurationSection("lastlocation"));
+        RawLocation lastLoc = readUserLocation(yaml, "lastlocation", errors);
 
         List<RawMail> mail = parseMail(yaml, errors);
         String nickname = trimToNull(yaml.getString("nickname"));
@@ -325,23 +317,58 @@ public record EssentialsSnapshot(
         return out;
     }
 
+    private record ParsedLocation(@Nullable RawLocation location, @Nullable String error) {
+        @Nullable String errorIn(String fileName) {
+            return error == null ? null : fileName + ": " + error;
+        }
+    }
+
     @Nullable
-    private static RawLocation parseLocation(@Nullable ConfigurationSection section) {
-        if (section == null) return null;
+    private static RawLocation readUserLocation(YamlConfiguration yaml, String path, List<String> errors) {
+        if (!yaml.contains(path)) return null;
+        ParsedLocation parsed = parseLocation(yaml, path);
+        if (parsed.error() != null) errors.add(parsed.error());
+        return parsed.location();
+    }
+
+    private static ParsedLocation parseLocation(YamlConfiguration yaml, String path) {
+        ConfigurationSection section = path.isEmpty() ? yaml : yaml.getConfigurationSection(path);
+        if (section == null) return new ParsedLocation(null, path + " must be a location section");
+        String prefix = path.isEmpty() ? "" : path + ".";
         String world = trimToNull(section.getString("world"));
         String worldName = trimToNull(section.getString("world-name"));
-        if (world == null && worldName == null) return null;
-        if (!section.isSet("x") || !section.isSet("y") || !section.isSet("z")) return null;
-        double x = section.getDouble("x");
-        double y = section.getDouble("y");
-        double z = section.getDouble("z");
-        float yaw = (float) section.getDouble("yaw", 0.0);
-        float pitch = (float) section.getDouble("pitch", 0.0);
-        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)
-                || !Float.isFinite(yaw) || !Float.isFinite(pitch)) {
-            return null;
+        if (world == null && worldName == null) {
+            return new ParsedLocation(null, prefix + "world or " + prefix + "world-name is required");
         }
-        return new RawLocation(world, worldName, x, y, z, yaw, pitch);
+        try {
+            double x = locationNumber(section, "x", true);
+            double y = locationNumber(section, "y", true);
+            double z = locationNumber(section, "z", true);
+            float yaw = locationRotation(section, "yaw");
+            float pitch = locationRotation(section, "pitch");
+            return new ParsedLocation(new RawLocation(world, worldName, x, y, z, yaw, pitch), null);
+        } catch (IllegalArgumentException invalid) {
+            return new ParsedLocation(null, prefix + invalid.getMessage());
+        }
+    }
+
+    private static double locationNumber(ConfigurationSection section, String key, boolean required) {
+        Object raw = section.get(key);
+        if (raw == null) {
+            if (required) throw new IllegalArgumentException(key + " is required");
+            return 0;
+        }
+        if (raw instanceof Number number) {
+            double value = number.doubleValue();
+            if (Double.isFinite(value)) return value;
+        }
+        throw new IllegalArgumentException(key + " must be a finite number");
+    }
+
+    private static float locationRotation(ConfigurationSection section, String key) {
+        float value = (float) locationNumber(section, key, false);
+        if (!Float.isFinite(value)) throw new IllegalArgumentException(key + " is outside the finite float range");
+        return value;
     }
 
     @Nullable

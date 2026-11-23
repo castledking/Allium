@@ -48,6 +48,11 @@ public final class EconomyRecovery {
                     String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.REPAIR_RECEIPTS);
                     if(RepairReceipts.parse(raw).contains(row.id()))require(holds.capture(row.kind(),row.id(),c->true));
                     else require(holds.release(row.kind(),row.id(),c->true));
+                }else if(identity.kind()==EconomyReservations.Kind.ADDON){
+                    // Paid addon mutation and its receipt were saved together: charge iff the saved file has it.
+                    String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.ADDON_RECEIPTS);
+                    if(RepairReceipts.parse(raw).contains(row.id()))require(holds.capture(row.kind(),row.id(),c->true));
+                    else require(holds.release(row.kind(),row.id(),c->true));
                 }else if(identity.kind()==EconomyReservations.Kind.CHEQUE){
                     String raw=PlayerDataReceiptProof.read(file,PlayerDataReceiptProof.CHEQUE_RECEIPTS);
                     var cheque=cheques.find(row.id()).orElseThrow(()->new SQLException("missing cheque intent"));

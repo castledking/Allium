@@ -7,7 +7,7 @@ import static codes.castled.allium.economy.EconomyResult.*;
 
 /** Stable workflow keys; each step shares the money journal and one caller-supplied SQL transition. */
 public final class EconomyReservations {
-    public enum Kind { KIT, MAIL, REPAIR, CHEQUE, SIGN, RTP }
+    public enum Kind { KIT, MAIL, REPAIR, CHEQUE, SIGN, RTP, ADDON }
     public record Identity(Kind kind,UUID id){}
     public record Reservation(Kind kind,UUID id,UUID account,Money amount,String intentHash,String state,long version){}
     @FunctionalInterface public interface Executor {Mutation execute(EconomyRequest request,EconomyEngine.WorkflowTransition transition);}

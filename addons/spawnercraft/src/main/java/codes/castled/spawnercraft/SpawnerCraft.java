@@ -185,23 +185,11 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
         if (displayed == null) return;
         event.setCancelled(true);
         if (!ordinaryClick(event) || !player.hasPermission("spawnercraft.craft") || !allium().canEditInventory(player)) return;
-        ItemStack[] matrix = inventory.getMatrix();
-        var match = recipes.match(matrix);
-        if (match == null || !displayed.equals(match.recipe().id() + ":" + match.mob())) {
-            refresh(inventory);
-            return;
-        }
-        if (!recipes.deliver(player, match)) {
+        HeadRecipes.DeliveryResult result = recipes.craft(player, inventory, displayed);
+        if (result.status() == HeadRecipes.DeliveryStatus.UNAVAILABLE
+                || result.status() == HeadRecipes.DeliveryStatus.COMMAND_REFUSED) {
             player.sendMessage("§cThe recipe result is unavailable. Your ingredients are still in the grid.");
-            return;
         }
-        for (int i = 0; i < matrix.length; i++) {
-            ItemStack item = matrix[i];
-            if (item == null || item.getType().isAir()) continue;
-            if (item.getAmount() == 1) matrix[i] = null;
-            else item.setAmount(item.getAmount() - 1);
-        }
-        inventory.setMatrix(matrix);
         refresh(inventory);
     }
 

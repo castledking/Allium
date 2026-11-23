@@ -53,6 +53,7 @@ public final class ItemService {
 
     private final Map<String, ItemVariants> variantsByItem = new ConcurrentHashMap<>();
     private final Map<NamespacedKey, Recipe> addonRecipes = new ConcurrentHashMap<>();
+    private final Map<NamespacedKey, Set<ItemRef>> addonRecipeAllowedIngredients = new ConcurrentHashMap<>();
     private final Map<String, Consumer<ItemStack>> decorations = new ConcurrentHashMap<>();
     private final Map<String, AlliumItemDefinition> alliumDefinitions = new ConcurrentHashMap<>();
     private final Map<ProviderKey, String> appearanceToBehavior = new ConcurrentHashMap<>();
@@ -154,38 +155,101 @@ public final class ItemService {
 
     public void registerRecipe(NamespacedKey key, Recipe recipe) {
         addonRecipes.put(key, recipe);
+        addonRecipeAllowedIngredients.remove(key);
+    }
+
+    public void registerRecipe(NamespacedKey key, Recipe recipe, Collection<ItemRef> allowedIngredients) {
+        addonRecipes.put(key, recipe);
+        if (allowedIngredients == null || allowedIngredients.isEmpty()) {
+            addonRecipeAllowedIngredients.remove(key);
+        } else {
+            addonRecipeAllowedIngredients.put(key, Set.copyOf(allowedIngredients));
+        }
     }
 
     public void removeRecipe(NamespacedKey key) {
         addonRecipes.remove(key);
+        addonRecipeAllowedIngredients.remove(key);
     }
 
     public boolean isAddonCraftIngredient(ItemStack stack, @Nullable Recipe actual) {
         if (!(actual instanceof org.bukkit.Keyed keyed)) return false;
         Recipe recipe = addonRecipes.get(keyed.getKey());
         if (recipe == null || identifyBehavior(stack).isEmpty()) return false;
+        Set<ItemRef> allowed = addonRecipeAllowedIngredients.get(keyed.getKey());
+        if (allowed != null && !allowed.isEmpty()) {
+            return allowed.stream().anyMatch(ref -> matches(stack, ref));
+        }
         Collection<RecipeChoice> choices;
         if (recipe instanceof ShapedRecipe shaped) choices = shaped.getChoiceMap().values();
         else if (recipe instanceof ShapelessRecipe shapeless) choices = shapeless.getChoiceList();
         else return false;
-        return choices.stream().anyMatch(choice -> choice instanceof RecipeChoice.ExactChoice exact && exact.test(stack));
+        return choices.stream().anyMatch(choice -> matchesRecipeChoice(stack, choice));
     }
 
     public boolean isAddonCookingIngredient(ItemStack stack, InventoryType type, @Nullable ItemStack result) {
         if (identifyBehavior(stack).isEmpty()) return false;
-        for (Recipe recipe : addonRecipes.values()) {
-            if (!(recipe instanceof CookingRecipe<?> cooking)
-                    || !(cooking.getInputChoice() instanceof RecipeChoice.ExactChoice exact)
-                    || result != null && !recipe.getResult().isSimilar(result)) continue;
+        for (Map.Entry<NamespacedKey, Recipe> entry : addonRecipes.entrySet()) {
+            Recipe recipe = entry.getValue();
+            if (!(recipe instanceof CookingRecipe<?> cooking)) continue;
             boolean station = switch (type) {
                 case FURNACE -> recipe instanceof org.bukkit.inventory.FurnaceRecipe;
                 case BLAST_FURNACE -> recipe instanceof org.bukkit.inventory.BlastingRecipe;
                 case SMOKER -> recipe instanceof org.bukkit.inventory.SmokingRecipe;
                 default -> false;
             };
-            if (station && exact.test(stack)) return true;
+            if (!station) continue;
+            Set<ItemRef> allowed = addonRecipeAllowedIngredients.get(entry.getKey());
+            boolean inputMatched = allowed != null && !allowed.isEmpty()
+                    ? allowed.stream().anyMatch(ref -> matches(stack, ref))
+                    : matchesRecipeChoice(stack, cooking.getInputChoice());
+            if (!inputMatched) continue;
+            if (result == null || matchesRecipeItem(result, recipe.getResult())) return true;
         }
         return false;
+    }
+
+    /**
+     * Matches a candidate stack against a registered {@link RecipeChoice} using verified Allium
+     * item identity when the template is a custom item, so rotated signing keys and valid cosmetic
+     * variations still match while unsigned lookalikes and tampered items are rejected.
+     */
+    boolean matchesRecipeChoice(@Nullable ItemStack candidate, @Nullable RecipeChoice choice) {
+        if (candidate == null || !(choice instanceof RecipeChoice.ExactChoice exact)) return false;
+        java.util.List<ItemStack> templates = exact.getChoices();
+        if (templates == null || templates.isEmpty()) {
+            return exact.test(candidate);
+        }
+        for (ItemStack template : templates) {
+            if (matchesRecipeItem(candidate, template)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    boolean matchesRecipeItem(@Nullable ItemStack candidate, @Nullable ItemStack template) {
+        if (candidate == null || template == null) return false;
+        Optional<ItemRef> templateRef = identify(template);
+        if (templateRef.isPresent()) {
+            ItemRef expected = templateRef.get();
+            if (expected.behaviorId().isPresent() || !expected.appearance().isVanilla()) {
+                return matches(candidate, expected);
+            }
+        }
+        if (identifyBehavior(candidate).isPresent() || hasAlliumClaimMetadata(candidate)) {
+            return false;
+        }
+        return template.isSimilar(candidate);
+    }
+
+    private static boolean hasAlliumClaimMetadata(@Nullable ItemStack stack) {
+        if (stack == null || !stack.hasItemMeta()) return false;
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) return false;
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        return pdc != null && (pdc.has(KEY_BEHAVIOR_ID, PersistentDataType.STRING)
+                || pdc.has(KEY_SIGNATURE, PersistentDataType.STRING));
     }
 
     public void decorate(String id, Consumer<ItemStack> decoration) {

@@ -92,6 +92,7 @@ public final class CropsPlugin extends AlliumAddon {
                     default -> kitchen.restore(placement);
                 }
             });
+            kitchen.scanLoadedDrops(Bukkit.getWorlds());
             long interval = Math.max(1L, getConfig().getLong("growth.interval-ticks", 20)) * 50L;
             core.scheduler().repeatOnServer(() -> {
                 if (core.isFolia()) {

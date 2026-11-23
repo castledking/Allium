@@ -466,23 +466,27 @@ final class CardGuiManager implements Listener {
                 }
                 double cost = pricing.costFor(current.rolls(), tier);
                 var economy = plugin.core().economy();
-                if (cost > 0) {
-                    if (!economy.available()) {
-                        feedback(false, "The economy is unavailable, so a bonus slot cannot be charged for.");
-                        return;
-                    }
-                    if (!economy.has(player.getUniqueId(), cost) || !economy.withdraw(player.getUniqueId(), cost)) {
-                        feedback(false, "You need " + money(cost) + " to roll that bonus slot.");
-                        return;
-                    }
-                }
                 slots.set(index, rolled.paid(cost));
                 CardRules.BonusDef def = CardRules.BONUSES.get(rolled.boostId());
                 String label = def != null ? def.plainName() + " " + def.formatValue(rolled.strength()) : rolled.boostId();
-                if (!saveBonuses(slots, "Rolled " + label + " (" + rolled.strength() + "%) in slot " + (index + 1)
-                        + (cost > 0 ? " for " + money(cost) : "") + "!") && cost > 0) {
-                    // Charged but the card could not be written: give the money back.
-                    economy.deposit(player.getUniqueId(), cost);
+                String successMessage = "Rolled " + label + " (" + rolled.strength() + "%) in slot " + (index + 1)
+                        + (cost > 0 ? " for " + money(cost) : "") + "!";
+                CuriosRecoveryStore.RollOutcome outcome = plugin.recovery().executePaidRoll(
+                        player, economy, cost, () -> writeBonusesSilently(slots));
+                switch (outcome.status()) {
+                    case FREE_APPLIED, CAPTURED, CAPTURED_DEFERRED -> {
+                        if (source.equipped()) plugin.refreshAttributes(player);
+                        feedback(true, successMessage);
+                        render();
+                    }
+                    case ECONOMY_UNAVAILABLE ->
+                            feedback(false, "The economy is unavailable, so a bonus slot cannot be charged for.");
+                    case INSUFFICIENT_FUNDS ->
+                            feedback(false, "You need " + money(cost) + " to roll that bonus slot.");
+                    case RELEASED, MUTATION_FAILED ->
+                            feedback(false, "Could not update this card. Your funds were not taken.");
+                    case RELEASE_DEFERRED ->
+                            feedback(false, "Could not update this card; your refund hold is queued for automatic recovery.");
                 }
             }
         }
@@ -491,14 +495,21 @@ final class CardGuiManager implements Listener {
             return plugin.core().economy().format(amount);
         }
 
-        private boolean saveBonuses(List<CardRules.BonusSlotData> slots, String successMessage) {
+        private boolean writeBonusesSilently(List<CardRules.BonusSlotData> slots) {
             ItemStack current = source.read(plugin, player);
             ItemStack updated = plugin.changed(current, Map.of("bonuses", CardRules.encodeBonuses(slots)));
             if (updated == null) {
-                feedback(false, "Could not update this card.");
                 return false;
             }
             source.write(plugin, player, updated);
+            return true;
+        }
+
+        private boolean saveBonuses(List<CardRules.BonusSlotData> slots, String successMessage) {
+            if (!writeBonusesSilently(slots)) {
+                feedback(false, "Could not update this card.");
+                return false;
+            }
             if (source.equipped()) plugin.refreshAttributes(player);
             feedback(true, successMessage);
             render();
@@ -652,6 +663,7 @@ final class CardGuiManager implements Listener {
 
     private final class TradeScreen extends CardScreen {
         private boolean exchanged;
+        private UUID claimId;
         private ItemStack unclaimed;
 
         TradeScreen(Player player, CardSource source, Catalog.Entry entry, ItemIdentity identity) {
@@ -665,7 +677,7 @@ final class CardGuiManager implements Listener {
                 if (unclaimed != null) set(13, unclaimed.clone(), e -> collect());
                 set(22, icon(Material.NETHERITE_AXE, "<green>Trade Complete",
                         "<gray>Click your reward above to collect",
-                        "<dark_gray>Unclaimed rewards are returned on close"), e -> collect());
+                        "<dark_gray>Unclaimed rewards stay saved for /curios claim"), e -> collect());
                 navigation(player::closeInventory, this::collect, "Collect Reward", Material.CHEST);
                 return;
             }
@@ -708,33 +720,45 @@ final class CardGuiManager implements Listener {
                 render();
                 return;
             }
-            source.write(plugin, player, null);
-            unclaimed = payout;
+            UUID issued = plugin.recovery().issueTradeClaim(player, entry.id(), payout,
+                    () -> source.write(plugin, player, null));
+            if (issued == null) {
+                feedback(false, "Could not save trade-in claim. Your card was not consumed.");
+                render();
+                return;
+            }
+            claimId = issued;
+            unclaimed = payout.clone();
             exchanged = true;
-            feedback(true, "Traded in! Click the reward to collect.");
+            feedback(true, "Traded in! Click the reward to collect (saved safely if you close or disconnect).");
             render();
         }
 
         private void collect() {
-            if (unclaimed == null) return;
-            var overflow = player.getInventory().addItem(unclaimed.clone());
-            unclaimed = overflow.isEmpty() ? null : overflow.values().iterator().next();
-            if (unclaimed == null) {
+            if (claimId == null) return;
+            CuriosRecoveryStore.CollectResult result = plugin.recovery().collectTradeClaim(player, claimId);
+            if (result.deliveredAll()) {
+                claimId = null;
+                unclaimed = null;
                 feedback(true, "Reward collected!");
                 player.closeInventory();
             } else {
-                feedback(false, "Make room in your inventory to collect the remaining reward.");
+                unclaimed = result.remaining();
+                feedback(false, "Make room in your inventory to collect the remaining reward (or run /curios claim later).");
                 render();
             }
         }
 
         @Override
         void returnUnclaimed() {
-            if (unclaimed == null) return;
-            ItemStack toDeliver = unclaimed;
+            if (claimId == null) return;
+            UUID pending = claimId;
+            claimId = null;
             unclaimed = null;
-            player.getInventory().addItem(toDeliver).values().forEach(rest ->
-                    player.getWorld().dropItemNaturally(player.getLocation(), rest));
+            CuriosRecoveryStore.CollectResult result = plugin.recovery().collectTradeClaim(player, pending);
+            if (!result.deliveredAll()) {
+                plugin.tellCards(player, "&eYour inventory is full; your remaining trade-in reward is saved safely. Make room and run /curios claim.");
+            }
         }
     }
 }

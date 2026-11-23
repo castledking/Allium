@@ -70,6 +70,7 @@ public final class Ores extends AlliumAddon {
     private void startListeners() {
         fresh = new FreshChunks(generation, core.scheduler());
         getServer().getPluginManager().registerEvents(fresh, this);
+        fresh.scanLoadedWorlds(getServer().getWorlds());
         if (generation.placement() != null && generation.settings().jade()
                 && getServer().getPluginManager().isPluginEnabled("packetevents")) {
             try {

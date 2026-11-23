@@ -299,4 +299,99 @@ class ToolCarrierSuppressionListenerTest {
         listener.onInventoryMoveItem(e5);
         verify(e5, never()).setCancelled(true);
     }
+
+    @Test
+    void addonRecipeMatchingAcceptsRotatedKeyAndValidVariationsAndRejectsLookalikesAndTampering() {
+        var oldSigner = codes.castled.allium.item.ItemHmacSigner.randomEphemeral("k1");
+        byte[] newKey = new byte[32];
+        java.util.Arrays.fill(newKey, (byte) 0x42);
+        var rotatedSigner = oldSigner.rotateKey("k2", newKey);
+
+        ItemService oldItems = new ItemService(MockItemStacks::create, oldSigner, msg -> {});
+        ItemService rotatedItems = new ItemService(MockItemStacks::create, rotatedSigner, msg -> {});
+        AlliumItemDefinition doughDef = new AlliumItemDefinition("dough", Material.PAPER,
+                "crops:dough", true, 1001, "Dough", Map.of(), true);
+        AlliumItemDefinition coldPieDef = new AlliumItemDefinition("cold_apple_pie", Material.PAPER,
+                "crops:cold_apple_pie", true, 1002, "Cold Apple Pie", Map.of(), true);
+        AlliumItemDefinition bakedPieDef = new AlliumItemDefinition("baked_apple_pie", Material.PAPER,
+                "crops:baked_apple_pie", true, 1003, "Baked Apple Pie", Map.of(), true);
+        for (ItemService svc : java.util.List.of(oldItems, rotatedItems)) {
+            svc.registerStackableSignedItem(doughDef);
+            svc.registerStackableSignedItem(coldPieDef);
+            svc.registerStackableSignedItem(bakedPieDef);
+        }
+
+        ItemStack doughOldKey = oldItems.create(oldItems.parseRef("allium:dough")).itemStack().orElseThrow();
+        ItemStack doughCurrentKey = rotatedItems.create(rotatedItems.parseRef("allium:dough")).itemStack().orElseThrow();
+        ItemStack doughRenamedVariation = doughOldKey.clone();
+        doughRenamedVariation.getItemMeta().setDisplayName("Artisan Dough");
+
+        ItemStack doughUnsignedLookalike = MockItemStacks.create(Material.PAPER);
+        doughUnsignedLookalike.getItemMeta().setDisplayName("Dough");
+        doughUnsignedLookalike.getItemMeta().setCustomModelData(1001);
+        doughUnsignedLookalike.getItemMeta().getPersistentDataContainer()
+                .set(ItemService.KEY_BEHAVIOR_ID, org.bukkit.persistence.PersistentDataType.STRING, "crops:dough");
+
+        ItemStack doughTampered = doughCurrentKey.clone();
+        doughTampered.getItemMeta().getPersistentDataContainer()
+                .set(ItemService.KEY_SIGNATURE, org.bukkit.persistence.PersistentDataType.STRING, "v2:k2:0000");
+
+        // Crafting ExactChoice registered with current k2 stack
+        var craftKey = new org.bukkit.NamespacedKey("crops", "pie_crust");
+        var craftRecipe = mock(org.bukkit.inventory.ShapelessRecipe.class);
+        var craftExact = mock(org.bukkit.inventory.RecipeChoice.ExactChoice.class);
+        when(craftRecipe.getKey()).thenReturn(craftKey);
+        when(craftRecipe.getChoiceList()).thenReturn(java.util.List.of(craftExact));
+        when(craftExact.getChoices()).thenReturn(java.util.List.of(doughCurrentKey));
+        rotatedItems.registerRecipe(craftKey, craftRecipe);
+
+        assertTrue(rotatedItems.isAddonCraftIngredient(doughCurrentKey, craftRecipe));
+        assertTrue(rotatedItems.isAddonCraftIngredient(doughOldKey, craftRecipe));
+        assertTrue(rotatedItems.isAddonCraftIngredient(doughRenamedVariation, craftRecipe));
+        assertFalse(rotatedItems.isAddonCraftIngredient(doughUnsignedLookalike, craftRecipe));
+        assertFalse(rotatedItems.isAddonCraftIngredient(doughTampered, craftRecipe));
+
+        // Carrier fallback recipe with explicit allowed identities
+        var fallbackKey = new org.bukkit.NamespacedKey("crops", "identity_craft_1");
+        var fallbackRecipe = mock(org.bukkit.inventory.ShapelessRecipe.class);
+        when(fallbackRecipe.getKey()).thenReturn(fallbackKey);
+        rotatedItems.registerRecipe(fallbackKey, fallbackRecipe, java.util.List.of(rotatedItems.parseRef("allium:dough")));
+        assertTrue(rotatedItems.isAddonCraftIngredient(doughOldKey, fallbackRecipe));
+        assertTrue(rotatedItems.isAddonCraftIngredient(doughRenamedVariation, fallbackRecipe));
+        assertFalse(rotatedItems.isAddonCraftIngredient(doughUnsignedLookalike, fallbackRecipe));
+        assertFalse(rotatedItems.isAddonCraftIngredient(doughTampered, fallbackRecipe));
+
+        // Cooking FurnaceRecipe registered with current k2 stacks
+        ItemStack coldPieOldKey = oldItems.create(oldItems.parseRef("allium:cold_apple_pie")).itemStack().orElseThrow();
+        ItemStack coldPieCurrentKey = rotatedItems.create(rotatedItems.parseRef("allium:cold_apple_pie")).itemStack().orElseThrow();
+        ItemStack coldPieRenamed = coldPieOldKey.clone();
+        coldPieRenamed.getItemMeta().setDisplayName("Warming Apple Pie");
+        ItemStack bakedPieCurrentKey = rotatedItems.create(rotatedItems.parseRef("allium:baked_apple_pie")).itemStack().orElseThrow();
+        ItemStack bakedPieOldKey = oldItems.create(oldItems.parseRef("allium:baked_apple_pie")).itemStack().orElseThrow();
+
+        ItemStack coldPieLookalike = MockItemStacks.create(Material.PAPER);
+        coldPieLookalike.getItemMeta().setDisplayName("Cold Apple Pie");
+        coldPieLookalike.getItemMeta().setCustomModelData(1002);
+        ItemStack coldPieTampered = coldPieCurrentKey.clone();
+        coldPieTampered.getItemMeta().getPersistentDataContainer()
+                .set(new org.bukkit.NamespacedKey("allium", "state_tamper"),
+                        org.bukkit.persistence.PersistentDataType.STRING, "1");
+
+        var smeltKey = new org.bukkit.NamespacedKey("crops", "bake_apple_pie");
+        var smeltRecipe = mock(org.bukkit.inventory.FurnaceRecipe.class);
+        var smeltExact = mock(org.bukkit.inventory.RecipeChoice.ExactChoice.class);
+        when(smeltRecipe.getKey()).thenReturn(smeltKey);
+        when(smeltRecipe.getInputChoice()).thenReturn(smeltExact);
+        when(smeltExact.getChoices()).thenReturn(java.util.List.of(coldPieCurrentKey));
+        when(smeltRecipe.getResult()).thenReturn(bakedPieCurrentKey);
+        rotatedItems.registerRecipe(smeltKey, smeltRecipe);
+
+        assertTrue(rotatedItems.isAddonCookingIngredient(coldPieCurrentKey, InventoryType.FURNACE, bakedPieCurrentKey));
+        assertTrue(rotatedItems.isAddonCookingIngredient(coldPieOldKey, InventoryType.FURNACE, bakedPieCurrentKey));
+        assertTrue(rotatedItems.isAddonCookingIngredient(coldPieOldKey, InventoryType.FURNACE, bakedPieOldKey));
+        assertTrue(rotatedItems.isAddonCookingIngredient(coldPieRenamed, InventoryType.FURNACE, null));
+        assertFalse(rotatedItems.isAddonCookingIngredient(coldPieLookalike, InventoryType.FURNACE, bakedPieCurrentKey));
+        assertFalse(rotatedItems.isAddonCookingIngredient(coldPieTampered, InventoryType.FURNACE, bakedPieCurrentKey));
+        assertFalse(rotatedItems.isAddonCookingIngredient(coldPieOldKey, InventoryType.SMOKER, bakedPieCurrentKey));
+    }
 }

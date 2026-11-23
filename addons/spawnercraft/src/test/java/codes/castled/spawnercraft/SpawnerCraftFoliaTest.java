@@ -54,7 +54,9 @@ class SpawnerCraftFoliaTest {
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
 
         // Must schedule on global tick thread rather than calling Bukkit.dispatchCommand inline.
-        assertTrue(recipes.deliver(player, new HeadRecipes.Match(cmdRecipe, "zombie")));
+        var result = recipes.deliver(player, new HeadRecipes.Match(cmdRecipe, "zombie"));
+        assertTrue(result.succeeded());
+        assertEquals(HeadRecipes.DeliveryStatus.COMMAND_SCHEDULED, result.status());
         assertEquals(1, globalTasks.size());
     }
 }

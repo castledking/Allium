@@ -42,6 +42,15 @@ public interface AddonItems {
         throw new UnsupportedOperationException("Addon recipes are unavailable");
     }
 
+    /**
+     * Registers a namespaced native recipe along with the canonical item references allowed to
+     * satisfy its custom ingredients (for carrier-matched fallback recipes that validate verified
+     * signed identities at craft/cook time).
+     */
+    default void registerRecipe(Recipe recipe, Collection<String> allowedIngredientRefs) {
+        registerRecipe(recipe);
+    }
+
     /** Makes an owned item sellable through Allium Worth at this unit price. */
     default void setWorth(String id, BigDecimal price) {
         throw new UnsupportedOperationException("Addon prices are unavailable");

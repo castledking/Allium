@@ -257,14 +257,31 @@ final class AddonSession implements AddonConnection {
 
         @Override
         public void registerRecipe(org.bukkit.inventory.Recipe recipe) {
+            registerRecipe(recipe, java.util.List.of());
+        }
+
+        @Override
+        public void registerRecipe(org.bukkit.inventory.Recipe recipe, java.util.Collection<String> allowedIngredientRefs) {
             requireOpen();
             if (!(recipe instanceof org.bukkit.Keyed keyed) || !keyed.getKey().getNamespace().equals(namespace)) {
                 throw new IllegalArgumentException("Addon recipes must be keyed in " + namespace);
             }
+            java.util.List<ItemRef> allowed = new java.util.ArrayList<>();
+            if (allowedIngredientRefs != null) {
+                for (String ref : allowedIngredientRefs) {
+                    if (ref != null && !ref.isBlank()) {
+                        allowed.add(allium.getItemService().parseRef(ref));
+                    }
+                }
+            }
             if (!allium.getServer().addRecipe(recipe)) {
                 throw new IllegalArgumentException("Recipe registration failed: " + keyed.getKey());
             }
-            allium.getItemService().registerRecipe(keyed.getKey(), recipe);
+            if (allowed.isEmpty()) {
+                allium.getItemService().registerRecipe(keyed.getKey(), recipe);
+            } else {
+                allium.getItemService().registerRecipe(keyed.getKey(), recipe, allowed);
+            }
             recipes.add(keyed.getKey());
         }
 

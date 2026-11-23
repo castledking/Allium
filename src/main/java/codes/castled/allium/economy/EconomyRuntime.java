@@ -475,7 +475,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             }catch(SQLException error){tell(sender,Messages.ECO_RES_STORAGE);}});
             if(args.length==2)resolve(sender,args[1],list);else list.accept(null);return;
         }
-        if(args.length<5)throw new IllegalArgumentException("resolve <KIT|MAIL|REPAIR|CHEQUE> <workflow UUID> <capture|release> <reason>");
+        if(args.length<5)throw new IllegalArgumentException("resolve <KIT|MAIL|REPAIR|CHEQUE|SIGN|RTP|ADDON> <workflow UUID> <capture|release> <reason>");
         var kind=EconomyReservations.Kind.valueOf(args[1].toUpperCase(Locale.ROOT));var id=UUID.fromString(args[2]);
         boolean capture=args[3].equalsIgnoreCase("capture");if(!capture&&!args[3].equalsIgnoreCase("release"))throw new IllegalArgumentException("capture or release required");
         String reason=String.join(" ",Arrays.copyOfRange(args,4,args.length));String actor=sender instanceof Player p?p.getUniqueId().toString():"CONSOLE";

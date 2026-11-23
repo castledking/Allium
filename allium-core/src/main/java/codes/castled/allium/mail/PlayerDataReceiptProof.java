@@ -27,6 +27,8 @@ public final class PlayerDataReceiptProof {
     public static final String CHEQUE_RECEIPTS = "allium:cheque_receipts";
     /** {@code /sell}: {@code saleId:cents} entries whose removed items are saved in this player file. */
     public static final String SALE_RECEIPTS = "allium:sale_receipts";
+    /** Paid addon mutations (e.g. Curios bonus rolls): comma-separated operation UUIDs saved in this player file. */
+    public static final String ADDON_RECEIPTS = "allium:addon_receipts";
 
     /**
      * @param selectedItemSlot the player's selected hotbar slot ({@code SelectedItemSlot}, 0-8): the main

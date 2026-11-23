@@ -74,7 +74,7 @@ class LegacyConfigMigrationTest {
         assertTrue(LegacyConfigMigration.legacy(legacy));
         var plan = LegacyConfigMigration.plan(legacy, defaults);
         var target = bundled();
-        LegacyConfigMigration.apply(plan.into("config.yml"), target, null);
+        var rootResult = LegacyConfigMigration.apply(plan.into("config.yml"), target, null);
 
         assertEquals("en_US", target.getString("settings.locale"));
         assertEquals("Survival Fun", target.getString("discord.server-name"));
@@ -110,11 +110,11 @@ class LegacyConfigMigrationTest {
         assertTrue(explosions.contains(new LegacyConfigMigration.Move("creeper-explosion-regen-speed", "explosions.yml",
                 "regeneration.sources.creeper", false)));
 
-        String report = LegacyConfigMigration.report(plan, "test");
-        assertTrue(report.contains("moved    teleport.delay -> teleport.warmup-seconds"), report);
-        assertTrue(report.contains("retired  ore-generation.enabled: moved to the Ores addon"), report);
-        assertTrue(report.contains("retired  old-addon.settings: not a setting of this Allium"), report);
-        assertTrue(report.contains("copied   chat.deletion_resend.clear_lines"), report);
+        String report = LegacyConfigMigration.report(plan, rootResult.outcomes(), "test");
+        assertTrue(report.contains("applied       teleport.delay -> teleport.warmup-seconds"), report);
+        assertTrue(report.contains("delegated     ore-generation.enabled: owned by the Ores addon"), report);
+        assertTrue(report.contains("retired       old-addon.settings: not a setting of this Allium"), report);
+        assertTrue(report.contains("applied       chat.deletion_resend.clear_lines"), report);
     }
 
     @Test
@@ -132,12 +132,9 @@ class LegacyConfigMigrationTest {
 
         assertFalse(LegacyConfigMigration.legacy(current));
         var leftovers = LegacyConfigMigration.leftovers(current, defaults);
-        assertEquals(List.of("ore-generation", "pregen", "modguard", "explode-command", "anti-bot"),
-                leftovers.stream().sorted(java.util.Comparator.comparing(List.of("ore-generation", "pregen", "modguard",
-                        "explode-command", "anti-bot")::indexOf)).toList());
-        var source = new YamlConfiguration();
-        for (String key : leftovers) source.set(key, current.get(key));
-        source.set("teleport.delay", 5);
+        assertTrue(leftovers.containsAll(List.of("ore-generation", "pregen", "modguard", "explode-command", "anti-bot", "teleport.delay")),
+                leftovers.toString());
+        var source = LegacyConfigMigration.extractLeftovers(current, defaults);
         var plan = LegacyConfigMigration.plan(source, defaults);
         var result = LegacyConfigMigration.apply(plan.into("config.yml"), current, defaults);
         LegacyConfigMigration.removeLegacy(current, plan, defaults);
@@ -149,6 +146,71 @@ class LegacyConfigMigrationTest {
         }
         assertTrue(current.isSet("teleport.cooldowns.tpa"));
         assertTrue(LegacyConfigMigration.leftovers(current, defaults).isEmpty());
+
+        // Report reflects actual conflict-kept, delegated, and retired outcomes rather than claiming moved.
+        String report = LegacyConfigMigration.report(plan, result.outcomes(), "cleanup");
+        assertTrue(report.contains("conflict-kept teleport.delay -> teleport.warmup-seconds"), report);
+        assertFalse(report.contains("applied       teleport.delay"), report);
+        assertTrue(report.contains("delegated     ore-generation.enabled: owned by the Ores addon"), report);
+        assertTrue(report.contains("retired       anti-bot.commands-to-punish:"), report);
+    }
+
+    @Test
+    void nestedOnlyLegacySettingsAreDetectedWithoutAnyTopLevelLegacySectionAndReportAllOutcomes() throws Exception {
+        var defaults = bundled();
+        var current = bundled();
+        current.set("config-version", ConfigVersionManager.CURRENT_VERSION);
+
+        // Zero top-level legacy sections: ONLY nested legacy leaves under existing sections.
+        int defaultExpire = defaults.getInt("teleport.request-expiry-seconds");
+        current.set("teleport.delay", 7);                        // applied (warmup-seconds at default -> 7)
+        current.set("teleport.expire", defaultExpire);           // equal (already matches destination)
+        current.set("restore.retention-days", 99);               // operator customized destination
+        current.set("restore.snapshot-retention-days", 45);      // conflict-kept (keeps 99)
+        current.set("economy.symbol-before-amount", false);      // special nested -> applied
+        current.set("mail.cooldown", 25);                        // special nested -> applied
+        current.set("teleport.tppet-radius", 30);                // nested retired
+        current.set("nickname.sync-to-essentials", true);        // nested retired under existing section
+
+        assertFalse(LegacyConfigMigration.legacy(current));
+        var leftovers = LegacyConfigMigration.leftovers(current, defaults);
+        assertEquals(List.of(
+                "teleport.delay",
+                "teleport.expire",
+                "restore.snapshot-retention-days",
+                "teleport.tppet-radius",
+                "nickname.sync-to-essentials",
+                "economy.symbol-before-amount",
+                "mail.cooldown"
+        ), leftovers, "nested-only legacy paths must be discovered without any top-level legacy section");
+
+        var source = LegacyConfigMigration.extractLeftovers(current, defaults);
+        var plan = LegacyConfigMigration.plan(source, defaults);
+        var result = LegacyConfigMigration.apply(plan.into("config.yml"), current, defaults);
+        LegacyConfigMigration.removeLegacy(current, plan, defaults);
+
+        // Applied values landed cleanly; customized destination kept; all nested legacy leaves removed.
+        assertEquals(7, current.getInt("teleport.warmup-seconds"));
+        assertEquals(defaultExpire, current.getInt("teleport.request-expiry-seconds"));
+        assertEquals(99, current.getInt("restore.retention-days"));
+        assertTrue(current.getBoolean("economy.currency-symbol-suffix"));
+        assertEquals(1, current.getInt("mail.rate-limit.sends"));
+        assertEquals(25, current.getInt("mail.rate-limit.per-seconds"));
+        for (String gone : List.of("teleport.delay", "teleport.expire", "restore.snapshot-retention-days",
+                "economy.symbol-before-amount", "mail.cooldown", "teleport.tppet-radius", "nickname.sync-to-essentials")) {
+            assertFalse(current.isSet(gone), "nested legacy leaf should be removed: " + gone);
+        }
+        assertTrue(LegacyConfigMigration.leftovers(current, defaults).isEmpty());
+
+        // Verify all outcomes in the sidecar report: applied, equal, conflict-kept, retired.
+        String report = LegacyConfigMigration.report(plan, result.outcomes(), "nested-only");
+        assertTrue(report.contains("applied       teleport.delay -> teleport.warmup-seconds"), report);
+        assertTrue(report.contains("equal         teleport.expire -> teleport.request-expiry-seconds (already equal)"), report);
+        assertTrue(report.contains("conflict-kept restore.snapshot-retention-days -> restore.retention-days"), report);
+        assertTrue(report.contains("applied       economy.symbol-before-amount -> economy.currency-symbol-suffix"), report);
+        assertTrue(report.contains("applied       mail.cooldown -> mail.rate-limit.per-seconds"), report);
+        assertTrue(report.contains("retired       teleport.tppet-radius:"), report);
+        assertTrue(report.contains("retired       nickname.sync-to-essentials:"), report);
     }
 
     @Test void chatFormatGroupsCommentsSurviveYamlSaveAndMigration() throws Exception {

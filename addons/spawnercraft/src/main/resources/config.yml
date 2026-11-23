@@ -18,6 +18,16 @@ drops:
 # Every H slot must contain a SpawnerCraft head of the same mob family.
 # C selects that mob's signed spawner core. Exact vanilla materials and #wool
 # can be specified in ingredients. An item reference uses Allium's item providers.
+#
+# Output semantics:
+# - Prefer typed outputs (`spawner: true`, `card: true`, or `item: <ref>`): SpawnerCraft
+#   creates and verifies the item first, revalidates the crafting grid, consumes 1 from each
+#   slot, and delivers the item (dropping overflow at the player's feet).
+# - `command:` recipes are best-effort console effects because Bukkit only reports whether a
+#   command was dispatched, not whether an external plugin granted an item. On Spigot/Paper,
+#   ingredients are consumed after dispatch returns true and the crafting grid is revalidated
+#   unchanged; on Folia, ingredients are consumed immediately before queuing the console command
+#   on the global scheduler.
 recipes:
   spawner:
     name: Mob Spawner

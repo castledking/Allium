@@ -65,13 +65,14 @@ item name in the creative inventory, and at the end of the tooltip elsewhere.
 - `/relics` opens the equipment menu. Click a curio in your inventory to equip it in a matching
   slot. Click a filled equipment slot to return it directly to an empty inventory slot. A full
   inventory leaves the curio equipped. The menu cancels cursor, drag, hotbar and shift moves.
-- In a card's bonus menu, rolling or re-rolling a slot costs money from Allium's economy, on
-  legacy's ladder: `cost x escalation^(that slot's rolls so far) x tier multiplier`, rounded to
-  100. On a Simple card that is 500, 700, 900, 1,200, 1,700, ...; Elite is 1.5x and Fabled 5x.
+- In a card's bonus menu, rolling or re-rolling a slot reserves funds from Allium's economy under
+  a stable operation ID, on legacy's ladder: `cost x escalation^(that slot's rolls so far) x tier multiplier`,
+  rounded to 100. On a Simple card that is 500, 700, 900, 1,200, 1,700, ...; Elite is 1.5x and Fabled 5x.
   Each slot shows its next price, how often it was rolled and what it cost so far. A roll that
-  could change nothing is refused before any money moves, a card that cannot be saved is
-  refunded, and clearing a slot keeps its roll count, so the price never resets. Configure it
-  under `card-menu.bonus-slot-roll`; `cost: 0` makes rolls free.
+  could change nothing is refused before any money is reserved, a card mutation receipt is saved
+  with player data before capture so crashes and failed captures/releases reconcile automatically,
+  and clearing a slot keeps its roll count, so the price never resets. Configure it under
+  `card-menu.bonus-slot-roll`; `cost: 0` makes rolls free.
 - Card messages (equipping, level-ups, drops, the card menus, and results about a card) use
   legacy's gradient `[Cards]` prefix, and so does every reply to `/cards` and `/tradingcards`.
   Relic and import messages keep `[Curios]`.
@@ -82,7 +83,9 @@ item name in the creative inventory, and at the end of the tooltip elsewhere.
   Other plugins can use the `CurioExperience` Bukkit service on the server thread.
 - `/curios merge` combines separate copies of one definition. The main-hand curio keeps its
   identity, the offhand donor contributes progress, and the level cap applies.
-- `/curios trade` exchanges the held curio for that definition's configured reward. Crafted
+- `/curios trade` exchanges the held curio for that definition's configured reward, and the Trade In
+  menu persists a recoverable claim in player data alongside card removal so a hard stop or full
+  inventory never loses the payout (`/curios claim` and player join deliver any pending rewards). Crafted
   curios are bound, and merging a bound donor binds the result. A card pays its mob's heads, as
   many as its quality band's `heads`, as legacy did: SpawnerCraft's head when SpawnerCraft is
   installed (through the `CardTradeHeads` Bukkit service), else the vanilla head (zombie,
@@ -136,5 +139,5 @@ the card family, tier, level, XP, bound flag, quality, rerolls and legacy boost 
 Antiquities items are recognized by their known legacy IDs. Arbitrary third-party item components
 and slot extensions require an explicit mapping.
 
-The legacy card boost executors, quest and economy bridges, pending payout recovery, and the other Antiquities effects remain follow-up work. Chat hovers are framed through Allium's `ChatHoverFrame` service (API 1.6).
+The legacy card boost executors, quest and economy bridges, and the other Antiquities effects remain follow-up work. Chat hovers are framed through Allium's `ChatHoverFrame` service (API 1.6).
 The addon does not implement custom enchantments.

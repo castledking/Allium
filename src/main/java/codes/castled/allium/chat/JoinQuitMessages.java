@@ -3,9 +3,11 @@ package codes.castled.allium.chat;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.messaging.VanishSource;
+import codes.castled.allium.module.ChatModule;
 import codes.castled.allium.module.ModerationModule;
 import codes.castled.allium.naming.PlayerNameVisibility;
 import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.text.FormattedText;
 import codes.castled.allium.text.PlayerMeta;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
@@ -16,17 +18,27 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 public final class JoinQuitMessages implements Listener {
+    static final long JOIN_IDENTITY_WAIT_MILLIS = 500L;
+
     private final PluginStart plugin;
     private final ChatDecorations decorations;
+    private final BiFunction<Player, String, String> metaLookup;
 
     public JoinQuitMessages(PluginStart plugin) {
+        this(plugin, null);
+    }
+
+    JoinQuitMessages(PluginStart plugin, @Nullable BiFunction<Player, String, String> metaLookup) {
         this.plugin = plugin;
-        decorations = new ChatDecorations(plugin);
+        this.decorations = new ChatDecorations(plugin);
+        this.metaLookup = metaLookup != null ? metaLookup : this::meta;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -41,8 +53,9 @@ public final class JoinQuitMessages implements Listener {
 
     private void render(Player player, String kind, Consumer<String> setMessage) {
         if (VanishSource.METADATA.isVanished(player)
-                || plugin.getModuleManager().getModule("moderation") instanceof ModerationModule module
-                && module.isEnabled() && module.moderation().isVanished(player)) {
+                || (plugin.getModuleManager() != null
+                && plugin.getModuleManager().getModule("moderation") instanceof ModerationModule module
+                && module.isEnabled() && module.moderation().isVanished(player))) {
             setMessage.accept(null);
             return;
         }
@@ -54,35 +67,90 @@ public final class JoinQuitMessages implements Listener {
             setMessage.accept(null);
             return;
         }
-        var metadata = PlayerMeta.of(plugin, player);
+        ChatService chat = chatService();
+        if ("join".equals(kind) && chat != null && !chat.ready(player.getUniqueId())) {
+            setMessage.accept(null);
+            chat.whenIdentityReady(player, JOIN_IDENTITY_WAIT_MILLIS, snapshot -> {
+                if (!player.isOnline()) return;
+                FormattedText formatted = buildMessage(player, template, snapshot);
+                broadcast(player, formatted);
+            });
+            return;
+        }
+        ChatService.IdentitySnapshot snapshot = resolveSnapshot(player, chat);
+        FormattedText formatted = buildMessage(player, template, snapshot);
+        if (isWorldScoped()) {
+            setMessage.accept(null);
+            broadcastWorld(player, formatted);
+        } else {
+            setMessage.accept(formatted.toLegacy());
+        }
+    }
+
+    @Nullable
+    private ChatService chatService() {
+        if (plugin.getModuleManager() == null) return null;
+        return plugin.getModuleManager().getModule("chat") instanceof ChatModule module && module.isEnabled()
+                ? module.chat() : null;
+    }
+
+    private ChatService.IdentitySnapshot resolveSnapshot(Player player, @Nullable ChatService chat) {
+        if (chat != null) {
+            return chat.identitySnapshot(player);
+        }
         String display = player.getDisplayName();
         if (display == null || display.isEmpty()) display = player.getName();
         var placeholders = plugin.getPlaceholders();
         String gradient = placeholders == null ? display : placeholders.request(player, "gradientdisplayname");
         if (gradient == null || gradient.isBlank()) gradient = display;
+        return new ChatService.IdentitySnapshot(display, gradient, true);
+    }
+
+    private FormattedText buildMessage(Player player, String template, ChatService.IdentitySnapshot snapshot) {
+        var metadata = PlayerMeta.of(plugin, player);
+        String display = snapshot.display();
+        if (display == null || display.isEmpty()) display = player.getName();
+        String gradient = snapshot.gradient();
+        if (gradient == null || gradient.isBlank()) gradient = display;
         String expanded = template.replace("%player%", player.getName()).replace("%name%", display)
                 .replace("%prefix%", metadata.prefix()).replace("%suffix%", metadata.suffix())
                 .replace("%allium_nickname%", display).replace("%allium_gradientdisplayname%", gradient);
-        var formatted = TextFormatter.parse(decorations.expand(player, expanded));
-        if (plugin.getConfig().getString("join-and-quit-messages.broadcast-scope", "server").equalsIgnoreCase("world")) {
-            setMessage.accept(null);
-            if (BukkitServerThread.isFolia()) {
-                World originWorld = player.getWorld();
-                for (Player viewer : List.copyOf(plugin.getServer().getOnlinePlayers())) {
-                    UtilitySupport.onOwner(plugin, viewer, () -> {
-                        if (viewer.isOnline() && originWorld != null && originWorld.equals(viewer.getWorld())
-                                && viewer.canSee(player) && PlayerNameVisibility.canSeeTarget(viewer, player)) {
-                            TextSender.send(viewer, formatted);
-                        }
-                    });
+        return TextFormatter.parse(decorations.expand(player, expanded));
+    }
+
+    private boolean isWorldScoped() {
+        return plugin.getConfig().getString("join-and-quit-messages.broadcast-scope", "server").equalsIgnoreCase("world");
+    }
+
+    private void broadcast(Player player, FormattedText formatted) {
+        if (isWorldScoped()) {
+            broadcastWorld(player, formatted);
+            return;
+        }
+        for (Player viewer : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+            UtilitySupport.onOwner(plugin, viewer, () -> {
+                if (viewer.isOnline() && viewer.canSee(player) && PlayerNameVisibility.canSeeTarget(viewer, player)) {
+                    TextSender.send(viewer, formatted);
                 }
-            } else {
-                for (Player viewer : player.getWorld().getPlayers()) {
-                    if (viewer.canSee(player)) TextSender.send(viewer, formatted);
-                }
+            });
+        }
+    }
+
+    private void broadcastWorld(Player player, FormattedText formatted) {
+        if (BukkitServerThread.isFolia()) {
+            World originWorld = player.getWorld();
+            for (Player viewer : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+                UtilitySupport.onOwner(plugin, viewer, () -> {
+                    if (viewer.isOnline() && originWorld != null && originWorld.equals(viewer.getWorld())
+                            && viewer.canSee(player) && PlayerNameVisibility.canSeeTarget(viewer, player)) {
+                        TextSender.send(viewer, formatted);
+                    }
+                });
             }
         } else {
-            setMessage.accept(formatted.toLegacy());
+            for (Player viewer : player.getWorld().getPlayers()) {
+                if (viewer.canSee(player)) TextSender.send(viewer, formatted);
+            }
         }
     }
 
@@ -90,7 +158,7 @@ public final class JoinQuitMessages implements Listener {
         String prefix = "allium." + kind + "_message.";
         for (var entry : player.getEffectivePermissions()) {
             if (!entry.getValue() || !entry.getPermission().startsWith(prefix)) continue;
-            String value = meta(player, entry.getPermission());
+            String value = metaLookup.apply(player, entry.getPermission());
             if (value != null && !value.isEmpty()) return value;
         }
         return fallback;

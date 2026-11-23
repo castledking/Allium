@@ -33,6 +33,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     private Catalog catalog;
     private CardRules cardRules;
     private CardGuiManager cardGui;
+    private CuriosRecoveryStore recovery;
     private GiveCommand give;
     private HeldCardBar heldCardBar;
     private AutoCloseable framePackets;
@@ -51,6 +52,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         if (ConfigUpgrade.apply(getConfig())) saveUpgradedConfig();
         catalog = new Catalog(getConfig());
         cardRules = new CardRules(getConfig());
+        recovery = new CuriosRecoveryStore(this);
         cardGui = new CardGuiManager(this);
         give = new GiveCommand(catalog);
         var choices = Objects.requireNonNull(getConfig().getConfigurationSection("frames"), "frames");
@@ -81,8 +83,8 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         }
         for (Catalog.Entry entry : catalog.entries.values()) registerRecipe(entry);
         register("curios", List.of("relics", "reliques", "tradingcards", "cards"),
-                "/curios [menu|inspect|merge|trade|frame|give|import]",
-                List.of("menu", "inspect", "merge", "trade", "frame", "give", "import"),
+                "/curios [menu|inspect|merge|trade|claim|frame|give|import]",
+                List.of("menu", "inspect", "merge", "trade", "claim", "frame", "give", "import"),
                 this::command, this::completeCurios);
         register("frame", List.of(), "/frame [list|apply] [style]", List.of("list", "apply"),
                 (sender, label, args) -> {
@@ -146,7 +148,10 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                 return choices;
             }
         }, this, org.bukkit.plugin.ServicePriority.Normal);
-        for (Player online : getServer().getOnlinePlayers()) core.onOwner(online, () -> refreshAttributes(online));
+        for (Player online : getServer().getOnlinePlayers()) core.onOwner(online, () -> {
+            refreshAttributes(online);
+            recoverPlayerState(online, false);
+        });
     }
 
     private void saveUpgradedConfig() {
@@ -185,6 +190,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     AddonConnection core() { return core; }
     Catalog catalog() { return catalog; }
     CardRules cardRules() { return cardRules; }
+    CuriosRecoveryStore recovery() { return recovery; }
     boolean texturedMenu() { return getConfig().getBoolean("textured-menu", true); }
     int iconModel(String id) { int idx = ICONS.indexOf(id); return idx >= 0 ? 2679900 + idx : 2679900; }
     boolean isEquipmentMenu(InventoryHolder holder) { return holder instanceof Menu; }
@@ -221,7 +227,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         boolean admin = sender.hasPermission("curios.admin");
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
-            List<String> actions = new ArrayList<>(List.of("menu", "inspect", "merge", "trade", "frame"));
+            List<String> actions = new ArrayList<>(List.of("menu", "inspect", "merge", "trade", "claim", "frame"));
             if (admin) {
                 actions.add("give");
                 actions.add("import");
@@ -319,6 +325,10 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                 if (args.length != 1) { tell(player, "Usage: /curios trade"); return; }
                 trade(player);
             }
+            case "claim" -> {
+                if (args.length != 1) { tell(player, "Usage: /curios claim"); return; }
+                recoverPlayerState(player, true);
+            }
             case "import" -> {
                 if (!player.hasPermission("curios.admin")) { tell(player, "You do not have permission."); return; }
                 if (args.length > 2) { tell(player, "Usage: /curios import [held|<player>]"); return; }
@@ -329,7 +339,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                     else importLoadout(player, target);
                 }
             }
-            default -> tell(player, "Usage: /" + label + " [menu|inspect|merge|trade|frame|give|import]");
+            default -> tell(player, "Usage: /" + label + " [menu|inspect|merge|trade|claim|frame|give|import]");
         }
     }
 
@@ -977,7 +987,27 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
 
     @EventHandler
     public void join(org.bukkit.event.player.PlayerJoinEvent event) {
-        refreshAttributes(event.getPlayer());
+        Player player = event.getPlayer();
+        refreshAttributes(player);
+        recoverPlayerState(player, false);
+    }
+
+    void recoverPlayerState(Player player, boolean explicitCommand) {
+        if (recovery == null || !player.isOnline()) return;
+        recovery.reconcilePendingRolls(player, core.economy());
+        CuriosRecoveryStore.RecoverySummary summary = recovery.claimAllPending(player);
+        if (summary.claimsCompleted() > 0 && summary.claimsRemaining() == 0) {
+            tellCards(player, "&aDelivered " + summary.claimsCompleted() + " pending trade-in reward"
+                    + (summary.claimsCompleted() == 1 ? "." : "s."));
+        } else if (summary.claimsCompleted() > 0 && summary.claimsRemaining() > 0) {
+            tellCards(player, "&eDelivered " + summary.claimsCompleted() + " trade-in reward(s); "
+                    + summary.claimsRemaining() + " still waiting for inventory space (/curios claim).");
+        } else if (summary.claimsRemaining() > 0) {
+            tellCards(player, "&eYou have " + summary.claimsRemaining()
+                    + " unclaimed trade-in reward(s). Make room in your inventory and run /curios claim.");
+        } else if (explicitCommand) {
+            tellCards(player, "You have no pending trade-in rewards to claim.");
+        }
     }
 
     @EventHandler

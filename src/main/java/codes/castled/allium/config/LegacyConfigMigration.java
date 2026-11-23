@@ -32,16 +32,32 @@ final class LegacyConfigMigration {
     /** Where a legacy setting went. {@code file} is relative to plugins/Allium. */
     record Move(String legacyPath, String file, String path, Object value) {}
 
+    /** Actual outcome of applying one planned move into its destination file. */
+    enum MoveOutcome { APPLIED, EQUAL, CONFLICT_KEPT }
+
+    record AppliedMove(Move move, MoveOutcome outcome) {}
+
+    /** A legacy setting handed off to another file or addon via {@value #SOURCE}. */
+    record Delegated(String legacyPath, String owner) {}
+
     /** A legacy setting that stays only in the legacy copy, and why. */
     record Retired(String legacyPath, String reason) {}
 
-    record Plan(List<Move> moves, List<Retired> retired) {
+    record Plan(List<Move> moves, List<Delegated> delegated, List<Retired> retired) {
         List<Move> into(String file) {
             return moves.stream().filter(move -> move.file().equals(file)).toList();
         }
     }
 
-    record Result(List<String> changed, List<String> kept) {}
+    record Result(List<String> changed, List<String> kept, List<String> equal, List<AppliedMove> outcomes) {}
+
+    /** Special-cased nested legacy paths that live under sections this Allium also defines. */
+    static final List<String> NESTED_SPECIAL = List.of(
+            "give.drop-overflow-items",
+            "give.max-items-dropped",
+            "economy.symbol-before-amount",
+            "mail.cooldown"
+    );
 
     /** Legacy sections this Allium reads at the same paths. */
     static final List<String> SAME = List.of("enable-chat-formatting", "chat", "chat-format", "chat-hover",
@@ -114,18 +130,73 @@ final class LegacyConfigMigration {
                 || config.isConfigurationSection("auto-restart") || config.isConfigurationSection("redeem-settings"));
     }
 
-    /** Legacy top-level sections still in a config.yml that was carried over before this layout. */
+    /**
+     * Known legacy top-level sections and nested legacy leaf paths still present in a config.yml
+     * that was already on a recode layout (regardless of whether any top-level legacy section exists).
+     */
     static List<String> leftovers(ConfigurationSection config, ConfigurationSection defaults) {
-        List<String> found = new ArrayList<>();
+        java.util.LinkedHashSet<String> found = new java.util.LinkedHashSet<>();
+        java.util.Set<String> topSections = new java.util.LinkedHashSet<>();
         for (String key : config.getKeys(false)) {
             if (defaults.isSet(key)) continue;
             if (ELSEWHERE.containsKey(key) || RETIRED.containsKey(key) || RENAMED.containsKey(key)
                     || RENAMED.keySet().stream().anyMatch(path -> path.startsWith(key + "."))
-                    || RETIRED.keySet().stream().anyMatch(path -> path.startsWith(key + "."))) {
+                    || RETIRED.keySet().stream().anyMatch(path -> path.startsWith(key + "."))
+                    || NESTED_SPECIAL.stream().anyMatch(path -> path.startsWith(key + "."))) {
                 found.add(key);
+                topSections.add(key);
+            }
+        }
+        // Always scan known nested legacy leaf paths even when their parent section exists in defaults.
+        for (String path : nestedLegacyPaths()) {
+            String top = path.split("\\.", 2)[0];
+            if (topSections.contains(top)) continue;
+            if (config.isSet(path) && !defaults.isSet(path)) {
+                found.add(path);
             }
         }
         return List.copyOf(found);
+    }
+
+    /** Copies all top-level and nested leftover legacy paths from {@code current} into a fresh source config. */
+    static YamlConfiguration extractLeftovers(ConfigurationSection current, ConfigurationSection defaults) {
+        YamlConfiguration source = new YamlConfiguration();
+        for (String path : leftovers(current, defaults)) {
+            copyPath(current, source, path);
+        }
+        return source;
+    }
+
+    private static void copyPath(ConfigurationSection from, YamlConfiguration to, String path) {
+        if (from.isConfigurationSection(path)) {
+            ConfigurationSection section = from.getConfigurationSection(path);
+            if (section == null) return;
+            var keys = section.getKeys(true);
+            if (keys.isEmpty()) {
+                to.createSection(path);
+                return;
+            }
+            for (String sub : keys) {
+                if (section.isConfigurationSection(sub) && !section.getConfigurationSection(sub).getKeys(false).isEmpty()) {
+                    continue;
+                }
+                to.set(path + "." + sub, section.get(sub));
+            }
+            return;
+        }
+        to.set(path, from.get(path));
+    }
+
+    private static List<String> nestedLegacyPaths() {
+        List<String> paths = new ArrayList<>();
+        for (String path : RENAMED.keySet()) {
+            if (path.contains(".")) paths.add(path);
+        }
+        for (String path : RETIRED.keySet()) {
+            if (path.contains(".")) paths.add(path);
+        }
+        paths.addAll(NESTED_SPECIAL);
+        return paths;
     }
 
     static void backup(Path file, Path backup) throws IOException {
@@ -135,6 +206,7 @@ final class LegacyConfigMigration {
     /** Where each legacy setting goes. {@code defaults} is this Allium's bundled config.yml. */
     static Plan plan(ConfigurationSection legacy, ConfigurationSection defaults) {
         List<Move> moves = new ArrayList<>();
+        List<Delegated> delegated = new ArrayList<>();
         List<Retired> retired = new ArrayList<>();
         for (String path : legacy.getKeys(true)) {
             if (legacy.isConfigurationSection(path) && !legacy.getConfigurationSection(path).getKeys(false).isEmpty()) continue;
@@ -172,7 +244,7 @@ final class LegacyConfigMigration {
                 // Legacy's speed 0 turned creeper regeneration off; any speed turned it on.
                 moves.add(new Move(path, "explosions.yml", "regeneration.sources.creeper", legacy.getInt(path) > 0));
             } else if (topIn(path, ELSEWHERE)) {
-                retired.add(new Retired(path, "moved to " + ELSEWHERE.get(path.split("\\.", 2)[0])));
+                delegated.add(new Delegated(path, ELSEWHERE.get(path.split("\\.", 2)[0])));
             } else if (RETIRED.containsKey(path) || topIn(path, RETIRED)) {
                 String key = RETIRED.containsKey(path) ? path : path.split("\\.", 2)[0];
                 retired.add(new Retired(path, RETIRED.get(key)));
@@ -182,7 +254,7 @@ final class LegacyConfigMigration {
                 retired.add(new Retired(path, "not a setting of this Allium"));
             }
         }
-        return new Plan(List.copyOf(moves), List.copyOf(retired));
+        return new Plan(List.copyOf(moves), List.copyOf(delegated), List.copyOf(retired));
     }
 
     /**
@@ -192,22 +264,46 @@ final class LegacyConfigMigration {
     static Result apply(List<Move> moves, YamlConfiguration target, ConfigurationSection defaults) {
         var changed = new ArrayList<String>();
         var kept = new ArrayList<String>();
-        for (Move move : moves) write(target, defaults, move.path(), move.value(), changed, kept);
-        return new Result(List.copyOf(changed), List.copyOf(kept));
+        var equal = new ArrayList<String>();
+        var outcomes = new ArrayList<AppliedMove>();
+        for (Move move : moves) {
+            MoveOutcome outcome = write(target, defaults, move.path(), move.value(), changed, kept, equal);
+            outcomes.add(new AppliedMove(move, outcome));
+        }
+        return new Result(List.copyOf(changed), List.copyOf(kept), List.copyOf(equal), List.copyOf(outcomes));
     }
 
-    /** The report of a carry-over, one line per legacy setting. */
-    static String report(Plan plan, String header) {
+    /** The truthful report of a carry-over, recording actual applied/equal/conflict-kept, delegated, and retired outcomes. */
+    static String report(Plan plan, List<AppliedMove> appliedMoves, String header) {
         StringBuilder out = new StringBuilder("# ").append(header).append('\n')
                 .append("# The legacy file is plugins/Allium/").append(SOURCE).append("; nothing in it was changed.\n");
-        for (Move move : plan.moves()) {
+        for (AppliedMove entry : appliedMoves) {
+            Move move = entry.move();
             boolean same = move.file().equals("config.yml") && move.path().equals(move.legacyPath());
-            out.append(same ? "copied   " : "moved    ").append(move.legacyPath());
-            if (!same) out.append(" -> ").append(move.file().equals("config.yml") ? "" : move.file() + " ").append(move.path());
-            out.append('\n');
+            String dest = (move.file().equals("config.yml") ? "" : move.file() + " ") + move.path();
+            switch (entry.outcome()) {
+                case APPLIED -> {
+                    out.append("applied       ").append(move.legacyPath());
+                    if (!same) out.append(" -> ").append(dest);
+                    out.append('\n');
+                }
+                case EQUAL -> {
+                    out.append("equal         ").append(move.legacyPath());
+                    if (!same) out.append(" -> ").append(dest);
+                    out.append(" (already equal)\n");
+                }
+                case CONFLICT_KEPT -> {
+                    out.append("conflict-kept ").append(move.legacyPath());
+                    if (!same) out.append(" -> ").append(dest);
+                    out.append(" (kept existing customized value)\n");
+                }
+            }
+        }
+        for (Delegated delegated : plan.delegated()) {
+            out.append("delegated     ").append(delegated.legacyPath()).append(": owned by ").append(delegated.owner()).append('\n');
         }
         for (Retired retired : plan.retired()) {
-            out.append("retired  ").append(retired.legacyPath()).append(": ").append(retired.reason()).append('\n');
+            out.append("retired       ").append(retired.legacyPath()).append(": ").append(retired.reason()).append('\n');
         }
         return out.toString();
     }
@@ -216,6 +312,9 @@ final class LegacyConfigMigration {
     static void removeLegacy(YamlConfiguration config, Plan plan, ConfigurationSection defaults) {
         for (Move move : plan.moves()) {
             if (!move.legacyPath().equals(move.path()) && !defaults.isSet(move.legacyPath())) config.set(move.legacyPath(), null);
+        }
+        for (Delegated delegated : plan.delegated()) {
+            if (!defaults.isSet(delegated.legacyPath())) config.set(delegated.legacyPath(), null);
         }
         for (Retired retired : plan.retired()) {
             if (!defaults.isSet(retired.legacyPath())) config.set(retired.legacyPath(), null);
@@ -249,24 +348,28 @@ final class LegacyConfigMigration {
         return sections.containsKey(path.split("\\.", 2)[0]);
     }
 
-    private static void write(YamlConfiguration target, ConfigurationSection defaults, String path, Object value,
-                              List<String> changed, List<String> kept) {
+    private static MoveOutcome write(YamlConfiguration target, ConfigurationSection defaults, String path, Object value,
+                                     List<String> changed, List<String> kept, List<String> equal) {
         Object previous = target.get(path);
-        if (Objects.equals(previous, value)) return;
+        if (Objects.equals(previous, value)) {
+            equal.add(path);
+            return MoveOutcome.EQUAL;
+        }
         for (int separator = path.indexOf('.'); separator != -1; separator = path.indexOf('.', separator + 1)) {
             String parent = path.substring(0, separator);
             if (target.isSet(parent) && !target.isConfigurationSection(parent)) {
                 kept.add(path);
-                return;
+                return MoveOutcome.CONFLICT_KEPT;
             }
         }
         if (defaults != null && previous != null && !(previous instanceof ConfigurationSection)
                 && !Objects.equals(previous, defaults.get(path))) {
             kept.add(path);
-            return;
+            return MoveOutcome.CONFLICT_KEPT;
         }
         target.set(path, value);
         changed.add(path);
+        return MoveOutcome.APPLIED;
     }
 
     private static <V> Map<String, V> ordered(Object... pairs) {

@@ -32,4 +32,36 @@ public interface AddonEconomy {
 
     /** {@code amount} as Allium shows money, such as {@code $1,500.00}. */
     String format(double amount);
+
+    /**
+     * Places a durable hold of {@code amount} (whole cents, above zero) for an addon workflow
+     * identified by {@code operationId}. Calling again with the same {@code operationId} is
+     * idempotent.
+     */
+    default boolean reserve(UUID operationId, UUID player, double amount) {
+        return withdraw(player, amount);
+    }
+
+    /**
+     * Captures a previously reserved {@code operationId} after the paid addon mutation succeeded.
+     * Idempotent when re-invoked for an already-captured operation.
+     */
+    default boolean capture(UUID operationId, UUID player, double amount) {
+        return true;
+    }
+
+    /**
+     * Releases (refunds) a previously reserved {@code operationId} when the paid addon mutation
+     * did not succeed. Idempotent when re-invoked for an already-released operation.
+     */
+    default boolean release(UUID operationId, UUID player, double amount) {
+        return deposit(player, amount);
+    }
+
+    /**
+     * Returns whether {@code operationId} currently has an active, unsettled reservation hold.
+     */
+    default boolean isHeld(UUID operationId) {
+        return false;
+    }
 }

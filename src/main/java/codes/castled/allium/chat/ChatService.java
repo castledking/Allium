@@ -46,6 +46,12 @@ public final class ChatService implements Listener,AutoCloseable {
     private TaskHandle tick=TaskHandle.NONE;
     private AutoCloseable packetMirror;
     private ChatRelay relay=ChatRelay.NONE;
+    public record IdentitySnapshot(String display, String gradient, boolean ready) {}
+    private record Preloaded(ChatRepository.State state, long loadedAt) {}
+    private static final long PRELOAD_TTL_MILLIS = 60_000L;
+    private static final int MAX_PRELOADED = 1024;
+    private final Map<UUID, Preloaded> preloaded = new ConcurrentHashMap<>();
+    private final java.util.function.Function<Player, ChatDecorations.Value> decorQuery;
     private static final class Session {
         final Player player;
         volatile String nickname,display,gradient;
@@ -56,6 +62,7 @@ public final class ChatService implements Listener,AutoCloseable {
         volatile long decorationsAt;
         volatile ChatDecorations.Value decor=ChatDecorations.Value.EMPTY;
         volatile String lastTab,lastDisplay;
+        final List<Runnable> readyCallbacks = new java.util.concurrent.CopyOnWriteArrayList<>();
         Session(Player p){player=p;display=p.getName();gradient=p.getName();}
     }
     private static final class Replay {
@@ -70,7 +77,18 @@ public final class ChatService implements Listener,AutoCloseable {
             this.clearing = clearing;
         }
     }
-    public ChatService(PluginStart plugin,ChatRepository repository,Executor io){this.plugin=plugin;this.repository=repository;this.io=io;settings=ChatSettings.read(plugin.getConfig());decorations=new ChatDecorations(plugin);}
+    public ChatService(PluginStart plugin,ChatRepository repository,Executor io){this(plugin,repository,io,null);}
+    ChatService(PluginStart plugin,ChatRepository repository,Executor io,ChatRelay relay){
+        this(plugin,repository,io,relay,null);
+    }
+    ChatService(PluginStart plugin,ChatRepository repository,Executor io,ChatRelay relay,
+                java.util.function.Function<Player,ChatDecorations.Value> decorQuery){
+        this.plugin=plugin;this.repository=repository;this.io=io;
+        settings=ChatSettings.read(plugin.getConfig());
+        decorations=new ChatDecorations(plugin);
+        this.decorQuery=decorQuery!=null?decorQuery:decorations::query;
+        if(relay!=null)this.relay=relay;
+    }
     public void enable(){
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
         paperChat=installPaperInput();installInteractiveGuard();
@@ -81,7 +99,6 @@ public final class ChatService implements Listener,AutoCloseable {
         try{if(plugin.getServer().getPluginManager().isPluginEnabled("DiscordSRV"))relay=new DiscordChatRelay(plugin,this);}
         catch(LinkageError|RuntimeException error){plugin.logger().warning("Discord relay unavailable: "+error.getMessage());}
     }
-    ChatService(PluginStart plugin,ChatRepository repository,Executor io,ChatRelay relay){this(plugin,repository,io);this.relay=relay;}
     public boolean ready(UUID id){var session=sessions.get(id);return !closed&&session!=null&&session.ready;}
     public ChatHistory history(){return history;}
     public ChatSettings settings(){return settings;}
@@ -92,29 +109,98 @@ public final class ChatService implements Listener,AutoCloseable {
     }
     public void reload(){applySettings(ChatSettings.read(plugin.getConfig()));}
     private void applySettings(ChatSettings replacement){settings=replacement;for(Session s:sessions.values()){s.decorationsAt=0;if(!replacement.channels().containsKey(s.write))tell(s.player,Messages.CHAT_WRITE_CHANNEL_REMOVED);}}
-    @EventHandler public void joined(PlayerJoinEvent e){join(e.getPlayer());}
+    @EventHandler(priority=EventPriority.MONITOR)
+    public void preLogin(org.bukkit.event.player.AsyncPlayerPreLoginEvent e){
+        if(closed||e.getLoginResult()!=org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED)return;
+        long now=System.currentTimeMillis();
+        preloaded.entrySet().removeIf(entry->now-entry.getValue().loadedAt()>=PRELOAD_TTL_MILLIS);
+        if(preloaded.size()>=MAX_PRELOADED)return;
+        try{
+            var stored=repository.load(e.getUniqueId());
+            preloaded.put(e.getUniqueId(),new Preloaded(stored,System.currentTimeMillis()));
+        }catch(Exception ignored){
+            // Join falls back to bounded asynchronous loading if pre-login lookup failed.
+        }
+    }
+    @EventHandler(priority=EventPriority.LOWEST) public void joined(PlayerJoinEvent e){join(e.getPlayer());}
     private void join(Player p){
-        var session=new Session(p);sessions.put(p.getUniqueId(),session);refresh.add(session);
+        var session=new Session(p);
+        sessions.put(p.getUniqueId(),session);
+        refresh.add(session);
+        session.decor=decorQuery.apply(p);
+        session.decorationsAt=System.currentTimeMillis();
+        Preloaded pre=preloaded.remove(p.getUniqueId());
+        if(pre!=null&&System.currentTimeMillis()-pre.loadedAt()<PRELOAD_TTL_MILLIS){
+            applyLoaded(session,pre.state());
+            return;
+        }
         load(session,0);
+    }
+    private void applyLoaded(Session session,ChatRepository.State stored){
+        Player p=session.player;
+        session.nickname=stored.nickname();
+        session.write=stored.writeChannel().isEmpty()?settings.defaultChannel():stored.writeChannel();
+        var reads=new LinkedHashSet<>(stored.reads());reads.add(settings.defaultChannel());
+        if(stored.writeChannel().isEmpty())for(var c:settings.channels().values())if(p.hasPermission("allium.channel.autojoin."+c.id()+".read"))reads.add(c.id());
+        session.reads=Set.copyOf(reads);
+        if(session.decorationsAt==0){session.decor=decorQuery.apply(p);session.decorationsAt=System.currentTimeMillis();}
+        session.ready=true;
+        update(session);
+        var callbacks=List.copyOf(session.readyCallbacks);
+        session.readyCallbacks.clear();
+        for(Runnable cb:callbacks)cb.run();
     }
     private void load(Session session,int attempt){
         Player p=session.player;
         workFor(p,()->repository.load(p.getUniqueId()),stored->{
-            if(!same(session))return;session.nickname=stored.nickname();session.write=stored.writeChannel().isEmpty()?settings.defaultChannel():stored.writeChannel();
-            var reads=new LinkedHashSet<>(stored.reads());reads.add(settings.defaultChannel());
-            if(stored.writeChannel().isEmpty())for(var c:settings.channels().values())if(p.hasPermission("allium.channel.autojoin."+c.id()+".read"))reads.add(c.id());
-            session.reads=Set.copyOf(reads);session.ready=true;update(session);
+            if(!same(session))return;
+            applyLoaded(session,stored);
         },error->{if(same(session)){
             if(attempt<5)BukkitServerThread.runFor(plugin,plugin.getScheduler(),p,()->{if(same(session))load(session,attempt+1);},()->{},Math.min(10_000,500L<<attempt));
             else {tell(p,Messages.CHAT_PROFILE_LOAD_FAILED);plugin.logger().warning("Chat profile load failed for "+p.getUniqueId());}
         }});
     }
-    @EventHandler public void quit(PlayerQuitEvent e){
+    /** Runs at MONITOR so HIGH-priority quit formatters still see the player's nickname and gradient snapshot. */
+    @EventHandler(priority=EventPriority.MONITOR) public void quit(PlayerQuitEvent e){
         UUID id=e.getPlayer().getUniqueId();
+        preloaded.remove(id);
         Session s=sessions.remove(id);
-        if(s!=null){refresh.remove(s);refreshInFlight.remove(s);}
+        if(s!=null){
+            s.readyCallbacks.clear();
+            refresh.remove(s);refreshInFlight.remove(s);
+        }
         replays.remove(id);history.forget(id);
         if(s!=null&&s.lastTab!=null&&e.getPlayer().isOnline())e.getPlayer().setPlayerListName(null);
+    }
+    /** Returns the current display/gradient identity snapshot for join/quit templates. */
+    public IdentitySnapshot identitySnapshot(Player p){
+        Session s=sessions.get(p.getUniqueId());
+        if(s!=null&&s.ready){
+            if(s.decorationsAt==0){s.decor=decorQuery.apply(p);s.decorationsAt=System.currentTimeMillis();update(s);}
+            return new IdentitySnapshot(s.display,s.gradient,true);
+        }
+        String fallback=p.getDisplayName();
+        if(fallback==null||fallback.isEmpty())fallback=p.getName();
+        return new IdentitySnapshot(fallback,fallback,false);
+    }
+    /** Invokes {@code callback} as soon as {@code p}'s identity is loaded, or after {@code maxWaitMillis}. */
+    public void whenIdentityReady(Player p,long maxWaitMillis,java.util.function.Consumer<IdentitySnapshot> callback){
+        Session s=sessions.get(p.getUniqueId());
+        if(closed||s==null||s.ready||maxWaitMillis<=0){
+            callback.accept(identitySnapshot(p));
+            return;
+        }
+        AtomicBoolean fired=new AtomicBoolean();
+        s.readyCallbacks.add(()->{
+            if(same(s)&&fired.compareAndSet(false,true))callback.accept(identitySnapshot(p));
+        });
+        if(s.ready){
+            if(fired.compareAndSet(false,true))callback.accept(identitySnapshot(p));
+            return;
+        }
+        BukkitServerThread.runFor(plugin,plugin.getScheduler(),p,()->{
+            if(same(s)&&fired.compareAndSet(false,true))callback.accept(identitySnapshot(p));
+        },()->{},maxWaitMillis);
     }
     private boolean same(Session session){return !closed&&sessions.get(session.player.getUniqueId())==session&&session.player.isOnline();}
     private void refresh(){
@@ -130,12 +216,12 @@ public final class ChatService implements Listener,AutoCloseable {
                     try{
                         if(!same(s))return;
                         long tickNow=System.currentTimeMillis();
-                        if(tickNow-s.decorationsAt>=1000){s.decor=decorations.query(p);s.decorationsAt=tickNow;}
+                        if(tickNow-s.decorationsAt>=1000){s.decor=decorQuery.apply(p);s.decorationsAt=tickNow;}
                         if(s.ready)update(s);
                     }finally{refreshInFlight.remove(s);}
                 },()->refreshInFlight.remove(s),0L);
             }else{
-                if(now-s.decorationsAt>=1000){s.decor=decorations.query(s.player);s.decorationsAt=now;}
+                if(now-s.decorationsAt>=1000){s.decor=decorQuery.apply(s.player);s.decorationsAt=now;}
                 if(s.ready)update(s);
             }
         }

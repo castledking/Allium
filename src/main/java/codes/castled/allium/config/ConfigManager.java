@@ -61,24 +61,15 @@ public final class ConfigManager {
             boolean firstLoad = LegacyConfigMigration.legacy(current);
             var leftovers = firstLoad ? java.util.List.<String>of() : LegacyConfigMigration.leftovers(current, defaults);
             if (!firstLoad && leftovers.isEmpty()) return;
-            YamlConfiguration source = current;
-            if (!firstLoad) {
-                source = new YamlConfiguration();
-                for (String key : leftovers) source.set(key, current.get(key));
-                // A carried-over legacy file kept these leaves under sections this Allium also has.
-                for (String path : LegacyConfigMigration.RENAMED.keySet()) {
-                    if (current.isSet(path) && !defaults.isSet(path)) source.set(path, current.get(path));
-                }
-                for (String path : LegacyConfigMigration.RETIRED.keySet()) {
-                    if (path.contains(".") && current.isSet(path) && !defaults.isSet(path)) source.set(path, current.get(path));
-                }
-            }
+            YamlConfiguration source = firstLoad ? current : LegacyConfigMigration.extractLeftovers(current, defaults);
             var plan = LegacyConfigMigration.plan(source, defaults);
+            java.util.List<LegacyConfigMigration.AppliedMove> allOutcomes = new java.util.ArrayList<>();
             YamlConfiguration target;
+            LegacyConfigMigration.Result rootResult;
             if (firstLoad) {
                 LegacyConfigMigration.backup(file, file.resolveSibling(LegacyConfigMigration.SOURCE));
                 target = defaults;
-                LegacyConfigMigration.apply(plan.into("config.yml"), target, null);
+                rootResult = LegacyConfigMigration.apply(plan.into("config.yml"), target, null);
                 target.set("config-version", ConfigVersionManager.CURRENT_VERSION);
             } else {
                 LegacyConfigMigration.backup(file, file.resolveSibling(LegacyConfigMigration.CLEANUP_BACKUP));
@@ -86,9 +77,13 @@ public final class ConfigManager {
                     Files.copy(file, file.resolveSibling(LegacyConfigMigration.SOURCE));
                 }
                 target = current;
-                LegacyConfigMigration.apply(plan.into("config.yml"), target, defaults);
+                rootResult = LegacyConfigMigration.apply(plan.into("config.yml"), target, defaults);
                 LegacyConfigMigration.removeLegacy(target, plan, defaults);
             }
+            allOutcomes.addAll(rootResult.outcomes());
+            int appliedCount = rootResult.changed().size();
+            int equalCount = rootResult.equal().size();
+            int conflictCount = rootResult.kept().size();
             for (String other : java.util.List.of("autorestart.yml", "explosions.yml")) {
                 var moves = plan.into(other);
                 if (moves.isEmpty()) continue;
@@ -96,17 +91,22 @@ public final class ConfigManager {
                 if (!Files.exists(otherFile)) plugin.saveResource(other, false);
                 var otherConfig = LegacyConfigMigration.read(otherFile);
                 var result = LegacyConfigMigration.apply(moves, otherConfig, bundled(other));
+                allOutcomes.addAll(result.outcomes());
+                appliedCount += result.changed().size();
+                equalCount += result.equal().size();
+                conflictCount += result.kept().size();
                 if (!result.changed().isEmpty()) YamlFiles.replace(otherFile, otherConfig);
             }
             YamlFiles.replace(file, target);
             Path report = folder.resolve(LegacyConfigMigration.REPORT);
             Files.createDirectories(report.getParent());
-            Files.writeString(report, LegacyConfigMigration.report(plan, (firstLoad
+            Files.writeString(report, LegacyConfigMigration.report(plan, allOutcomes, (firstLoad
                     ? "Legacy Allium's config.yml, carried into this Allium's config.yml on "
                     : "Legacy sections moved out of config.yml on ") + java.time.LocalDate.now() + "."));
             plugin.logger().info((firstLoad ? "Carried the legacy config.yml into this Allium's layout: "
-                    : "Moved legacy sections out of config.yml: ") + plan.moves().size() + " setting(s) kept, "
-                    + plan.retired().size() + " retired or handed to their owner. The legacy file is "
+                    : "Moved legacy sections out of config.yml: ") + appliedCount + " applied, " + equalCount
+                    + " already equal, " + conflictCount + " conflict-kept, " + plan.delegated().size()
+                    + " delegated, " + plan.retired().size() + " retired. The legacy file is "
                     + LegacyConfigMigration.SOURCE + "; see " + LegacyConfigMigration.REPORT + ".");
         } catch (IOException | InvalidConfigurationException error) {
             throw new IllegalStateException("Could not read or carry over config.yml", error);
@@ -142,9 +142,11 @@ public final class ConfigManager {
             otherResults.put(other, LegacyConfigMigration.apply(moves, otherConfig, bundled(other)));
         }
         int changed = result.changed().size() + otherResults.values().stream().mapToInt(r -> r.changed().size()).sum();
+        int equal = result.equal().size() + otherResults.values().stream().mapToInt(r -> r.equal().size()).sum();
         int kept = result.kept().size() + otherResults.values().stream().mapToInt(r -> r.kept().size()).sum();
-        reply.accept("&7Legacy config: &f" + changed + " &7settings to write, &f" + kept + " &7custom settings kept, &f"
-                + plan.retired().size() + " &7retired or owned elsewhere.");
+        reply.accept("&7Legacy config: &f" + changed + " &7to apply, &f" + equal + " &7already equal, &f"
+                + kept + " &7conflict-kept, &f" + plan.delegated().size() + " &7delegated, &f"
+                + plan.retired().size() + " &7retired.");
         plugin.logger().info("Legacy config import: config.yml " + result.changed() + ", kept " + result.kept()
                 + "; " + otherResults);
         if (!apply || changed == 0) return;

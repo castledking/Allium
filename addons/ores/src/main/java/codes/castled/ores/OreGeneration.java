@@ -28,6 +28,17 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 final class OreGeneration implements AutoCloseable {
     private static final NamespacedKey FIRST_VERSION_MARKER = NamespacedKey.fromString("allium:allium_ore_generated");
+    static final NamespacedKey PENDING_MARKER = NamespacedKey.fromString("allium:ore_generation_pending");
+
+    enum ChunkStatus {
+        COMPLETED,
+        DEFERRED_UNLOADED,
+        DEFERRED_PROVIDER_UNREADY,
+        DEFERRED_FAILED,
+        SKIPPED
+    }
+
+    record ChunkResult(ChunkStatus status, int placed) {}
 
     private final Plugin plugin;
     private final AddonConnection core;
@@ -90,19 +101,65 @@ final class OreGeneration implements AutoCloseable {
                 .allMatch(ore -> placement.exists(ore.block()) && placement.exists(ore.deepslateBlock()));
     }
 
-    /** Places this chunk's ores, after vanilla populated it. Server thread only. */
-    int generateOresInChunk(Chunk chunk) {
+    /** Marks a chunk as still needing automatic ore generation so unload/restart retries it. */
+    void markPending(Chunk chunk) {
         Settings current = settings;
-        if (closed || !current.enabled() || placement == null || !chunk.isLoaded()) return 0;
+        if (closed || !current.enabled() || chunk == null) return;
         var data = chunk.getPersistentDataContainer();
-        if (data.has(FIRST_VERSION_MARKER, PersistentDataType.BYTE)) return 0;
+        if (data.has(FIRST_VERSION_MARKER, PersistentDataType.BYTE)) return;
+        if (allConfiguredOresGenerated(data, current)) {
+            data.remove(PENDING_MARKER);
+            return;
+        }
+        data.set(PENDING_MARKER, PersistentDataType.BYTE, (byte) 1);
+    }
+
+    /** Whether this chunk has an unfinished ore-generation work item persisted in its PDC. */
+    boolean isPending(Chunk chunk) {
+        if (chunk == null) return false;
+        var data = chunk.getPersistentDataContainer();
+        return !data.has(FIRST_VERSION_MARKER, PersistentDataType.BYTE)
+                && data.has(PENDING_MARKER, PersistentDataType.BYTE);
+    }
+
+    private static boolean allConfiguredOresGenerated(org.bukkit.persistence.PersistentDataContainer data, Settings current) {
+        for (OreDefinition ore : current.ores()) {
+            NamespacedKey key = NamespacedKey.fromString("allium:ore_generated_" + ore.name());
+            if (!data.has(key, PersistentDataType.BYTE)) return false;
+        }
+        return true;
+    }
+
+    /** Places this chunk's ores, distinguishing completed work from temporary deferral. Server/region thread only. */
+    ChunkResult processChunk(Chunk chunk) {
+        Settings current = settings;
+        if (closed || !current.enabled()) return new ChunkResult(ChunkStatus.SKIPPED, 0);
+        if (chunk == null || !chunk.isLoaded()) return new ChunkResult(ChunkStatus.DEFERRED_UNLOADED, 0);
+        var data = chunk.getPersistentDataContainer();
+        if (data.has(FIRST_VERSION_MARKER, PersistentDataType.BYTE)) {
+            data.remove(PENDING_MARKER);
+            return new ChunkResult(ChunkStatus.SKIPPED, 0);
+        }
+        if (placement == null) {
+            if (!allConfiguredOresGenerated(data, current)) {
+                data.set(PENDING_MARKER, PersistentDataType.BYTE, (byte) 1);
+                return new ChunkResult(ChunkStatus.DEFERRED_PROVIDER_UNREADY, 0);
+            }
+            data.remove(PENDING_MARKER);
+            return new ChunkResult(ChunkStatus.COMPLETED, 0);
+        }
         World world = chunk.getWorld();
         boolean mountain = mountainous(chunk);
         int total = 0;
+        boolean anyUnready = false;
+        boolean anyFailed = false;
         for (OreDefinition ore : current.ores()) {
             NamespacedKey key = NamespacedKey.fromString("allium:ore_generated_" + ore.name());
-            if (data.has(key, PersistentDataType.BYTE)
-                    || !placement.exists(ore.block()) || !placement.exists(ore.deepslateBlock())) continue;
+            if (data.has(key, PersistentDataType.BYTE)) continue;
+            if (!placement.exists(ore.block()) || !placement.exists(ore.deepslateBlock())) {
+                anyUnready = true;
+                continue;
+            }
             AtomicBoolean failed = new AtomicBoolean();
             total += OreVeins.generate(world.getSeed(), chunk.getX(), chunk.getZ(), ore,
                     ore.heights(world.getMinHeight(), world.getMaxHeight(), mountain), mountain, position -> {
@@ -115,8 +172,19 @@ final class OreGeneration implements AutoCloseable {
                     });
             // A missing pack or a failed placement must not use the chunk up: it is tried again later.
             if (!failed.get()) data.set(key, PersistentDataType.BYTE, (byte) 1);
+            else anyFailed = true;
         }
-        return total;
+        if (!anyUnready && !anyFailed) {
+            data.remove(PENDING_MARKER);
+            return new ChunkResult(ChunkStatus.COMPLETED, total);
+        }
+        data.set(PENDING_MARKER, PersistentDataType.BYTE, (byte) 1);
+        return new ChunkResult(anyUnready ? ChunkStatus.DEFERRED_PROVIDER_UNREADY : ChunkStatus.DEFERRED_FAILED, total);
+    }
+
+    /** Places this chunk's ores, after vanilla populated it. Server thread only. */
+    int generateOresInChunk(Chunk chunk) {
+        return processChunk(chunk).placed();
     }
 
     static boolean isMountainous(String biome) {

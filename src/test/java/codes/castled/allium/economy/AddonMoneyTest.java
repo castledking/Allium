@@ -59,4 +59,35 @@ class AddonMoneyTest {
         assertEquals(10000, cents());
         assertEquals("$1,500.00", money.format(1500));
     }
+
+    @Test
+    void reservationsUseStableOperationIdForCaptureReleaseAndIdempotency() throws Exception {
+        String url = "jdbc:sqlite:" + temp.resolve("addon-res.db");
+        codes.castled.allium.storage.ConnectionSource src = () -> DriverManager.getConnection(url);
+        EconomyEngine resEngine = new EconomyEngine(src, EconomySettings.defaults(), (c, a, b) -> true);
+        EconomyReservations holds = new EconomyReservations(resEngine, src, resEngine::execute);
+        resEngine.execute(resEngine.request(UUID.randomUUID(), "OPEN", player.toString(), OPEN, "SYSTEM", player, null,
+                resEngine.settings().starting()));
+        AddonMoney resMoney = new AddonMoney("Curios", () -> new AddonMoney.Ledger(
+                resEngine, holds, resEngine::balance, resEngine::execute, amount -> "$" + amount.toPlainString()));
+
+        UUID captureOp = UUID.randomUUID();
+        assertTrue(resMoney.reserve(captureOp, player, 25));
+        assertTrue(resMoney.reserve(captureOp, player, 25), "re-reserving same operationId is idempotent");
+        assertTrue(resMoney.isHeld(captureOp));
+        assertEquals(7500, ((EconomyResult.Found) resEngine.balance(player)).available().minor());
+        assertTrue(resMoney.capture(captureOp, player, 25));
+        assertTrue(resMoney.capture(captureOp, player, 25), "re-capturing same operationId is idempotent");
+        assertFalse(resMoney.isHeld(captureOp));
+        assertEquals(7500, ((EconomyResult.Found) resEngine.balance(player)).available().minor());
+
+        UUID releaseOp = UUID.randomUUID();
+        assertTrue(resMoney.reserve(releaseOp, player, 30));
+        assertTrue(resMoney.isHeld(releaseOp));
+        assertEquals(4500, ((EconomyResult.Found) resEngine.balance(player)).available().minor());
+        assertTrue(resMoney.release(releaseOp, player, 30));
+        assertTrue(resMoney.release(releaseOp, player, 30), "re-releasing same operationId is idempotent");
+        assertFalse(resMoney.isHeld(releaseOp));
+        assertEquals(7500, ((EconomyResult.Found) resEngine.balance(player)).available().minor());
+    }
 }

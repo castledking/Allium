@@ -3,10 +3,12 @@ package codes.castled.allium.tool.powertool;
 import codes.castled.allium.creative.manage.CreativeHolder;
 import codes.castled.allium.creative.manage.PermissionBackend;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskScheduler;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -38,6 +41,8 @@ public final class PermissionGrantAction implements PowerToolActionHandler {
         void send(CommandSender recipient, Messages message, String... replacements);
     }
 
+    @Nullable
+    private final Plugin plugin;
     private final Supplier<PermissionBackend> permissions;
     private final TaskScheduler scheduler;
     private final Notifier notifier;
@@ -54,6 +59,13 @@ public final class PermissionGrantAction implements PowerToolActionHandler {
     public PermissionGrantAction(Supplier<PermissionBackend> permissions, TaskScheduler scheduler, Notifier notifier,
                                  Consumer<String> info, Consumer<String> warning, RandomGenerator random,
                                  Function<String, ItemStack> refund) {
+        this(null, permissions, scheduler, notifier, info, warning, random, refund);
+    }
+
+    public PermissionGrantAction(@Nullable Plugin plugin, Supplier<PermissionBackend> permissions, TaskScheduler scheduler,
+                                 Notifier notifier, Consumer<String> info, Consumer<String> warning,
+                                 RandomGenerator random, Function<String, ItemStack> refund) {
+        this.plugin = plugin;
         this.permissions = permissions;
         this.scheduler = scheduler;
         this.notifier = notifier;
@@ -88,7 +100,7 @@ public final class PermissionGrantAction implements PowerToolActionHandler {
             return false;
         }
         PermissionBackend.Actor actor = new PermissionBackend.Actor(null, "Allium powertool " + ctx.toolId());
-        boolean[] refunded = {false};
+        AtomicBoolean refunded = new AtomicBoolean();
         for (PowerToolGrants.Choice choice : picked) {
             CompletableFuture<Void> saved;
             try {
@@ -96,12 +108,19 @@ public final class PermissionGrantAction implements PowerToolActionHandler {
             } catch (RuntimeException failure) {
                 saved = CompletableFuture.failedFuture(failure);
             }
-            saved.whenComplete((done, error) -> scheduler.runOnServer(() -> settle(ctx, player, choice.node(), error, refunded)));
+            saved.whenComplete((done, error) -> {
+                Runnable complete = () -> settle(ctx, player, choice.node(), error, refunded);
+                if (BukkitServerThread.isFolia() && plugin != null) {
+                    BukkitServerThread.runFor(plugin, scheduler, player, complete, () -> {}, 0L);
+                } else {
+                    scheduler.runOnServer(complete);
+                }
+            });
         }
         return true;
     }
 
-    private void settle(PowerToolContext ctx, Player player, String node, @Nullable Throwable error, boolean[] refunded) {
+    private void settle(PowerToolContext ctx, Player player, String node, @Nullable Throwable error, AtomicBoolean refunded) {
         if (error == null) {
             info.accept("PowerTool '" + ctx.toolId() + "' granted " + node + " to " + player.getName() + ".");
             if (player.isOnline()) notifier.send(player, Messages.POWERTOOL_GRANTED, "{permission}", node);
@@ -109,10 +128,9 @@ public final class PermissionGrantAction implements PowerToolActionHandler {
         }
         Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
         warning.accept("PowerTool '" + ctx.toolId() + "' could not grant " + node + " to " + player.getName() + ": " + cause);
-        if (!refunded[0]) {
+        if (!refunded.get()) {
             ItemStack back = refund.apply(ctx.toolId());
-            if (back != null && player.isOnline()) {
-                refunded[0] = true;
+            if (back != null && player.isOnline() && refunded.compareAndSet(false, true)) {
                 player.getInventory().addItem(back).values()
                         .forEach(left -> player.getWorld().dropItemNaturally(player.getLocation(), left));
                 info.accept("Gave " + player.getName() + " back their " + ctx.toolId() + " after the failed grant.");

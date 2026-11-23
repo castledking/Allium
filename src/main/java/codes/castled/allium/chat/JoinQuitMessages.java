@@ -1,11 +1,15 @@
 package codes.castled.allium.chat;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.messaging.VanishSource;
 import codes.castled.allium.module.ModerationModule;
+import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.text.PlayerMeta;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -13,6 +17,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 public final class JoinQuitMessages implements Listener {
@@ -61,8 +66,20 @@ public final class JoinQuitMessages implements Listener {
         var formatted = TextFormatter.parse(decorations.expand(player, expanded));
         if (plugin.getConfig().getString("join-and-quit-messages.broadcast-scope", "server").equalsIgnoreCase("world")) {
             setMessage.accept(null);
-            for (Player viewer : player.getWorld().getPlayers()) {
-                if (viewer.canSee(player)) TextSender.send(viewer, formatted);
+            if (BukkitServerThread.isFolia()) {
+                World originWorld = player.getWorld();
+                for (Player viewer : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+                    UtilitySupport.onOwner(plugin, viewer, () -> {
+                        if (viewer.isOnline() && originWorld != null && originWorld.equals(viewer.getWorld())
+                                && viewer.canSee(player) && PlayerNameVisibility.canSeeTarget(viewer, player)) {
+                            TextSender.send(viewer, formatted);
+                        }
+                    });
+                }
+            } else {
+                for (Player viewer : player.getWorld().getPlayers()) {
+                    if (viewer.canSee(player)) TextSender.send(viewer, formatted);
+                }
             }
         } else {
             setMessage.accept(formatted.toLegacy());

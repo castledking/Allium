@@ -2,6 +2,7 @@ package codes.castled.allium.recipe;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.essentials.UtilitySupport;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -21,7 +22,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code /recipe}'s read-only crafting-table window. Nothing in it can be taken, placed or moved,
  * and the player's own inventory is locked while it is open. Ingredients that accept several items
  * cycle each second. Left-click the result for the next recipe and right-click it for the previous
- * one; click an ingredient to see how it is made; shift-click to go back. Server thread.
+ * one; click an ingredient to see how it is made; shift-click to go back. Each menu belongs to its viewer.
  */
 public final class RecipeViewer implements Listener {
 
@@ -42,9 +42,7 @@ public final class RecipeViewer implements Listener {
 
     private final PluginStart plugin;
     private final Set<Menu> open = ConcurrentHashMap.newKeySet();
-    @Nullable
-    private TaskHandle ticker;
-    private long frame;
+    private volatile boolean closed;
 
     /** One recipe list and where in it the viewer is. */
     private record Page(ItemStack item, List<RecipeLayout> layouts, int index) {
@@ -62,6 +60,8 @@ public final class RecipeViewer implements Listener {
         private final Player viewer;
         private Page page;
         private final Deque<Page> back = new ArrayDeque<>();
+        private TaskHandle ticker = TaskHandle.NONE;
+        private long frame;
 
         Menu(Player viewer, Page page) {
             this.viewer = viewer;
@@ -79,17 +79,20 @@ public final class RecipeViewer implements Listener {
     }
 
     public void enable() {
+        closed = false;
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     public void close() {
+        closed = true;
         HandlerList.unregisterAll(this);
-        if (ticker != null) {
-            ticker.cancel();
-            ticker = null;
-        }
-        for (Menu menu : List.copyOf(open)) {
-            if (menu.viewer.getOpenInventory().getTopInventory() == menu.inventory) menu.viewer.closeInventory();
+        if (!BukkitServerThread.isFolia() || plugin.isEnabled()) {
+            for (Menu menu : List.copyOf(open)) {
+                UtilitySupport.onOwner(plugin, menu.viewer, () -> {
+                    menu.ticker.cancel();
+                    if (menu.viewer.getOpenInventory().getTopInventory() == menu.inventory) menu.viewer.closeInventory();
+                });
+            }
         }
         open.clear();
     }
@@ -120,6 +123,7 @@ public final class RecipeViewer implements Listener {
 
     /** Opens the recipes of {@code item} at {@code index} (0-based); false when nothing makes it. */
     public boolean open(Player player, ItemStack item, int index) {
+        if (closed) return false;
         List<RecipeLayout> layouts = recipes(item);
         if (layouts.isEmpty()) return false;
         Menu menu = new Menu(player, new Page(item, layouts, Math.max(0, Math.min(index, layouts.size() - 1))));
@@ -128,23 +132,22 @@ public final class RecipeViewer implements Listener {
         InventoryView view = player.openInventory(menu.inventory);
         if (view == null || view.getTopInventory() != menu.inventory) return true;
         open.add(menu);
-        if (ticker == null) ticker = plugin.getScheduler().repeatOnServer(this::tick, CYCLE_MILLIS, CYCLE_MILLIS);
+        if (BukkitServerThread.isFolia()) {
+            menu.ticker = plugin.getScheduler().repeatOn(BukkitServerThread.entity(plugin, player), () -> tick(menu),
+                    CYCLE_MILLIS, CYCLE_MILLIS);
+        } else {
+            menu.ticker = plugin.getScheduler().repeatOnServer(() -> tick(menu), CYCLE_MILLIS, CYCLE_MILLIS);
+        }
         return true;
     }
 
-    private boolean tick() {
-        frame++;
-        for (Menu menu : List.copyOf(open)) {
-            if (!menu.viewer.isOnline() || menu.viewer.getOpenInventory().getTopInventory() != menu.inventory) {
-                open.remove(menu);
-                continue;
-            }
-            if (menu.page.layout().cycles()) render(menu);
-        }
-        if (open.isEmpty()) {
-            ticker = null;
+    private boolean tick(Menu menu) {
+        if (closed || !menu.viewer.isOnline() || menu.viewer.getOpenInventory().getTopInventory() != menu.inventory) {
+            open.remove(menu);
             return false;
         }
+        menu.frame++;
+        if (menu.page.layout().cycles()) render(menu);
         return true;
     }
 
@@ -153,7 +156,7 @@ public final class RecipeViewer implements Listener {
         ItemStack[] contents = new ItemStack[10];
         contents[RecipeLayout.RESULT] = layout.result().clone();
         for (int slot = 1; slot <= 9; slot++) {
-            ItemStack shown = layout.shown(slot, frame);
+            ItemStack shown = layout.shown(slot, menu.frame);
             if (shown != null) contents[slot] = shown.clone();
         }
         if (layout.station() > 0 && layout.kind().station() != null) {
@@ -210,8 +213,8 @@ public final class RecipeViewer implements Listener {
         boolean right = event.getClick().isRightClick();
         ItemStack clicked = event.getView().getTopInventory().getItem(raw);
         // Changing the window inside its own click event is unsafe; do it on the next tick.
-        plugin.getScheduler().runOnServer(() -> {
-            if (menu.viewer.getOpenInventory().getTopInventory() != menu.inventory) return;
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), menu.viewer, () -> {
+            if (closed || menu.viewer.getOpenInventory().getTopInventory() != menu.inventory) return;
             if (shift) {
                 if (!menu.back.isEmpty()) show(menu, menu.back.pop());
                 return;
@@ -231,7 +234,7 @@ public final class RecipeViewer implements Listener {
             menu.back.push(menu.page);
             if (menu.back.size() > 32) menu.back.removeLast();
             show(menu, new Page(ingredient, layouts, 0));
-        });
+        }, () -> {}, 0L);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -243,6 +246,7 @@ public final class RecipeViewer implements Listener {
     public void onClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() instanceof Menu menu) {
             open.remove(menu);
+            menu.ticker.cancel();
             // None of the illustrated items belong to the viewer.
             menu.inventory.clear();
         }

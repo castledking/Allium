@@ -31,14 +31,16 @@ public final class PingCommand implements SpecCommandHandler {
         if (target == null) {
             return;
         }
-        int ping = Math.max(0, target.getPing());
-        if (target == context.sender()) {
-            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_PING_SELF,
-                    "{ping}", Integer.toString(ping));
-        } else {
-            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_PING_OTHER,
-                    "{player}", target.getName(),
-                    "{ping}", Integer.toString(ping));
-        }
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            int ping = Math.max(0, target.getPing());
+            if (target == context.sender()) {
+                UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_PING_SELF,
+                        "{ping}", Integer.toString(ping));
+            } else {
+                UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_PING_OTHER,
+                        "{player}", target.getName(),
+                        "{ping}", Integer.toString(ping));
+            }
+        });
     }
 }

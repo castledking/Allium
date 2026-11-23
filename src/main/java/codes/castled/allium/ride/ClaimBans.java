@@ -1,6 +1,7 @@
 package codes.castled.allium.ride;
 
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.tool.BukkitParticles;
 import codes.castled.allium.tool.powertool.PowerToolAction;
@@ -11,16 +12,16 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -44,6 +45,8 @@ public final class ClaimBans implements Rides.RideListener {
     private record Pending(UUID carrier, UUID target, String claimId, Effects carrierEffects, Effects targetEffects) {
     }
 
+    @Nullable
+    private final Plugin plugin;
     private final Rides rides;
     private final ClaimAccess claims;
     private final TaskScheduler scheduler;
@@ -51,11 +54,18 @@ public final class ClaimBans implements Rides.RideListener {
     private final RideActions.Notifier notifier;
     private final RideActions.Titles titles;
     private final Consumer<String> log;
-    private final Map<UUID, Pending> pending = new HashMap<>();
-    private final Set<UUID> completing = new HashSet<>();
+    private final Map<UUID, Pending> pending = new ConcurrentHashMap<>();
+    private final Set<UUID> completing = ConcurrentHashMap.newKeySet();
 
     public ClaimBans(Rides rides, ClaimAccess claims, TaskScheduler scheduler, Function<UUID, Player> players,
                      RideActions.Notifier notifier, RideActions.Titles titles, Consumer<String> log) {
+        this(null, rides, claims, scheduler, players, notifier, titles, log);
+    }
+
+    public ClaimBans(@Nullable Plugin plugin, Rides rides, ClaimAccess claims, TaskScheduler scheduler,
+                     Function<UUID, Player> players, RideActions.Notifier notifier, RideActions.Titles titles,
+                     Consumer<String> log) {
+        this.plugin = plugin;
         this.rides = rides;
         this.claims = claims;
         this.scheduler = scheduler;
@@ -134,7 +144,12 @@ public final class ClaimBans implements Rides.RideListener {
         titles.show(carrier, Messages.CLAIM_BAN_TITLE, Messages.CLAIM_BAN_COUNTDOWN, 0, 25, 5, "{seconds}", seconds);
         titles.show(target, Messages.CLAIM_BAN_TARGET_TITLE, Messages.CLAIM_BAN_COUNTDOWN, 0, 25, 5, "{seconds}", seconds);
         pulse(carrier, target, total - remaining);
-        scheduler.runOnServerLater(() -> tick(targetId, remaining - 1, total), 1000L);
+        Runnable next = () -> tick(targetId, remaining - 1, total);
+        if (BukkitServerThread.isFolia() && plugin != null) {
+            BukkitServerThread.runFor(plugin, scheduler, carrier, next, () -> cancel(targetId, Messages.CLAIM_BAN_CANCELLED), 1000L);
+        } else {
+            scheduler.runOnServerLater(next, 1000L);
+        }
     }
 
     private void complete(Pending entry, Player target, Player carrier) {
@@ -184,16 +199,29 @@ public final class ClaimBans implements Rides.RideListener {
         Player target = players.apply(targetId);
         Player carrier = players.apply(entry.carrier());
         if (target != null) {
-            restore(target, entry.targetEffects());
-            target.resetTitle();
+            onPlayerNow(target, () -> {
+                restore(target, entry.targetEffects());
+                target.resetTitle();
+            });
         }
         if (carrier != null) {
-            restore(carrier, entry.carrierEffects());
-            carrier.resetTitle();
-            if (reason != null) {
-                notifier.send(carrier, reason, "{target}", target == null ? "" : target.getName());
-            }
+            String targetName = target == null ? "" : target.getName();
+            onPlayerNow(carrier, () -> {
+                restore(carrier, entry.carrierEffects());
+                carrier.resetTitle();
+                if (reason != null) {
+                    notifier.send(carrier, reason, "{target}", targetName);
+                }
+            });
         }
+    }
+
+    private void onPlayerNow(Player player, Runnable action) {
+        if (!BukkitServerThread.isFolia() || plugin == null) {
+            action.run();
+            return;
+        }
+        BukkitServerThread.onOwner(plugin, scheduler, player, action);
     }
 
     // -- Effects ----------------------------------------------------------------------------------

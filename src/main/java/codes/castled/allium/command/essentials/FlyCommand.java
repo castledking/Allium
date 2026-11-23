@@ -9,6 +9,7 @@ import codes.castled.allium.message.Messages;
 import codes.castled.allium.moderation.DurationParser;
 import codes.castled.allium.placeholder.PlaceholderFormats;
 import codes.castled.allium.player.TimedFlight;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
@@ -62,16 +63,29 @@ public final class FlyCommand implements SpecCommandHandler {
             return;
         }
 
-        boolean enabled = !target.getAllowFlight();
-        target.setAllowFlight(enabled);
-        target.setFlying(enabled);
-        if(plugin.getModuleManager()!=null&&plugin.getModuleManager().getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule module&&module.flights()!=null)module.flights().changed(target);
+        onOwner(target, () -> {
+            boolean enabled = !target.getAllowFlight();
+            target.setAllowFlight(enabled);
+            target.setFlying(enabled);
+            if (plugin.getModuleManager() != null
+                    && plugin.getModuleManager().getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule module
+                    && module.flights() != null) module.flights().changed(target);
 
-        String state = enabled ? "&aenabled" : "&cdisabled";
-        context.sendOutcome(context.sender(), "toggle", "{state}", state, "{player}", target.getName());
-        if (target != context.sender()) {
-            context.sendOutcome(target, "toggle", "{state}", state, "{player}", target.getName());
+            String state = enabled ? "&aenabled" : "&cdisabled";
+            String name = target.getName();
+            onOwner(sender, () -> context.sendOutcome(sender, "toggle", "{state}", state, "{player}", name));
+            if (target != sender) context.sendOutcome(target, "toggle", "{state}", state, "{player}", name);
+        });
+    }
+
+    private void onOwner(CommandSender recipient, Runnable action) {
+        if (!BukkitServerThread.isFolia()) {
+            action.run();
+            return;
         }
+        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), recipient, () -> {
+            if (!(recipient instanceof Player player) || player.isOnline()) action.run();
+        });
     }
 
     private void timedToggle(Player player) {
@@ -125,7 +139,7 @@ public final class FlyCommand implements SpecCommandHandler {
             return;
         }
         long amount = seconds;
-        resolve(sender, args[0], (id, name) -> flight.change(id, change, amount, total -> {
+        resolve(sender, args[0], (id, name) -> flight.change(id, change, amount, total -> onOwner(sender, () -> {
             if (total.isEmpty()) {
                 UtilitySupport.send(plugin, sender, Messages.TFLY_STORAGE);
                 return;
@@ -134,11 +148,11 @@ public final class FlyCommand implements SpecCommandHandler {
             UtilitySupport.send(plugin, sender, Messages.TFLY_CHANGED, "{player}", name, "{time}", shown);
             Player online = plugin.getServer().getPlayer(id);
             if (online != null && online != sender) {
-                UtilitySupport.send(plugin, online, Messages.TFLY_NOTIFY, "{time}", shown);
+                onOwner(online, () -> UtilitySupport.send(plugin, online, Messages.TFLY_NOTIFY, "{time}", shown));
             }
             UtilitySupport.audit(plugin, sender, "tfly_" + change.name().toLowerCase(Locale.ROOT),
                     "target=" + id + " amount=" + amount + " total=" + total.getAsLong());
-        }));
+        })));
     }
 
     /** An online player by name, else the shared name index (offline players). */
@@ -153,13 +167,13 @@ public final class FlyCommand implements SpecCommandHandler {
             UtilitySupport.send(plugin, sender, Messages.PLAYER_NOT_FOUND, "{player}", raw);
             return;
         }
-        names.resolve(raw).whenComplete((found, error) -> plugin.getScheduler().runOnServer(() -> {
+        names.resolve(raw).whenComplete((found, error) -> BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, () -> {
             if (error != null || found == null || found.isEmpty()) {
                 UtilitySupport.send(plugin, sender, Messages.PLAYER_NOT_FOUND, "{player}", raw);
                 return;
             }
             then.accept(found.get().uuid(), found.get().name());
-        }));
+        }, () -> {}, 0));
     }
 
     /** {@code 90} (seconds), {@code 30m}, {@code 2h}, {@code 1d}, {@code 1h30m}. */

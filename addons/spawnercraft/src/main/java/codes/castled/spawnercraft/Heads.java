@@ -28,7 +28,7 @@ final class Heads {
     private final Map<String, Head> byId = new LinkedHashMap<>();
     private final Map<String, List<Head>> byMob = new TreeMap<>();
     private final Map<String, EntityType> types = new TreeMap<>();
-    private final Map<String, ItemStack> prototypes = new HashMap<>();
+    private final Map<String, ItemStack> prototypes = new java.util.concurrent.ConcurrentHashMap<>();
 
     Heads(AddonItems items, InputStream catalog, InputStream legacy) throws IOException {
         this.items = items;

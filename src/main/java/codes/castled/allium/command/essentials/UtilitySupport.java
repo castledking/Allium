@@ -6,6 +6,8 @@ import codes.castled.allium.module.EconomyModule;
 import codes.castled.allium.module.KitsModule;
 import codes.castled.allium.module.MailModule;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -90,6 +92,10 @@ public final class UtilitySupport {
     }
 
     public static void send(PluginStart plugin, CommandSender recipient, Messages message, String... replacements) {
+        onOwner(plugin, recipient, () -> sendDirect(plugin, recipient, message, replacements));
+    }
+
+    private static void sendDirect(PluginStart plugin, CommandSender recipient, Messages message, String... replacements) {
         if (plugin != null && plugin.getMessageManager() != null) {
             plugin.getMessageManager().send(recipient, message, replacements);
             return;
@@ -99,6 +105,85 @@ public final class UtilitySupport {
             text = text.replace(replacements[i], replacements[i + 1]);
         }
         recipient.sendMessage(codes.castled.allium.message.MessageManager.colorize(text));
+    }
+
+    /** Runs {@code action} on the thread owning {@code recipient} (inline when already owned or not on Folia). */
+    public static void onOwner(PluginStart plugin, CommandSender recipient, Runnable action) {
+        if (!BukkitServerThread.isFolia() || plugin == null || plugin.getScheduler() == null) {
+            action.run();
+            return;
+        }
+        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), recipient, () -> {
+            if (!(recipient instanceof Player player) || player.isOnline()) {
+                action.run();
+            }
+        });
+    }
+
+    /** Runs {@code action} on {@code target}'s owning region (inline when already owned or not on Folia). */
+    public static void onTarget(PluginStart plugin, CommandSender sender, Player target, Runnable action) {
+        onTarget(plugin, sender, target, action, () -> {});
+    }
+
+    /**
+     * Runs {@code action} on {@code target}'s owning region (inline when already owned or not on Folia).
+     * If {@code target} disconnects, reconnects as a new connection, or retires before execution on Folia,
+     * invokes {@code offline} on {@code sender}'s owner instead.
+     */
+    public static void onTarget(PluginStart plugin, CommandSender sender, Player target, Runnable action, Runnable offline) {
+        if (!BukkitServerThread.isFolia() || plugin == null || plugin.getScheduler() == null) {
+            action.run();
+            return;
+        }
+        var owner = BukkitServerThread.entity(plugin, target);
+        if (owner.isServerThread()) {
+            if (target.isOnline()) {
+                action.run();
+            } else {
+                onOwner(plugin, sender, offline);
+            }
+            return;
+        }
+        java.util.UUID id = target.getUniqueId();
+        Runnable notifyOffline = () -> onOwner(plugin, sender, offline);
+        TaskHandle handle = plugin.getScheduler().runOn(owner, () -> {
+            Player current = plugin.getServer() == null ? target : plugin.getServer().getPlayer(id);
+            if (current != target || !target.isOnline()) {
+                notifyOffline.run();
+                return;
+            }
+            action.run();
+        }, notifyOffline, 0L);
+        if (handle == TaskHandle.NONE) {
+            notifyOffline.run();
+        }
+    }
+
+    /** Runs {@code action} on the global region thread on Folia (inline when already global or not on Folia). */
+    public static void onGlobal(PluginStart plugin, Runnable action) {
+        if (!BukkitServerThread.isFolia() || plugin == null || plugin.getScheduler() == null) {
+            action.run();
+            return;
+        }
+        if (plugin.getScheduler().isServerThread()) {
+            action.run();
+        } else {
+            plugin.getScheduler().runOnServer(action);
+        }
+    }
+
+    /** Runs {@code action} on the region owning {@code (world, chunkX, chunkZ)} on Folia (inline when owned or not on Folia). */
+    public static void onRegion(PluginStart plugin, World world, int chunkX, int chunkZ, Runnable action) {
+        if (!BukkitServerThread.isFolia() || plugin == null || plugin.getScheduler() == null || world == null) {
+            action.run();
+            return;
+        }
+        var region = BukkitServerThread.region(plugin, world, chunkX, chunkZ);
+        if (region.isServerThread()) {
+            action.run();
+        } else {
+            plugin.getScheduler().runOn(region, action, () -> {}, 0L);
+        }
     }
 
     public static void audit(PluginStart plugin, CommandSender actor, String action, String detail) {

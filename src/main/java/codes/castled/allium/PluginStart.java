@@ -60,7 +60,7 @@ public final class PluginStart extends JavaPlugin {
         logger = new AlliumLogger(this);
         logger.info("Starting Allium...");
         // The one owner of Allium's server-thread tasks, timers and worker pools; closed last.
-        scheduler = new AlliumScheduler(new BukkitServerThread(this), logger::severe);
+        scheduler = new AlliumScheduler(BukkitServerThread.global(this), logger::severe);
         if (FaultInjection.enabled()) {
             logger.warning("Fault injection is enabled (-D" + FaultInjection.PROPERTY + "=true). This is for disposable "
                     + "test servers only: armed fault points make Allium operations fail on purpose.");

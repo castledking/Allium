@@ -4,6 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.flight.FlightTimeRepository;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.placeholder.PlaceholderFormats;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -49,13 +50,17 @@ public final class TimedFlight implements Listener, AutoCloseable {
 
     static final class Session {
         final Player player;
+        final UUID id;
         volatile long seconds;
         volatile boolean loaded;
         volatile boolean active;
+        volatile boolean spending;
         long unsaved;
+        int pendingChanges;
 
         Session(Player player) {
             this.player = player;
+            this.id = player.getUniqueId();
         }
     }
 
@@ -82,11 +87,13 @@ public final class TimedFlight implements Listener, AutoCloseable {
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             join(p);
         }
-        tick = plugin.getScheduler().repeatOnServer(() -> {
-            if (closed) return false;
-            tick();
-            return true;
-        }, 1_000, 1_000);
+        if (!BukkitServerThread.isFolia()) {
+            tick = plugin.getScheduler().repeatOnServer(() -> {
+                if (closed) return false;
+                tick();
+                return true;
+            }, 1_000, 1_000);
+        }
         save = plugin.getScheduler().repeatOnServer(() -> {
             if (closed) return false;
             sessions.values().forEach(this::flush);
@@ -97,13 +104,13 @@ public final class TimedFlight implements Listener, AutoCloseable {
     @Override
     public void close() {
         if (closed) return;
-        sessions.values().forEach(this::flush);
         closed = true;
         tick.cancel();
         save.cancel();
         HandlerList.unregisterAll(this);
         for (Session s : sessions.values()) {
-            if (s.active && s.player.isOnline()) {
+            flush(s);
+            if (!BukkitServerThread.isFolia() && s.active && s.player.isOnline()) {
                 stopFlying(s);
             }
         }
@@ -134,7 +141,7 @@ public final class TimedFlight implements Listener, AutoCloseable {
      */
     public boolean running(Player p) {
         Session s = sessions.get(p.getUniqueId());
-        return s != null && s.player == p && s.active && spends(p);
+        return s != null && s.player == p && s.active && (BukkitServerThread.isFolia() ? s.spending : spends(p));
     }
 
     private boolean spends(Player p) {
@@ -171,6 +178,7 @@ public final class TimedFlight implements Listener, AutoCloseable {
         s.active = true;
         player.setAllowFlight(true);
         player.setFallDistance(0);
+        s.spending = spends(player);
         flights.changed(player);
         return Toggle.ON;
     }
@@ -181,12 +189,30 @@ public final class TimedFlight implements Listener, AutoCloseable {
      */
     public void change(UUID player, Change change, long amount, Consumer<OptionalLong> done) {
         Session s = sessions.get(player);
-        long unsaved = 0;
-        if (s != null) {
-            unsaved = s.unsaved;
-            s.unsaved = 0;
+        if (BukkitServerThread.isFolia() && s != null) {
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), s.player,
+                    () -> queueChange(player, change, amount, sessions.get(player) == s ? s : null, done),
+                    () -> server(() -> queueChange(player, change, amount, null, done)), 0);
+        } else {
+            queueChange(player, change, amount, s, done);
         }
-        final long spent = unsaved;
+    }
+
+    private void queueChange(UUID player, Change change, long amount, Session session, Consumer<OptionalLong> done) {
+        if (closed) return;
+        if (session == null) {
+            submitChange(player, change, amount, null, 0, done);
+            return;
+        }
+        synchronized (session) {
+            long spent = session.unsaved;
+            session.unsaved = 0;
+            session.pendingChanges++;
+            submitChange(player, change, amount, session, spent, done);
+        }
+    }
+
+    private void submitChange(UUID player, Change change, long amount, Session session, long spent, Consumer<OptionalLong> done) {
         try {
             io.execute(() -> {
                 long next;
@@ -200,43 +226,59 @@ public final class TimedFlight implements Listener, AutoCloseable {
                     };
                 } catch (SQLException | RuntimeException failed) {
                     plugin.logger().warning("Timed flight storage failed for " + player + ": " + failed.getMessage());
-                    server(() -> {
-                        if (s != null) s.unsaved += spent;
-                        done.accept(OptionalLong.empty());
-                    });
+                    changeFailed(session, spent);
+                    server(() -> done.accept(OptionalLong.empty()));
                     return;
                 }
                 server(() -> {
                     Session now = sessions.get(player);
-                    if (now != null) {
-                        now.seconds = next;
-                        now.loaded = true;
-                        if (next == 0 && now.active) {
-                            stopFlying(now);
-                            send(now.player, Messages.TFLY_EXPIRED);
+                    if (now == null) done.accept(OptionalLong.of(next));
+                    else onPlayer(now, () -> {
+                        synchronized (now) {
+                            if (session == now) now.pendingChanges--;
+                            now.seconds = next;
+                            now.loaded = true;
+                            if (next == 0 && now.active) {
+                                stopFlying(now);
+                                send(now.player, Messages.TFLY_EXPIRED);
+                            }
                         }
-                    }
-                    done.accept(OptionalLong.of(next));
+                        done.accept(OptionalLong.of(next));
+                    }, () -> server(() -> done.accept(OptionalLong.of(next))));
                 });
             });
         } catch (RejectedExecutionException busy) {
-            if (s != null) s.unsaved += spent;
+            changeFailed(session, spent);
             done.accept(OptionalLong.empty());
+        }
+    }
+
+    private static void changeFailed(Session session, long spent) {
+        if (session == null) return;
+        synchronized (session) {
+            session.pendingChanges--;
+            session.unsaved += spent;
         }
     }
 
     /** One second: time runs down for each timed flier whose time is running ({@link #running}). */
     void tick() {
-        for (Session s : sessions.values()) {
-            if (!s.active) continue;
+        sessions.values().forEach(this::tick);
+    }
+
+    private void tick(Session s) {
+        synchronized (s) {
+            if (closed || !s.active || s.pendingChanges != 0) return;
             Player p = s.player;
-            if (!p.isOnline()) continue;
+            if (!p.isOnline()) return;
             if (!p.getAllowFlight()) {
                 // Something else took flight away (a gamemode or world change): timed flight is off.
                 s.active = false;
-                continue;
+                s.spending = false;
+                return;
             }
-            if (!spends(p)) continue;
+            s.spending = spends(p);
+            if (!s.spending) return;
             s.seconds = Math.max(0, s.seconds - 1);
             s.unsaved++;
             if (s.seconds == 0) {
@@ -251,6 +293,7 @@ public final class TimedFlight implements Listener, AutoCloseable {
 
     private void stopFlying(Session s) {
         s.active = false;
+        s.spending = false;
         Player p = s.player;
         if (p.hasPermission("allium.fly")) return;
         p.setFlying(false);
@@ -260,17 +303,23 @@ public final class TimedFlight implements Listener, AutoCloseable {
 
     /** Writes the spent seconds as a relative change; they come back for the next try on failure. */
     void flush(Session s) {
-        long spent = s.unsaved;
-        if (spent <= 0 || closed) return;
-        s.unsaved = 0;
-        UUID id = s.player.getUniqueId();
+        synchronized (s) {
+            long spent = s.unsaved;
+            if (spent <= 0 || s.pendingChanges != 0) return;
+            s.unsaved = 0;
+            flush(s, spent);
+        }
+    }
+
+    private void flush(Session s, long spent) {
+        UUID id = s.id;
         try {
             io.execute(() -> {
                 try {
                     repository.add(id, -spent);
                 } catch (SQLException | RuntimeException failed) {
                     plugin.logger().warning("Could not save spent flight time for " + id + ": " + failed.getMessage());
-                    server(() -> s.unsaved += spent);
+                    synchronized (s) { s.unsaved += spent; }
                 }
             });
         } catch (RejectedExecutionException busy) {
@@ -280,19 +329,24 @@ public final class TimedFlight implements Listener, AutoCloseable {
 
     private void join(Player player) {
         Session s = new Session(player);
-        sessions.put(player.getUniqueId(), s);
+        sessions.put(s.id, s);
+        if (BukkitServerThread.isFolia()) {
+            plugin.getScheduler().repeatOn(BukkitServerThread.entity(plugin, player), () -> {
+                if (closed || sessions.get(s.id) != s || !player.isOnline()) return false;
+                tick(s);
+                return true;
+            }, 1_000, 1_000);
+        }
         try {
             io.execute(() -> {
                 try {
-                    long seconds = repository.seconds(player.getUniqueId());
-                    server(() -> {
-                        if (sessions.get(player.getUniqueId()) == s) {
-                            s.seconds = seconds;
-                            s.loaded = true;
-                        }
-                    });
+                    long seconds = repository.seconds(s.id);
+                    server(() -> onPlayer(s, () -> {
+                        s.seconds = seconds;
+                        s.loaded = true;
+                    }, () -> {}));
                 } catch (SQLException | RuntimeException failed) {
-                    plugin.logger().warning("Could not load flight time for " + player.getUniqueId() + ": " + failed.getMessage());
+                    plugin.logger().warning("Could not load flight time for " + s.id + ": " + failed.getMessage());
                 }
             });
         } catch (RejectedExecutionException busy) {
@@ -318,6 +372,19 @@ public final class TimedFlight implements Listener, AutoCloseable {
         if (!closed) plugin.getScheduler().runOnServer(() -> {
             if (!closed) task.run();
         });
+    }
+
+    private void onPlayer(Session session, Runnable action, Runnable retired) {
+        Runnable current = () -> {
+            if (closed) return;
+            if (sessions.get(session.id) == session) action.run();
+            else retired.run();
+        };
+        if (BukkitServerThread.isFolia()) {
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), session.player, current, retired, 0);
+        } else {
+            current.run();
+        }
     }
 
     private void send(Player p, Messages message, String... args) {

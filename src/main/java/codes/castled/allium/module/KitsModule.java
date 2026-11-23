@@ -1,6 +1,7 @@
 package codes.castled.allium.module;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.database.ServerIdentity;
 import codes.castled.allium.command.kits.KitCommand;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
@@ -11,11 +12,7 @@ import codes.castled.allium.kit.KitService;
 import codes.castled.allium.storage.SqlDialect;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.UUID;
 
 /**
  * Kits (S16): {@code /kit}, {@code /kits}, {@code /createkit} and {@code /delkit}, backed by
@@ -88,21 +85,10 @@ public final class KitsModule extends AbstractModule {
     }
 
     private String serverId() {
-        Path file = plugin.getDataFolder().toPath().resolve(".server-id");
         try {
-            if (Files.isRegularFile(file)) {
-                String id = Files.readString(file, StandardCharsets.UTF_8).trim();
-                if (id.matches("[A-Za-z0-9_.:-]{1,64}")) {
-                    return id;
-                }
-                throw new IOException("invalid existing server ID; restore it rather than changing recovery ownership");
-            }
-            String id = "server-" + UUID.randomUUID();
-            Files.createDirectories(file.getParent());
-            Files.writeString(file, id + "\n", StandardCharsets.UTF_8);
-            return id;
+            return ServerIdentity.load(plugin.getDataFolder().toPath());
         } catch (IOException e) {
-            throw new IllegalStateException("cannot read or create " + file + ": " + e.getMessage(), e);
+            throw new IllegalStateException("Cannot read the Allium server identity", e);
         }
     }
 }

@@ -2,7 +2,9 @@ package codes.castled.allium.hide;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.CommandMapBridge;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -14,6 +16,7 @@ import java.nio.file.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /** Server-thread authorization plus immutable packet-thread snapshots. No disk work in command listeners. */
@@ -26,16 +29,16 @@ public final class HideService implements Listener,AutoCloseable {
     private final ThreadPoolExecutor io;
     private final Path file;
     private final ConcurrentHashMap<UUID,Viewer> viewers=new ConcurrentHashMap<>();
-    private final ArrayDeque<Player> poll=new ArrayDeque<>(),refresh=new ArrayDeque<>();
-    private final Set<UUID> refreshQueued=new HashSet<>();
+    private final ConcurrentLinkedQueue<Player> poll=new ConcurrentLinkedQueue<>(),refresh=new ConcurrentLinkedQueue<>();
+    private final Set<UUID> pollTracked=ConcurrentHashMap.newKeySet(),pollInFlight=ConcurrentHashMap.newKeySet(),refreshQueued=ConcurrentHashMap.newKeySet();
     private volatile HideSettings settings;
     private volatile boolean closed;
-    private Map<String,Command> commands=Map.of();
-    private Map<String,List<String>> labels=Map.of();
+    private volatile Map<String,Command> commands=Map.of();
+    private volatile Map<String,List<String>> labels=Map.of();
     private TaskHandle timer=TaskHandle.NONE;
-    private HidePacketHooks packets;
-    private YamlConfiguration config;
-    private boolean updating;
+    private volatile HidePacketHooks packets;
+    private volatile YamlConfiguration config;
+    private final AtomicBoolean updating=new AtomicBoolean();
     public HideService(PluginStart plugin){this.plugin=plugin;groups=new HideGroups(plugin);permissions=new HidePermissionResolver(plugin);io=plugin.getScheduler().boundedPool("Allium-Hide-Config",1,32);file=plugin.getDataFolder().toPath().resolve("hide.yml");}
     public void enable(){
         if(!Files.exists(file))plugin.saveResource("hide.yml",false);
@@ -46,7 +49,7 @@ public final class HideService implements Listener,AutoCloseable {
         var access=CommandMapBridge.inspectPlatformAccess(plugin.getServer(),plugin.logger()::warning);if(access!=null&&access.knownCommands()!=null)commands=access.knownCommands();
         refreshLabels();
         plugin.getServer().getPluginManager().registerEvents(this,plugin);installPackets();
-        for(Player player:plugin.getServer().getOnlinePlayers()){poll.add(player);refresh(player,true);}
+        for(Player player:List.copyOf(plugin.getServer().getOnlinePlayers())){enqueuePoll(player);refreshOnOwner(player,true,()->{});}
         timer=plugin.getScheduler().repeatOnServer(()->{if(closed)return false;tick();return true;},50,50);
         logCapability();
     }
@@ -74,10 +77,57 @@ public final class HideService implements Listener,AutoCloseable {
         if(update&&(old==null||old.settings()!=next.settings()||old.bypass()!=next.bypass()||!old.groups().equals(next.groups())))queueRefresh(p);
         return next;
     }
+    private void enqueuePoll(Player p){if(pollTracked.add(p.getUniqueId()))poll.add(p);}
     private void queueRefresh(Player p){if(refreshQueued.add(p.getUniqueId()))refresh.add(p);}
-    private void tick(){
-        long now=System.currentTimeMillis();for(int n=Math.min(8,poll.size());n>0;n--){Player p=poll.remove();if(!p.isOnline())continue;poll.add(p);var cached=viewers.get(p.getUniqueId());if(cached==null||now-cached.refreshed()>=2000)refresh(p,true);}
-        for(int n=4;n>0&&!refresh.isEmpty();n--){Player p=refresh.remove();refreshQueued.remove(p.getUniqueId());if(p.isOnline())p.updateCommands();}
+    void tick(){
+        long now=System.currentTimeMillis();
+        for(int n=Math.min(8,poll.size());n>0;n--){
+            Player p=poll.poll();if(p==null)break;
+            UUID id=p.getUniqueId();
+            if(!pollTracked.contains(id)||!isCurrent(p)){pollTracked.remove(id);continue;}
+            poll.add(p);
+            var cached=viewers.get(id);
+            if((cached==null||now-cached.refreshed()>=2000)&&pollInFlight.add(id)){
+                refreshOnOwner(p,true,()->pollInFlight.remove(id));
+            }
+        }
+        for(int n=4;n>0;n--){
+            Player p=refresh.poll();if(p==null)break;
+            refreshQueued.remove(p.getUniqueId());
+            updateCommandsOnOwner(p);
+        }
+    }
+    private void refreshOnOwner(Player p,boolean update,Runnable after){
+        if(!BukkitServerThread.isFolia()||plugin.getScheduler()==null){
+            try{if(!closed&&isCurrent(p))refresh(p,update);}finally{after.run();}
+            return;
+        }
+        var owner=BukkitServerThread.entity(plugin,p);
+        if(owner.isServerThread()){
+            try{if(!closed&&isCurrent(p))refresh(p,update);}finally{after.run();}
+            return;
+        }
+        TaskHandle handle=plugin.getScheduler().runOn(owner,()->{
+            try{if(!closed&&isCurrent(p))refresh(p,update);}finally{after.run();}
+        },after,0L);
+        if(handle==TaskHandle.NONE)after.run();
+    }
+    private void updateCommandsOnOwner(Player p){
+        if(!BukkitServerThread.isFolia()||plugin.getScheduler()==null){
+            if(!closed&&isCurrent(p))p.updateCommands();
+            return;
+        }
+        var owner=BukkitServerThread.entity(plugin,p);
+        if(owner.isServerThread()){
+            if(!closed&&isCurrent(p))p.updateCommands();
+            return;
+        }
+        plugin.getScheduler().runOn(owner,()->{if(!closed&&isCurrent(p))p.updateCommands();},()->{},0L);
+    }
+    private boolean isCurrent(Player p){
+        if(!p.isOnline())return false;
+        Player current=plugin.getServer().getPlayer(p.getUniqueId());
+        return current==null||current==p;
     }
     private void installPackets(){
         if(packets!=null)return;
@@ -217,45 +267,51 @@ public final class HideService implements Listener,AutoCloseable {
         var memo=new HashMap<String,Boolean>();
         event.setCompletions(event.getCompletions().stream().filter(value->{String path=HidePolicy.suggestionPath(buffer,value,-1);return event.isAsynchronous()?packetVisible(v,path):visible(p,v,path,memo);}).toList());
     }
-    @EventHandler public void joined(PlayerJoinEvent event){poll.add(event.getPlayer());refresh(event.getPlayer(),true);}
-    @EventHandler public void quit(PlayerQuitEvent event){UUID id=event.getPlayer().getUniqueId();viewers.remove(id);poll.remove(event.getPlayer());refresh.remove(event.getPlayer());refreshQueued.remove(id);if(packets!=null)packets.forget(id);}
-    @EventHandler public void pluginEnabled(PluginEnableEvent event){if(event.getPlugin().getName().equalsIgnoreCase("packetevents")){installPackets();for(Player p:plugin.getServer().getOnlinePlayers())queueRefresh(p);}}
-    @EventHandler public void pluginDisabled(PluginDisableEvent event){if(event.getPlugin().getName().equalsIgnoreCase("packetevents")&&packets!=null){packets.close();packets=null;for(Player p:plugin.getServer().getOnlinePlayers())queueRefresh(p);}}
+    @EventHandler public void joined(PlayerJoinEvent event){enqueuePoll(event.getPlayer());refresh(event.getPlayer(),true);}
+    @EventHandler public void quit(PlayerQuitEvent event){UUID id=event.getPlayer().getUniqueId();viewers.remove(id);pollTracked.remove(id);pollInFlight.remove(id);refreshQueued.remove(id);HidePacketHooks currentPackets=packets;if(currentPackets!=null)currentPackets.forget(id);}
+    @EventHandler public void pluginEnabled(PluginEnableEvent event){if(event.getPlugin().getName().equalsIgnoreCase("packetevents")){installPackets();for(Player p:List.copyOf(plugin.getServer().getOnlinePlayers()))queueRefresh(p);}}
+    @EventHandler public void pluginDisabled(PluginDisableEvent event){if(event.getPlugin().getName().equalsIgnoreCase("packetevents")&&packets!=null){packets.close();packets=null;for(Player p:List.copyOf(plugin.getServer().getOnlinePlayers()))queueRefresh(p);}}
     public void reload(){update(null,null);}
     private void update(CommandSender actor,Consumer<YamlConfiguration> edit){
-        if(updating){if(actor!=null)send(actor,Messages.HIDE_BUSY);return;}updating=true;
+        if(!updating.compareAndSet(false,true)){if(actor!=null)send(actor,Messages.HIDE_BUSY);return;}
         try{io.execute(()->{
             try{YamlConfiguration next=read();if(edit!=null)edit.accept(next);
                 plugin.getScheduler().runOnServer(()->{
-                    if(closed)return;
+                    if(closed){updating.set(false);return;}
                     try{HideSettings prepared=prepare(next);
                         io.execute(()->{try{
                             if(edit!=null)save(next);
                             plugin.getScheduler().runOnServer(()->{
-                                if(closed)return;
+                                if(closed){updating.set(false);return;}
                                 String oldHint = settings.enabled() ? settings.hint() : "";
                                 String newHint = prepared.enabled() ? prepared.hint() : "";
-                                config=next;settings=prepared;refreshLabels();updating=false;
-                                for(Player p:plugin.getServer().getOnlinePlayers())refresh(p,true);
+                                config=next;settings=prepared;refreshLabels();updating.set(false);
+                                for(Player p:List.copyOf(plugin.getServer().getOnlinePlayers()))refreshOnOwner(p,true,()->{});
                                 logCapability();
                                 if (!Objects.equals(oldHint, newHint)) {
-                                    plugin.refreshResourcePack(line -> { if (actor != null) codes.castled.allium.text.TextSender.send(actor, line); });
+                                    plugin.refreshResourcePack(line -> {
+                                        if (actor != null) UtilitySupport.onOwner(plugin, actor, () -> {
+                                            if (!closed) codes.castled.allium.text.TextSender.send(actor, line);
+                                        });
+                                    });
                                 }
                                 if(actor!=null){send(actor,edit==null?Messages.HIDE_RELOADED:Messages.HIDE_UPDATED);audit(actor,"applied");}
                             });
                         }catch(Exception failure){failed(actor,failure);}});
-                    }catch(Exception invalid){updating=false;plugin.logger().warning("Hide reload refused: "+invalid.getMessage());if(actor!=null)send(actor,Messages.HIDE_FAILED);}
+                    }catch(Exception invalid){updating.set(false);plugin.logger().warning("Hide reload refused: "+invalid.getMessage());if(actor!=null)send(actor,Messages.HIDE_FAILED);}
                 });
             }catch(Exception invalid){failed(actor,invalid);}
-        });}catch(RejectedExecutionException busy){updating=false;if(actor!=null)send(actor,Messages.HIDE_BUSY);}
+        });}catch(RejectedExecutionException busy){updating.set(false);if(actor!=null)send(actor,Messages.HIDE_BUSY);}
     }
-    private void failed(CommandSender actor,Exception failure){plugin.logger().warning("Hide update failed: "+failure.getClass().getSimpleName());plugin.getScheduler().runOnServer(()->{if(closed)return;updating=false;if(actor!=null)send(actor,Messages.HIDE_FAILED);});}
+    private void failed(CommandSender actor,Exception failure){plugin.logger().warning("Hide update failed: "+failure.getClass().getSimpleName());plugin.getScheduler().runOnServer(()->{if(closed){updating.set(false);return;}updating.set(false);if(actor!=null)send(actor,Messages.HIDE_FAILED);});}
     private void save(YamlConfiguration next)throws IOException{
         byte[] before=Files.readAllBytes(file);Path temp=Files.createTempFile(file.getParent(),".allium-hide-",".tmp");
         try{Files.writeString(temp,next.saveToString(),java.nio.charset.StandardCharsets.UTF_8);Files.write(file.resolveSibling("hide.yml.before-edit"),before);Files.move(temp,file,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}finally{Files.deleteIfExists(temp);}
     }
-    private void send(CommandSender to,Messages key,String... args){if(!closed&&(!(to instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(to,key,args);}
-    public void admin(CommandSender actor,String[] args){admin(actor,args,usage->plugin.getMessageManager().send(actor,Messages.INVALID_ARGS,"{usage}",usage));}
+    private void send(CommandSender to,Messages key,String... args){
+        UtilitySupport.onOwner(plugin,to,()->{if(!closed&&(!(to instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(to,key,args);});
+    }
+    public void admin(CommandSender actor,String[] args){admin(actor,args,usage->UtilitySupport.onOwner(plugin,actor,()->plugin.getMessageManager().send(actor,Messages.INVALID_ARGS,"{usage}",usage)));}
     /** {@code usage} shows the usage card for the narrowest form that was wrong ({@code /allium hide group}). */
     public void admin(CommandSender actor,String[] args,java.util.function.Consumer<String> usage){
         if(!actor.hasPermission(ADMIN)){send(actor,Messages.NO_PERMISSION);return;}
@@ -263,7 +319,7 @@ public final class HideService implements Listener,AutoCloseable {
             if(args.length==0||args[0].equals("status")){send(actor,Messages.HIDE_INFO,"{message}","enabled="+settings.enabled()+", groups="+String.join(", ",settings.policy().groupNames())+", packet-filter="+(packets!=null));return;}
             if(args[0].equals("reload")&&args.length==1){update(actor,null);return;}
             if(args[0].equals("enabled")&&args.length==2&&Set.of("true","false").contains(args[1])){boolean on=Boolean.parseBoolean(args[1]);audit(actor,"enabled");update(actor,c->c.set("settings.enabled",on));return;}
-            if(args[0].equals("resolve")&&args.length>=3){Player target=plugin.getServer().getPlayerExact(args[1]);if(target==null||!codes.castled.allium.naming.PlayerNameVisibility.canSeeTarget(actor,target)){send(actor,Messages.CHAT_PLAYER_NOT_FOUND);return;}String line=String.join(" ",Arrays.copyOfRange(args,2,args.length));var d=permissions.resolve(target,line,commands,settings.permissionOverrides());send(actor,Messages.HIDE_PERMISSION,"{player}",target.getName(),"{command}",d.label(),"{source}",d.source().name(),"{permission}",Objects.toString(d.permission(),"native/unknown"),"{allowed}",Boolean.toString(d.allowed()));return;}
+            if(args[0].equals("resolve")&&args.length>=3){Player target=plugin.getServer().getPlayerExact(args[1]);if(target==null||!codes.castled.allium.naming.PlayerNameVisibility.canSeeTarget(actor,target)){send(actor,Messages.CHAT_PLAYER_NOT_FOUND);return;}String line=String.join(" ",Arrays.copyOfRange(args,2,args.length));UtilitySupport.onTarget(plugin,actor,target,()->{var d=permissions.resolve(target,line,commands,settings.permissionOverrides());send(actor,Messages.HIDE_PERMISSION,"{player}",target.getName(),"{command}",d.label(),"{source}",d.source().name(),"{permission}",Objects.toString(d.permission(),"native/unknown"),"{allowed}",Boolean.toString(d.allowed()));});return;}
             if(args[0].equals("fix")&&args.length==3){String label=HidePolicy.root(args[1]),permission=args[2];audit(actor,"permission-map");update(actor,c->{var rows=new ArrayList<Map<?,?>>(c.getMapList("permission-overrides"));rows.removeIf(r->label.equals(r.get("command")));rows.add(Map.of("command",label,"permission",permission));c.set("permission-overrides",rows);});return;}
             if(args[0].equals("unfix")&&args.length==2){String label=HidePolicy.root(args[1]);audit(actor,"permission-unmap");update(actor,c->{var rows=new ArrayList<Map<?,?>>(c.getMapList("permission-overrides"));rows.removeIf(r->label.equals(r.get("command")));c.set("permission-overrides",rows);});return;}
             if(args[0].equals("group")){groupAdmin(actor,Arrays.copyOfRange(args,1,args.length),usage);return;}
@@ -295,5 +351,5 @@ public final class HideService implements Listener,AutoCloseable {
         else if(Set.of("fix","unfix").contains(args[0])&&args.length==2)values=commands.keySet();
         return values.stream().filter(v->v.startsWith(prefix)).sorted().limit(128).toList();
     }
-    @Override public void close(){closed=true;timer.cancel();HandlerList.unregisterAll(this);if(packets!=null)packets.close();io.shutdown();viewers.clear();poll.clear();refresh.clear();refreshQueued.clear();}
+    @Override public void close(){closed=true;timer.cancel();HandlerList.unregisterAll(this);HidePacketHooks currentPackets=packets;packets=null;if(currentPackets!=null)currentPackets.close();io.shutdown();viewers.clear();poll.clear();pollTracked.clear();pollInFlight.clear();refresh.clear();refreshQueued.clear();}
 }

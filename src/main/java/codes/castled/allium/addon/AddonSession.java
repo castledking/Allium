@@ -21,16 +21,21 @@ import codes.castled.allium.item.ResolutionResult;
 import codes.castled.allium.module.ToolsModule;
 import codes.castled.allium.scheduler.AlliumScheduler;
 import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
 import codes.castled.allium.tool.powertool.PowerToolBehavior;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -42,6 +47,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BooleanSupplier;
 
 /** One connected addon: everything it registers or schedules is owned here and released on {@link #close}. */
 final class AddonSession implements AddonConnection {
@@ -63,7 +70,7 @@ final class AddonSession implements AddonConnection {
         this.addon = addon;
         this.namespace = addon.getName().toLowerCase(Locale.ROOT);
         this.economy = codes.castled.allium.economy.AddonMoney.of(allium, addon.getName());
-        this.scheduler = new AlliumScheduler(new BukkitServerThread(addon), message -> addon.getLogger().severe(message));
+        this.scheduler = new AlliumScheduler(BukkitServerThread.global(addon), message -> addon.getLogger().severe(message));
     }
 
     @Override
@@ -94,6 +101,63 @@ final class AddonSession implements AddonConnection {
     @Override
     public codes.castled.allium.api.AddonEconomy economy() {
         return economy;
+    }
+
+    @Override
+    public boolean isFolia() {
+        return BukkitServerThread.isFolia();
+    }
+
+    @Override
+    public boolean ownsEntity(Entity entity) {
+        return BukkitServerThread.entity(addon, entity).isServerThread();
+    }
+
+    @Override
+    public boolean ownsRegion(World world, int chunkX, int chunkZ) {
+        return BukkitServerThread.region(addon, world, chunkX, chunkZ).isServerThread();
+    }
+
+    @Override
+    public TaskHandle runForEntity(Entity entity, Runnable task, @Nullable Runnable retired, long delayMillis) {
+        if (BukkitServerThread.isFolia()) {
+            return scheduler.runOn(BukkitServerThread.entity(addon, entity), task, retired != null ? retired : () -> {}, delayMillis);
+        }
+        return delayMillis > 0L ? scheduler.runOnServerLater(task, delayMillis) : scheduler.runOnServer(task);
+    }
+
+    @Override
+    public TaskHandle repeatForEntity(Entity entity, BooleanSupplier step, long delayMillis, long periodMillis) {
+        if (BukkitServerThread.isFolia()) {
+            return scheduler.repeatOn(BukkitServerThread.entity(addon, entity), step, delayMillis, periodMillis);
+        }
+        return scheduler.repeatOnServer(step, delayMillis, periodMillis);
+    }
+
+    @Override
+    public TaskHandle runForRegion(World world, int chunkX, int chunkZ, Runnable task, long delayMillis) {
+        if (BukkitServerThread.isFolia()) {
+            return scheduler.runOn(BukkitServerThread.region(addon, world, chunkX, chunkZ), task, () -> {}, delayMillis);
+        }
+        return delayMillis > 0L ? scheduler.runOnServerLater(task, delayMillis) : scheduler.runOnServer(task);
+    }
+
+    @Override
+    public TaskHandle runForSender(CommandSender sender, Runnable task, @Nullable Runnable retired, long delayMillis) {
+        return BukkitServerThread.runFor(addon, scheduler, sender, task, retired != null ? retired : () -> {}, delayMillis);
+    }
+
+    @Override
+    public void onOwner(CommandSender sender, Runnable task) {
+        BukkitServerThread.onOwner(addon, scheduler, sender, task);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> teleport(Entity entity, Location destination, TeleportCause cause) {
+        if (BukkitServerThread.isFolia()) {
+            return BukkitServerThread.teleportRegional(entity, destination, cause);
+        }
+        return CompletableFuture.completedFuture(entity.teleport(destination, cause));
     }
 
     private void requireOpen() {
@@ -339,7 +403,7 @@ final class AddonSession implements AddonConnection {
     private final AddonText text = new AddonText() {
         @Override
         public void send(CommandSender recipient, String message) {
-            TextSender.send(recipient, message);
+            BukkitServerThread.onOwner(addon, scheduler, recipient, () -> TextSender.send(recipient, message));
         }
 
         @Override
@@ -348,7 +412,8 @@ final class AddonSession implements AddonConnection {
             for (Map.Entry<String, String> e : placeholders.entrySet()) {
                 out = out.replace("{" + e.getKey() + "}", String.valueOf(e.getValue()));
             }
-            TextSender.send(recipient, out);
+            String rendered = out;
+            BukkitServerThread.onOwner(addon, scheduler, recipient, () -> TextSender.send(recipient, rendered));
         }
 
         @Override

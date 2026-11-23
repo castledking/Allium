@@ -1,6 +1,7 @@
 package codes.castled.allium.command.tools;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
@@ -124,14 +125,17 @@ public final class VoucherCommand implements SpecCommandHandler {
         }
         stack.setAmount(amount);
         Player recipient = target;
-        recipient.getInventory().addItem(stack).values()
-                .forEach(left -> recipient.getWorld().dropItemNaturally(recipient.getLocation(), left));
+        int quantity = amount;
         String display = display(behavior, tool);
-        if (sender != recipient) {
-            send(sender, Messages.VOUCHER_GIVEN, "{amount}", Integer.toString(amount), "{voucher}", display, "{player}", recipient.getName());
-        }
-        send(recipient, Messages.VOUCHER_RECEIVED, "{amount}", Integer.toString(amount), "{voucher}", display);
-        plugin.logger().info("[Vouchers] " + sender.getName() + " gave " + amount + "x " + tool + " to " + recipient.getName() + ".");
+        UtilitySupport.onTarget(plugin, sender, recipient, () -> {
+            recipient.getInventory().addItem(stack).values()
+                    .forEach(left -> recipient.getWorld().dropItemNaturally(recipient.getLocation(), left));
+            if (sender != recipient) {
+                UtilitySupport.send(plugin, sender, Messages.VOUCHER_GIVEN, "{amount}", Integer.toString(quantity), "{voucher}", display, "{player}", recipient.getName());
+            }
+            UtilitySupport.send(plugin, recipient, Messages.VOUCHER_RECEIVED, "{amount}", Integer.toString(quantity), "{voucher}", display);
+            plugin.logger().info("[Vouchers] " + sender.getName() + " gave " + quantity + "x " + tool + " to " + recipient.getName() + ".");
+        });
     }
 
     private void list(CommandSender sender, PowerToolBehavior behavior) {

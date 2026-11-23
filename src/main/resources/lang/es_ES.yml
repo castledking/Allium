@@ -2537,6 +2537,8 @@ signs:
     - "{prefix} &aPagaste &e{price} &apor &f[{type}]&a."
   insufficient-funds:
     - "{prefix} &cNecesitas &e{price} &cpara usar este cartel."
+  paid-folia-unavailable:
+    - "{prefix} &cLos carteles de pago no están disponibles actualmente en Folia."
   paid-unavailable:
     - "{prefix} &cLos carteles de pago no estan disponibles ahora (la economia no esta lista)."
   unsafe-price:

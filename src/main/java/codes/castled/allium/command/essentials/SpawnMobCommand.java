@@ -7,6 +7,7 @@ import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -116,19 +117,19 @@ public final class SpawnMobCommand implements SpecCommandHandler {
         }
 
         Player target;
-        Location spawnLocation;
-        if (args.length == 3) {
+        Location lookedAt = null;
+        boolean targetedOther = args.length == 3;
+        if (targetedOther) {
             if (sender instanceof Player && !sender.hasPermission(PERM_OTHERS)) {
                 plugin.getMessageManager().send(sender, Messages.NO_PERMISSION, "{cmd}", "spawnmob for others");
                 return;
             }
             target = UtilitySupport.resolveVisibleOnlinePlayer(plugin, sender, args[2]);
             if (target == null) return;
-            spawnLocation = target.getLocation().clone();
         } else {
             Player player = (Player) sender;
             target = player;
-            spawnLocation = targetBlockLocation(player);
+            lookedAt = targetBlockLocation(player);
         }
 
         int serverLimit = configuredLimit();
@@ -142,11 +143,27 @@ public final class SpawnMobCommand implements SpecCommandHandler {
             plugin.getMessageManager().send(sender, Messages.SPAWNMOB_LIMIT, "{limit}", Integer.toString(serverLimit));
         }
 
+        List<MobSpawner.MobEntry> finalEntries = List.copyOf(entries);
+        List<String> finalDatas = java.util.Collections.unmodifiableList(new ArrayList<>(datas));
+        int finalAmount = amount;
+        if (targetedOther) {
+            UtilitySupport.onTarget(plugin, sender, target,
+                    () -> spawnAt(sender, target, target.getLocation().clone(), finalEntries, finalDatas, finalAmount));
+        } else {
+            Location spawnLocation = lookedAt;
+            UtilitySupport.onRegion(plugin, spawnLocation.getWorld(),
+                    spawnLocation.getBlockX() >> 4, spawnLocation.getBlockZ() >> 4,
+                    () -> spawnAt(sender, target, spawnLocation, finalEntries, finalDatas, finalAmount));
+        }
+    }
+
+    private void spawnAt(CommandSender sender, Player target, Location spawnLocation,
+                         List<MobSpawner.MobEntry> entries, List<String> datas, int amount) {
         int spawnedStacks = 0;
         for (int i = 0; i < amount; i++) {
             Entity root = MobSpawner.spawnStack(spawnLocation, entries, datas, target);
             if (root == null) {
-                plugin.getMessageManager().send(sender, Messages.SPAWNMOB_UNABLE);
+                UtilitySupport.send(plugin, sender, Messages.SPAWNMOB_UNABLE);
                 return;
             }
             spawnedStacks++;
@@ -156,7 +173,7 @@ public final class SpawnMobCommand implements SpecCommandHandler {
         String label = entries.size() == 1
                 ? entries.get(0).canonicalName()
                 : entries.stream().map(MobSpawner.MobEntry::canonicalName).collect(Collectors.joining(","));
-        plugin.getMessageManager().send(sender, Messages.SPAWNMOB_SPAWNED,
+        UtilitySupport.send(plugin, sender, Messages.SPAWNMOB_SPAWNED,
                 "{count}", Integer.toString(totalEntities),
                 "{mob}", label);
     }
@@ -197,7 +214,9 @@ public final class SpawnMobCommand implements SpecCommandHandler {
         if (args.length == 3 && (!(sender instanceof Player) || sender.hasPermission(PERM_OTHERS))) {
             String prefix = args[2].toLowerCase(Locale.ROOT);
             return plugin.getServer().getOnlinePlayers().stream()
-                    .filter(p -> PlayerNameVisibility.canSee(sender, p))
+                    .filter(p -> BukkitServerThread.isFolia()
+                            ? PlayerNameVisibility.canSeeTarget(sender, p)
+                            : PlayerNameVisibility.canSee(sender, p))
                     .map(Player::getName)
                     .filter(n -> n.toLowerCase(Locale.ROOT).startsWith(prefix))
                     .sorted()

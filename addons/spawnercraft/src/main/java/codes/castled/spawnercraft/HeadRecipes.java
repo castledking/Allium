@@ -1,5 +1,6 @@
 package codes.castled.spawnercraft;
 
+import codes.castled.allium.api.AddonConnection;
 import codes.castled.allium.api.AddonItems;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -25,12 +26,22 @@ final class HeadRecipes {
 
     private final Heads heads;
     private final AddonItems items;
+    private final AddonConnection connection;
     private final Supplier<Cards> cards;
-    private List<Recipe> recipes = List.of();
+    private volatile List<Recipe> recipes = List.of();
 
     HeadRecipes(Heads heads, AddonItems items, Supplier<Cards> cards) {
+        this(heads, items, null, cards);
+    }
+
+    HeadRecipes(Heads heads, AddonConnection connection, Supplier<Cards> cards) {
+        this(heads, connection.items(), connection, cards);
+    }
+
+    private HeadRecipes(Heads heads, AddonItems items, AddonConnection connection, Supplier<Cards> cards) {
         this.heads = heads;
         this.items = items;
+        this.connection = connection;
         this.cards = cards;
     }
 
@@ -168,6 +179,10 @@ final class HeadRecipes {
             String command = recipe.command().replace("{player}", player.getName())
                     .replace("{uuid}", player.getUniqueId().toString())
                     .replace("{mob}", match.mob()).replace("{mob_upper}", match.mob().toUpperCase(Locale.ROOT));
+            if (connection != null && connection.isFolia()) {
+                connection.scheduler().runOnServer(() -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command));
+                return true;
+            }
             return Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
         }
         ItemStack output;

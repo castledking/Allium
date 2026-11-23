@@ -60,12 +60,15 @@ public final class ThunderCommand implements SpecCommandHandler {
             }
         }
         boolean enabled = Boolean.parseBoolean(args[0]);
+        int durationTicks = ticks;
         var world = player.getWorld();
-        world.setThundering(enabled);
-        if (ticks > 0) {
-            world.setThunderDuration(ticks);
-        }
-        UtilitySupport.send(plugin, player, enabled ? Messages.THUNDER_ON : Messages.THUNDER_OFF,
-                "{world}", world.getName());
+        UtilitySupport.onGlobal(plugin, () -> {
+            world.setThundering(enabled);
+            if (durationTicks > 0) {
+                world.setThunderDuration(durationTicks);
+            }
+            UtilitySupport.send(plugin, player, enabled ? Messages.THUNDER_ON : Messages.THUNDER_OFF,
+                    "{world}", world.getName());
+        });
     }
 }

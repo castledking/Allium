@@ -1,11 +1,13 @@
 package codes.castled.allium.moderation;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.UntrustedText;
 import codes.castled.allium.messaging.MessagingService;
 import codes.castled.allium.naming.NameCache;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.teleport.DestinationSafety;
 import codes.castled.allium.teleport.SavedLocation;
@@ -139,10 +141,11 @@ public final class DisciplineService implements Listener {
     private final Map<UUID, JailAssignment> prisoners = new ConcurrentHashMap<>();
     private final Map<UUID, Object> pending = new ConcurrentHashMap<>();
     private final Map<UUID, Long> revisions = new ConcurrentHashMap<>();
-    private final Map<UUID, Long> lastActions = new HashMap<>();
+    private final Map<UUID, Long> lastActions = new ConcurrentHashMap<>();
     private volatile java.util.function.Consumer<codes.castled.allium.discord.StaffPosts.Notice> notices = notice -> { };
-    private final Map<UUID, ScopedMove> scopedMoves = new HashMap<>();
+    private final Map<UUID, ScopedMove> scopedMoves = new ConcurrentHashMap<>();
     private final Map<UUID, PendingRelease> releases = new ConcurrentHashMap<>();
+    private final java.util.Set<UUID> expiredReleasesInFlight = ConcurrentHashMap.newKeySet();
     private final AtomicInteger writes = new AtomicInteger();
     private final AtomicLong stateRevision = new AtomicLong();
     private final DestinationSafety safety = new DestinationSafety();
@@ -194,6 +197,7 @@ public final class DisciplineService implements Listener {
         connections.clear();
         lastActions.clear();
         scopedMoves.clear();
+        expiredReleasesInFlight.clear();
         if (io instanceof ExecutorService pool) {
             pool.shutdown();
             try {
@@ -457,6 +461,14 @@ public final class DisciplineService implements Listener {
     }
 
     private void enforceLoaded(Player player) {
+        if (BukkitServerThread.isFolia()) {
+            UtilitySupport.onOwner(plugin, player, () -> enforceLoadedOnOwner(player));
+            return;
+        }
+        enforceLoadedOnOwner(player);
+    }
+
+    private void enforceLoadedOnOwner(Player player) {
         Connection c = connections.get(player.getUniqueId());
         if (c == null || !c.loaded || !currentPlayer(player.getUniqueId(), c)) return;
         BanRecord ban = activeBan(player.getUniqueId(), c.address);
@@ -470,7 +482,17 @@ public final class DisciplineService implements Listener {
                 return;
             }
             JailRecord jail = jails.get(assignment.jailName());
-            Location location = jail == null ? null : safe(jail.location());
+            if (jail == null) return;
+            if (BukkitServerThread.isFolia()) {
+                Location currentLoc = player.getLocation().clone();
+                safeAsync(jail.location()).whenComplete((found, err) -> {
+                    if (closed || err != null || found == null || found.isEmpty()) return;
+                    Location dest = found.get();
+                    if (!samePosition(currentLoc, dest)) moveRegional(player, dest);
+                });
+                return;
+            }
+            Location location = safe(jail.location());
             if (location != null && !samePosition(player.getLocation(), location)) move(player, location);
         }
     }
@@ -491,8 +513,29 @@ public final class DisciplineService implements Listener {
     private void releaseExpiredJail(Player online, JailAssignment assignment) {
         UUID id = assignment.playerUuid();
         if (pending.containsKey(id) || releases.containsKey(id)) return;
+        if (BukkitServerThread.isFolia()) {
+            if (!expiredReleasesInFlight.add(id)) return;
+            safeAsync(assignment.returnLocation()).whenComplete((found, err) -> {
+                if (closed || err != null || found == null || found.isEmpty() || !sameSession(online)) {
+                    expiredReleasesInFlight.remove(id);
+                    return;
+                }
+                moveRegional(online, found.get()).whenComplete((moved, moveErr) -> {
+                    expiredReleasesInFlight.remove(id);
+                    if (closed || moveErr != null || !Boolean.TRUE.equals(moved) || !sameSession(online)) return;
+                    commitExpiredJailRelease(online, assignment);
+                });
+            });
+            return;
+        }
         Location origin = safe(assignment.returnLocation());
         if (origin == null || !move(online, origin)) return;
+        commitExpiredJailRelease(online, assignment);
+    }
+
+    private void commitExpiredJailRelease(Player online, JailAssignment assignment) {
+        UUID id = assignment.playerUuid();
+        if (pending.containsKey(id) || releases.containsKey(id)) return;
         PendingRelease release = new PendingRelease(online, assignment);
         if (releases.putIfAbsent(id, release) != null) return;
         Object token = new Object();
@@ -508,7 +551,7 @@ public final class DisciplineService implements Listener {
                 if (release.unsafeRespawn) throw new SQLException("Return location became unsafe during expired release");
                 boolean removed = repository.removeJailed(id, "System");
                 if (removed) publish(() -> prisoners.remove(id, assignment));
-                server(() -> {
+                serverFor(online, () -> {
                     try {
                         if (release.unsafeRespawn && removed) {
                             publish(() -> prisoners.put(id, assignment));
@@ -525,14 +568,14 @@ public final class DisciplineService implements Listener {
             } catch (SQLException | RuntimeException failure) {
                 plugin.logger().warning("Expired jail release storage failed for " + id + ": " + failure.getMessage());
                 finish(id, token);
-                server(() -> {
+                serverFor(online, () -> {
                     releases.remove(id, release);
                     if (sameSession(online)) enforceLoaded(online);
                 });
             }
         }, () -> {
             finish(id, token);
-            server(() -> {
+            serverFor(online, () -> {
                 releases.remove(id, release);
                 if (sameSession(online)) enforceLoaded(online);
             });
@@ -568,7 +611,7 @@ public final class DisciplineService implements Listener {
         Player player = event.getPlayer();
         PendingRelease release = releases.get(player.getUniqueId());
         if (release != null && release.player == player) {
-            Location origin = safe(release.assignment.returnLocation());
+            Location origin = safeIfOwnedRegion(release.assignment.returnLocation());
             if (origin != null) { event.setRespawnLocation(origin); return; }
             // Do not discard the durable origin if it became unsafe during this release.
             release.unsafeRespawn = true;
@@ -577,9 +620,63 @@ public final class DisciplineService implements Listener {
         JailAssignment assignment = prisoners.get(player.getUniqueId());
         if (c != null && c.loaded && c.player == player && assignment != null) {
             JailRecord jail = jails.get(assignment.jailName());
-            Location location = jail == null ? null : safe(jail.location());
-            if (location != null) event.setRespawnLocation(location);
+            if (jail != null) {
+                Location location = safeIfOwnedRegion(jail.location());
+                if (location != null) {
+                    event.setRespawnLocation(location);
+                } else if (BukkitServerThread.isFolia() && plugin.getScheduler() != null) {
+                    BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+                        if (!closed && sameSession(player)) enforceLoaded(player);
+                    }, () -> {}, 50L);
+                }
+            }
         }
+    }
+
+    private Location safeIfOwnedRegion(SavedLocation saved) {
+        if (!BukkitServerThread.isFolia()) {
+            return safe(saved);
+        }
+        World world = plugin.getServer().getWorld(saved.worldId());
+        if (world == null) return null;
+        int cx = (int) Math.floor(saved.x()) >> 4;
+        int cz = (int) Math.floor(saved.z()) >> 4;
+        if (!BukkitServerThread.region(plugin, world, cx, cz).isServerThread()) {
+            return null;
+        }
+        return safe(saved);
+    }
+
+    private CompletableFuture<Boolean> moveRegional(Player player, Location destination) {
+        CompletableFuture<Boolean> out = new CompletableFuture<>();
+        UtilitySupport.onOwner(plugin, player, () -> {
+            if (closed || !sameSession(player)) {
+                out.complete(false);
+                return;
+            }
+            player.leaveVehicle();
+            ScopedMove token = new ScopedMove(player, destination.clone());
+            scopedMoves.put(player.getUniqueId(), token);
+            try {
+                BukkitServerThread.teleportRegional(player, destination, PlayerTeleportEvent.TeleportCause.PLUGIN)
+                        .whenComplete((ok, err) -> {
+                            scopedMoves.remove(player.getUniqueId(), token);
+                            out.complete(err == null && Boolean.TRUE.equals(ok));
+                        });
+            } catch (RuntimeException failure) {
+                scopedMoves.remove(player.getUniqueId(), token);
+                out.complete(false);
+            }
+        });
+        return out;
+    }
+
+    private void kickOnOwner(Player target, String message) {
+        UtilitySupport.onOwner(plugin, target, () -> {
+            if (sameSession(target)) {
+                target.kickPlayer(message);
+            }
+        });
     }
 
     private boolean move(Player player, Location destination) {
@@ -605,6 +702,13 @@ public final class DisciplineService implements Listener {
         World world = plugin.getServer().getWorld(saved.worldId());
         if (world == null) return null;
         return safety.resolve(new Location(world, saved.x(), saved.y(), saved.z(), saved.yaw(), saved.pitch()), JAIL_SAFETY).orElse(null);
+    }
+
+    private CompletableFuture<Optional<Location>> safeAsync(SavedLocation saved) {
+        World world = plugin.getServer().getWorld(saved.worldId());
+        if (world == null) return CompletableFuture.completedFuture(Optional.empty());
+        return safety.resolveAsync(plugin,
+                new Location(world, saved.x(), saved.y(), saved.z(), saved.yaw(), saved.pitch()), JAIL_SAFETY);
     }
 
     /** Parsing and authoritative async name resolution; command specs own registration and aliases. */
@@ -678,7 +782,7 @@ public final class DisciplineService implements Listener {
         Long finalDuration = duration;
         if (plugin.getPlayerNames() == null) { send(sender, Messages.DISCIPLINE_UNAVAILABLE); return; }
         try {
-            plugin.getPlayerNames().resolve(args[0]).whenComplete((found, error) -> server(() -> {
+            plugin.getPlayerNames().resolve(args[0]).whenComplete((found, error) -> serverFor(sender, () -> {
                 if (!authorized(actor)) return;
                 if (error != null) { send(sender, Messages.DISCIPLINE_UNAVAILABLE); return; }
                 if (found == null || found.isEmpty()) { send(sender, Messages.PLAYER_NOT_FOUND, "{player}", MessagingService.safeName(args[0])); return; }
@@ -720,7 +824,7 @@ public final class DisciplineService implements Listener {
             case "kick" -> {
                 if (visible == null) { send(actor.sender(), Messages.PLAYER_NOT_FOUND, "{player}", target.name()); return; }
                 write(actor, id, online, () -> { repository.recordAudit("KICK", actorName, id, target.name(), reason); return true; }, result -> {
-                    if (sameSession(online)) online.kickPlayer(text(Messages.DISCIPLINE_KICK_NOTICE, reason));
+                    if (sameSession(online)) kickOnOwner(online, text(Messages.DISCIPLINE_KICK_NOTICE, reason));
                     else return false;
                     return true;
                 }, action, target.name(), notice("kick", actorName, target.name(), reason, null, null));
@@ -744,7 +848,7 @@ public final class DisciplineService implements Listener {
                     publish(() -> { Map<UUID, BanRecord> next = new HashMap<>(bans); next.put(id, ban); bans = Map.copyOf(next); });
                     return ban;
                 }, result -> {
-                    if (sameSession(online)) online.kickPlayer(text(Messages.DISCIPLINE_BAN_DENIED, result.reason()));
+                    if (sameSession(online)) kickOnOwner(online, text(Messages.DISCIPLINE_BAN_DENIED, result.reason()));
                     if (isIp && finalIp != null) kickMatchingIp(actor.sender(), finalIp, result.reason(), id);
                     return true;
                 }, action, target.name(), notice(isIp ? "ipban" : action, actorName, target.name(), reason, ban.expiresAt(), null));
@@ -784,7 +888,10 @@ public final class DisciplineService implements Listener {
                     if (next) repository.setFrozen(record); else repository.removeFrozen(id, actorName);
                     publish(() -> { if (next) frozen.put(id, record); else frozen.remove(id); });
                     return next;
-                }, result -> { if (result && sameSession(online)) online.leaveVehicle(); return true; },
+                }, result -> {
+                    if (result && sameSession(online)) UtilitySupport.onOwner(plugin, online, () -> { if (sameSession(online)) online.leaveVehicle(); });
+                    return true;
+                },
                         next ? "freeze" : "unfreeze", target.name(),
                         notice(next ? "freeze" : "unfreeze", actorName, target.name(), record.reason(), null, null));
             }
@@ -847,7 +954,7 @@ public final class DisciplineService implements Listener {
             if (alreadyKicked != null && alreadyKicked.equals(online.getUniqueId())) continue;
             if (!ip.equalsIgnoreCase(online.getAddress().getAddress().getHostAddress())) continue;
             if (canModerate(actor, online.getUniqueId())) {
-                online.kickPlayer(message);
+                kickOnOwner(online, message);
             }
         }
     }
@@ -913,7 +1020,19 @@ public final class DisciplineService implements Listener {
         JailRecord record;
         try { record = new JailRecord(name, saved(player.getLocation())); }
         catch (IllegalArgumentException e) { usage(player, "/setjail <name>"); return; }
+        if (BukkitServerThread.isFolia()) {
+            safeAsync(record.location()).whenComplete((found, err) -> serverFor(player, () -> {
+                if (!authorized(actor)) return;
+                if (err != null || found == null || found.isEmpty()) { send(player, Messages.DISCIPLINE_UNSAFE_LOCATION); return; }
+                commitSetJail(actor, player, record);
+            }));
+            return;
+        }
         if (safe(record.location()) == null) { send(player, Messages.DISCIPLINE_UNSAFE_LOCATION); return; }
+        commitSetJail(actor, player, record);
+    }
+
+    private void commitSetJail(Actor actor, Player player, JailRecord record) {
         if (!rate(player)) return;
         write(actor, new UUID(0, 0), null, () -> {
             repository.saveJail(record, actor.name());
@@ -959,7 +1078,7 @@ public final class DisciplineService implements Listener {
             if (sender instanceof Player p && p.getUniqueId().equals(online.getUniqueId())) continue;
             if (online.hasPermission(KICKALL_EXEMPT_PERMISSION)) continue;
             if (!trustedActor && exemptNode != null && !exemptNode.isBlank() && online.hasPermission(exemptNode)) continue;
-            online.kickPlayer(kickText);
+            kickOnOwner(online, kickText);
             kicked++;
         }
         if (kicked == 0) {
@@ -980,14 +1099,50 @@ public final class DisciplineService implements Listener {
     private void jail(Actor actor, NameCache.Entry target, Player online, String jailName, String reason, Long durationMillis) {
         JailRecord jail = jails.get(jailName.toLowerCase(Locale.ROOT));
         if (jail == null) { send(actor.sender(), Messages.DISCIPLINE_JAIL_NOT_FOUND, "{jail}", plain(jailName)); return; }
+        if (BukkitServerThread.isFolia()) {
+            JailAssignment existing = prisoners.get(target.uuid());
+            if (existing == null && (online == null || !online.isOnline() || !ready(target.uuid()))) {
+                send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return;
+            }
+            CompletableFuture<Optional<Location>> safeDestFuture = safeAsync(jail.location());
+            CompletableFuture<SavedLocation> originFuture = new CompletableFuture<>();
+            if (existing != null) {
+                originFuture.complete(existing.returnLocation());
+            } else {
+                UtilitySupport.onOwner(plugin, online, () -> {
+                    if (closed || !sameSession(online)) {
+                        originFuture.complete(null);
+                    } else {
+                        originFuture.complete(saved(online.getLocation()));
+                    }
+                });
+            }
+            safeDestFuture.thenCombine(originFuture, (safeDest, origin) -> new Object[]{safeDest, origin})
+                    .whenComplete((pair, err) -> serverFor(actor.sender(), () -> {
+                        if (!authorized(actor)) return;
+                        if (err != null || pair == null) { send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return; }
+                        @SuppressWarnings("unchecked")
+                        Optional<Location> safeDest = (Optional<Location>) pair[0];
+                        SavedLocation origin = (SavedLocation) pair[1];
+                        if (safeDest == null || safeDest.isEmpty()) { send(actor.sender(), Messages.DISCIPLINE_UNSAFE_LOCATION); return; }
+                        if (origin == null) { send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return; }
+                        commitJail(actor, target, online, jail, origin, safeDest.get(), reason, durationMillis);
+                    }));
+            return;
+        }
         if (safe(jail.location()) == null) { send(actor.sender(), Messages.DISCIPLINE_UNSAFE_LOCATION); return; }
         JailAssignment existing = prisoners.get(target.uuid());
         if (existing == null && (online == null || !online.isOnline() || !ready(target.uuid()))) {
             send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return;
         }
+        SavedLocation origin = existing == null ? saved(online.getLocation()) : existing.returnLocation();
+        commitJail(actor, target, online, jail, origin, null, reason, durationMillis);
+    }
+
+    private void commitJail(Actor actor, NameCache.Entry target, Player online, JailRecord jail,
+                            SavedLocation origin, Location preResolvedDest, String reason, Long durationMillis) {
         long now = clock.getAsLong();
         Long expiresAt = durationMillis == null ? null : now + durationMillis;
-        SavedLocation origin = existing == null ? saved(online.getLocation()) : existing.returnLocation();
         JailAssignment assignment = new JailAssignment(target.uuid(), target.name(), actor.name(), reason,
                 now, jail.name(), origin, expiresAt);
         write(actor, target.uuid(), online, () -> {
@@ -1000,6 +1155,11 @@ public final class DisciplineService implements Listener {
             return persisted;
         }, result -> {
             if (sameSession(online)) {
+                if (BukkitServerThread.isFolia()) {
+                    if (preResolvedDest == null) return false;
+                    moveRegional(online, preResolvedDest);
+                    return true;
+                }
                 Location destination = safe(jail.location());
                 return destination != null && move(online, destination);
             }
@@ -1012,11 +1172,32 @@ public final class DisciplineService implements Listener {
         if (assignment == null) { send(actor.sender(), Messages.DISCIPLINE_NOT_ACTIVE, "{player}", target.name()); return; }
         // Without a durable pending-return row, offline release would discard the exact return.
         if (!sameSession(online) || !ready(target.uuid())) { send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return; }
+        if (BukkitServerThread.isFolia()) {
+            safeAsync(assignment.returnLocation()).whenComplete((found, err) -> serverFor(actor.sender(), () -> {
+                if (!authorized(actor)) return;
+                if (err != null) { send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return; }
+                if (found == null || found.isEmpty()) { send(actor.sender(), Messages.DISCIPLINE_UNSAFE_LOCATION); return; }
+                if (!sameSession(online) || !ready(target.uuid())) { send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return; }
+                moveRegional(online, found.get()).whenComplete((moved, moveErr) -> serverFor(actor.sender(), () -> {
+                    if (closed) return;
+                    if (moveErr != null || !Boolean.TRUE.equals(moved)) {
+                        sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE);
+                        return;
+                    }
+                    commitUnjail(actor, target, online, assignment);
+                }));
+            }));
+            return;
+        }
         Location origin = safe(assignment.returnLocation());
         if (origin == null) { send(actor.sender(), Messages.DISCIPLINE_UNSAFE_LOCATION); return; }
         // Prove the exact return succeeded before removing its only durable copy. During storage
         // the assignment remains active and movement remains blocked. Failure re-applies the jail.
         if (!move(online, origin)) { send(actor.sender(), Messages.DISCIPLINE_UNAVAILABLE); return; }
+        commitUnjail(actor, target, online, assignment);
+    }
+
+    private void commitUnjail(Actor actor, NameCache.Entry target, Player online, JailAssignment assignment) {
         PendingRelease release = new PendingRelease(online, assignment);
         releases.put(target.uuid(), release);
         write(actor, target.uuid(), online, () -> {
@@ -1084,7 +1265,7 @@ public final class DisciplineService implements Listener {
         revisions.merge(id, 1L, Long::sum);
         // Queue a server-thread authorization checkpoint immediately before queuing the JDBC write.
         // This catches disconnects/permission changes while waiting in a saturated storage pool.
-        submit(() -> server(() -> {
+        submit(() -> serverFor(actor.sender(), () -> {
             if (!authorized(actor) || checkTargetModerate && !canModerate(actor.sender(), id)
                     || expectedTarget != null && !sameSession(expectedTarget)) {
                 finish(id, token); failed.run(); sendIfCurrent(actor, Messages.DISCIPLINE_EXEMPT); return;
@@ -1095,7 +1276,7 @@ public final class DisciplineService implements Listener {
                     if (checkTargetModerate && expectedTarget == null && !(actor.sender() instanceof ConsoleCommandSender))
                         repository.recordAudit("DISCIPLINE_BYPASS", actor.name(), id, name, "offline permission override action=" + action);
                     T result = sql.run();
-                    server(() -> {
+                    serverFor(actor.sender(), () -> {
                         try {
                             boolean permitted = authorized(actor) && (!checkTargetModerate || canModerate(actor.sender(), id));
                             // Durable actions must reach the captured target session even when the
@@ -1121,7 +1302,7 @@ public final class DisciplineService implements Listener {
                 } catch (SQLException | RuntimeException failure) {
                     plugin.logger().warning("Discipline " + action + " storage failed for " + id + ": " + failure.getMessage());
                     finish(id, token);
-                    server(() -> { failed.run(); sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE); });
+                    serverFor(actor.sender(), () -> { failed.run(); sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE); });
                 }
             }, () -> { finish(id, token); failed.run(); sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE); });
         }), () -> { finish(id, token); failed.run(); sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE); });
@@ -1177,14 +1358,14 @@ public final class DisciplineService implements Listener {
         submit(() -> {
             try {
                 List<HistoryEntry> entries = warnings ? repository.listWarnings(target.uuid(), 50) : repository.listNotes(target.uuid(), 50);
-                server(() -> {
+                serverFor(actor.sender(), () -> {
                     if (!authorized(actor)) return;
                     if (entries.isEmpty()) { send(actor.sender(), Messages.DISCIPLINE_LIST_EMPTY); return; }
                     send(actor.sender(), Messages.DISCIPLINE_LIST_HEADER, "{count}", Integer.toString(entries.size()));
                     for (HistoryEntry entry : entries) literal(actor.sender(), Messages.DISCIPLINE_LIST_ENTRY, entry.reason(),
                             "{player}", entry.targetName(), "{actor}", entry.actorName());
                 });
-            } catch (SQLException failure) { server(() -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE)); }
+            } catch (SQLException failure) { serverFor(actor.sender(), () -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE)); }
         }, () -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE));
     }
 
@@ -1201,6 +1382,19 @@ public final class DisciplineService implements Listener {
         if (plugin.getScheduler() == null) task.run();
         else plugin.getScheduler().runOnServer(() -> { if (!closed) task.run(); });
     }
+    private void serverFor(CommandSender sender, Runnable task) {
+        if (closed) return;
+        if (plugin.getScheduler() == null) {
+            task.run();
+            return;
+        }
+        Runnable guarded = () -> { if (!closed) task.run(); };
+        if (BukkitServerThread.isFolia()) {
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, guarded, guarded, 0L);
+        } else {
+            plugin.getScheduler().runOnServer(guarded);
+        }
+    }
     private static String plain(String raw) { return UntrustedText.clean(raw == null ? "" : raw); }
     private static String reason(String[] args, int start) {
         String reason = start >= args.length ? "No reason supplied." : plain(String.join(" ", Arrays.copyOfRange(args, start, args.length)));
@@ -1210,14 +1404,17 @@ public final class DisciplineService implements Listener {
     private void usage(CommandSender sender, String usage) {
         if (closed) return;
         String command = usage.startsWith("/") ? usage.substring(1).split(" ", 2)[0] : usage;
-        codes.castled.allium.command.CommandUsageCard.sendInvalid(plugin, sender, command, command, usage);
+        UtilitySupport.onOwner(plugin, sender, () -> {
+            if (!closed) codes.castled.allium.command.CommandUsageCard.sendInvalid(plugin, sender, command, command, usage);
+        });
     }
-    private void send(CommandSender sender, Messages message, String... replacements) { plugin.getMessageManager().send(sender, message, replacements); }
+    private void send(CommandSender sender, Messages message, String... replacements) { UtilitySupport.send(plugin, sender, message, replacements); }
     private FormattedText formatted(Messages message, String body, String... replacements) {
         return UntrustedText.insert(plugin.getMessageManager().resolve(message, replacements), UntrustedText.parse(body, UntrustedText.Allow.NONE));
     }
     private String text(Messages message, String body) { return formatted(message, body).toLegacy(); }
     private void literal(CommandSender sender, Messages message, String body, String... replacements) {
-        TextSender.sendLiteral(sender, formatted(message, body, replacements));
+        FormattedText content = formatted(message, body, replacements);
+        UtilitySupport.onOwner(plugin, sender, () -> TextSender.sendLiteral(sender, content));
     }
 }

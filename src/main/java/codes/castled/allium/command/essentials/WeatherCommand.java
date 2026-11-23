@@ -10,6 +10,7 @@ import codes.castled.allium.message.Messages;
 import org.bukkit.World;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public final class WeatherCommand implements SpecCommandHandler.Immediate {
 
@@ -26,36 +27,52 @@ public final class WeatherCommand implements SpecCommandHandler.Immediate {
 
     @Override
     public boolean executeWithResult(BukkitCommandContext context) {
+        boolean[] applied = {true};
+        executeForSign(context, result -> applied[0] = result);
+        return applied[0];
+    }
+
+    /** Deferred sign entry point: reports whether the global weather change actually succeeded. */
+    public void executeForSign(BukkitCommandContext context, Consumer<Boolean> complete) {
         var parsedOpt = WeatherState.parse(context.args());
         if (parsedOpt.isEmpty()) {
             context.sendInvalidArgs(spec().selfUsage());
-            return false;
+            complete.accept(false);
+            return;
         }
         var parsed = parsedOpt.get();
         List<World> worlds = UtilitySupport.resolveWorlds(plugin, context.sender(), parsed.worldSelector());
-        if (worlds == null) {
-            return false;
+        if (worlds == null || worlds.isEmpty()) {
+            complete.accept(false);
+            return;
         }
         var condition = parsed.condition();
         Integer duration = parsed.durationSeconds();
-        for (World world : worlds) {
-            world.setStorm(condition.storm());
-            world.setThundering(condition.thunder());
-            if (duration != null) {
-                int ticks = duration * 20;
-                world.setWeatherDuration(ticks);
-                if (condition.thunder()) {
-                    world.setThunderDuration(ticks);
+        UtilitySupport.onGlobal(plugin, () -> {
+            boolean applied = false;
+            try {
+                for (World world : worlds) {
+                    world.setStorm(condition.storm());
+                    world.setThundering(condition.thunder());
+                    if (duration != null) {
+                        int ticks = duration * 20;
+                        world.setWeatherDuration(ticks);
+                        if (condition.thunder()) {
+                            world.setThunderDuration(ticks);
+                        }
+                    }
+                    UtilitySupport.send(plugin, context.sender(), Messages.WEATHER_SET,
+                            "{weather}", condition.displayName(),
+                            "{world}", world.getName());
+                    UtilitySupport.audit(plugin, context.sender(), "weather",
+                            "world=" + world.getName() + " condition=" + condition.displayName()
+                                    + (duration == null ? "" : " duration=" + duration + "s"));
                 }
+                applied = worlds.stream().allMatch(world ->
+                        world.hasStorm() == condition.storm() && world.isThundering() == condition.thunder());
+            } finally {
+                complete.accept(applied);
             }
-            UtilitySupport.send(plugin, context.sender(), Messages.WEATHER_SET,
-                    "{weather}", condition.displayName(),
-                    "{world}", world.getName());
-            UtilitySupport.audit(plugin, context.sender(), "weather",
-                    "world=" + world.getName() + " condition=" + condition.displayName()
-                            + (duration == null ? "" : " duration=" + duration + "s"));
-        }
-        return !worlds.isEmpty() && worlds.stream().allMatch(world ->
-                world.hasStorm() == condition.storm() && world.isThundering() == condition.thunder());
+        });
     }
 }

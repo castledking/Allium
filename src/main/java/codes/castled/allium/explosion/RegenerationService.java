@@ -1,11 +1,14 @@
 package codes.castled.allium.explosion;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.explosion.ExplosionSettings.Explosive;
 import codes.castled.allium.explosion.ExplosionSettings.Source;
 import codes.castled.allium.mail.MailItemCodec;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.ServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.tool.BukkitParticles;
 import org.bukkit.Bukkit;
@@ -77,6 +80,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 /**
@@ -129,8 +133,11 @@ public final class RegenerationService implements Listener {
         final long startAt;
         int next;
         double budget;
-        boolean dirty;
+        volatile boolean dirty;
         boolean persistWarned;
+        @Nullable
+        volatile TaskHandle task;
+        final AtomicInteger inFlightCrossRegion = new AtomicInteger();
 
         Job(UUID id, World world, double centerX, double centerY, double centerZ, long created, List<CapturedBlock> blocks,
             long startAt) {
@@ -158,16 +165,16 @@ public final class RegenerationService implements Listener {
     private final RegenJournal journal;
     private final NamespacedKey explosiveKey;
     private final MailItemCodec codec = new MailItemCodec();
-    private final Map<UUID, Job> jobs = new LinkedHashMap<>();
-    private final Map<BlockKey, Job> pending = new HashMap<>();
-    private final Map<ChunkKey, Integer> tickets = new HashMap<>();
-    private final Deque<Window> windows = new ArrayDeque<>();
-    private final Set<String> warned = new HashSet<>();
+    private final Map<UUID, Job> jobs = new ConcurrentHashMap<>();
+    private final Map<BlockKey, Job> pending = new ConcurrentHashMap<>();
+    private final Map<ChunkKey, Integer> tickets = new ConcurrentHashMap<>();
+    private final ThreadLocal<Deque<Window>> windows = ThreadLocal.withInitial(ArrayDeque::new);
+    private final ThreadLocal<Boolean> sweepQueued = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    private final Set<String> warned = ConcurrentHashMap.newKeySet();
     private volatile ExplosionSettings settings;
     @Nullable
-    private TaskHandle ticker;
-    private boolean sweepQueued;
-    private boolean closed;
+    private volatile TaskHandle ticker;
+    private volatile boolean closed;
 
     public RegenerationService(PluginStart plugin) {
         this.plugin = plugin;
@@ -198,7 +205,8 @@ public final class RegenerationService implements Listener {
             ticker.cancel();
             ticker = null;
         }
-        windows.clear();
+        windows.remove();
+        sweepQueued.remove();
     }
 
     /** Re-reads {@code explosions.yml}; on an error the previous settings stay and false is returned. */
@@ -394,9 +402,20 @@ public final class RegenerationService implements Listener {
         jobs.put(job.id, job);
         for (CapturedBlock block : job.blocks) pending.put(new BlockKey(job.world.getUID(), block.x(), block.y(), block.z()), job);
         for (ChunkKey chunk : job.chunks) {
-            if (tickets.merge(chunk, 1, Integer::sum) == 1) job.world.addPluginChunkTicket(chunk.x(), chunk.z(), plugin);
+            if (tickets.merge(chunk, 1, Integer::sum) == 1) {
+                UtilitySupport.onRegion(plugin, job.world, chunk.x(), chunk.z(),
+                        () -> job.world.addPluginChunkTicket(chunk.x(), chunk.z(), plugin));
+            }
         }
-        if (ticker == null && !closed) {
+        if (closed) return;
+        if (BukkitServerThread.isFolia()) {
+            long delay = Math.max(50L, job.startAt - System.currentTimeMillis());
+            ServerThread centerRegion = BukkitServerThread.region(plugin, job.world,
+                    ((int) Math.floor(job.centerX)) >> 4, ((int) Math.floor(job.centerZ)) >> 4);
+            job.task = plugin.getScheduler().runOn(centerRegion, () -> tickFoliaJob(job), () -> {}, delay);
+            return;
+        }
+        if (ticker == null) {
             ticker = plugin.getScheduler().repeatOnServer(this::tick, 50L, 50L);
         }
     }
@@ -455,12 +474,102 @@ public final class RegenerationService implements Listener {
         return true;
     }
 
+    private void tickFoliaJob(Job job) {
+        if (closed || !jobs.containsKey(job.id)) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        ExplosionSettings settings = this.settings;
+        ServerThread centerRegion = BukkitServerThread.region(plugin, job.world,
+                ((int) Math.floor(job.centerX)) >> 4, ((int) Math.floor(job.centerZ)) >> 4);
+        if (now >= job.startAt) {
+            double perTick = settings.blocksPerTick();
+            job.budget = Math.min(job.budget + perTick, Math.max(1.0D, perTick) * 2.0D);
+            Block last = null;
+            while (job.budget >= 1.0D && job.next < job.blocks.size()) {
+                job.budget -= 1.0D;
+                CapturedBlock entry = job.blocks.get(job.next++);
+                ServerThread blockRegion = BukkitServerThread.region(plugin, job.world, entry.x() >> 4, entry.z() >> 4);
+                if (blockRegion.isServerThread()) {
+                    Block placed = restore(job, entry);
+                    if (placed != null) {
+                        last = placed;
+                        if (settings.effects()) particle(placed);
+                    }
+                } else {
+                    job.inFlightCrossRegion.incrementAndGet();
+                    TaskHandle handle = plugin.getScheduler().runOn(blockRegion, () -> {
+                        try {
+                            Block placed = restore(job, entry);
+                            if (placed != null && settings.effects()) {
+                                particle(placed);
+                                placed.getWorld().playSound(placed.getLocation().add(0.5D, 0.5D, 0.5D), CHIME, 0.6F, 1.0F);
+                            }
+                        } finally {
+                            job.inFlightCrossRegion.decrementAndGet();
+                        }
+                    }, job.inFlightCrossRegion::decrementAndGet, 0L);
+                    if (handle == TaskHandle.NONE) {
+                        job.inFlightCrossRegion.decrementAndGet();
+                    }
+                }
+            }
+            if (last != null && settings.effects()) {
+                last.getWorld().playSound(last.getLocation().add(0.5D, 0.5D, 0.5D), CHIME, 0.6F, 1.0F);
+            }
+        }
+        if (job.next >= job.blocks.size()) {
+            if (job.inFlightCrossRegion.get() > 0) {
+                job.task = plugin.getScheduler().runOn(centerRegion, () -> tickFoliaJob(job), () -> {}, 50L);
+            } else {
+                finish(job);
+            }
+            return;
+        }
+        if (job.dirty) {
+            persist(job);
+        }
+        job.task = plugin.getScheduler().runOn(centerRegion, () -> tickFoliaJob(job), () -> {}, 50L);
+    }
+
     /** Puts every waiting block of the matching explosions back now, without effects. */
     private void restoreNow(Predicate<Job> which) {
         for (Job job : new ArrayList<>(jobs.values())) {
             if (!which.test(job)) continue;
+            TaskHandle handle = job.task;
+            if (handle != null) {
+                handle.cancel();
+                job.task = null;
+            }
+            if (BukkitServerThread.isFolia() && !ownsAllRemaining(job)) {
+                // On Folia shutdown/unload off-region, preserve the journal for lossless resume on next start.
+                if (job.next < job.blocks.size()) persist(job);
+                releaseStateWithoutDeletingJournal(job);
+                continue;
+            }
             while (job.next < job.blocks.size()) restore(job, job.blocks.get(job.next++));
             finish(job);
+        }
+    }
+
+    private boolean ownsAllRemaining(Job job) {
+        for (int i = job.next; i < job.blocks.size(); i++) {
+            CapturedBlock block = job.blocks.get(i);
+            if (!BukkitServerThread.region(plugin, job.world, block.x() >> 4, block.z() >> 4).isServerThread()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void releaseStateWithoutDeletingJournal(Job job) {
+        jobs.remove(job.id);
+        for (int i = 0; i < job.blocks.size(); i++) {
+            CapturedBlock block = job.blocks.get(i);
+            pending.remove(new BlockKey(job.world.getUID(), block.x(), block.y(), block.z()), job);
+        }
+        for (ChunkKey chunk : job.chunks) {
+            tickets.computeIfPresent(chunk, (k, count) -> count <= 1 ? null : count - 1);
         }
     }
 
@@ -533,7 +642,11 @@ public final class RegenerationService implements Listener {
             Location at = entity.getLocation();
             if (at.getY() >= block.getY() + 1.0D) continue;
             at.setY(block.getY() + 1.0D);
-            entity.teleport(at);
+            if (BukkitServerThread.isFolia()) {
+                BukkitServerThread.teleportRegional(entity, at, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN);
+            } else {
+                entity.teleport(at);
+            }
         }
     }
 
@@ -579,10 +692,10 @@ public final class RegenerationService implements Listener {
             if (pending.get(key) == job) pending.remove(key);
         }
         for (ChunkKey chunk : job.chunks) {
-            Integer left = tickets.merge(chunk, -1, Integer::sum);
-            if (left != null && left <= 0) {
-                tickets.remove(chunk);
-                job.world.removePluginChunkTicket(chunk.x(), chunk.z(), plugin);
+            Integer left = tickets.compute(chunk, (k, count) -> count == null || count <= 1 ? null : count - 1);
+            if (left == null) {
+                UtilitySupport.onRegion(plugin, job.world, chunk.x(), chunk.z(),
+                        () -> job.world.removePluginChunkTicket(chunk.x(), chunk.z(), plugin));
             }
         }
         deleteJournal(job.id);
@@ -604,27 +717,39 @@ public final class RegenerationService implements Listener {
         ExplosionSettings settings = this.settings;
         boolean protect = settings.protectHanging()
                 && (explosive(entity) == Explosive.NUKE || settings.worldEnabled(entity.getWorld().getName()) && regenerates(entity));
-        windows.push(new Window(entity.getUniqueId(), protect));
-        if (!sweepQueued) {
-            sweepQueued = true;
-            plugin.getScheduler().runOnServer(() -> {
-                windows.clear();
-                sweepQueued = false;
-            });
+        Deque<Window> localWindows = windows.get();
+        localWindows.push(new Window(entity.getUniqueId(), protect));
+        if (!Boolean.TRUE.equals(sweepQueued.get())) {
+            sweepQueued.set(Boolean.TRUE);
+            Runnable clear = () -> {
+                windows.get().clear();
+                sweepQueued.set(Boolean.FALSE);
+            };
+            if (BukkitServerThread.isFolia()) {
+                Location loc = entity.getLocation();
+                if (loc.getWorld() != null) {
+                    ServerThread region = BukkitServerThread.region(plugin, loc.getWorld(), loc.getBlockX() >> 4, loc.getBlockZ() >> 4);
+                    plugin.getScheduler().runOn(region, clear, () -> {}, 0L);
+                } else {
+                    clear.run();
+                }
+            } else {
+                plugin.getScheduler().runOnServer(clear);
+            }
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onExplodeDone(EntityExplodeEvent event) {
         UUID id = event.getEntity().getUniqueId();
-        windows.removeIf(window -> window.entity().equals(id));
+        windows.get().removeIf(window -> window.entity().equals(id));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onHangingBreak(HangingBreakEvent event) {
         Hanging hanging = event.getEntity();
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
-            Window window = windows.peek();
+            Window window = windows.get().peek();
             if (window == null || !window.protect()) return;
             ProtectionService protection = settings.skipClaims() ? plugin.getProtectionService() : null;
             if (protection != null && protection.claimed(hanging.getLocation())) return;

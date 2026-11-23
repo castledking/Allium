@@ -72,8 +72,10 @@ public final class EconomyReservations {
     }
     /** Marker remains after terminal steps, so disabling economy cannot turn a paid recovery into a free activation. */
     public static boolean paid(ConnectionSource source,SqlDialect dialect,Kind kind,UUID id)throws SQLException{
-        if(dialect!=SqlDialect.SQLITE)return false;
-        try(var c=source.connection();var s=c.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){
+        String lookup = dialect == SqlDialect.MYSQL
+                ? "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?"
+                : "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?";
+        try(var c=source.connection();var s=c.prepareStatement(lookup)){
             s.setString(1,EconomySchema.RESERVATIONS);try(var r=s.executeQuery()){if(!r.next())return false;}
             return find(c,kind,id).isPresent();
         }

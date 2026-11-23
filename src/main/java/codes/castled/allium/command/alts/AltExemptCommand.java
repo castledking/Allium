@@ -4,10 +4,12 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.alts.AltService;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.naming.NameCache;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -54,7 +56,7 @@ public final class AltExemptCommand implements SpecCommandHandler {
                         alts.repository().exempt(target.uuid(), actor, reason, System.currentTimeMillis());
                         plugin.getScheduler().runOnServer(() -> {
                             alts.removeGroup(plugin.getServer().getOfflinePlayer(target.uuid()), alts.settings().group());
-                            plugin.getMessageManager().send(sender, Messages.ALTS_EXEMPT_ADDED, "{player}", target.name(),
+                            UtilitySupport.send(plugin, sender, Messages.ALTS_EXEMPT_ADDED, "{player}", target.name(),
                                     "{group}", alts.settings().group());
                         });
                     }
@@ -86,21 +88,22 @@ public final class AltExemptCommand implements SpecCommandHandler {
     }
 
     private void tell(CommandSender sender, Messages message, String... replacements) {
-        plugin.getScheduler().runOnServer(() -> plugin.getMessageManager().send(sender, message, replacements));
+        UtilitySupport.send(plugin, sender, message, replacements);
     }
 
     private void resolve(CommandSender sender, String name, Consumer<NameCache.Entry> then) {
         if (plugin.getPlayerNames() == null || !name.matches("[A-Za-z0-9_]{1,16}")) {
-            plugin.getMessageManager().send(sender, Messages.INFO_SEEN_UNKNOWN, "{player}", name);
+            UtilitySupport.send(plugin, sender, Messages.INFO_SEEN_UNKNOWN, "{player}", name);
             return;
         }
-        plugin.getPlayerNames().resolve(name).whenComplete((entry, error) -> plugin.getScheduler().runOnServer(() -> {
-            Optional<NameCache.Entry> found = error == null ? entry : Optional.empty();
-            if (found.isEmpty()) {
-                plugin.getMessageManager().send(sender, Messages.INFO_SEEN_UNKNOWN, "{player}", name);
-            } else {
-                then.accept(found.get());
-            }
-        }));
+        plugin.getPlayerNames().resolve(name).whenComplete((entry, error) ->
+                BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, () -> {
+                    Optional<NameCache.Entry> found = error == null ? entry : Optional.empty();
+                    if (found.isEmpty()) {
+                        plugin.getMessageManager().send(sender, Messages.INFO_SEEN_UNKNOWN, "{player}", name);
+                    } else {
+                        then.accept(found.get());
+                    }
+                }, () -> {}, 0L));
     }
 }

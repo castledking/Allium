@@ -37,8 +37,8 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     private HeldCardBar heldCardBar;
     private AutoCloseable framePackets;
     private final Map<NamespacedKey, Catalog.Entry> recipes = new HashMap<>();
-    private final Map<UUID, Map<Catalog.Slot, ItemStack>> loadouts = new HashMap<>();
-    private final Set<UUID> importing = new HashSet<>();
+    private final Map<UUID, Map<Catalog.Slot, ItemStack>> loadouts = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Set<UUID> importing = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private java.util.concurrent.ThreadPoolExecutor importIo;
 
     @Override
@@ -146,7 +146,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                 return choices;
             }
         }, this, org.bukkit.plugin.ServicePriority.Normal);
-        for (Player online : getServer().getOnlinePlayers()) refreshAttributes(online);
+        for (Player online : getServer().getOnlinePlayers()) core.onOwner(online, () -> refreshAttributes(online));
     }
 
     private void saveUpgradedConfig() {
@@ -201,6 +201,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         if (cardGui != null) cardGui.closeAll();
         if (heldCardBar != null) heldCardBar.stop();
         for (Player player : getServer().getOnlinePlayers()) {
+            if (core.isFolia() && !core.ownsEntity(player)) continue;
             if (player.getOpenInventory().getTopInventory().getHolder() instanceof Menu) player.closeInventory();
             clearAttributes(player);
         }
@@ -277,12 +278,12 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     }
 
     private void command(CommandSender sender, String label, String[] args) {
-        boolean previous = cardsReply;
-        cardsReply = GiveCommand.Scope.of(label) == GiveCommand.Scope.CARDS;
+        boolean previous = cardsReply.get();
+        cardsReply.set(GiveCommand.Scope.of(label) == GiveCommand.Scope.CARDS);
         try {
             dispatch(sender, label, args);
         } finally {
-            cardsReply = previous;
+            cardsReply.set(previous);
         }
     }
 
@@ -342,22 +343,29 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         Player target = request.target() != null ? visiblePlayer(actor, request.target())
                 : actor instanceof Player self ? self : null;
         if (target == null) { tell(actor, "Name a player: " + GiveCommand.usage(label, scope)); return; }
-        if (!core.canEditInventory(target)) {
-            tell(actor, (target == actor ? "Your" : target.getName() + "'s") + " inventory is unavailable right now.");
-            return;
-        }
         Catalog.Entry entry = request.entry();
         ItemStack item = create(entry, request.state());
         if (item == null) { tell(actor, "The curio could not be created."); return; }
-        if (!insert(target, item)) {
-            tell(actor, (target == actor ? "Your" : target.getName() + "'s") + " inventory is full.");
-            return;
-        }
+        boolean cardsMode = cardsReply.get();
         String what = entry.legacyCard().isEmpty()
                 ? entry.name() + " (level " + request.state().get("level") + ")"
                 : CardRules.titleCase(entry.legacyTier()) + " " + CardRules.titleCase(entry.legacyCard()) + " card (level "
                         + request.state().get("level") + ", quality " + request.state().get("quality") + "%)";
-        tell(actor, entry, "Gave " + what + (target == actor ? "" : " to " + target.getName()) + ".");
+        core.onOwner(target, () -> {
+            if (!target.isOnline() || !core.canEditInventory(target)) {
+                tellWithMode(actor, cardsMode, (target == actor ? "Your" : target.getName() + "'s") + " inventory is unavailable right now.");
+                return;
+            }
+            if (!insert(target, item)) {
+                tellWithMode(actor, cardsMode, (target == actor ? "Your" : target.getName() + "'s") + " inventory is full.");
+                return;
+            }
+            if (!entry.legacyCard().isEmpty()) {
+                tellCards(actor, "Gave " + what + (target == actor ? "" : " to " + target.getName()) + ".");
+            } else {
+                tellWithMode(actor, cardsMode, "Gave " + what + (target == actor ? "" : " to " + target.getName()) + ".");
+            }
+        });
     }
 
     private void frame(Player player, String[] args) {
@@ -403,7 +411,10 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     public void refreshFrames(org.bukkit.event.player.PlayerGameModeChangeEvent event) {
         if (framePackets != null && (event.getPlayer().getGameMode() == org.bukkit.GameMode.CREATIVE
                 || event.getNewGameMode() == org.bukkit.GameMode.CREATIVE)) {
-            core.scheduler().runOnServerLater(event.getPlayer()::updateInventory, 50);
+            Player player = event.getPlayer();
+            core.runForEntity(player, () -> {
+                if (player.isOnline()) player.updateInventory();
+            }, () -> {}, 50L);
         }
     }
 
@@ -618,10 +629,14 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     static final String CARDS_PREFIX = "<gradient:#d4a04a:#8a5a2a>[Cards]</gradient> &f";
     private static final String CURIOS_PREFIX = "&6[Curios] &f";
     /** Set while /cards or /tradingcards runs, so every reply to it carries the [Cards] prefix. */
-    private boolean cardsReply;
+    private final ThreadLocal<Boolean> cardsReply = ThreadLocal.withInitial(() -> false);
 
     void tell(CommandSender recipient, String message) {
-        core.text().send(recipient, (cardsReply ? CARDS_PREFIX : CURIOS_PREFIX) + message);
+        tellWithMode(recipient, cardsReply.get(), message);
+    }
+
+    private void tellWithMode(CommandSender recipient, boolean cardsMode, String message) {
+        core.text().send(recipient, (cardsMode ? CARDS_PREFIX : CURIOS_PREFIX) + message);
     }
 
     /** A message about a trading card, with legacy's [Cards] prefix whatever command or event sent it. */
@@ -657,7 +672,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     private NamespacedKey equipmentKey(Catalog.Slot slot) { return new NamespacedKey(this, "equipped_" + slot.key()); }
 
     ItemStack equipped(Player player, Catalog.Slot slot) {
-        return loadouts.computeIfAbsent(player.getUniqueId(), ignored -> new HashMap<>())
+        return loadouts.computeIfAbsent(player.getUniqueId(), ignored -> new java.util.concurrent.ConcurrentHashMap<>())
                 .computeIfAbsent(slot, key -> readEquipped(player, key));
     }
 
@@ -845,7 +860,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     }
 
     private int awardEquipped(Player player, double xp) {
-        if (!core.scheduler().isServerThread() || !player.isOnline() || !player.hasPermission("curios.use")
+        if (!core.ownsEntity(player) || !player.isOnline() || !player.hasPermission("curios.use")
                 || !Double.isFinite(xp) || xp <= 0 || !core.canEditInventory(player)) return 0;
         int changes = 0;
         for (Catalog.Slot slot : catalog.slots) {
@@ -1042,54 +1057,62 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         }
         var imported = new NamespacedKey(this, "legacy_loadout_imported");
         UUID id = target.getUniqueId();
-        if (target.getPersistentDataContainer().has(imported, PersistentDataType.BYTE)) {
-            tell(actor, "That legacy equipment was already imported.");
-            return;
-        }
+        boolean cardsMode = cardsReply.get();
         if (!importing.add(id)) { tell(actor, "That import is already running."); return; }
         var directory = java.nio.file.Path.of(getConfig().getString("migration-directory", "config/relique/entities"));
-        try {
-            importIo.execute(() -> {
-                try {
-                    var loadout = LegacyImport.load(catalog, directory.resolve(id + ".yml"));
-                    core.scheduler().runOnServer(() -> {
+        core.onOwner(target, () -> {
+            if (getServer().getPlayer(id) != target) {
+                importing.remove(id);
+                return;
+            }
+            if (target.getPersistentDataContainer().has(imported, PersistentDataType.BYTE)) {
+                importing.remove(id);
+                if (actor.isOnline()) tellWithMode(actor, cardsMode, "That legacy equipment was already imported.");
+                return;
+            }
+            try {
+                importIo.execute(() -> {
+                    try {
+                        var loadout = LegacyImport.load(catalog, directory.resolve(id + ".yml"));
+                        core.runForEntity(target, () -> {
+                            importing.remove(id);
+                            if (getServer().getPlayer(id) != target || !actor.isOnline()
+                                    || !editable(target)
+                                    || getServer().getPluginManager().isPluginEnabled("Relique")) return;
+                            applyImport(actor, target, imported, loadout, cardsMode);
+                        }, () -> importing.remove(id), 0L);
+                    } catch (java.io.IOException | InvalidConfigurationException | RuntimeException invalid) {
                         importing.remove(id);
-                        if (getServer().getPlayer(id) != target || !actor.isOnline()
-                                || !actor.hasPermission("curios.admin") || !editable(target)
-                                || getServer().getPluginManager().isPluginEnabled("Relique")) return;
-                        applyImport(actor, target, imported, loadout);
-                    });
-                } catch (java.io.IOException | InvalidConfigurationException | RuntimeException invalid) {
-                    core.scheduler().runOnServer(() -> {
-                        importing.remove(id);
-                        if (actor.isOnline()) tell(actor, "Import refused: " + invalid.getMessage());
-                    });
-                }
-            });
-        } catch (java.util.concurrent.RejectedExecutionException busy) {
-            importing.remove(id);
-            tell(actor, "The import queue is full.");
-        }
+                        core.runForSender(actor, () -> {
+                            if (actor.isOnline()) tellWithMode(actor, cardsMode, "Import refused: " + invalid.getMessage());
+                        }, () -> {}, 0L);
+                    }
+                });
+            } catch (java.util.concurrent.RejectedExecutionException busy) {
+                importing.remove(id);
+                if (actor.isOnline()) tellWithMode(actor, cardsMode, "The import queue is full.");
+            }
+        });
     }
 
     private void applyImport(Player actor, Player target, NamespacedKey imported,
-                             Map<Catalog.Slot, LegacyImport.Decoded> loadout) {
+                             Map<Catalog.Slot, LegacyImport.Decoded> loadout, boolean cardsMode) {
         var data = target.getPersistentDataContainer();
         if (data.has(imported, PersistentDataType.BYTE)) return;
         Map<NamespacedKey, String> values = new LinkedHashMap<>();
         for (var row : loadout.entrySet()) {
             NamespacedKey key = equipmentKey(row.getKey());
-            if (data.has(key, PersistentDataType.STRING)) { tell(actor, "Unequip " + row.getKey().key() + " first."); return; }
+            if (data.has(key, PersistentDataType.STRING)) { tellWithMode(actor, cardsMode, "Unequip " + row.getKey().key() + " first."); return; }
             var decoded = row.getValue();
             ItemStack item = create(decoded.entry(), decoded.state());
-            if (item == null) { tell(actor, "Could not create " + decoded.entry().id()); return; }
+            if (item == null) { tellWithMode(actor, cardsMode, "Could not create " + decoded.entry().id()); return; }
             values.put(key, encode(item));
         }
-        if (values.isEmpty()) { tell(actor, "The legacy file contains no equipped curios."); return; }
+        if (values.isEmpty()) { tellWithMode(actor, cardsMode, "The legacy file contains no equipped curios."); return; }
         values.forEach((key, value) -> data.set(key, PersistentDataType.STRING, value));
         data.set(imported, PersistentDataType.BYTE, (byte) 1);
         loadouts.remove(target.getUniqueId());
         target.saveData();
-        tell(actor, "Imported " + values.size() + " equipped curios for " + target.getName() + ".");
+        tellWithMode(actor, cardsMode, "Imported " + values.size() + " equipped curios for " + target.getName() + ".");
     }
 }

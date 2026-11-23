@@ -3,6 +3,7 @@ package codes.castled.allium.message;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.EffectivePreferences;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.sound.SoundLevels;
 import codes.castled.allium.text.FormattedText;
 import codes.castled.allium.text.TextFormatter;
@@ -109,13 +110,18 @@ public final class MessageManager {
         FormattedText formattedBar = actionBar.isEmpty() ? FormattedText.EMPTY : TextFormatter.parse(actionBar);
 
         for (Player player : plugin.getServer().getOnlinePlayers()) {
-            if (!formatted.isEmpty()) {
-                TextSender.send(player, formatted);
+            Runnable deliver = () -> {
+                if (!formatted.isEmpty()) TextSender.send(player, formatted);
+                if (!formattedBar.isEmpty()) TextSender.sendActionBar(player, formattedBar);
+                playSoundIfPresent(player, message);
+            };
+            if (BukkitServerThread.isFolia()) {
+                BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+                    if (player.isOnline()) deliver.run();
+                }, () -> {}, 0);
+            } else {
+                deliver.run();
             }
-            if (!formattedBar.isEmpty()) {
-                TextSender.sendActionBar(player, formattedBar);
-            }
-            playSoundIfPresent(player, message);
         }
 
         if (!formatted.isEmpty()) {

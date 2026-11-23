@@ -55,7 +55,7 @@ public final class DatabaseManager {
         String password = mysql.getString("password", "");
 
         config.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database
-                + "?useSSL=false&allowPublicKeyRetrieval=true&autoReconnect=true");
+                + "?useSSL=false&allowPublicKeyRetrieval=true");
         config.setUsername(username);
         config.setPassword(password);
         config.setDriverClassName("com.mysql.cj.jdbc.Driver");

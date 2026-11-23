@@ -9,9 +9,9 @@
   <a href="https://castled.codes"><img alt="CASTLED CODEX" src="https://castled.codes/assets/logo-banner.png" width="140" height="35"></a>
 </p>
 
-**Allium** replaces fragmented essentials, economy, sign, mail, moderation, and custom-tool plugins with one clean, modular engine built for **Spigot, Paper, Purpur, and Folia (`1.20` – `26.x`)** — backed by an official addon ecosystem for custom crops, trading cards & relics, custom ores, party locator bars, and spawner crafting.
+**Allium** replaces fragmented essentials, economy, sign, mail, moderation, and custom-tool plugins with a modular engine for **Spigot, Paper, Purpur, and Folia**. Official addons add custom crops, trading cards and relics, custom ores, party locator bars, and spawner crafting.
 
-Every major system can be toggled independently in `config.yml`, runs with crash-safe SQLite/MySQL persistence, and integrates cleanly with Vault, LuckPerms, PlaceholderAPI, PacketEvents, DiscordSRV, Nexo, CraftEngine, Oraxen, GriefPrevention / GriefPrevention3D, and ResourcePackManager.
+Every major system can be toggled independently in `config.yml`. Allium integrates with Vault, LuckPerms, PlaceholderAPI, PacketEvents, DiscordSRV, Nexo, CraftEngine, Oraxen, GriefPrevention / GriefPrevention3D, and ResourcePackManager.
 
 ---
 
@@ -21,7 +21,7 @@ Every major system can be toggled independently in `config.yml`, runs with crash
   Homes, warps, default & per-group spawns, `/tpa`/`/tpahere`/`/back`/`/rtp`, `/fly` (with persistent timed flight), `/heal`, `/feed`, `/repair`, `/enchant`, `/spawnmob`, `/give` with a full custom item library, `/worth` & `/sell`, kits, custom text pages (`/motd`, `/rules`, `/info`, `/customtext`), scheduled broadcasts, and `/autorestart`.
 ####
 - **Journaled Economy & Vault Provider**
-  Crash-safe SQLite (WAL `synchronous=FULL`) or MySQL/MariaDB ledger with Vault integration, `/bal`, `/pay`, `/baltop`, `/eco`, `/paytoggle`, `/payconfirm`, transaction taxes with refund audit trails, signed physical bank cheques (`/cheque`), and safe cross-module reservations for paid signs, kits, and mail gifts. Full support for Geyser/Floodgate `.`-prefixed Bedrock usernames.
+  Single-server ledger on SQLite, MySQL, or MariaDB with optional Vault integration, `/bal`, `/pay`, `/baltop`, `/eco`, `/paytoggle`, `/payconfirm`, transaction taxes with refund audit trails, signed physical bank cheques (`/cheque`), and safe cross-module reservations for paid signs, kits, and mail gifts. Full support for Geyser/Floodgate `.`-prefixed Bedrock usernames.
   ```yaml
   economy:
     vault-provider-enabled: true
@@ -87,8 +87,23 @@ Set `settings.locale` in `plugins/Allium/config.yml` or customize messages and `
 
 ---
 
-## Supported Platforms: Spigot, Paper, Purpur, and Folia.
-### Allium targets and supports Minecraft `1.20` – `26.x` on Java 17+ (Java 21+ for Paper `1.20.5+` and optional Java 21 item providers).
+## Server Compatibility
+
+Allium and all official addons target Minecraft `1.20` through `26.x` on **Spigot, Paper, Purpur, and Folia** (using region- and entity-owned scheduling with `teleportAsync` on Folia). Live regression coverage includes Spigot `1.20.1` and Paper `26.3`. [Live test results](https://github.com/castledking/Allium/blob/master/tests/live/signs/RESULTS.md)
+
+The core JAR targets Java 17. Use the Java version required by your server build and any addons or integrations you install.
+
+| Minecraft version | Server Java |
+| --- | --- |
+| `1.20`–`1.20.4` | Java 17 on Spigot. Paper recommends Java 21. |
+| `1.20.5`–`1.21.11` | Java 21 |
+| `26.1` and later in `26.x` | Java 25 |
+
+[Spigot BuildTools requirements](https://www.spigotmc.org/wiki/buildtools/) · [Paper Java requirements](https://docs.papermc.io/paper/getting-started/#requirements) · [Minecraft 1.20.5 release notes](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-20-5) · [Minecraft 26.1 release notes](https://www.minecraft.net/en-us/article/minecraft-java-edition-26-1)
+
+The economy uses `database.type: SQLITE` by default with WAL and `synchronous=FULL`. To use MySQL or MariaDB, set `database.type: MYSQL` and configure `database.mysql`. The economy requires InnoDB with `innodb_flush_log_at_trx_commit=1` and `sync_binlog=1` when binary logging is enabled. [MySQL InnoDB durability settings](https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html#sysvar_innodb_flush_log_at_trx_commit) · [MariaDB InnoDB durability settings](https://mariadb.com/docs/server/server-usage/storage-engines/innodb/binary-log-group-commit-and-innodb-flushing-performance)
+
+Use one Allium server per economy schema. Back up the database with `plugins/Allium/.server-id` and your server's `playerdata` directory so pending paid actions can recover after a restore. Changing `database.type` selects a different store. Transfer existing data separately before switching a live server.
 
 ---
 

@@ -1,6 +1,7 @@
 package codes.castled.allium.info;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.alts.AltService;
 import codes.castled.allium.compat.GodModeCompatProvider;
 import codes.castled.allium.message.Messages;
@@ -55,23 +56,34 @@ public final class WhoisExtras {
         return plugin.getModuleManager().getModule("moderation") instanceof ModerationModule module && module.isEnabled() ? module : null;
     }
 
-    /** Sends the extra lines; server thread. The alt line follows when its lookup finishes. */
-    public void sendWhois(CommandSender sender, UUID uuid, String name, @Nullable Player online) {
+    public record LiveDetails(String[] state, String[] vitals, @Nullable String ip) {}
+
+    /** Reads live details on the target's owning thread. */
+    public LiveDetails capture(Player online, boolean includeIp) {
+        String[] state = {
+                    "{gamemode}", codes.castled.allium.command.essentials.UtilitySupport.titleCase(online.getGameMode().name()),
+                    "{fly}", yesNo(online.getAllowFlight()), "{flying}", yesNo(online.isFlying()),
+                    "{god}", yesNo(GodModeCompatProvider.current().isGodMode(online)),
+                    "{vanished}", yesNo(PlayerNameVisibility.isVanished(online)),
+                    "{afk}", yesNo(afk(online))};
+        String[] vitals = {
+                    "{health}", oneDecimal(online.getHealth()), "{max_health}", oneDecimal(codes.castled.allium.compat.HealthCompatProvider.current().getMaxHealth(online)),
+                    "{food}", Integer.toString(online.getFoodLevel()), "{level}", Integer.toString(online.getLevel()),
+                    "{ping}", Integer.toString(ping(online)), "{speed}", oneDecimal(online.getWalkSpeed() * 5)};
+        var address = includeIp ? online.getAddress() : null;
+        String ip = address == null || address.getAddress() == null ? null : address.getAddress().getHostAddress();
+        return new LiveDetails(state, vitals, ip);
+    }
+
+    /** Sends the extra lines on the requester's thread. */
+    public void sendWhois(CommandSender sender, UUID uuid, String name, @Nullable LiveDetails online) {
         if (!sender.hasPermission(PERMISSION_EXTRA)) {
             return;
         }
         var messages = plugin.getMessageManager();
         if (online != null) {
-            messages.send(sender, Messages.INFO_WHOIS_STATE,
-                    "{gamemode}", codes.castled.allium.command.essentials.UtilitySupport.titleCase(online.getGameMode().name()),
-                    "{fly}", yesNo(online.getAllowFlight()), "{flying}", yesNo(online.isFlying()),
-                    "{god}", yesNo(GodModeCompatProvider.current().isGodMode(online)),
-                    "{vanished}", yesNo(PlayerNameVisibility.isVanished(online)),
-                    "{afk}", yesNo(afk(online)));
-            messages.send(sender, Messages.INFO_WHOIS_VITALS,
-                    "{health}", oneDecimal(online.getHealth()), "{max_health}", oneDecimal(codes.castled.allium.compat.HealthCompatProvider.current().getMaxHealth(online)),
-                    "{food}", Integer.toString(online.getFoodLevel()), "{level}", Integer.toString(online.getLevel()),
-                    "{ping}", Integer.toString(ping(online)), "{speed}", oneDecimal(online.getWalkSpeed() * 5));
+            messages.send(sender, Messages.INFO_WHOIS_STATE, online.state());
+            messages.send(sender, Messages.INFO_WHOIS_VITALS, online.vitals());
         }
         OfflinePlayer offline = plugin.getServer().getOfflinePlayer(uuid);
         ModerationModule moderation = moderation();
@@ -87,9 +99,8 @@ public final class WhoisExtras {
             boolean showIp = sender.hasPermission(PERMISSION_WHOIS_IP);
             sendAltLines(sender, alts, uuid, showIp, true, () -> sendActions(sender, uuid, name));
         } else {
-            if (online != null && sender.hasPermission(PERMISSION_WHOIS_IP) && online.getAddress() != null
-                    && online.getAddress().getAddress() != null) {
-                messages.send(sender, Messages.INFO_WHOIS_IP, "{ip}", online.getAddress().getAddress().getHostAddress());
+            if (online != null && sender.hasPermission(PERMISSION_WHOIS_IP) && online.ip() != null) {
+                messages.send(sender, Messages.INFO_WHOIS_IP, "{ip}", online.ip());
             }
             sendActions(sender, uuid, name);
         }
@@ -108,7 +119,7 @@ public final class WhoisExtras {
 
     private void sendAltLines(CommandSender sender, AltService alts, UUID uuid, boolean showIp, boolean showAlts, Runnable then) {
         CompletableFuture<AltService.Summary> summary = alts.summary(uuid);
-        summary.whenComplete((result, error) -> plugin.getScheduler().runOnServer(() -> {
+        summary.whenComplete((result, error) -> BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, () -> {
             if (sender instanceof Player p && !p.isOnline()) {
                 return;
             }
@@ -125,7 +136,7 @@ public final class WhoisExtras {
                 }
             }
             then.run();
-        }));
+        }, () -> {}, 0L));
     }
 
     /**

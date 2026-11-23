@@ -1,8 +1,13 @@
 package codes.castled.allium.teleport;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.ServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
+import codes.castled.allium.scheduler.TaskScheduler;
 import org.bukkit.*;
 import org.bukkit.entity.*;
+import org.bukkit.metadata.MetadataValue;
 import org.junit.jupiter.api.*;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,4 +22,39 @@ class TeleportTargetsTest {
  @Test void malformedAndOversizedSelectorsRefuse(){for(String s:List.of("@x","@a[unknown=x]","@a[limit=129]","@a[x=NaN]","@a[world=missing]","@a[limit=1,limit=2]"))assertThrows(IllegalArgumentException.class,()->targets.resolve(owner,s),s);}
  @Test void tagsGamemodeAndWorldFilter(){when(a.getScoreboardTags()).thenReturn(Set.of("test"));assertEquals(List.of(a),targets.resolve(owner,"@a[world=world,tag=test,gamemode=survival]"));assertEquals(List.of(owner),targets.resolve(owner,"@s"));}
  @Test void selfSelectorWorksWithoutGeneralSelectorPermission(){when(owner.hasPermission("allium.selectors")).thenReturn(false);assertEquals(List.of(owner),targets.resolve(owner,"@s"));assertEquals(List.of(owner),targets.resolve(owner,"@S"));}
+
+    @Test
+    void regionalSelectorsReadCandidatesBeforeFilteringAndSortingOnTheIssuer() {
+        var plugin = mock(PluginStart.class);
+        var scheduler = mock(TaskScheduler.class);
+        when(plugin.getServer()).thenReturn(server);
+        when(plugin.getScheduler()).thenReturn(scheduler);
+        when(owner.canSee(hidden)).thenReturn(true);
+        var vanished = mock(MetadataValue.class);
+        when(vanished.asBoolean()).thenReturn(true);
+        when(hidden.getMetadata("vanished")).thenReturn(List.of(vanished));
+        doReturn(List.of(owner, a, hidden, b)).when(server).getOnlinePlayers();
+        var issuerRegion = mock(ServerThread.class);
+        var candidateRegion = mock(ServerThread.class);
+        var issuerTasks = new ArrayDeque<Runnable>();
+        var candidateTasks = new ArrayDeque<Runnable>();
+        when(scheduler.runOn(any(ServerThread.class), any(), any(), eq(0L))).thenAnswer(call -> {
+            (call.getArgument(0) == issuerRegion ? issuerTasks : candidateTasks).add(call.getArgument(1));
+            return mock(TaskHandle.class);
+        });
+        try (var platform = mockStatic(BukkitServerThread.class, CALLS_REAL_METHODS)) {
+            platform.when(BukkitServerThread::isFolia).thenReturn(true);
+            platform.when(() -> BukkitServerThread.entity(eq(plugin), any(Player.class)))
+                    .thenAnswer(call -> call.getArgument(1) == owner ? issuerRegion : candidateRegion);
+            var selected = new TeleportTargets(plugin).resolveAsync(owner, "@p");
+            verify(a, never()).getLocation();
+            verify(hidden, never()).getMetadata("vanished");
+            while (!issuerTasks.isEmpty()) issuerTasks.remove().run();
+            while (!candidateTasks.isEmpty()) candidateTasks.remove().run();
+            assertFalse(selected.isDone());
+            issuerTasks.remove().run();
+            assertEquals(List.of(a), selected.join());
+            verify(world, never()).getPlayers();
+        }
+    }
 }

@@ -6,6 +6,7 @@ import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -46,24 +47,36 @@ public final class SmiteCommand implements SpecCommandHandler {
             Location strikeAt = hit.getHitPosition() != null
                     ? hit.getHitPosition().toLocation(player.getWorld())
                     : hit.getHitBlock().getLocation().add(0.5D, 1.0D, 0.5D);
-            player.getWorld().strikeLightningEffect(strikeAt);
-            UtilitySupport.send(plugin, player, Messages.UTILITY_SMITE_HERE,
-                    "{x}", Integer.toString(strikeAt.getBlockX()),
-                    "{y}", Integer.toString(strikeAt.getBlockY()),
-                    "{z}", Integer.toString(strikeAt.getBlockZ()));
-            UtilitySupport.audit(plugin, player, "smite",
-                    "location=" + strikeAt.getBlockX() + "," + strikeAt.getBlockY() + "," + strikeAt.getBlockZ());
+            Runnable strike = () -> {
+                player.getWorld().strikeLightningEffect(strikeAt);
+                UtilitySupport.send(plugin, player, Messages.UTILITY_SMITE_HERE,
+                        "{x}", Integer.toString(strikeAt.getBlockX()),
+                        "{y}", Integer.toString(strikeAt.getBlockY()),
+                        "{z}", Integer.toString(strikeAt.getBlockZ()));
+                UtilitySupport.audit(plugin, player, "smite",
+                        "location=" + strikeAt.getBlockX() + "," + strikeAt.getBlockY() + "," + strikeAt.getBlockZ());
+            };
+            if (BukkitServerThread.isFolia() && plugin.getScheduler() != null) {
+                var region = BukkitServerThread.region(plugin, player.getWorld(),
+                        strikeAt.getBlockX() >> 4, strikeAt.getBlockZ() >> 4);
+                if (region.isServerThread()) strike.run();
+                else plugin.getScheduler().runOn(region, strike, () -> {}, 0L);
+            } else {
+                strike.run();
+            }
             return;
         }
         Player target = UtilitySupport.resolveVisibleOnlinePlayer(plugin, context.sender(), args[0]);
         if (target == null) {
             return;
         }
-        target.getWorld().strikeLightningEffect(target.getLocation());
-        UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_SMITE, "{player}", target.getName());
-        if (target != context.sender()) {
-            UtilitySupport.send(plugin, target, Messages.UTILITY_SMITED);
-        }
-        UtilitySupport.audit(plugin, context.sender(), "smite", "target=" + target.getName());
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            target.getWorld().strikeLightningEffect(target.getLocation());
+            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_SMITE, "{player}", target.getName());
+            if (target != context.sender()) {
+                UtilitySupport.send(plugin, target, Messages.UTILITY_SMITED);
+            }
+            UtilitySupport.audit(plugin, context.sender(), "smite", "target=" + target.getName());
+        });
     }
 }

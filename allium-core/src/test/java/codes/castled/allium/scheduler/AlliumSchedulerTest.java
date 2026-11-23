@@ -137,6 +137,34 @@ class AlliumSchedulerTest {
     }
 
     @Test
+    void scopedTasksCanFinishOrRetireBeforeThePlatformReturnsAHandle() {
+        var ran = new AtomicInteger();
+        var retired = new AtomicInteger();
+        for (boolean retires : List.of(false, true)) {
+            ServerThread owner = new ServerThread() {
+                @Override public boolean isServerThread() { return true; }
+                @Override public TaskHandle schedule(Runnable task, long delay, long period) {
+                    return fail("Scoped scheduling must allow for retirement");
+                }
+                @Override public TaskHandle schedule(Runnable task, Runnable onRetire, long delay, long period) {
+                    if (retires) {
+                        onRetire.run();
+                        onRetire.run();
+                        return TaskHandle.NONE;
+                    }
+                    task.run();
+                    return server.new Entry(task, delay, period);
+                }
+            };
+            TaskHandle handle = scheduler.runOn(owner, ran::incrementAndGet, retired::incrementAndGet, 50);
+            assertEquals(retires, handle.isCancelled());
+            assertEquals(0, scheduler.scheduledServerTasks());
+        }
+        assertEquals(1, ran.get());
+        assertEquals(1, retired.get());
+    }
+
+    @Test
     void asyncTasksRunOffTheServerThreadAfterTheirDelayAndAThrowDoesNotStopTheTimer() throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<String> thread = new AtomicReference<>();

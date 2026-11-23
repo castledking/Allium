@@ -645,6 +645,6 @@ public final class EssentialsImportService implements Listener {
     }
 
     private void tell(CommandSender sender, Messages key, String... placeholders) {
-        plugin.getScheduler().runOnServer(() -> plugin.getMessageManager().send(sender, key, placeholders));
+        codes.castled.allium.command.essentials.UtilitySupport.send(plugin, sender, key, placeholders);
     }
 }

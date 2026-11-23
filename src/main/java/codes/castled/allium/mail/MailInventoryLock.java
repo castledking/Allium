@@ -30,11 +30,11 @@ public final class MailInventoryLock implements Listener {
 
     private final Map<Player, Integer> locked = new IdentityHashMap<>();
 
-    public void lock(Player player) {
+    public synchronized void lock(Player player) {
         locked.merge(player, 1, Integer::sum);
     }
 
-    public void unlock(Player player) {
+    public synchronized void unlock(Player player) {
         Integer current = locked.get(player);
         if (current == null) {
             return;
@@ -46,11 +46,11 @@ public final class MailInventoryLock implements Listener {
         }
     }
 
-    public void clear(Player player) {
+    public synchronized void clear(Player player) {
         locked.remove(player);
     }
 
-    public boolean locked(Player player) {
+    public synchronized boolean locked(Player player) {
         return locked.getOrDefault(player, 0) > 0;
     }
 

@@ -200,7 +200,7 @@ class SignServiceMatrixTest {
         assertEquals(40_000,stored.price().minor());
         f.service.using(f.click());
         f.drain();
-        verify(kitService).claimFromSign(f.player,"starter",new codes.castled.allium.economy.Money(40_000));
+        verify(kitService).claimFromSign(eq(f.player),eq("starter"),eq(new codes.castled.allium.economy.Money(40_000)),any());
     }
     @org.junit.jupiter.api.Test void unsafeSignPricesRefusesDiscountedKitByDefaultAndAllowsWhenEnabled(){
         var f=new Fixture(SignIdentity.Type.KIT,false);

@@ -41,7 +41,7 @@ public final class Ores extends AlliumAddon {
         saveDefaultConfig();
         reloadConfig();
         Settings settings = Settings.read(getConfig(), message -> getLogger().warning(message));
-        generation = new OreGeneration(this, core.scheduler(), placement(), settings);
+        generation = new OreGeneration(this, core, placement(), settings);
         startListeners();
         core.commands().register(new CommandSpec("pregen", "ores", "ores", List.of(), "Pre-generates chunks with the configured ores",
                 usage(), usage(), "allium.pregen.status", null,
@@ -73,7 +73,7 @@ public final class Ores extends AlliumAddon {
         if (generation.placement() != null && generation.settings().jade()
                 && getServer().getPluginManager().isPluginEnabled("packetevents")) {
             try {
-                if (JadeOreOverlay.supported()) jade = new JadeOreOverlay(this, core.scheduler(), generation);
+                if (JadeOreOverlay.supported()) jade = new JadeOreOverlay(this, core, generation);
             } catch (LinkageError | RuntimeException unavailable) {
                 getLogger().warning("Jade's ore overlay is unavailable: " + unavailable);
             }
@@ -221,7 +221,7 @@ public final class Ores extends AlliumAddon {
             tell(sender, "&aPre-generating &f" + world.getName() + " &7around chunk " + x + ", " + z + " | "
                     + generation.totalChunks() + " chunks.");
         }
-        future.whenComplete((ignored, error) -> core.scheduler().runOnServer(() -> {
+        future.whenComplete((ignored, error) -> core.runForSender(sender, () -> {
             if (!isEnabled()) return;
             Throwable cause = error;
             while (cause != null && cause.getCause() != null) cause = cause.getCause();
@@ -230,7 +230,7 @@ public final class Ores extends AlliumAddon {
             tell(sender, cause == null
                     ? "&aPre-generation finished: &f" + generation.generatedChunks() + " chunks, " + generation.generatedOres() + " ores."
                     : "&cPre-generation failed: " + cause.getMessage());
-        }));
+        }, () -> {}, 0L));
     }
 
     private void help(CommandSender sender) {

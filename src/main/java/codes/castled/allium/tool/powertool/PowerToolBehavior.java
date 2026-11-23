@@ -8,6 +8,7 @@ import codes.castled.allium.item.ResolutionResult;
 import codes.castled.allium.message.LangMessage;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
@@ -109,6 +110,8 @@ public final class PowerToolBehavior {
     public record ToolSummary(String localId, boolean enabled) {
     }
 
+    @Nullable
+    private final org.bukkit.plugin.Plugin plugin;
     private final ItemService items;
     private final TaskScheduler scheduler;
     private final Notifier notifier;
@@ -135,6 +138,24 @@ public final class PowerToolBehavior {
             Supplier<ToolEnvironment> environmentSupplier,
             PowerToolSettings initialSettings
     ) {
+        this(null, items, protection, scheduler, notifier, diagnostics, clock, random,
+                toolsDirectory, environmentSupplier, initialSettings);
+    }
+
+    public PowerToolBehavior(
+            @Nullable org.bukkit.plugin.Plugin plugin,
+            ItemService items,
+            ProtectionService protection,
+            TaskScheduler scheduler,
+            Notifier notifier,
+            Consumer<String> diagnostics,
+            LongSupplier clock,
+            RandomGenerator random,
+            File toolsDirectory,
+            Supplier<ToolEnvironment> environmentSupplier,
+            PowerToolSettings initialSettings
+    ) {
+        this.plugin = plugin;
         this.items = Objects.requireNonNull(items, "items");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         this.notifier = Objects.requireNonNull(notifier, "notifier");
@@ -145,7 +166,7 @@ public final class PowerToolBehavior {
         this.settings = initialSettings == null ? PowerToolSettings.DEFAULT : initialSettings;
         this.cooldowns = new PowerToolCooldownTracker(clock);
         this.actionRegistry = new PowerToolActionRegistry(
-                items, protection, scheduler, () -> this.settings, diagnostics, clock, random);
+                plugin, items, protection, scheduler, () -> this.settings, diagnostics, clock, random);
         items.registerPrivilegedBehavior(PowerToolBehaviorType.INLINE_BEHAVIOR_ID);
     }
 
@@ -537,11 +558,16 @@ public final class PowerToolBehavior {
                             action.cooldownScope(), action.cooldownId(), action.cooldownMillis());
                 }
                 long delayMs = action.delayTicks() * 50L;
-                scheduler.runOnServerLater(() -> {
+                Runnable delayed = () -> {
                     if (player.isOnline() && !player.isDead()) {
                         handler.execute(ctx, action);
                     }
-                }, delayMs);
+                };
+                if (BukkitServerThread.isFolia() && plugin != null) {
+                    BukkitServerThread.runFor(plugin, scheduler, player, delayed, () -> {}, delayMs);
+                } else {
+                    scheduler.runOnServerLater(delayed, delayMs);
+                }
                 anyRan = true;
             } else {
                 boolean ran = handler.execute(ctx, action);

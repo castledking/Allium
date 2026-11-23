@@ -90,15 +90,16 @@ final class CardGuiManager implements Listener {
      * left the player's own inventory with a ghost card on its cursor once the menu closed.
      */
     void openHomeAfterClick(Player player, CardSource source) {
-        plugin.core().scheduler().runOnServer(() -> {
+        plugin.core().runForEntity(player, () -> {
             if (!player.isOnline()) return;
             player.updateInventory();
             openHome(player, source);
-        });
+        }, () -> {}, 0L);
     }
 
     void closeAll() {
         for (Player player : plugin.getServer().getOnlinePlayers()) {
+            if (plugin.core().isFolia() && !plugin.core().ownsEntity(player)) continue;
             if (player.getOpenInventory().getTopInventory().getHolder() instanceof CardScreen screen) {
                 screen.returnUnclaimed();
                 player.closeInventory();
@@ -185,7 +186,7 @@ final class CardGuiManager implements Listener {
         Player player = event.getPlayer();
         if (player.getOpenInventory().getTopInventory().getHolder() instanceof CardScreen) return;
         ItemStack copy = dropped.clone();
-        plugin.core().scheduler().runOnServer(() -> {
+        plugin.core().runForEntity(player, () -> {
             if (!player.isOnline()) return;
             ItemStack[] storage = player.getInventory().getStorageContents();
             for (int slot = 0; slot < storage.length; slot++) {
@@ -194,7 +195,7 @@ final class CardGuiManager implements Listener {
                     return;
                 }
             }
-        });
+        }, () -> {}, 0L);
     }
 
     private abstract class CardScreen implements InventoryHolder {

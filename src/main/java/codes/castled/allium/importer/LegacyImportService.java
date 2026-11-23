@@ -452,7 +452,7 @@ public final class LegacyImportService implements Listener {
     }
 
     private void tell(CommandSender sender, Messages key, String... replacements) {
-        plugin.getScheduler().runOnServer(() -> plugin.getMessageManager().send(sender, key, replacements));
+        codes.castled.allium.command.essentials.UtilitySupport.send(plugin, sender, key, replacements);
     }
 
 }

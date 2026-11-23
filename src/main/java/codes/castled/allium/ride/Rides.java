@@ -1,7 +1,9 @@
 package codes.castled.allium.ride;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -31,14 +33,14 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Who rides whom through the powertool {@code ride} action, and the restraint rules of its
@@ -77,13 +79,13 @@ public final class Rides implements Listener {
 
     private final PluginStart plugin;
     /** Each carrier's riders, bottom first. */
-    private final Map<UUID, List<UUID>> stacks = new LinkedHashMap<>();
-    private final Map<UUID, Rider> riders = new HashMap<>();
+    private final Map<UUID, List<UUID>> stacks = new ConcurrentHashMap<>();
+    private final Map<UUID, Rider> riders = new ConcurrentHashMap<>();
     /** Riders Allium is moving itself, whose dismounts and teleports are expected. */
-    private final Set<UUID> moving = new HashSet<>();
-    private final Map<UUID, Long> dismountNotices = new HashMap<>();
-    private final List<RideListener> listeners = new ArrayList<>();
-    private boolean enabled;
+    private final Set<UUID> moving = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Long> dismountNotices = new ConcurrentHashMap<>();
+    private final List<RideListener> listeners = new CopyOnWriteArrayList<>();
+    private volatile boolean enabled;
 
     public Rides(PluginStart plugin) {
         this.plugin = plugin;
@@ -155,7 +157,11 @@ public final class Rides implements Listener {
 
     /** {@code carrier}'s riders, bottom first. */
     public List<UUID> riders(UUID carrier) {
-        return List.copyOf(stacks.getOrDefault(carrier, List.of()));
+        List<UUID> stack = stacks.get(carrier);
+        if (stack == null) return List.of();
+        synchronized (stack) {
+            return List.copyOf(stack);
+        }
     }
 
     public void addListener(RideListener listener) {
@@ -164,7 +170,7 @@ public final class Rides implements Listener {
 
     /** Whether {@code carrier} restrains anyone with {@code tool}. */
     public boolean restrains(UUID carrier, String tool) {
-        for (UUID id : stacks.getOrDefault(carrier, List.of())) {
+        for (UUID id : riders(carrier)) {
             Rider rider = riders.get(id);
             if (rider != null && rider.restrained() && tool.equals(rider.tool())) {
                 return true;
@@ -206,33 +212,35 @@ public final class Rides implements Listener {
                 || ridesOn(carrier, target)) {
             return Result.BUSY;
         }
-        List<UUID> stack = stacks.computeIfAbsent(carrierId, id -> new ArrayList<>());
-        if (stack.size() >= Math.max(1, maxRiders)) {
-            if (stack.isEmpty()) {
-                stacks.remove(carrierId);
-            }
-            return Result.FULL;
-        }
-        Entity top = stack.isEmpty() ? carrier : entity(stack.get(stack.size() - 1));
-        if (top == null) {
-            top = carrier;
-        }
-        moving.add(targetId);
-        try {
-            target.leaveVehicle();
-            if (!target.getPassengers().isEmpty()) {
-                target.eject();
-            }
-            if (!top.addPassenger(target)) {
+        List<UUID> stack = stacks.computeIfAbsent(carrierId, id -> Collections.synchronizedList(new ArrayList<>()));
+        synchronized (stack) {
+            if (stack.size() >= Math.max(1, maxRiders)) {
                 if (stack.isEmpty()) {
-                    stacks.remove(carrierId);
+                    stacks.remove(carrierId, stack);
                 }
-                return Result.FAILED;
+                return Result.FULL;
             }
-        } finally {
-            moving.remove(targetId);
+            Entity top = stack.isEmpty() ? carrier : entity(stack.get(stack.size() - 1));
+            if (top == null) {
+                top = carrier;
+            }
+            moving.add(targetId);
+            try {
+                target.leaveVehicle();
+                if (!target.getPassengers().isEmpty()) {
+                    target.eject();
+                }
+                if (!top.addPassenger(target)) {
+                    if (stack.isEmpty()) {
+                        stacks.remove(carrierId, stack);
+                    }
+                    return Result.FAILED;
+                }
+            } finally {
+                moving.remove(targetId);
+            }
+            stack.add(targetId);
         }
-        stack.add(targetId);
         boolean restrained = restrain && target instanceof Player;
         riders.put(targetId, new Rider(targetId, carrierId, restrained, tool));
         if (restrained) {
@@ -256,13 +264,13 @@ public final class Rides implements Listener {
 
     /** Lets go of {@code carrier}'s riders: every one, or the top one. The released, top first. */
     public List<Entity> release(Player carrier, boolean all) {
-        List<UUID> stack = stacks.get(carrier.getUniqueId());
-        if (stack == null || stack.isEmpty()) {
+        List<UUID> snapshot = riders(carrier.getUniqueId());
+        if (snapshot.isEmpty()) {
             return List.of();
         }
         List<Entity> released = new ArrayList<>();
-        List<UUID> order = new ArrayList<>(all ? stack : List.of(stack.get(stack.size() - 1)));
-        java.util.Collections.reverse(order);
+        List<UUID> order = new ArrayList<>(all ? snapshot : List.of(snapshot.get(snapshot.size() - 1)));
+        Collections.reverse(order);
         for (UUID id : order) {
             Entity entity = let(id);
             if (entity != null) {
@@ -274,8 +282,8 @@ public final class Rides implements Listener {
 
     private List<Entity> releaseAll(UUID carrier) {
         List<Entity> released = new ArrayList<>();
-        List<UUID> stack = new ArrayList<>(stacks.getOrDefault(carrier, List.of()));
-        java.util.Collections.reverse(stack);
+        List<UUID> stack = new ArrayList<>(riders(carrier));
+        Collections.reverse(stack);
         for (UUID id : stack) {
             Entity entity = let(id);
             if (entity != null) {
@@ -294,26 +302,35 @@ public final class Rides implements Listener {
         }
         dismountNotices.remove(id);
         List<UUID> stack = stacks.get(rider.carrier());
-        int index = stack == null ? -1 : stack.indexOf(id);
-        Entity entity = entity(id);
-        moving.add(id);
-        try {
-            if (entity != null) {
-                entity.leaveVehicle();
-                if (rider.restrained() && entity instanceof Player player) {
-                    player.setCollidable(true);
+        int index = -1;
+        boolean needsRestack = false;
+        if (stack != null) {
+            synchronized (stack) {
+                index = stack.indexOf(id);
+                stack.remove(id);
+                if (stack.isEmpty()) {
+                    stacks.remove(rider.carrier(), stack);
+                } else if (index >= 0 && index < stack.size()) {
+                    needsRestack = true;
                 }
             }
-        } finally {
-            moving.remove(id);
         }
-        if (stack != null) {
-            stack.remove(id);
-            if (stack.isEmpty()) {
-                stacks.remove(rider.carrier());
-            } else if (index >= 0 && index < stack.size()) {
-                restack(rider.carrier());
-            }
+        Entity entity = entity(id);
+        if (entity != null) {
+            onEntityNow(entity, () -> {
+                moving.add(id);
+                try {
+                    entity.leaveVehicle();
+                    if (rider.restrained() && entity instanceof Player player) {
+                        player.setCollidable(true);
+                    }
+                } finally {
+                    moving.remove(id);
+                }
+            });
+        }
+        if (needsRestack) {
+            scheduleRestack(rider.carrier(), false);
         }
         announce(rider);
         return entity;
@@ -336,12 +353,12 @@ public final class Rides implements Listener {
 
     /** Seats every rider on the one below again, bottom first, dropping riders that are gone. */
     private void restack(UUID carrierId) {
-        List<UUID> stack = stacks.get(carrierId);
+        List<UUID> snapshot = riders(carrierId);
         Entity below = entity(carrierId);
-        if (stack == null || below == null) {
+        if (snapshot.isEmpty() || below == null) {
             return;
         }
-        for (UUID id : List.copyOf(stack)) {
+        for (UUID id : snapshot) {
             Entity rider = entity(id);
             if (rider == null || !rider.isValid()) {
                 forget(id);
@@ -363,6 +380,20 @@ public final class Rides implements Listener {
         }
     }
 
+    private void scheduleRestack(UUID carrierId, boolean defer) {
+        Entity carrier = entity(carrierId);
+        if (carrier == null) return;
+        if (!defer) {
+            onEntityNow(carrier, () -> restack(carrierId));
+            return;
+        }
+        if (BukkitServerThread.isFolia()) {
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), carrier, () -> restack(carrierId), () -> {}, 0L);
+        } else {
+            plugin.getScheduler().runOnServer(() -> restack(carrierId));
+        }
+    }
+
     /** Drops a rider from the books without moving them (they are already off). */
     private void forget(UUID id) {
         Rider rider = riders.remove(id);
@@ -372,13 +403,15 @@ public final class Rides implements Listener {
         }
         Entity entity = entity(id);
         if (rider.restrained() && entity instanceof Player player) {
-            player.setCollidable(true);
+            onEntityNow(player, () -> player.setCollidable(true));
         }
         List<UUID> stack = stacks.get(rider.carrier());
         if (stack != null) {
-            stack.remove(id);
-            if (stack.isEmpty()) {
-                stacks.remove(rider.carrier());
+            synchronized (stack) {
+                stack.remove(id);
+                if (stack.isEmpty()) {
+                    stacks.remove(rider.carrier(), stack);
+                }
             }
         }
         announce(rider);
@@ -425,14 +458,22 @@ public final class Rides implements Listener {
             return false;
         }
         // Seating a passenger in the tick it changed worlds can fail; wait for the move to settle.
-        plugin.getScheduler().runOnServerLater(() -> {
+        Runnable finishTeleport = () -> {
             moving.removeAll(ids);
             if (carrier.isOnline()) {
                 restack(carrier.getUniqueId());
             } else {
                 releaseAll(carrier.getUniqueId());
             }
-        }, 50L);
+        };
+        if (BukkitServerThread.isFolia()) {
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), carrier, finishTeleport, () -> {
+                moving.removeAll(ids);
+                releaseAll(carrier.getUniqueId());
+            }, 50L);
+        } else {
+            plugin.getScheduler().runOnServerLater(finishTeleport, 50L);
+        }
         return true;
     }
 
@@ -447,7 +488,7 @@ public final class Rides implements Listener {
         if (!rider.restrained()) {
             // Getting down on their own; whoever rode on them moves down a seat.
             forget(id);
-            plugin.getScheduler().runOnServer(() -> restack(rider.carrier()));
+            scheduleRestack(rider.carrier(), true);
             return;
         }
         event.setCancelled(true);
@@ -493,11 +534,13 @@ public final class Rides implements Listener {
                 continue;
             }
             String line = command.trim().replaceFirst("^/", "").replace("{player}", player.getName());
-            try {
-                plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), line);
-            } catch (RuntimeException failed) {
-                plugin.logger().warning("restraints.commands-on-quit: '" + line + "' failed: " + failed.getMessage());
-            }
+            UtilitySupport.onGlobal(plugin, () -> {
+                try {
+                    plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), line);
+                } catch (RuntimeException failed) {
+                    plugin.logger().warning("restraints.commands-on-quit: '" + line + "' failed: " + failed.getMessage());
+                }
+            });
         }
     }
 
@@ -510,18 +553,29 @@ public final class Rides implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent event) {
-        UUID id = event.getPlayer().getUniqueId();
-        if (moving.contains(id) || !riders.containsKey(id)) {
+        Player player = event.getPlayer();
+        UUID id = player.getUniqueId();
+        Rider rider = riders.get(id);
+        if (moving.contains(id) || rider == null) {
             return;
         }
         // Teleported away by staff or another plugin: no longer carried. The teleport itself gets them down.
-        UUID carrier = riders.get(id).carrier();
+        UUID carrier = rider.carrier();
         moving.add(id);
-        plugin.getScheduler().runOnServer(() -> {
+        Runnable finish = () -> {
             moving.remove(id);
             forget(id);
-            restack(carrier);
-        });
+            scheduleRestack(carrier, false);
+        };
+        if (BukkitServerThread.isFolia()) {
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, finish, () -> {
+                moving.remove(id);
+                forget(id);
+                scheduleRestack(carrier, false);
+            }, 0L);
+        } else {
+            plugin.getScheduler().runOnServer(finish);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -621,7 +675,21 @@ public final class Rides implements Listener {
         return player != null ? player : plugin.getServer().getEntity(id);
     }
 
+    private void onEntityNow(Entity entity, Runnable action) {
+        if (!BukkitServerThread.isFolia()) {
+            action.run();
+            return;
+        }
+        var owner = BukkitServerThread.entity(plugin, entity);
+        if (owner.isServerThread()) {
+            action.run();
+        } else {
+            plugin.getScheduler().runOn(owner, action, () -> {}, 0L);
+        }
+    }
+
     private void send(CommandSender recipient, Messages message, String... replacements) {
-        plugin.getMessageManager().send(recipient, message, replacements);
+        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), recipient, () ->
+                plugin.getMessageManager().send(recipient, message, replacements));
     }
 }

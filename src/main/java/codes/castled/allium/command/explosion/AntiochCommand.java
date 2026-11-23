@@ -52,9 +52,13 @@ public final class AntiochCommand implements SpecCommandHandler {
         if (regeneration.settings().antiochAnnounce()) {
             plugin.getMessageManager().broadcast(Messages.ANTIOCH_BROADCAST, "{player}", player.getName());
         }
-        TNTPrimed tnt = player.getWorld().spawn(at, TNTPrimed.class);
-        regeneration.tag(tnt, Explosive.ANTIOCH);
-        tnt.setSource(player);
+        if (at.getWorld() != null) {
+            UtilitySupport.onRegion(plugin, at.getWorld(), at.getBlockX() >> 4, at.getBlockZ() >> 4, () -> {
+                TNTPrimed tnt = at.getWorld().spawn(at, TNTPrimed.class);
+                regeneration.tag(tnt, Explosive.ANTIOCH);
+                tnt.setSource(player);
+            });
+        }
         UtilitySupport.audit(plugin, player, "antioch", "location=" + at.getBlockX() + "," + at.getBlockY() + "," + at.getBlockZ());
     }
 

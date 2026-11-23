@@ -2537,6 +2537,8 @@ signs:
     - "{prefix} &aPaid &e{price} &afor &f[{type}]&a."
   insufficient-funds:
     - "{prefix} &cYou need &e{price} &cto use this sign."
+  paid-folia-unavailable:
+    - "{prefix} &cPaid signs are currently unavailable on Folia."
   paid-unavailable:
     - "{prefix} &cPaid signs are unavailable right now (the economy is not ready)."
   unsafe-price:

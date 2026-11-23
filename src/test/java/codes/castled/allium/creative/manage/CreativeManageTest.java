@@ -173,7 +173,7 @@ class CreativeManageTest {
         access.write(mock(ConsoleCommandSender.class), CreativeHolder.player(onlineId, "Here"), CreativeFlag.PLACE, true, failure::set);
         assertInstanceOf(UnsupportedOperationException.class, failure.get());
         AtomicReference<Throwable> groupFailure = new AtomicReference<>();
-        access.read(CreativeHolder.group("builder"), (values, error) -> groupFailure.set(error));
+        access.read(mock(ConsoleCommandSender.class), CreativeHolder.group("builder"), (values, error) -> groupFailure.set(error));
         assertInstanceOf(IllegalArgumentException.class, groupFailure.get());
     }
 
@@ -198,7 +198,7 @@ class CreativeManageTest {
 
     private static Map<CreativeFlag, FlagValue> read(CreativeAccess access, CreativeHolder holder) {
         AtomicReference<Map<CreativeFlag, FlagValue>> out = new AtomicReference<>();
-        access.read(holder, (values, error) -> {
+        access.read(mock(ConsoleCommandSender.class), holder, (values, error) -> {
             if (error != null) {
                 throw new AssertionError(error);
             }

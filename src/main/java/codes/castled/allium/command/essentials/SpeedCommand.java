@@ -46,32 +46,34 @@ public final class SpeedCommand implements SpecCommandHandler {
             target = player;
         }
 
-        SpeedSpecParser.SpeedType type = parsed.explicitType() != null
-                ? parsed.explicitType()
-                : (target.isFlying() ? SpeedSpecParser.SpeedType.FLY : SpeedSpecParser.SpeedType.WALK);
-        float bukkitSpeed = SpeedSpecParser.toBukkitSpeed(type, parsed.displaySpeed());
-        if (type == SpeedSpecParser.SpeedType.FLY) {
-            target.setFlySpeed(bukkitSpeed);
-        } else {
-            target.setWalkSpeed(bukkitSpeed);
-        }
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            SpeedSpecParser.SpeedType type = parsed.explicitType() != null
+                    ? parsed.explicitType()
+                    : (target.isFlying() ? SpeedSpecParser.SpeedType.FLY : SpeedSpecParser.SpeedType.WALK);
+            float bukkitSpeed = SpeedSpecParser.toBukkitSpeed(type, parsed.displaySpeed());
+            if (type == SpeedSpecParser.SpeedType.FLY) {
+                target.setFlySpeed(bukkitSpeed);
+            } else {
+                target.setWalkSpeed(bukkitSpeed);
+            }
 
-        String formattedSpeed = SpeedSpecParser.formatSpeed(parsed.displaySpeed());
-        if (target == context.sender()) {
-            UtilitySupport.send(plugin, target, Messages.SPEED_SET,
-                    "{type}", type.displayName(),
-                    "{speed}", formattedSpeed);
-        } else {
-            UtilitySupport.send(plugin, context.sender(), Messages.SPEED_SET_OTHER,
-                    "{player}", target.getName(),
-                    "{type}", type.displayName(),
-                    "{speed}", formattedSpeed);
-            UtilitySupport.send(plugin, target, Messages.SPEED_SET,
-                    "{type}", type.displayName(),
-                    "{speed}", formattedSpeed);
-            UtilitySupport.audit(plugin, context.sender(), "speed",
-                    "target=" + target.getName() + " type=" + type.name().toLowerCase(java.util.Locale.ROOT)
-                            + " speed=" + formattedSpeed);
-        }
+            String formattedSpeed = SpeedSpecParser.formatSpeed(parsed.displaySpeed());
+            if (target == context.sender()) {
+                UtilitySupport.send(plugin, target, Messages.SPEED_SET,
+                        "{type}", type.displayName(),
+                        "{speed}", formattedSpeed);
+            } else {
+                UtilitySupport.send(plugin, context.sender(), Messages.SPEED_SET_OTHER,
+                        "{player}", target.getName(),
+                        "{type}", type.displayName(),
+                        "{speed}", formattedSpeed);
+                UtilitySupport.send(plugin, target, Messages.SPEED_SET,
+                        "{type}", type.displayName(),
+                        "{speed}", formattedSpeed);
+                UtilitySupport.audit(plugin, context.sender(), "speed",
+                        "target=" + target.getName() + " type=" + type.name().toLowerCase(java.util.Locale.ROOT)
+                                + " speed=" + formattedSpeed);
+            }
+        });
     }
 }

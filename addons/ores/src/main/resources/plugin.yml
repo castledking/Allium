@@ -6,6 +6,7 @@ depend: [Allium]
 softdepend: [CraftEngine, packetevents]
 allium-api: '^1.5'
 allium-addon-dir: true
+folia-supported: true
 commands:
   pregen:
     description: Pre-generate chunks and place the configured ores in them

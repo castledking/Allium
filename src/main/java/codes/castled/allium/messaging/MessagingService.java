@@ -1,11 +1,13 @@
 package codes.castled.allium.messaging;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.moderation.MuteRecord;
 import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.EffectivePreferences;
 import codes.castled.allium.preference.PreferenceKey;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.text.FormattedText;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -18,6 +20,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -66,13 +69,14 @@ public final class MessagingService implements Listener {
     public void sendMutedNotice(CommandSender sender) {
         if (sender instanceof Player player) {
             if (!mutes.isMuteStateReady(player.getUniqueId())) {
-                plugin.getMessageManager().send(sender, Messages.MUTE_UNAVAILABLE);
+                UtilitySupport.send(plugin, sender, Messages.MUTE_UNAVAILABLE);
                 return;
             }
             Optional<MuteRecord> active = mutes.activeMute(player.getUniqueId());
             if (active.isPresent()) {
                 MuteRecord record = active.get();
-                plugin.getMessageManager().send(
+                UtilitySupport.send(
+                        plugin,
                         sender,
                         Messages.MUTE_BLOCKED,
                         "{remaining}", record.formattedRemaining(mutes.nowMillis()),
@@ -81,7 +85,7 @@ public final class MessagingService implements Listener {
                 return;
             }
         }
-        plugin.getMessageManager().send(sender, Messages.MSG_MUTED);
+        UtilitySupport.send(plugin, sender, Messages.MSG_MUTED);
     }
 
     public void enable() {
@@ -131,7 +135,7 @@ public final class MessagingService implements Listener {
         }
         String prefix = name.toLowerCase(Locale.ROOT);
         Player match = null;
-        for (Player online : Bukkit.getOnlinePlayers()) {
+        for (Player online : List.copyOf(Bukkit.getOnlinePlayers())) {
             if (online.getName().toLowerCase(Locale.ROOT).startsWith(prefix) && visibleTo(viewer, online)) {
                 if (match != null) {
                     return null;
@@ -157,10 +161,10 @@ public final class MessagingService implements Listener {
         switch (outcome) {
             case DELIVER -> deliver(sender, recipient, body);
             case SENDER_MUTED -> sendMutedNotice(sender);
-            case NOT_FOUND -> plugin.getMessageManager().send(sender, Messages.PLAYER_NOT_FOUND, "{player}", typedName);
-            case SELF -> plugin.getMessageManager().send(sender, Messages.MSG_SELF);
-            case CANNOT_RECEIVE -> plugin.getMessageManager().send(sender, Messages.MSG_CANNOT_RECEIVE, "{player}", shownName);
-            case UNAVAILABLE -> plugin.getMessageManager().send(sender, Messages.PREFERENCES_UNAVAILABLE, "{player}", shownName);
+            case NOT_FOUND -> UtilitySupport.send(plugin, sender, Messages.PLAYER_NOT_FOUND, "{player}", typedName);
+            case SELF -> UtilitySupport.send(plugin, sender, Messages.MSG_SELF);
+            case CANNOT_RECEIVE -> UtilitySupport.send(plugin, sender, Messages.MSG_CANNOT_RECEIVE, "{player}", shownName);
+            case UNAVAILABLE -> UtilitySupport.send(plugin, sender, Messages.PREFERENCES_UNAVAILABLE, "{player}", shownName);
         }
         return outcome;
     }
@@ -180,28 +184,30 @@ public final class MessagingService implements Listener {
     }
 
     public void toggleReplyMode(Player player) {
-        var data = player.getPersistentDataContainer();
-        Byte mode = data.get(REPLY_MODE, org.bukkit.persistence.PersistentDataType.BYTE);
-        boolean lastRecipient = mode == null || mode != 1;
-        data.set(REPLY_MODE, org.bukkit.persistence.PersistentDataType.BYTE, (byte) (lastRecipient ? 1 : 0));
-        plugin.getMessageManager().send(player, lastRecipient ? Messages.REPLY_LAST_RECIPIENT : Messages.REPLY_LAST_SENDER);
+        UtilitySupport.onOwner(plugin, player, () -> {
+            var data = player.getPersistentDataContainer();
+            Byte mode = data.get(REPLY_MODE, org.bukkit.persistence.PersistentDataType.BYTE);
+            boolean lastRecipient = mode == null || mode != 1;
+            data.set(REPLY_MODE, org.bukkit.persistence.PersistentDataType.BYTE, (byte) (lastRecipient ? 1 : 0));
+            plugin.getMessageManager().send(player, lastRecipient ? Messages.REPLY_LAST_RECIPIENT : Messages.REPLY_LAST_SENDER);
+        });
     }
 
     public void reply(CommandSender sender, String body) {
         Optional<UUID> target = sender instanceof Player player ? replyTarget(player) : replies.target(idOf(sender));
         if (target.isEmpty()) {
-            plugin.getMessageManager().send(sender, Messages.MSG_NO_REPLY_TARGET);
+            UtilitySupport.send(plugin, sender, Messages.MSG_NO_REPLY_TARGET);
             return;
         }
         CommandSender recipient = target.get().equals(ReplyTargets.CONSOLE) ? Bukkit.getConsoleSender() : Bukkit.getPlayer(target.get());
         if (recipient == null) {
             replies.forget(target.get());
-            plugin.getMessageManager().send(sender, Messages.MSG_NO_REPLY_TARGET);
+            UtilitySupport.send(plugin, sender, Messages.MSG_NO_REPLY_TARGET);
             return;
         }
         if (recipient instanceof Player p && !visibleTo(sender, p)) {
             replies.clear(idOf(sender));
-            plugin.getMessageManager().send(sender, Messages.MSG_NO_REPLY_TARGET);
+            UtilitySupport.send(plugin, sender, Messages.MSG_NO_REPLY_TARGET);
             return;
         }
         send(sender, recipient, recipient instanceof Player p ? p.getName() : consoleName(), body);
@@ -277,10 +283,9 @@ public final class MessagingService implements Listener {
                 && plugin.getModuleManager().getModule("moderation") instanceof codes.castled.allium.module.ModerationModule mod
                 && mod.isEnabled() ? mod.spy() : null;
         if (preferences != null || staffSpy != null) {
-            for (Player spy : plugin.getServer().getOnlinePlayers()) {
+            for (Player spy : List.copyOf(plugin.getServer().getOnlinePlayers())) {
                 if (idOf(spy).equals(idOf(sender)) || idOf(spy).equals(idOf(recipient))
-                        || !spy.hasPermission("allium.socialspy")
-                        || !participantVisible(spy, sender) || !participantVisible(spy, recipient)) {
+                        || !spy.hasPermission("allium.socialspy")) {
                     continue;
                 }
                 boolean globalOn = preferences != null
@@ -291,7 +296,18 @@ public final class MessagingService implements Listener {
                 if (!globalOn && !targetOn) {
                     continue;
                 }
-                notifications.send(spy, notification);
+                if (BukkitServerThread.isFolia()) {
+                    UtilitySupport.onOwner(plugin, spy, () -> {
+                        if (spy.isOnline() && participantVisible(spy, sender) && participantVisible(spy, recipient)) {
+                            notifications.send(spy, notification);
+                        }
+                    });
+                } else {
+                    if (!participantVisible(spy, sender) || !participantVisible(spy, recipient)) {
+                        continue;
+                    }
+                    notifications.send(spy, notification);
+                }
             }
         }
         // This explicit opt-in writes private content to server logs; console conversations are

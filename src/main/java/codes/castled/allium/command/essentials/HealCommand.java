@@ -29,20 +29,22 @@ public final class HealCommand implements SpecCommandHandler.Immediate {
             return false;
         }
 
-        double maxHealth = HealthCompatProvider.current().getMaxHealth(target);
-        target.setHealth(maxHealth);
-        target.setFoodLevel(20);
-        target.setSaturation(20f);
-        target.setFireTicks(0);
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            double maxHealth = HealthCompatProvider.current().getMaxHealth(target);
+            target.setHealth(maxHealth);
+            target.setFoodLevel(20);
+            target.setSaturation(20f);
+            target.setFireTicks(0);
 
-        EntityCompatProvider.current().clearPotionEffects(target);
-        EntityCompatProvider.current().clearArrows(target);
-        EntityCompatProvider.current().clearFreeze(target);
+            EntityCompatProvider.current().clearPotionEffects(target);
+            EntityCompatProvider.current().clearArrows(target);
+            EntityCompatProvider.current().clearFreeze(target);
 
-        if (target != context.sender()) {
-            context.sendOutcome(context.sender(), "other", "{player}", target.getName());
-        }
-        context.sendOutcome(target, "self");
+            if (target != context.sender()) {
+                context.sendOutcome(context.sender(), "other", "{player}", target.getName());
+            }
+            context.sendOutcome(target, "self");
+        });
         return true;
     }
 }

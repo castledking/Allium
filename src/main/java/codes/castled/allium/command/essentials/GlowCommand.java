@@ -8,6 +8,7 @@ import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.glow.GlowService;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -52,19 +53,21 @@ public final class GlowCommand implements SpecCommandHandler {
         if (target == null) return;
         boolean self = target == sender;
         switch (choice) {
-            case "off", "none", "remove" -> {
+            case "off", "none", "remove" -> UtilitySupport.onTarget(plugin, sender, target, () -> {
                 service.choose(target, null);
                 send(sender, self ? Messages.GLOW_OFF : Messages.GLOW_OFF_OTHER, "{player}", target.getName());
                 if (!self) send(target, Messages.GLOW_OFF);
-            }
+            });
             case "spectator" -> {
                 if (!sender.hasPermission("allium.gamemode.spectator")) {
                     send(sender, Messages.NO_PERMISSION);
                     return;
                 }
-                boolean on = service.toggleSpectatorOnly(target);
-                send(target, on ? Messages.GLOW_SPECTATOR_ON : Messages.GLOW_SPECTATOR_OFF);
-                if (!self) send(sender, on ? Messages.GLOW_SPECTATOR_ON_OTHER : Messages.GLOW_SPECTATOR_OFF_OTHER, "{player}", target.getName());
+                UtilitySupport.onTarget(plugin, sender, target, () -> {
+                    boolean on = service.toggleSpectatorOnly(target);
+                    send(target, on ? Messages.GLOW_SPECTATOR_ON : Messages.GLOW_SPECTATOR_OFF);
+                    if (!self) send(sender, on ? Messages.GLOW_SPECTATOR_ON_OTHER : Messages.GLOW_SPECTATOR_OFF_OTHER, "{player}", target.getName());
+                });
             }
             default -> {
                 if (!choice.equals(GlowService.RAINBOW) && !GlowService.COLORS.containsKey(choice)) {
@@ -75,12 +78,14 @@ public final class GlowCommand implements SpecCommandHandler {
                     send(sender, Messages.GLOW_COLOR_DENIED, "{color}", GlowService.display(choice));
                     return;
                 }
-                service.choose(target, choice);
                 String shown = GlowService.display(choice);
-                send(sender, self ? Messages.GLOW_SET : Messages.GLOW_SET_OTHER, "{color}", shown, "{player}", target.getName());
-                if (!self) send(target, Messages.GLOW_SET, "{color}", shown);
-                if (service.overridden(target)) send(target, Messages.GLOW_OVERRIDDEN);
-                else if (service.spectatorOnly(target) && target.getGameMode() != GameMode.SPECTATOR) send(target, Messages.GLOW_HELD);
+                UtilitySupport.onTarget(plugin, sender, target, () -> {
+                    service.choose(target, choice);
+                    send(sender, self ? Messages.GLOW_SET : Messages.GLOW_SET_OTHER, "{color}", shown, "{player}", target.getName());
+                    if (!self) send(target, Messages.GLOW_SET, "{color}", shown);
+                    if (service.overridden(target)) send(target, Messages.GLOW_OVERRIDDEN);
+                    else if (service.spectatorOnly(target) && target.getGameMode() != GameMode.SPECTATOR) send(target, Messages.GLOW_HELD);
+                });
             }
         }
     }
@@ -122,13 +127,16 @@ public final class GlowCommand implements SpecCommandHandler {
         }
         if (args.length == 2 && sender.hasPermission("allium.glow.others")) {
             String prefix = args[1].toLowerCase(Locale.ROOT);
-            return plugin.getServer().getOnlinePlayers().stream().filter(p -> PlayerNameVisibility.canSee(sender, p))
+            return plugin.getServer().getOnlinePlayers().stream()
+                    .filter(p -> BukkitServerThread.isFolia()
+                            ? PlayerNameVisibility.canSeeTarget(sender, p)
+                            : PlayerNameVisibility.canSee(sender, p))
                     .map(Player::getName).filter(n -> n.toLowerCase(Locale.ROOT).startsWith(prefix)).sorted().limit(50).toList();
         }
         return List.of();
     }
 
     private void send(CommandSender to, Messages message, String... args) {
-        plugin.getMessageManager().send(to, message, args);
+        UtilitySupport.send(plugin, to, message, args);
     }
 }

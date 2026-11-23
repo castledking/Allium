@@ -1,6 +1,9 @@
 package codes.castled.allium.rtp;
 
+import codes.castled.allium.PluginStart;
 import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.teleport.DestinationSafety;
 import codes.castled.allium.teleport.TeleportSettings;
@@ -15,11 +18,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /**
  * Finds one random spot: a candidate in the area's ring, its chunk loaded (and generated) off the
- * server thread where possible, then a server-thread check of the world border, height limits,
+ * server thread where possible, then an owner-thread check of the world border, height limits,
  * excluded biomes, blocks to avoid, {@link DestinationSafety} and claims. Tries are sequential, so a
  * search never loads more than one chunk at a time.
  */
@@ -30,62 +34,97 @@ final class RtpSearch {
     static final int NETHER_MIN_Y = 32;
     static final int NETHER_MAX_Y = 120;
 
+    private final PluginStart plugin;
     private final TaskScheduler scheduler;
     private final DestinationSafety safety;
     private final Supplier<ProtectionService> protection;
 
-    RtpSearch(TaskScheduler scheduler, DestinationSafety safety, Supplier<ProtectionService> protection) {
-        this.scheduler = scheduler;
+    RtpSearch(PluginStart plugin, DestinationSafety safety, Supplier<ProtectionService> protection) {
+        this.plugin = plugin;
+        this.scheduler = plugin.getScheduler();
         this.safety = safety;
         this.protection = protection;
     }
 
     /**
-     * Server thread. Completes on the server thread with a safe spot, or null after {@code attempts}
-     * tries. {@code player} is who will land there (for claims); null skips the claim check, which is
+     * Completes with a safe spot, or null after {@code attempts} tries or when the search is no
+     * longer active. {@code player} is who will land there (for claims); null skips the claim check, which is
      * then made when the spot is used. {@code biomes}, when given, are the only biomes accepted
      * ({@code /rtp biome}); otherwise {@code excluded-biomes} are refused.
      */
     CompletableFuture<Location> find(World world, RtpSettings.Area area, RtpSettings settings, @Nullable Player player,
-                                     TeleportSettings rules, int attempts, @Nullable Set<String> biomes) {
+                                     TeleportSettings rules, int attempts, @Nullable Set<String> biomes, BooleanSupplier active) {
         CompletableFuture<Location> result = new CompletableFuture<>();
-        attempt(world, area, settings, player, rules, 0, attempts, biomes, result);
+        attempt(world, area, settings, player, rules, 0, attempts, biomes, active, result);
         return result;
     }
 
     private void attempt(World world, RtpSettings.Area area, RtpSettings settings, @Nullable Player player,
-                         TeleportSettings rules, int tried, int attempts, @Nullable Set<String> biomes,
+                         TeleportSettings rules, int tried, int attempts, @Nullable Set<String> biomes, BooleanSupplier active,
                          CompletableFuture<Location> result) {
-        if (tried >= attempts || result.isDone()) {
+        if (tried >= attempts || result.isDone() || !active.getAsBoolean()) {
             result.complete(null);
             return;
         }
-        int[] column = candidate(world, area, settings, biomes);
+        int[] column;
+        try {
+            column = candidate(world, area, settings, biomes);
+        } catch (RuntimeException failed) {
+            result.completeExceptionally(failed);
+            return;
+        }
         if (column == null) {
-            attempt(world, area, settings, player, rules, tried + 1, attempts, biomes, result);
+            attempt(world, area, settings, player, rules, tried + 1, attempts, biomes, active, result);
             return;
         }
         int bx = column[0];
         int bz = column[1];
-        AsyncChunks.load(world, bx >> 4, bz >> 4, scheduler).whenComplete((chunk, error) -> onServer(() -> {
-            Location spot = null;
-            if (error == null && player != null && !player.isOnline()) {
-                result.complete(null);
-                return;
-            }
-            if (error == null) {
+        inLoadedColumn(world, bx, bz, active, () -> evaluate(world, bx, bz, area, settings, player, rules, biomes))
+                .whenComplete((spot, error) -> {
+                    if (error == null && spot != null) {
+                        result.complete(spot);
+                    } else {
+                        attempt(world, area, settings, player, rules, tried + 1, attempts, biomes, active, result);
+                    }
+                });
+    }
+
+    /** Loads a search or cached column and only invokes the check on its owner. */
+    CompletableFuture<Location> inLoadedColumn(World world, int bx, int bz, BooleanSupplier active, Supplier<Location> evaluate) {
+        int chunkX = bx >> 4;
+        int chunkZ = bz >> 4;
+        var result = new CompletableFuture<Location>();
+        boolean regional = BukkitServerThread.isFolia();
+        try {
+            var loading = regional ? BukkitServerThread.loadRegionalChunk(world, chunkX, chunkZ, true)
+                    : AsyncChunks.load(world, chunkX, chunkZ, scheduler);
+            loading.whenComplete((chunk, error) -> {
+                Runnable check = () -> {
+                    try {
+                        result.complete(error == null && chunk != null && active.getAsBoolean()
+                                && world.isChunkLoaded(chunkX, chunkZ) ? evaluate.get() : null);
+                    } catch (RuntimeException failed) {
+                        result.complete(null);
+                    }
+                };
                 try {
-                    spot = evaluate(world, bx, bz, area, settings, player, rules, biomes);
+                    if (!regional) {
+                        onServer(check);
+                    } else if (error != null || chunk == null || !active.getAsBoolean()) {
+                        result.complete(null);
+                    } else {
+                        var owner = BukkitServerThread.region(plugin, world, chunkX, chunkZ);
+                        if (owner.isServerThread()) check.run();
+                        else if (scheduler.runOn(owner, check, () -> result.complete(null), 0) == TaskHandle.NONE) result.complete(null);
+                    }
                 } catch (RuntimeException failed) {
-                    spot = null;
+                    result.complete(null);
                 }
-            }
-            if (spot != null) {
-                result.complete(spot);
-            } else {
-                attempt(world, area, settings, player, rules, tried + 1, attempts, biomes, result);
-            }
-        }));
+            });
+        } catch (RuntimeException failed) {
+            result.complete(null);
+        }
+        return result;
     }
 
     /**
@@ -134,7 +173,7 @@ final class RtpSearch {
         return half > 0 && Math.abs(x - center.getX()) <= half && Math.abs(z - center.getZ()) <= half;
     }
 
-    /** Server thread, with the column's chunk loaded: the spot to stand on at (bx, bz), or null. */
+    /** Column owner, with the chunk loaded: the spot to stand on at (bx, bz), or null. */
     @Nullable
     Location evaluate(World world, int bx, int bz, RtpSettings.Area area, RtpSettings settings, @Nullable Player player,
                       TeleportSettings rules, @Nullable Set<String> biomes) {

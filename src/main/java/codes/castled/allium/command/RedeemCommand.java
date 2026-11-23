@@ -1,6 +1,7 @@
 package codes.castled.allium.command;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.config.YamlFiles;
@@ -45,13 +46,18 @@ public final class RedeemCommand implements SpecCommandHandler, Listener {
             context.sendInvalidArgs("/redeem");
             return;
         }
-        plugin.getScheduler().runOnServer(() -> {
-            if (player.isOnline() && player.hasPermission("allium.redeem")) redeem(player);
+        UtilitySupport.onOwner(plugin, player, () -> {
+            if (!player.isOnline() || !player.hasPermission("allium.redeem")) return;
+            UUID id = player.getUniqueId();
+            String name = player.getName();
+            // The claim file and console command dispatch are shared across all players.
+            plugin.getScheduler().runOnServer(() -> {
+                if (plugin.getServer().getPlayer(id) == player) redeem(player, id, name);
+            });
         });
     }
 
-    private void redeem(Player player) {
-        UUID id = player.getUniqueId();
+    private void redeem(Player player, UUID id, String name) {
         var file = plugin.getDataFolder().toPath().resolve("config.yml");
         List<String> commands;
         String rank;
@@ -86,7 +92,7 @@ public final class RedeemCommand implements SpecCommandHandler, Listener {
             return;
         }
         for (int i = 0; i < commands.size(); i++) {
-            String command = commands.get(i).replace("{player}", player.getName()).replace("{uuid}", id.toString());
+            String command = commands.get(i).replace("{player}", name).replace("{uuid}", id.toString());
             try {
                 if (plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), command.replaceFirst("^/", ""))) {
                     continue;
@@ -128,6 +134,6 @@ public final class RedeemCommand implements SpecCommandHandler, Listener {
     }
 
     private void send(Player player, Messages message, String... placeholders) {
-        plugin.getMessageManager().send(player, message, placeholders);
+        UtilitySupport.send(plugin, player, message, placeholders);
     }
 }

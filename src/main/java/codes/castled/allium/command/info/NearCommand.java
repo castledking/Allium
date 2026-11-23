@@ -66,7 +66,10 @@ public final class NearCommand implements SpecCommandHandler {
         }
 
         String radiusLabel = formatRadius(radius);
-        List<PlayerInfoService.NearbyEntry> nearby = info.findNearbyPlayers(player, radius);
+        info.findNearbyPlayers(player, radius, nearby -> report(player, radiusLabel, nearby));
+    }
+
+    private void report(Player player, String radiusLabel, List<PlayerInfoService.NearbyEntry> nearby) {
         if (nearby.isEmpty()) {
             plugin.getMessageManager().send(player, Messages.INFO_NEAR_EMPTY, "{radius}", radiusLabel);
             return;

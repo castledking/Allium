@@ -9,10 +9,12 @@ import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.PreferenceChange;
 import codes.castled.allium.preference.PreferenceKey;
 import codes.castled.allium.preference.PreferenceSessions;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -28,10 +30,11 @@ import java.util.*;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.function.BooleanSupplier;
 
-/** Server-thread-owned teleport pipeline. Only this class commits an Allium teleport. */
+/** Player teleport pipeline. On Folia, each mover owns their operation and destination reads run by region. */
 public final class TeleportService implements Listener {
     private static final Map<PluginStart,TeleportService> OWNERS=new WeakHashMap<>();
     public static final String FAULT_WRITE_FAIL="teleport.write-fail",FAULT_LOAD_FAIL="teleport.load-fail";
@@ -42,28 +45,30 @@ public final class TeleportService implements Listener {
     private final ThreadPoolExecutor io;
     private final DestinationSafety safety;
     private final EndGatewayReturn gatewayReturn;
+    private final java.util.function.Consumer<Player> regionalArrival;
     private final RequestTracker requests=new RequestTracker();
-    private final Map<UUID,Session> sessions=new HashMap<>();
-    private final Map<UUID,Operation> operations=new HashMap<>();
+    private final Map<UUID,Session> sessions=new ConcurrentHashMap<>();
+    private final Map<UUID,Operation> operations=new ConcurrentHashMap<>();
     /** Per-player cooldowns (milliseconds; negative keeps teleport.cooldowns) for a command, e.g. random teleport tiers. */
-    private final Map<String,java.util.function.ToLongFunction<Player>> cooldownProviders=new HashMap<>();
+    private final Map<String,java.util.function.ToLongFunction<Player>> cooldownProviders=new ConcurrentHashMap<>();
     private final Map<UUID,HistoryWrite> pendingWrites=new ConcurrentHashMap<>();
     private final Set<HistoryWrite> queuedWrites=ConcurrentHashMap.newKeySet();
     private static final class OfflineLookup {
-        final Session session;UUID target;String name;boolean loading=true,valid=true;
+        final Session session;volatile UUID target;String name;volatile boolean loading=true,valid=true;
         OfflineLookup(Session session){this.session=session;}
     }
-    private final Map<UUID,OfflineLookup> offlineLookups=new HashMap<>();
-    private final Set<UUID> committing=new HashSet<>();
+    private final Map<UUID,OfflineLookup> offlineLookups=new ConcurrentHashMap<>();
+    private final Set<UUID> committing=ConcurrentHashMap.newKeySet();
     private volatile TeleportSettings settings;
-    private final Map<UUID,SelectorConfirmation> selectorConfirmations=new HashMap<>();
-    private SavedLocation spawn;
-    private final Map<String, SavedLocation> groupSpawns = new HashMap<>();
-    private boolean spawnReady;
-    private boolean closed;
+    private final Map<UUID,SelectorConfirmation> selectorConfirmations=new ConcurrentHashMap<>();
+    private volatile SavedLocation spawn;
+    private final Map<String, SavedLocation> groupSpawns = new ConcurrentHashMap<>();
+    private volatile boolean spawnReady;
+    private volatile boolean closed;
     private TaskHandle timer;
 
     private record SelectorConfirmation(String command,String signature,long expiresAt) {}
+    private record ActorAccess(boolean permitted,boolean bypassCooldown,boolean bypassWarmup,boolean unsafe) {}
 
     public static final String PERMISSION_BACK_ON_DEATH = "allium.back.ondeath";
 
@@ -71,15 +76,19 @@ public final class TeleportService implements Listener {
         final Player player;
         SavedLocation back;
         boolean backIsDeath;
-        final Map<String,Long> cooldowns=new HashMap<>();
-        boolean loaded;
+        final Map<String,Long> cooldowns=new ConcurrentHashMap<>();
+        volatile boolean loaded;
         long historyRevision;
         Session(Player p){player=p;}
     }
+    private static final class Warmup {
+        long due;
+        long lastSecond;
+    }
     private record Operation(Session session,CommandSender actor,String command,Supplier<Location> destination,
                              @Nullable Player anchor,@Nullable RequestTracker.Request request,boolean force,
-                             Location origin,long due,TeleportSettings rules,BooleanSupplier policy,boolean mayMove,
-                             long[] lastWarmupSecond,@Nullable java.util.function.Consumer<Boolean> outcome,
+                             Location origin,long delay,TeleportSettings rules,BooleanSupplier policy,boolean mayMove,
+                             Warmup warmup,@Nullable java.util.function.Consumer<Boolean> outcome,
                              boolean backDeath) {}
     private record HistoryWrite(UUID owner,Session session,SavedLocation origin,String command,long until,
                                 Map<String,Long> cooldowns,Runnable success) {}
@@ -87,9 +96,18 @@ public final class TeleportService implements Listener {
     public TeleportService(PluginStart plugin,TeleportRepository repository,ThreadPoolExecutor io) {
         this(plugin,repository,io,new DestinationSafety());
     }
+    public TeleportService(PluginStart plugin,TeleportRepository repository,ThreadPoolExecutor io,
+                           java.util.function.Consumer<Player> regionalArrival) {
+        this(plugin,repository,io,new DestinationSafety(),regionalArrival);
+    }
     public TeleportService(PluginStart plugin,TeleportRepository repository,ThreadPoolExecutor io,DestinationSafety safety) {
+        this(plugin,repository,io,safety,player->{});
+    }
+    private TeleportService(PluginStart plugin,TeleportRepository repository,ThreadPoolExecutor io,DestinationSafety safety,
+                            java.util.function.Consumer<Player> regionalArrival) {
         this.plugin=plugin;this.repository=repository;this.io=io;
         this.safety=safety;
+        this.regionalArrival=regionalArrival;
         this.gatewayReturn = new EndGatewayReturn(safety);
         settings=TeleportSettings.read(plugin.getConfig());
     }
@@ -103,23 +121,29 @@ public final class TeleportService implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
         registerWorldPermissions();
         loadSpawn(0);
-        for(Player p:plugin.getServer().getOnlinePlayers())joined(p);
+        for(Player p:plugin.getServer().getOnlinePlayers())onOwner(p,()->joined(p));
+        boolean regional=BukkitServerThread.isFolia();
         timer=plugin.getScheduler().repeatOnServer(()->{
             long now=System.currentTimeMillis();
             for(var request:requests.expire(now)) tell(request.requester(),Messages.TELEPORT_CANCELLED);
-            for(var operation:List.copyOf(operations.values())){
-                if(now>=operation.due())complete(operation);
-                else tickWarmup(operation,now);
+            if(!regional){
+                for(var operation:List.copyOf(operations.values())){
+                    if(now>=operation.warmup().due)complete(operation);
+                    else tickWarmup(operation,now);
+                }
             }
             return true;
         },50,50);
     }
     public void disable() {
-        for(Session s:List.copyOf(sessions.values()))saveLogout(s.player);
+        // Only the single-threaded server can read live locations here. The quit handler saves on the player owner.
+        if(!BukkitServerThread.isFolia())for(Session s:List.copyOf(sessions.values()))saveLogout(s.player);
         closed=true;
         if(timer!=null)timer.cancel();
         HandlerList.unregisterAll(this);
-        for(Operation operation:List.copyOf(operations.values()))finish(operation,false);
+        for(Operation operation:List.copyOf(operations.values())){
+            if(operations.remove(operation.session().player.getUniqueId(),operation))finish(operation,false);
+        }
         requests.expire(Long.MAX_VALUE);operations.clear();offlineLookups.clear();selectorConfirmations.clear();sessions.clear();
         // Retry records that exhausted their live attempts before draining the worker. Retries
         // belong to the worker, so shutdown never depends on another server tick.
@@ -412,6 +436,65 @@ public final class TeleportService implements Listener {
     }
     /** The safety rules a teleport of {@code mover} by {@code actor} is checked against now. */
     public TeleportSettings safetyRulesFor(Player mover,CommandSender actor){return safetyRules(mover,actor,settings);}
+    /** Builds safety rules on the mover's region from the issuer's previously checked permission. */
+    public TeleportSettings safetyRulesFor(Player mover,boolean allowUnsafe){return safetyRules(mover,allowUnsafe,settings);}
+    /** Folia validates once at the destination, then moves the selected non-player entities on their owners. */
+    public CompletableFuture<OptionalInt> moveSelectedEntities(Player issuer, List<Entity> entities, Location destination,
+                                                                TeleportSettings rules, BooleanSupplier authorized) {
+        var result = new CompletableFuture<OptionalInt>();
+        safety.resolveRegional(plugin, destination, rules).whenComplete((checked, error) -> {
+            Runnable work = () -> {
+                try {
+                    if (closed || !samePlayer(issuer)) {
+                        result.cancel(false);
+                    } else if (!authorized.getAsBoolean()) {
+                        result.completeExceptionally(new SecurityException("teleport permission changed"));
+                    } else if (error != null || checked == null || checked.destination().isEmpty()) {
+                        result.complete(OptionalInt.empty());
+                    } else {
+                        Location safe = checked.destination().get();
+                        var moves = entities.stream().map(entity -> moveSelectedEntity(issuer, entity, safe)).toList();
+                        CompletableFuture.allOf(moves.toArray(CompletableFuture[]::new)).thenRun(() ->
+                                result.complete(OptionalInt.of((int) moves.stream().filter(move -> move.getNow(false)).count())));
+                    }
+                } catch (RuntimeException failure) {
+                    result.completeExceptionally(failure);
+                }
+            };
+            try {
+                if (BukkitServerThread.runFor(plugin, plugin.getScheduler(), issuer, work, () -> result.cancel(false), 0) == TaskHandle.NONE) {
+                    result.cancel(false);
+                }
+            } catch (RuntimeException failure) {
+                result.completeExceptionally(failure);
+            }
+        });
+        return result;
+    }
+
+    private CompletableFuture<Boolean> moveSelectedEntity(Player issuer, Entity entity, Location destination) {
+        var result = new CompletableFuture<Boolean>();
+        Runnable work = () -> {
+            try {
+                if (closed || plugin.getServer().getPlayer(issuer.getUniqueId()) != issuer || entity instanceof Player || !entity.isValid()) {
+                    result.complete(false);
+                } else {
+                    BukkitServerThread.teleportRegional(entity, destination.clone(), PlayerTeleportEvent.TeleportCause.PLUGIN)
+                            .whenComplete((moved, error) -> result.complete(error == null && Boolean.TRUE.equals(moved)));
+                }
+            } catch (RuntimeException failure) {
+                result.complete(false);
+            }
+        };
+        try {
+            var owner = BukkitServerThread.entity(plugin, entity);
+            if (owner.isServerThread()) work.run();
+            else if (plugin.getScheduler().runOn(owner, work, () -> result.complete(false), 0) == TaskHandle.NONE) result.complete(false);
+        } catch (RuntimeException failure) {
+            result.complete(false);
+        }
+        return result;
+    }
     public void forceLocation(CommandSender actor,Player mover,Location destination,String command){
         forceLocation(actor,mover,destination,command,arrived->{});
     }
@@ -485,20 +568,20 @@ public final class TeleportService implements Listener {
         if(live!=null){if(!visible(mover,live)){send(mover,Messages.TELEPORT_OFFLINE_UNAVAILABLE);return;}force(mover,mover,live,"tp");return;}
         var names=plugin.getPlayerNames();if(names==null){send(mover,Messages.TELEPORT_LOADING);return;}
         var query=new OfflineLookup(sessions.get(mover.getUniqueId()));offlineLookups.put(mover.getUniqueId(),query);
-        names.resolve(name).whenComplete((found,error)->onServer(()->{
+        names.resolve(name).whenComplete((found,error)->onPlayerLater(mover,()->{
             if(!offlineCurrent(mover,query))return;
             if(error!=null){offlineFailed(mover,query,Messages.TELEPORT_STORAGE_FAILED);return;}
             if(found.isEmpty()){offlineFailed(mover,query,Messages.TELEPORT_OFFLINE_UNAVAILABLE);return;}
             query.target=found.get().uuid();query.name=found.get().name();
             if(plugin.getServer().getPlayer(query.target)!=null){offlineFailed(mover,query,Messages.TELEPORT_OFFLINE_UNAVAILABLE);return;}
-            submit(()->{try{var point=repository.load(query.target,"logout");onServer(()->{
+            submit(()->{try{var point=repository.load(query.target,"logout");onPlayerLater(mover,()->{
                 if(!offlineCurrent(mover,query))return;
                 if(!query.valid||plugin.getServer().getPlayer(query.target)!=null||point.isEmpty()){offlineFailed(mover,query,Messages.TELEPORT_OFFLINE_UNAVAILABLE);return;}
                 Location destination=location(point.get());if(destination==null){offlineFailed(mover,query,Messages.TELEPORT_UNSAFE);return;}
                 query.loading=false;
                 if(!begin(mover,mover,"tpoffline",()->destination.clone(),null,null,false,()->offlineEnabled()&&offlineCurrent(mover,query)&&query.valid&&plugin.getServer().getPlayer(query.target)==null))offlineLookups.remove(mover.getUniqueId(),query);
-            });}catch(SQLException|RuntimeException failure){onServer(()->offlineFailed(mover,query,Messages.TELEPORT_STORAGE_FAILED));}},()->offlineFailed(mover,query,Messages.TELEPORT_BUSY));
-        }));
+            },0);}catch(SQLException|RuntimeException failure){onPlayerLater(mover,()->offlineFailed(mover,query,Messages.TELEPORT_STORAGE_FAILED),0);}},()->offlineFailed(mover,query,Messages.TELEPORT_BUSY));
+        },0));
     }
     private boolean offlineEnabled(){return plugin.getConfig().getBoolean("modules.teleport",true)&&(plugin.getCommandManager()==null||!plugin.getCommandManager().getFamilyPolicy().isDisabled("tpoffline"));}
     private boolean offlineCurrent(Player p,OfflineLookup query){return !closed&&offlineLookups.get(p.getUniqueId())==query&&same(query.session);}
@@ -549,87 +632,248 @@ public final class TeleportService implements Listener {
     private boolean begin(Player mover,CommandSender actor,String command,Supplier<Location> destination,@Nullable Player anchor,
                           @Nullable RequestTracker.Request request,boolean force,BooleanSupplier policy,
                           @Nullable java.util.function.Consumer<Boolean> outcome) {
-        if(!actor.hasPermission(permission(command))){send(actor,Messages.NO_PERMISSION);return false;}
+        boolean regional=BukkitServerThread.isFolia();
+        if(regional&&actor instanceof Player player){
+            var owner=BukkitServerThread.entity(plugin,player);
+            if(!owner.isServerThread()){
+                plugin.getScheduler().runOn(owner,()->{
+                    if(!begin(mover,actor,command,destination,anchor,request,force,policy,outcome)&&outcome!=null)outcome.accept(false);
+                },()->{if(outcome!=null)onServer(()->outcome.accept(false));},0);
+                return true;
+            }
+        }
+        ActorAccess access=actorAccess(actor,command);
+        if(regional){
+            var owner=BukkitServerThread.entity(plugin,mover);
+            if(!owner.isServerThread()){
+                Runnable declined=()->{if(outcome!=null)outcome.accept(false);};
+                plugin.getScheduler().runOn(owner,()->{
+                    if(!beginOwned(mover,actor,command,destination,anchor,request,force,policy,outcome,access))declined.run();
+                },()->{if(outcome!=null)onServer(declined);},0);
+                return true;
+            }
+        }
+        return beginOwned(mover,actor,command,destination,anchor,request,force,policy,outcome,access);
+    }
+    private boolean beginOwned(Player mover,CommandSender actor,String command,Supplier<Location> destination,@Nullable Player anchor,
+                               @Nullable RequestTracker.Request request,boolean force,BooleanSupplier policy,
+                               @Nullable java.util.function.Consumer<Boolean> outcome,ActorAccess access) {
+        if(closed)return false;
+        if(!access.permitted()){send(actor,Messages.NO_PERMISSION);return false;}
         if(!available(mover))return false;
         if(!policy.getAsBoolean()){send(actor,Messages.TELEPORT_INTERRUPTED,"{reason}","destination is no longer available");return false;}
-        if(operations.containsKey(mover.getUniqueId())||offlineLookups.containsKey(mover.getUniqueId())&&offlineLookups.get(mover.getUniqueId()).loading){send(actor,Messages.TELEPORT_BUSY);return false;}
+        var lookup=offlineLookups.get(mover.getUniqueId());
+        if(operations.containsKey(mover.getUniqueId())||lookup!=null&&lookup.loading){send(actor,Messages.TELEPORT_BUSY);return false;}
         Session session=sessions.get(mover.getUniqueId());
         long now=System.currentTimeMillis();
-        if(!cooldownBypass(actor,command)&&session.cooldowns.getOrDefault(command,0L)>now){
+        if(!access.bypassCooldown()&&session.cooldowns.getOrDefault(command,0L)>now){
             send(actor,Messages.COOLDOWN_ACTIVE,"{time}",Long.toString((session.cooldowns.get(command)-now+999)/1000)+"s");return false;
         }
         TeleportSettings rules=settings;
-        Location wanted=destination.get();
-        if(wanted!=null&&wanted.getWorld()!=null&&!canEnterWorld(mover,wanted.getWorld())){
-            send(actor,Messages.WORLD_ACCESS_DENIED,"{world}",wanted.getWorld().getName());
-            if(actor!=mover)send(mover,Messages.WORLD_ACCESS_DENIED,"{world}",wanted.getWorld().getName());
-            return false;
+        boolean regional=BukkitServerThread.isFolia();
+        if(!regional){
+            Location wanted=destination.get();
+            if(!destinationAllowed(mover,actor,wanted))return false;
+            if(safety.ungenerated(wanted,rules)){send(actor,Messages.TELEPORT_UNGENERATED);return false;}
+            var checked=safety.resolve(wanted,safetyRules(mover,access.unsafe(),rules));
+            if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
         }
-        if(safety.ungenerated(wanted,rules)){send(actor,Messages.TELEPORT_UNGENERATED);return false;}
-        var checked=safety.resolve(wanted,safetyRules(mover,actor,rules));
-        if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
-        long warmup=command.equals("tpall")||actor.hasPermission("allium.teleport.bypass.warmup")||typed(actor,"timer.bypass",command)?0:rules.warmupMillis();
-        long initialSeconds=warmup<=0?0:Math.max(1L,(warmup+999L)/1000L);
-        var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),now+warmup,rules,policy,
-                typed(mover,"timer.move",command),new long[]{initialSeconds},outcome,command.equals("back")&&session.backIsDeath);
+        long warmup=access.bypassWarmup()?0:rules.warmupMillis();
+        var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),warmup,rules,policy,
+                typed(mover,"timer.move",command),new Warmup(),outcome,command.equals("back")&&session.backIsDeath);
         operations.put(mover.getUniqueId(),operation);
-        if(warmup==0)complete(operation);
-        else send(mover,Messages.TELEPORT_WARMUP,"{warmup}",Long.toString(initialSeconds),"{time}",Long.toString(initialSeconds));
+        if(regional)checkRegionalDestination(operation,true,access);
+        else if(warmup==0)complete(operation);
+        else startWarmup(operation,now,false);
         return true;
     }
+    private void startWarmup(Operation operation,long now,boolean regional) {
+        Player mover=operation.session().player;
+        operation.warmup().due=now+operation.delay();
+        operation.warmup().lastSecond=(operation.delay()+999L)/1000L;
+        String seconds=Long.toString(operation.warmup().lastSecond);
+        send(mover,Messages.TELEPORT_WARMUP,"{warmup}",seconds,"{time}",seconds);
+        if(regional)plugin.getScheduler().repeatOn(BukkitServerThread.entity(plugin,mover),()->{
+            if(!active(operation))return false;
+            long time=System.currentTimeMillis();
+            if(time>=operation.warmup().due){complete(operation);return false;}
+            tickWarmup(operation,time);
+            return true;
+        },50,50);
+    }
     private void tickWarmup(Operation operation,long now) {
-        long remaining=operation.due()-now;
+        long remaining=operation.warmup().due-now;
         if(remaining<=0)return;
         long seconds=Math.max(1L,(remaining+999L)/1000L);
-        if(seconds==operation.lastWarmupSecond()[0])return;
-        operation.lastWarmupSecond()[0]=seconds;
+        if(seconds==operation.warmup().lastSecond)return;
+        operation.warmup().lastSecond=seconds;
         Player mover=operation.session().player;
         if(samePlayer(mover)){
             String formatted=Long.toString(seconds);
             plugin.getMessageManager().sendActionBarUpdate(mover,Messages.TELEPORT_WARMUP,"{warmup}",formatted,"{time}",formatted);
         }
     }
-    private void complete(Operation operation) {
-        UUID id=operation.session().player.getUniqueId();
-        if(operations.get(id)!=operation)return;
+    private boolean active(Operation operation) {
+        return !closed&&operations.get(operation.session().player.getUniqueId())==operation;
+    }
+    private boolean canComplete(Operation operation,ActorAccess access) {
+        if(!active(operation))return false;
         Player mover=operation.session().player;
-        if(!operation.policy().getAsBoolean()){interrupt(operation,"destination is no longer available");return;}
-        if(operation.actor() instanceof Player actor&&!samePlayer(actor)){interrupt(operation,"issuing player went offline");return;}
-        if(!operation.actor().hasPermission(permission(operation.command()))) { interrupt(operation,"permission changed");return; }
-        if(!cooldownBypass(operation.actor(),operation.command())
-                &&operation.session().cooldowns.getOrDefault(operation.command(),0L)>System.currentTimeMillis()) { interrupt(operation,"cooldown changed");return; }
-        if(!same(operation.session())||operation.anchor()!=null&&!samePlayer(operation.anchor())){interrupt(operation,"player went offline");return;}
+        if(!operation.policy().getAsBoolean()){interrupt(operation,"destination is no longer available");return false;}
+        if(operation.actor() instanceof Player actor&&!samePlayer(actor)){interrupt(operation,"issuing player went offline");return false;}
+        if(!access.permitted()) { interrupt(operation,"permission changed");return false; }
+        if(!access.bypassCooldown()
+                &&operation.session().cooldowns.getOrDefault(operation.command(),0L)>System.currentTimeMillis()) { interrupt(operation,"cooldown changed");return false; }
+        if(!same(operation.session())||operation.anchor()!=null&&!samePlayer(operation.anchor())){interrupt(operation,"player went offline");return false;}
         if(operation.request()!=null) {
             var request=operation.request();Player sender=plugin.getServer().getPlayer(request.requester());Player receiver=plugin.getServer().getPlayer(request.recipient());
-            if(sender==null||receiver==null||!receiver.hasPermission("allium.tpaccept")||!allowed(sender,receiver,sender,false,false)){interrupt(operation,"request policy changed");return;}
+            if(sender==null||receiver==null||!receiver.hasPermission("allium.tpaccept")||!allowed(sender,receiver,sender,false,false)){interrupt(operation,"request policy changed");return false;}
         }
         if(operation.force()){
             boolean bypassToggle=overridesToggle(operation.actor(),operation.command());
             if((operation.command().equals("tp")&&operation.actor() instanceof Player&&mover!=operation.actor()&&!operation.actor().hasPermission("allium.tp.others"))||!visible(operation.actor(),mover)||!visible(operation.actor(),operation.anchor())
                     ||!allowed(mover,operation.anchor(),operation.actor(),true,false,bypassToggle)||!allowed(operation.anchor(),mover,operation.actor(),true,false,bypassToggle)) {
-                interrupt(operation,"teleport policy changed");return;
+                interrupt(operation,"teleport policy changed");return false;
             }
         }
-        Location targetLoc=operation.destination().get();
-        if(targetLoc!=null&&targetLoc.getWorld()!=null&&!canEnterWorld(mover,targetLoc.getWorld())){
-            operations.remove(id);offlineLookups.remove(id);finish(operation,false);
-            send(operation.actor(),Messages.WORLD_ACCESS_DENIED,"{world}",targetLoc.getWorld().getName());
-            if(operation.actor()!=mover)send(mover,Messages.WORLD_ACCESS_DENIED,"{world}",targetLoc.getWorld().getName());
+        return true;
+    }
+    private void complete(Operation operation) {
+        if(BukkitServerThread.isFolia()){
+            withRegionalActor(operation,access->{
+                if(canComplete(operation,access))checkRegionalDestination(operation,false,access);
+            });
             return;
         }
-        var destination=safety.resolve(targetLoc,safetyRules(mover,operation.actor(),operation.rules()));
-        if(destination.isEmpty()){operations.remove(id);offlineLookups.remove(id);finish(operation,false);send(operation.actor(),Messages.TELEPORT_UNSAFE);return;}
+        ActorAccess access=actorAccess(operation.actor(),operation.command());
+        if(!canComplete(operation,access))return;
+        var mover=operation.session().player;
+        Location targetLoc=operation.destination().get();
+        if(!destinationAllowed(mover,operation.actor(),targetLoc)){discard(operation);return;}
+        var destination=safety.resolve(targetLoc,safetyRules(mover,access.unsafe(),operation.rules()));
+        if(destination.isEmpty()){rejectDestination(operation,Messages.TELEPORT_UNSAFE);return;}
+        commit(operation,destination.get(),false,access.bypassCooldown());
+    }
+    private void withRegionalActor(Operation operation,java.util.function.Consumer<ActorAccess> action) {
+        Player mover=operation.session().player;
+        Runnable read=()->{
+            if(!active(operation))return;
+            ActorAccess access=actorAccess(operation.actor(),operation.command());
+            onOwner(mover,()->action.accept(access));
+        };
+        if(operation.actor() instanceof Player player){
+            onParticipant(player,read,()->onServer(()->interrupt(operation,"issuing player went offline")));
+        }else read.run();
+    }
+    private void checkRegionalDestination(Operation operation,boolean preflight,ActorAccess access) {
+        Player mover=operation.session().player;
+        Player locationOwner=operation.anchor()==null?mover:operation.anchor();
+        onParticipant(locationOwner,()->{
+            if(!active(operation))return;
+            Location wanted;
+            try { wanted=samePlayer(locationOwner)?operation.destination().get():null; }
+            catch(RuntimeException failure){onOwner(mover,()->rejectDestination(operation,Messages.TELEPORT_UNSAFE));return;}
+            onOwner(mover,()->{
+                if(!active(operation))return;
+                if(!destinationAllowed(mover,operation.actor(),wanted)){discard(operation);return;}
+                var rules=safetyRules(mover,access.unsafe(),operation.rules());
+                try {
+                    safety.resolveRegional(plugin,wanted,rules).whenComplete((result,error)->onOwner(mover,()->
+                            regionalDestinationReady(operation,preflight,rules,result,error)));
+                } catch(RuntimeException failure) {
+                    regionalDestinationReady(operation,preflight,rules,null,failure);
+                }
+            });
+        },()->onOwner(mover,()->interrupt(operation,"player went offline")));
+    }
+    private void regionalDestinationReady(Operation operation,boolean preflight,TeleportSettings checkedRules,
+                                          @Nullable DestinationSafety.RegionalResult result,@Nullable Throwable error) {
+        if(!active(operation))return;
+        if(result==null||result.destination().isEmpty()){
+            if(error!=null)plugin.logger().warning("Regional teleport safety check failed: "+error);
+            rejectDestination(operation,result!=null&&result.ungenerated()?Messages.TELEPORT_UNGENERATED:Messages.TELEPORT_UNSAFE);
+            return;
+        }
+        withRegionalActor(operation,access->{
+            if(!canComplete(operation,access))return;
+            Player mover=operation.session().player;
+            if(!checkedRules.equals(safetyRules(mover,access.unsafe(),operation.rules()))){
+                checkRegionalDestination(operation,preflight,access);
+                return;
+            }
+            if(preflight&&operation.delay()>0){startWarmup(operation,System.currentTimeMillis(),true);return;}
+            Location destination=result.destination().get();
+            if(!destinationAllowed(mover,operation.actor(),destination)){discard(operation);return;}
+            commit(operation,destination,true,access.bypassCooldown());
+        });
+    }
+    private boolean destinationAllowed(Player mover,CommandSender actor,@Nullable Location target) {
+        if(target==null||target.getWorld()==null||canEnterWorld(mover,target.getWorld()))return true;
+        send(actor,Messages.WORLD_ACCESS_DENIED,"{world}",target.getWorld().getName());
+        if(actor!=mover)send(mover,Messages.WORLD_ACCESS_DENIED,"{world}",target.getWorld().getName());
+        return false;
+    }
+    private void rejectDestination(Operation operation,Messages reason) {
+        if(discard(operation))send(operation.actor(),reason);
+    }
+    private boolean discard(Operation operation) {
+        Player mover=operation.session().player;
+        UUID id=mover.getUniqueId();
+        if(!operations.remove(id,operation))return false;
+        offlineLookups.remove(id);
+        if(operation.warmup().lastSecond>0&&samePlayer(mover))plugin.getMessageManager().clearActionBarIfPresent(mover,Messages.TELEPORT_WARMUP);
+        finish(operation,false);
+        return true;
+    }
+    private void commit(Operation operation,Location destination,boolean regional,boolean bypassCooldown) {
+        Player mover=operation.session().player;
+        UUID id=mover.getUniqueId();
         OfflineLookup offline=operation.command().equals("tpoffline")?offlineLookups.get(id):null;
         Location origin=mover.getLocation().clone();
-        operations.remove(id);offlineLookups.remove(id);committing.add(id);
-        if(operation.lastWarmupSecond()[0]>0&&samePlayer(mover))plugin.getMessageManager().clearActionBarIfPresent(mover,Messages.TELEPORT_WARMUP);
+        if(!regional){operations.remove(id);offlineLookups.remove(id);}
+        committing.add(id);
+        if(operation.warmup().lastSecond>0&&samePlayer(mover))plugin.getMessageManager().clearActionBarIfPresent(mover,Messages.TELEPORT_WARMUP);
+        if(regional){
+            try {
+                BukkitServerThread.teleportRegional(mover,destination,PlayerTeleportEvent.TeleportCause.PLUGIN)
+                        .whenComplete((success,error)->onParticipant(mover,()->{
+                            committing.remove(id);
+                            if(!operations.remove(id,operation))return;
+                            offlineLookups.remove(id);
+                            if(error!=null)plugin.logger().warning("Regional teleport failed: "+error);
+                            if(error==null&&Boolean.TRUE.equals(success)) {
+                                finishCommit(operation,origin,offline,bypassCooldown);
+                            } else {
+                                failCommit(operation,"the server refused the move");
+                            }
+                        },()->onServer(()->{
+                            committing.remove(id);
+                            discard(operation);
+                        })));
+            }catch(RuntimeException failure){
+                committing.remove(id);
+                discard(operation);
+                plugin.logger().warning("Regional teleport failed: "+failure);
+                send(operation.actor(),Messages.TELEPORT_INTERRUPTED,"{reason}","server could not start the teleport");
+            }
+            return;
+        }
         boolean success;
         // Bukkit will not teleport a player who carries riders; Allium's ride action takes them along.
         var rides=codes.castled.allium.ride.Rides.current();
-        try{success=rides!=null?rides.teleport(mover,destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN):mover.teleport(destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN);}
+        try{success=rides!=null?rides.teleport(mover,destination,PlayerTeleportEvent.TeleportCause.PLUGIN):mover.teleport(destination,PlayerTeleportEvent.TeleportCause.PLUGIN);}
         catch (RuntimeException failure) { finish(operation, false); throw failure; }
         finally{committing.remove(id);}
-        if(!success){finish(operation,false);send(operation.actor(),Messages.TELEPORT_INTERRUPTED,"{reason}","cancelled by another plugin");return;}
+        if(success)finishCommit(operation,origin,offline,cooldownBypass(operation.actor(),operation.command()));
+        else failCommit(operation,"cancelled by another plugin");
+    }
+    private void failCommit(Operation operation,String reason) {
+        finish(operation,false);
+        send(operation.actor(),Messages.TELEPORT_INTERRUPTED,"{reason}",reason);
+    }
+    private void finishCommit(Operation operation,Location origin,@Nullable OfflineLookup offline,boolean bypassCooldown) {
+        Player mover=operation.session().player;
+        UUID id=mover.getUniqueId();
         finish(operation,true);
         if(operation.force())plugin.logger().info("Teleport audit completed actor="+operation.actor().getName()+" mover="+id
                 +" target="+operation.anchor().getUniqueId()+" command="+operation.command()+" result=completed reason=bukkit-teleport-success world="+mover.getWorld().getUID());
@@ -638,9 +882,13 @@ public final class TeleportService implements Listener {
         long configured=operation.rules().cooldown(operation.command());
         var provider=cooldownProviders.get(operation.command());
         if(provider!=null){long custom=provider.applyAsLong(mover);if(custom>=0)configured=custom;}
-        long until=System.currentTimeMillis()+(cooldownBypass(operation.actor(),operation.command())?0:configured);
+        long until=System.currentTimeMillis()+(bypassCooldown?0:configured);
         session.cooldowns.put(operation.command(),until);
         Location landed=mover.getLocation();
+        if(BukkitServerThread.isFolia()){
+            try { regionalArrival.accept(mover); }
+            catch(RuntimeException failure) { plugin.logger().warning("Could not start companion follow: "+failure); }
+        }
         boolean position=operation.anchor()==null&&java.util.Set.of("tp","tpo","tppos","top","bottom","jump","rtp").contains(operation.command());
         saveHistory(session,session.back,operation.command(),until,0,()->{
             if(position){send(mover,Messages.TELEPORT_POSITION,"{x}",coordinate(landed.getX()),"{y}",coordinate(landed.getY()),"{z}",coordinate(landed.getZ()),"{world}",landed.getWorld()==null?"?":landed.getWorld().getName());return;}
@@ -664,9 +912,17 @@ public final class TeleportService implements Listener {
     private static boolean cooldownBypass(CommandSender actor,String command){
         return actor.hasPermission("allium.teleport.bypass.cooldown")||typed(actor,"cooldown.bypass",command);
     }
+    private static ActorAccess actorAccess(CommandSender actor,String command) {
+        return new ActorAccess(actor.hasPermission(permission(command)),cooldownBypass(actor,command),
+                command.equals("tpall")||actor.hasPermission("allium.teleport.bypass.warmup")||typed(actor,"timer.bypass",command),
+                actor.hasPermission("allium.teleport.unsafe"));
+    }
     private static TeleportSettings safetyRules(Player mover,CommandSender actor,TeleportSettings rules) {
+        return safetyRules(mover,actor.hasPermission("allium.teleport.unsafe"),rules);
+    }
+    private static TeleportSettings safetyRules(Player mover,boolean unsafe,TeleportSettings rules) {
         boolean flight=mover.getAllowFlight()||mover.getGameMode()==org.bukkit.GameMode.CREATIVE||mover.getGameMode()==org.bukkit.GameMode.SPECTATOR;
-        return rules.forMover(flight,actor.hasPermission("allium.teleport.unsafe"));
+        return rules.forMover(flight,unsafe);
     }
     private boolean allowed(Player requester,Player recipient,CommandSender actor,boolean force,boolean notify) {
         return allowed(requester,recipient,actor,force,notify,false);
@@ -705,12 +961,11 @@ public final class TeleportService implements Listener {
         catch(RuntimeException failure){plugin.logger().warning("Teleport outcome handler failed for "+operation.command()+": "+failure.getMessage());}
     }
     private void interrupt(Operation operation,String reason) {
-        if(operations.remove(operation.session().player.getUniqueId(),operation)){
-            offlineLookups.remove(operation.session().player.getUniqueId());
-            finish(operation,false);
-            if(operation.lastWarmupSecond()[0]>0&&samePlayer(operation.session().player))plugin.getMessageManager().clearActionBarIfPresent(operation.session().player,Messages.TELEPORT_WARMUP);
-            send(operation.session().player,Messages.TELEPORT_INTERRUPTED,"{reason}",reason);
-        }
+        Player mover=operation.session().player;
+        onOwner(mover,()->{
+            if(committing.contains(mover.getUniqueId())||!discard(operation))return;
+            send(mover,Messages.TELEPORT_INTERRUPTED,"{reason}",reason);
+        });
     }
     private void saveHistory(Session session,SavedLocation origin,String command,long until,int attempt,Runnable success) {
         session.historyRevision++;
@@ -729,7 +984,7 @@ public final class TeleportService implements Listener {
                     try {
                         checkWrite();repository.saveHistory(write.owner(),write.origin(),write.cooldowns());
                         pendingWrites.remove(write.owner(),write);
-                        onServer(()->{if(same(write.session()))write.success().run();});return;
+                        onPlayerLater(write.session().player,()->{if(same(write.session()))write.success().run();},0);return;
                     }catch(SQLException|RuntimeException failure) {
                         if(attempt==3) {
                             plugin.logger().severe("Teleport history remains unsaved for "+write.owner()+": "+failure.getMessage());
@@ -758,7 +1013,7 @@ public final class TeleportService implements Listener {
         if(!same(session))return;
         HistoryWrite pending=pendingWrites.get(session.player.getUniqueId());
         if(pending!=null){
-            if(queuedWrites.contains(pending))plugin.getScheduler().runOnServerLater(()->load(session,attempt),250);
+            if(queuedWrites.contains(pending))onPlayerLater(session.player,()->load(session,attempt),250);
             return; // Exhausted writes keep this connection unavailable; never reload stale SQL.
         }
         long revision=session.historyRevision;
@@ -766,16 +1021,16 @@ public final class TeleportService implements Listener {
             try{
                 if(FaultInjection.trip(FAULT_LOAD_FAIL))throw new SQLException("injected teleport load failure");
                 var back=repository.load(session.player.getUniqueId(),"back");var cooldowns=repository.loadCooldowns(session.player.getUniqueId());
-                onServer(()->{if(same(session)){
+                onPlayerLater(session.player,()->{if(same(session)){
                     if(session.historyRevision!=revision){load(session,attempt);return;}
                     session.back=back.orElse(null);session.cooldowns.putAll(cooldowns);session.loaded=true;
-                }});
-            }catch(SQLException|RuntimeException e){onServer(()->retryLoad(session,attempt));}
+                }},0);
+            }catch(SQLException|RuntimeException e){onPlayerLater(session.player,()->retryLoad(session,attempt),0);}
         },()->retryLoad(session,attempt));
     }
     private void retryLoad(Session session,int attempt) {
         if(closed||!same(session))return;
-        if(attempt<3)plugin.getScheduler().runOnServerLater(()->load(session,attempt+1),250L*(attempt+1));
+        if(attempt<3)onPlayerLater(session.player,()->load(session,attempt+1),250L*(attempt+1));
         else plugin.logger().warning("Teleport data unavailable for "+session.player.getUniqueId()+" after bounded retries");
     }
     private void loadSpawn(int attempt) {
@@ -796,6 +1051,18 @@ public final class TeleportService implements Listener {
     }
     private void checkWrite() throws SQLException {if(FaultInjection.trip(FAULT_WRITE_FAIL))throw new SQLException("injected teleport write failure");}
     private void onServer(Runnable task){if(!closed)plugin.getScheduler().runOnServer(()->{if(!closed)task.run();});}
+    private void onPlayerLater(Player player,Runnable task,long delay) {
+        if(!closed)BukkitServerThread.runFor(plugin,plugin.getScheduler(),player,()->{if(!closed)task.run();},()->{},delay);
+    }
+    private void onOwner(CommandSender sender,Runnable task) {
+        if(!closed)onParticipant(sender,()->{if(!closed)task.run();},()->{});
+    }
+    private void onParticipant(CommandSender sender,Runnable task,Runnable retired) {
+        if(!BukkitServerThread.isFolia()){task.run();return;}
+        var owner=sender instanceof Player player?BukkitServerThread.entity(plugin,player):BukkitServerThread.global(plugin);
+        if(owner.isServerThread())task.run();
+        else plugin.getScheduler().runOn(owner,task,retired,0);
+    }
     private boolean same(Session s){return sessions.get(s.player.getUniqueId())==s&&samePlayer(s.player);}
     private boolean samePlayer(Player p){return p!=null&&p.isOnline()&&plugin.getServer().getPlayer(p.getUniqueId())==p;}
     private boolean visible(CommandSender viewer,Player target){
@@ -820,7 +1087,13 @@ public final class TeleportService implements Listener {
     private SavedLocation saved(Location p){return new SavedLocation(p.getWorld().getUID(),p.getWorld().getName(),p.getX(),p.getY(),p.getZ(),p.getYaw(),p.getPitch());}
     private Location location(SavedLocation p){var w=plugin.getServer().getWorld(p.worldId());return w==null?null:new Location(w,p.x(),p.y(),p.z(),p.yaw(),p.pitch());}
     private void tell(UUID player,Messages key){Player p=plugin.getServer().getPlayer(player);if(p!=null)send(p,key);}
-    private void send(CommandSender player,Messages key,String... replacements){if(!(player instanceof Player p)||samePlayer(p))plugin.getMessageManager().send(player,key,replacements);}
+    private void send(CommandSender player,Messages key,String... replacements){
+        if(!BukkitServerThread.isFolia()){
+            if(!(player instanceof Player p)||samePlayer(p))plugin.getMessageManager().send(player,key,replacements);
+            return;
+        }
+        onOwner(player,()->{if(!(player instanceof Player p)||samePlayer(p))plugin.getMessageManager().send(player,key,replacements);});
+    }
 
     @EventHandler(priority=EventPriority.MONITOR) public void join(PlayerJoinEvent e){joined(e.getPlayer());}
     @EventHandler(priority=EventPriority.MONITOR) public void quit(PlayerQuitEvent e){

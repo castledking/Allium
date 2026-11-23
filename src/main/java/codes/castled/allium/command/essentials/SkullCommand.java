@@ -8,6 +8,7 @@ import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.item.library.ItemBuildException;
 import codes.castled.allium.item.library.SkullProfiles;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -89,32 +90,45 @@ public final class SkullCommand implements SpecCommandHandler {
         }
 
         if (future.isDone()) {
-            deliver(context, target, ownerName, future.join());
+            scheduleDelivery(context, target, ownerName, future.join());
             return;
         }
 
         UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_SKULL_PENDING, "{owner}", ownerName);
         future.whenComplete((resolved, error) -> {
-            Runnable finish = () -> {
-                if (!target.isOnline()) {
-                    UtilitySupport.send(plugin, context.sender(), Messages.PLAYER_NOT_FOUND, "{player}", target.getName());
-                    return;
-                }
-                if (!UtilitySupport.guardInventoryNotBusy(plugin, context.sender(), target)) {
-                    return;
-                }
-                if (resolved == null) {
-                    UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_SKULL_INVALID, "{owner}", ownerName);
-                    return;
-                }
-                deliver(context, target, ownerName, resolved);
-            };
+            if (BukkitServerThread.isFolia()) {
+                scheduleDelivery(context, target, ownerName, resolved);
+                return;
+            }
+            Runnable finish = () -> deliverOnTarget(context, target, ownerName, resolved);
             if (plugin.getScheduler() != null) {
                 plugin.getScheduler().runOnServer(finish);
             } else {
                 finish.run();
             }
         });
+    }
+
+    private void scheduleDelivery(BukkitCommandContext context, Player target, String ownerName, SkullProfiles.Resolved resolved) {
+        String targetName = target.getName();
+        UtilitySupport.onTarget(plugin, context.sender(), target,
+                () -> deliverOnTarget(context, target, ownerName, resolved),
+                () -> UtilitySupport.send(plugin, context.sender(), Messages.PLAYER_NOT_FOUND, "{player}", targetName));
+    }
+
+    private void deliverOnTarget(BukkitCommandContext context, Player target, String ownerName, SkullProfiles.Resolved resolved) {
+        if (!target.isOnline()) {
+            UtilitySupport.send(plugin, context.sender(), Messages.PLAYER_NOT_FOUND, "{player}", target.getName());
+            return;
+        }
+        if (!UtilitySupport.guardInventoryNotBusy(plugin, context.sender(), target)) {
+            return;
+        }
+        if (resolved == null) {
+            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_SKULL_INVALID, "{owner}", ownerName);
+            return;
+        }
+        deliver(context, target, ownerName, resolved);
     }
 
     private void deliver(BukkitCommandContext context, Player target, String ownerName, SkullProfiles.Resolved resolved) {

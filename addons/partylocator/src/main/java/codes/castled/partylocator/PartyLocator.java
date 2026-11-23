@@ -227,7 +227,7 @@ public final class PartyLocator extends AlliumAddon implements Listener {
                 tell(player, "&aJoined party '" + party.name() + "'!");
                 tell(target, "&e" + player.getName() + " has joined your party.");
                 // mcMMO needs a moment to load a joining player's profile.
-                if (syncMcMMO) core.scheduler().runOnServerLater(() -> McMMOSync.join(player, party.name()), 250);
+                if (syncMcMMO) core.runForEntity(player, () -> McMMOSync.join(player, party.name()), () -> {}, 250L);
                 refresh(party.members());
             }
             case NOT_FOUND -> tell(player, "&cThat party no longer exists.");
@@ -265,7 +265,7 @@ public final class PartyLocator extends AlliumAddon implements Listener {
             Player member = getServer().getPlayer(id);
             if (member == null) continue;
             if (!member.equals(player)) tell(member, "&cYour party has been disbanded by " + player.getName() + ".");
-            if (syncMcMMO) McMMOSync.leave(member);
+            if (syncMcMMO) core.onOwner(member, () -> McMMOSync.leave(member));
         }
         refresh(disbanded.members());
     }

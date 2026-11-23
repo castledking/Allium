@@ -94,16 +94,15 @@ public final class CropsPlugin extends AlliumAddon {
             });
             long interval = Math.max(1L, getConfig().getLong("growth.interval-ticks", 20)) * 50L;
             core.scheduler().repeatOnServer(() -> {
+                if (core.isFolia()) {
+                    for (var placement : world.active()) {
+                        core.runForEntity(placement.hitbox, () -> tickPlacement(placement, crops, farm, kitchen),
+                                () -> world.forgetRetired(placement), 0L);
+                    }
+                    return true;
+                }
                 for (var placement : world.active()) {
-                    if (!placement.hitbox.isValid()) {
-                        world.remove(placement);
-                        continue;
-                    }
-                    switch (placement.kind) {
-                        case "crop" -> crops.tick(placement);
-                        case "sprinkler" -> farm.tick(placement);
-                        default -> kitchen.tick(placement);
-                    }
+                    tickPlacement(placement, crops, farm, kitchen);
                 }
                 kitchen.coolDrops();
                 return true;
@@ -208,8 +207,24 @@ public final class CropsPlugin extends AlliumAddon {
         }).orElse("");
     }
 
+    private void tickPlacement(ModelWorld.Placed placement, Planting crops, FarmInputs farm, Kitchen kitchen) {
+        if (!placement.active) return;
+        if (!placement.hitbox.isValid()) {
+            world.remove(placement);
+            return;
+        }
+        switch (placement.kind) {
+            case "crop" -> crops.tick(placement);
+            case "sprinkler" -> farm.tick(placement);
+            default -> kitchen.tick(placement);
+        }
+    }
+
     void give(Player player, ItemStack stack) {
-        player.getInventory().addItem(stack).values().forEach(left -> player.getWorld().dropItemNaturally(player.getLocation(), left));
+        allium().onOwner(player, () -> {
+            if (!player.isOnline()) return;
+            player.getInventory().addItem(stack).values().forEach(left -> player.getWorld().dropItemNaturally(player.getLocation(), left));
+        });
     }
 
     static void spend(Player player, ItemStack stack, int amount) {

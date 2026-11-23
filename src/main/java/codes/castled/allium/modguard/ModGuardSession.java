@@ -5,8 +5,10 @@ import org.bukkit.entity.Player;
 import java.time.Instant;
 import java.util.*;
 
+/** Mutable connection state belongs to the player's server or entity thread. */
 final class ModGuardSession {
 
+    final Player player;
     final UUID uuid;
     final String name;
     final UUID token = UUID.randomUUID();
@@ -31,6 +33,7 @@ final class ModGuardSession {
     Instant joinedAt = Instant.now();
 
     ModGuardSession(Player player) {
+        this.player = player;
         this.uuid = player.getUniqueId();
         this.name = player.getName();
     }

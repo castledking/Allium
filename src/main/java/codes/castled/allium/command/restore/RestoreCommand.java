@@ -8,6 +8,7 @@ import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.restore.RestoreMenus;
 import codes.castled.allium.restore.RestoreService;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.entity.Player;
 
 /** {@code /restore [player]}: opens the inventory snapshot history (yours, or another player's with .others). */
@@ -50,13 +51,13 @@ public final class RestoreCommand implements SpecCommandHandler {
             plugin.getMessageManager().send(viewer, Messages.INFO_SEEN_UNKNOWN, "{player}", name);
             return;
         }
-        plugin.getPlayerNames().resolve(name).whenComplete((entry, error) -> plugin.getScheduler().runOnServer(() -> {
+        plugin.getPlayerNames().resolve(name).whenComplete((entry, error) -> BukkitServerThread.runFor(plugin, plugin.getScheduler(), viewer, () -> {
             if (!viewer.isOnline()) return;
             if (error != null || entry.isEmpty()) {
                 plugin.getMessageManager().send(viewer, Messages.INFO_SEEN_UNKNOWN, "{player}", name);
                 return;
             }
             menus.open(viewer, entry.get().uuid(), entry.get().name(), 0);
-        }));
+        }, () -> {}, 0L));
     }
 }

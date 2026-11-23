@@ -22,25 +22,25 @@ final class PartyBook {
         return (leaderName + "'s party").toLowerCase(Locale.ROOT);
     }
 
-    Party partyOf(UUID player) {
+    synchronized Party partyOf(UUID player) {
         return byMember.get(player);
     }
 
-    Party party(String name) {
+    synchronized Party party(String name) {
         return name == null ? null : parties.get(name.toLowerCase(Locale.ROOT));
     }
 
-    boolean sameParty(UUID first, UUID second) {
+    synchronized boolean sameParty(UUID first, UUID second) {
         Party party = byMember.get(first);
         return party != null && party == byMember.get(second);
     }
 
-    Collection<Party> parties() {
-        return Collections.unmodifiableCollection(parties.values());
+    synchronized Collection<Party> parties() {
+        return List.copyOf(parties.values());
     }
 
     /** Creates a party led by {@code leader}, or returns null when the name is taken or they are in one. */
-    Party create(String name, UUID leader) {
+    synchronized Party create(String name, UUID leader) {
         String key = name.toLowerCase(Locale.ROOT);
         if (parties.containsKey(key) || byMember.containsKey(leader)) return null;
         Party party = new Party(key, leader);
@@ -50,7 +50,7 @@ final class PartyBook {
         return party;
     }
 
-    Invite invite(UUID inviter, UUID target) {
+    synchronized Invite invite(UUID inviter, UUID target) {
         if (inviter.equals(target)) return Invite.SELF_INVITE;
         Party party = byMember.get(inviter);
         if (party == null) return Invite.NO_PARTY;
@@ -62,7 +62,7 @@ final class PartyBook {
         return Invite.SUCCESS;
     }
 
-    Join join(String partyName, UUID player) {
+    synchronized Join join(String partyName, UUID player) {
         Party party = party(partyName);
         if (party == null) return Join.NOT_FOUND;
         if (byMember.containsKey(player)) return Join.ALREADY_IN_PARTY;
@@ -75,7 +75,7 @@ final class PartyBook {
     }
 
     /** Takes {@code player} out of their party. False when they are in none, or lead it. */
-    boolean leave(UUID player) {
+    synchronized boolean leave(UUID player) {
         Party party = byMember.get(player);
         if (party == null || party.leader().equals(player)) return false;
         party.remove(player);
@@ -84,7 +84,7 @@ final class PartyBook {
     }
 
     /** Disbands the party {@code leader} leads, returning it, or null when they lead none. */
-    Party disband(UUID leader) {
+    synchronized Party disband(UUID leader) {
         Party party = byMember.get(leader);
         if (party == null || !party.leader().equals(leader)) return null;
         parties.remove(party.name());
@@ -95,19 +95,19 @@ final class PartyBook {
     }
 
     /** Party names {@code player} is invited to, oldest first. */
-    Set<String> invitesFor(UUID player) {
+    synchronized Set<String> invitesFor(UUID player) {
         Map<String, UUID> pending = invites.get(player);
         return pending == null ? Set.of() : Collections.unmodifiableSet(new LinkedHashSet<>(pending.keySet()));
     }
 
     /** Withdraws every invite {@code inviter} sent, as legacy did when they logged out. */
-    void dropInvitesFrom(UUID inviter) {
+    synchronized void dropInvitesFrom(UUID inviter) {
         for (Map<String, UUID> pending : invites.values()) pending.values().removeIf(inviter::equals);
         invites.values().removeIf(Map::isEmpty);
     }
 
     /** Replaces every party with {@code loaded}, skipping a member already placed in an earlier one. */
-    void load(Collection<Party> loaded) {
+    synchronized void load(Collection<Party> loaded) {
         parties.clear();
         byMember.clear();
         invites.clear();

@@ -1,6 +1,7 @@
 package codes.castled.allium.restore;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.item.SlotCodec;
 import codes.castled.allium.message.Messages;
@@ -143,7 +144,11 @@ public final class RestoreService implements Listener {
         autosave = plugin.getScheduler().repeatOnServer(() -> {
             if (closed) return false;
             if (settings.triggers().contains("autosave")) {
-                for (Player player : plugin.getServer().getOnlinePlayers()) snapshot(player, "AUTOSAVE", "Allium");
+                for (Player player : plugin.getServer().getOnlinePlayers()) {
+                    UtilitySupport.onOwner(plugin, player, () -> {
+                        if (!closed) snapshot(player, "AUTOSAVE", "Allium");
+                    });
+                }
             }
             return true;
         }, period, period);
@@ -333,10 +338,10 @@ public final class RestoreService implements Listener {
                 return;
             }
             if (pending.isEmpty()) {
-                plugin.getScheduler().runOnServer(() -> clearReceipts(player, Set.of()));
+                runFor(player, () -> clearReceipts(player, Set.of()), 0L);
                 return;
             }
-            plugin.getScheduler().runOnServer(() -> {
+            runFor(player, () -> {
                 if (closed || plugin.getServer().getPlayer(id) != player) return;
                 Set<String> applied = receipts(player);
                 List<UUID> finished = new ArrayList<>();
@@ -373,7 +378,7 @@ public final class RestoreService implements Listener {
                 }
                 if (waiting) {
                     if (attempt < 20) {
-                        plugin.getScheduler().runOnServerLater(() -> {
+                        runFor(player, () -> {
                             if (!closed && plugin.getServer().getPlayer(id) == player) applyPending(player, attempt + 1);
                         }, 1_000L);
                     } else {
@@ -391,10 +396,14 @@ public final class RestoreService implements Listener {
                             return;
                         }
                     }
-                    plugin.getScheduler().runOnServer(() -> clearReceipts(player, Set.copyOf(finished.stream().map(UUID::toString).toList())));
+                    runFor(player, () -> clearReceipts(player, Set.copyOf(finished.stream().map(UUID::toString).toList())), 0L);
                 });
-            });
+            }, 0L);
         });
+    }
+
+    private void runFor(Player player, Runnable action, long delayMillis) {
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, action, () -> {}, delayMillis);
     }
 
     private Set<String> receipts(Player player) {

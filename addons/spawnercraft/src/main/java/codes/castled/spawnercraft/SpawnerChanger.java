@@ -76,7 +76,7 @@ final class SpawnerChanger implements Listener {
             menu.inventory.setItem(6, SpawnerCraft.label(Material.LIME_CONCRETE, "§aConfirm Spawner Change"));
         } else if (event.getRawSlot() == 6 && menu.type != null && !menu.confirming) {
             menu.confirming = true;
-            Bukkit.getScheduler().runTask(plugin, () -> confirm(player, menu));
+            plugin.connection().runForEntity(player, () -> confirm(player, menu), () -> {}, 0L);
         }
     }
 
@@ -86,18 +86,16 @@ final class SpawnerChanger implements Listener {
     }
 
     private void confirm(Player player, Menu menu) {
-        if (player.getOpenInventory().getTopInventory() != menu.inventory) return;
+        if (!player.isOnline() || player.getOpenInventory().getTopInventory() != menu.inventory) return;
         player.closeInventory();
         Block block = menu.block;
         PlayerInventory inv = player.getInventory();
         ItemStack tool = inv.getItem(menu.toolSlot);
         ItemStack egg = inv.getItem(menu.eggSlot);
         if (!player.getWorld().equals(block.getWorld()) || player.getLocation().distanceSquared(block.getLocation().add(.5, .5, .5)) > 36
-                || !(block.getState() instanceof CreatureSpawner spawner) || spawner.getSpawnedType() != menu.original
                 || tool == null || !menu.tool.isSimilar(tool) || egg == null || !menu.egg.isSimilar(egg)
                 || !player.hasPermission("spawnercraft.changer.use") || !allowed(player, menu.type)
-                || !plugin.connection().canEditInventory(player)
-                || !plugin.connection().powerTools().mayModify(player, block, "change_spawner", null)) {
+                || !plugin.connection().canEditInventory(player)) {
             player.sendMessage("§cThe spawner change is no longer available.");
             return;
         }
@@ -105,11 +103,55 @@ final class SpawnerChanger implements Listener {
             player.sendMessage("§eThis spawner already spawns that mob.");
             return;
         }
-        spawner.setSpawnedType(menu.type);
-        if (!spawner.update(false, false)) return;
+        if (plugin.connection().ownsRegion(block.getWorld(), block.getX() >> 4, block.getZ() >> 4)) {
+            if (!(block.getState() instanceof CreatureSpawner spawner) || spawner.getSpawnedType() != menu.original
+                    || !plugin.connection().powerTools().mayModify(player, block, "change_spawner", null)) {
+                player.sendMessage("§cThe spawner change is no longer available.");
+                return;
+            }
+            spawner.setSpawnedType(menu.type);
+            if (!spawner.update(false, false)) return;
+            consume(inv, menu.eggSlot, egg);
+            consume(inv, menu.toolSlot, tool);
+            player.sendMessage("§aSpawner changed to " + Heads.title(menu.type.getKey().getKey()) + ".");
+            return;
+        }
+        // Cross-region border on Folia: take one egg and one tool on the player's region, mutate the spawner on its
+        // chunk region, and refund on the player's region if the spawner changed or protection denied it.
+        ItemStack spentEgg = egg.clone();
+        spentEgg.setAmount(1);
+        ItemStack spentTool = tool.clone();
+        spentTool.setAmount(1);
         consume(inv, menu.eggSlot, egg);
         consume(inv, menu.toolSlot, tool);
-        player.sendMessage("§aSpawner changed to " + Heads.title(menu.type.getKey().getKey()) + ".");
+        plugin.connection().runForRegion(block.getWorld(), block.getX() >> 4, block.getZ() >> 4, () -> {
+            boolean updated = block.getState() instanceof CreatureSpawner spawner
+                    && spawner.getSpawnedType() == menu.original
+                    && plugin.connection().powerTools().mayModify(player, block, "change_spawner", null);
+            if (updated) {
+                CreatureSpawner spawner = (CreatureSpawner) block.getState();
+                spawner.setSpawnedType(menu.type);
+                updated = spawner.update(false, false);
+            }
+            boolean success = updated;
+            plugin.connection().runForEntity(player, () -> {
+                if (success) {
+                    if (player.isOnline()) {
+                        player.sendMessage("§aSpawner changed to " + Heads.title(menu.type.getKey().getKey()) + ".");
+                    }
+                } else {
+                    refund(player, spentEgg);
+                    refund(player, spentTool);
+                    if (player.isOnline()) player.sendMessage("§cThe spawner change is no longer available.");
+                }
+            }, () -> {}, 0L);
+        }, 0L);
+    }
+
+    private static void refund(Player player, ItemStack item) {
+        if (!player.isOnline()) return;
+        player.getInventory().addItem(item).values().forEach(extra ->
+                player.getWorld().dropItemNaturally(player.getLocation(), extra));
     }
 
     private static void consume(PlayerInventory inventory, int slot, ItemStack item) {

@@ -17,7 +17,7 @@ final class PacketGlowTeams implements GlowService.Teams {
     private final PluginStart plugin;
     private final PlayerManager players;
     /** Targets whose team every online viewer has. */
-    private final java.util.Set<java.util.UUID> created = new java.util.HashSet<>();
+    private final java.util.Set<java.util.UUID> created = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private PacketGlowTeams(PluginStart plugin) {
         this.plugin = plugin;

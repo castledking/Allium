@@ -1,6 +1,7 @@
 package codes.castled.allium.messaging;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -14,6 +15,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -51,7 +53,7 @@ public final class IgnoreService implements Listener {
 
     public void enable() {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        for (Player online : Bukkit.getOnlinePlayers()) {
+        for (Player online : List.copyOf(Bukkit.getOnlinePlayers())) {
             UUID id = online.getUniqueId();
             submit(() -> load(id));
         }
@@ -131,13 +133,15 @@ public final class IgnoreService implements Listener {
         if (list == null) {
             return Change.NOT_LOADED;
         }
-        if (list.size() >= MAX_ENTRIES) {
-            return Change.FULL;
+        synchronized (list) {
+            if (list.size() >= MAX_ENTRIES) {
+                return Change.FULL;
+            }
+            if (!list.add(ignored)) {
+                return Change.UNCHANGED;
+            }
         }
-        if (!list.add(ignored)) {
-            return Change.UNCHANGED;
-        }
-        write(() -> repository.add(owner, ignored), () -> list.remove(ignored), saved);
+        write(owner, () -> repository.add(owner, ignored), () -> list.remove(ignored), saved);
         return Change.DONE;
     }
 
@@ -149,7 +153,7 @@ public final class IgnoreService implements Listener {
         if (!list.remove(ignored)) {
             return Change.UNCHANGED;
         }
-        write(() -> repository.remove(owner, ignored), () -> list.add(ignored), saved);
+        write(owner, () -> repository.remove(owner, ignored), () -> list.add(ignored), saved);
         return Change.DONE;
     }
 
@@ -158,7 +162,7 @@ public final class IgnoreService implements Listener {
         boolean run() throws SQLException;
     }
 
-    private void write(Write write, Runnable undo, java.util.function.Consumer<Boolean> saved) {
+    private void write(UUID owner, Write write, Runnable undo, java.util.function.Consumer<Boolean> saved) {
         CompletableFuture<Boolean> done = new CompletableFuture<>();
         if (!submit(() -> {
             try {
@@ -171,12 +175,19 @@ public final class IgnoreService implements Listener {
         })) {
             done.complete(false);
         }
-        done.thenAccept(ok -> plugin.getScheduler().runOnServer(() -> {
+        done.thenAccept(ok -> {
             if (!ok) {
                 undo.run();
             }
-            saved.accept(ok);
-        }));
+            Player target = BukkitServerThread.isFolia() && plugin.getServer() != null
+                    ? plugin.getServer().getPlayer(owner) : null;
+            if (target != null) {
+                BukkitServerThread.runFor(plugin, plugin.getScheduler(), target,
+                        () -> saved.accept(ok), () -> saved.accept(ok), 0L);
+            } else {
+                plugin.getScheduler().runOnServer(() -> saved.accept(ok));
+            }
+        });
     }
 
     private boolean submit(Runnable task) {

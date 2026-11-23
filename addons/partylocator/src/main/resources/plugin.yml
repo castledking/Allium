@@ -6,6 +6,7 @@ depend: [Allium]
 softdepend: [packetevents, mcMMO]
 allium-api: '^1.5'
 allium-addon-dir: true
+folia-supported: true
 commands:
   party:
     description: Create, join, leave or inspect a party

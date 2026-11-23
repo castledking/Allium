@@ -3,10 +3,12 @@ package codes.castled.allium.restart;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.config.YamlFiles;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.text.TextFormatter;
 import org.bukkit.command.CommandSender;
@@ -27,6 +29,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
@@ -36,17 +40,20 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
     private static final Pattern DELAY = Pattern.compile("(\\d+)([smhd]?)", Pattern.CASE_INSENSITIVE);
     private static final Pattern CLOCK_DELAY = Pattern.compile("(\\d{1,2}):([0-5]\\d)");
 
-    private record Plan(Instant deadline, boolean preCommands, boolean dryRun) {}
+    record Plan(Instant deadline, boolean preCommands, boolean dryRun) {}
 
     private final PluginStart plugin;
-    private RestartSettings settings;
+    private final Object stateLock = new Object();
+    private final AtomicBoolean shutdownTriggered = new AtomicBoolean();
+    private volatile RestartSettings settings;
     private volatile Plan plan;
     private TaskHandle task = TaskHandle.NONE;
     private TaskHandle voteTask = TaskHandle.NONE;
+    private TaskHandle shutdownFallback = TaskHandle.NONE;
     private long lastSeconds;
     private boolean prepared;
     private boolean discordWarned;
-    private boolean stopping;
+    private volatile boolean stopping;
     private Map<UUID, Boolean> votes;
 
     public AutoRestart(PluginStart plugin) {
@@ -64,7 +71,11 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
             @Override public void execute(BukkitCommandContext context) {
                 String[] args = context.args();
                 if (args.length == 0 && !allowed(context.sender(), "vote")) {
-                    if (votes == null) status(context.sender());
+                    boolean activeVote;
+                    synchronized (stateLock) {
+                        activeVote = votes != null;
+                    }
+                    if (!activeVote) status(context.sender());
                     else send(context.sender(), Messages.RESTART_VOTE_PROMPT);
                 } else vote(context, args.length == 0 ? new String[]{"start"} : args);
             }
@@ -189,21 +200,38 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
     }
 
     private void schedule(Plan next) {
-        cancel();
-        if (stopping) return;
-        plan = next;
-        prepared = false;
-        discordWarned = false;
-        lastSeconds = secondsLeft(next);
-        task = plugin.getScheduler().repeatOnServer(() -> tick(next), 50, 250);
+        TaskHandle previous;
+        synchronized (stateLock) {
+            previous = task;
+            task = TaskHandle.NONE;
+            plan = null;
+            if (stopping) {
+                previous.cancel();
+                return;
+            }
+            plan = next;
+            prepared = false;
+            discordWarned = false;
+            lastSeconds = secondsLeft(next);
+            TaskHandle created = plugin.getScheduler().repeatOnServer(() -> tick(next), 50, 250);
+            task = created != null ? created : TaskHandle.NONE;
+        }
+        previous.cancel();
     }
 
-    private boolean tick(Plan active) {
-        if (plan != active) return false;
+    boolean tick(Plan active) {
+        RestartSettings currentSettings = settings;
         long seconds = secondsLeft(active);
-        if (active.preCommands() && !prepared && seconds <= settings.commandDelay()) {
-            prepared = true;
-            for (String command : settings.preCommands()) {
+        boolean runPreCommands = false;
+        synchronized (stateLock) {
+            if (plan != active || currentSettings == null) return false;
+            if (active.preCommands() && !prepared && seconds <= currentSettings.commandDelay()) {
+                prepared = true;
+                runPreCommands = true;
+            }
+        }
+        if (runPreCommands) {
+            for (String command : currentSettings.preCommands()) {
                 if (plan != active) return false;
                 try {
                     if (!dispatch(command)) plugin.logger().warning("A pre-restart command was not handled.");
@@ -214,46 +242,119 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
             if (plan != active) return false;
         }
         if (seconds == 0) {
-            cancel();
+            boolean shouldComplete;
+            synchronized (stateLock) {
+                shouldComplete = plan == active;
+                if (shouldComplete) {
+                    plan = null;
+                    task.cancel();
+                    task = TaskHandle.NONE;
+                }
+            }
+            if (!shouldComplete) return false;
             if (active.dryRun()) {
                 broadcast(Messages.RESTART_DRY_COMPLETE);
                 scheduleDaily();
             } else stopServer();
             return false;
         }
-        long previous = lastSeconds;
-        var countdown = settings.countdown().stream().filter(n -> n > 0 && n >= seconds && n < previous)
+        long previous;
+        boolean sendDiscord = false;
+        synchronized (stateLock) {
+            if (plan != active) return false;
+            previous = lastSeconds;
+            lastSeconds = seconds;
+            if (!active.dryRun() && !discordWarned && currentSettings.discordWarning() > 0
+                    && seconds <= currentSettings.discordWarning()) {
+                discordWarned = true;
+                sendDiscord = true;
+            }
+        }
+        var countdown = currentSettings.countdown().stream().filter(n -> n > 0 && n >= seconds && n < previous)
                 .min(Integer::compareTo);
         if (countdown.isPresent()) {
             broadcast(Messages.RESTART_COUNTDOWN, "{time}", Long.toString(seconds), "{plural}", seconds == 1 ? "" : "s");
         }
-        lastSeconds = seconds;
-        if (!active.dryRun() && !discordWarned && settings.discordWarning() > 0 && seconds <= settings.discordWarning()) {
-            discordWarned = true;
+        if (sendDiscord) {
             discord("Server will restart in " + format(seconds) + ".");
         }
         return true;
     }
 
     private void stopServer() {
-        stopping = true;
+        synchronized (stateLock) {
+            if (stopping) return;
+            stopping = true;
+        }
         closeVote();
         broadcast(Messages.RESTART_NOW);
         discord("Server is restarting now.");
+        RestartSettings currentSettings = settings;
         try {
-            if (settings.save()) dispatch("minecraft:save-all flush");
+            if (currentSettings != null && currentSettings.save()) dispatch("minecraft:save-all flush");
         } catch (RuntimeException error) {
             plugin.logger().warning("Pre-restart save command failed. The server will save during shutdown.");
         }
-        if (settings.finalMessage()) broadcast(Messages.RESTART_STOPPED);
+        if (currentSettings != null && currentSettings.finalMessage()) broadcast(Messages.RESTART_STOPPED);
         String kick = TextFormatter.parse(plugin.getMessageManager().resolve(Messages.RESTART_KICK)).toLegacy();
-        for (Player player : List.copyOf(plugin.getServer().getOnlinePlayers())) {
-            try {
-                player.kickPlayer(kick);
-            } catch (RuntimeException error) {
-                plugin.logger().warning("Could not send the restart kick to " + player.getName() + ".");
+        List<Player> online = List.copyOf(plugin.getServer().getOnlinePlayers());
+        if (!BukkitServerThread.isFolia() || plugin.getScheduler() == null || online.isEmpty()) {
+            for (Player player : online) {
+                try {
+                    player.kickPlayer(kick);
+                } catch (RuntimeException error) {
+                    plugin.logger().warning("Could not send the restart kick to " + player.getName() + ".");
+                }
+            }
+            triggerShutdown();
+            return;
+        }
+        synchronized (stateLock) {
+            TaskHandle fallback = plugin.getScheduler().runOnServerLater(this::triggerShutdown, 1_000L);
+            shutdownFallback = fallback != null ? fallback : TaskHandle.NONE;
+        }
+        AtomicInteger remaining = new AtomicInteger(online.size() + 1);
+        Runnable done = () -> {
+            if (remaining.decrementAndGet() == 0) {
+                UtilitySupport.onGlobal(plugin, this::triggerShutdown);
+            }
+        };
+        for (Player player : online) {
+            Runnable kickTask = () -> {
+                try {
+                    if (player.isOnline()) {
+                        Player current = plugin.getServer().getPlayer(player.getUniqueId());
+                        if (current == null || current == player) {
+                            player.kickPlayer(kick);
+                        }
+                    }
+                } catch (RuntimeException error) {
+                    plugin.logger().warning("Could not send the restart kick to " + player.getName() + ".");
+                } finally {
+                    done.run();
+                }
+            };
+            var owner = BukkitServerThread.entity(plugin, player);
+            if (owner.isServerThread()) {
+                kickTask.run();
+            } else {
+                TaskHandle handle = plugin.getScheduler().runOn(owner, kickTask, done, 0L);
+                if (handle == TaskHandle.NONE) {
+                    done.run();
+                }
             }
         }
+        done.run();
+    }
+
+    private void triggerShutdown() {
+        if (!shutdownTriggered.compareAndSet(false, true)) return;
+        TaskHandle fallback;
+        synchronized (stateLock) {
+            fallback = shutdownFallback;
+            shutdownFallback = TaskHandle.NONE;
+        }
+        fallback.cancel();
         plugin.getServer().shutdown();
     }
 
@@ -270,46 +371,86 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
         }
         String choice = args[0].toLowerCase(Locale.ROOT);
         if (choice.equals("start")) {
-            if (!allowed(sender, "vote")) send(sender, Messages.NO_PERMISSION);
-            else if (settings == null) send(sender, Messages.RESTART_CONFIG_ERROR);
-            else if (votes != null) send(sender, Messages.RESTART_VOTE_ACTIVE);
-            else {
-                votes = new HashMap<>();
-                broadcast(Messages.RESTART_VOTE_PROMPT);
-                voteTask = plugin.getScheduler().runOnServerLater(this::finishVote, 60_000);
+            if (!allowed(sender, "vote")) {
+                send(sender, Messages.NO_PERMISSION);
+                return;
             }
+            if (settings == null) {
+                send(sender, Messages.RESTART_CONFIG_ERROR);
+                return;
+            }
+            boolean started;
+            synchronized (stateLock) {
+                if (votes != null || stopping) {
+                    started = false;
+                } else {
+                    votes = new HashMap<>();
+                    TaskHandle handle = plugin.getScheduler().runOnServerLater(this::finishVote, 60_000);
+                    voteTask = handle != null ? handle : TaskHandle.NONE;
+                    started = true;
+                }
+            }
+            if (!started) send(sender, Messages.RESTART_VOTE_ACTIVE);
+            else broadcast(Messages.RESTART_VOTE_PROMPT);
             return;
         }
-        if (!(sender instanceof Player player)) send(sender, Messages.PLAYER_ONLY);
-        else if (!allowed(sender, "vote.yes")) send(sender, Messages.NO_PERMISSION);
-        else if (votes == null) send(sender, Messages.RESTART_VOTE_NONE);
-        else if (votes.putIfAbsent(player.getUniqueId(), choice.equals("yes")) != null) {
-            send(sender, Messages.RESTART_VOTE_DUPLICATE);
-        } else send(sender, Messages.RESTART_VOTE_CAST, "{vote}", choice);
+        if (!(sender instanceof Player player)) {
+            send(sender, Messages.PLAYER_ONLY);
+            return;
+        }
+        if (!allowed(sender, "vote.yes")) {
+            send(sender, Messages.NO_PERMISSION);
+            return;
+        }
+        Messages result;
+        synchronized (stateLock) {
+            if (votes == null) result = Messages.RESTART_VOTE_NONE;
+            else if (votes.putIfAbsent(player.getUniqueId(), choice.equals("yes")) != null) result = Messages.RESTART_VOTE_DUPLICATE;
+            else result = Messages.RESTART_VOTE_CAST;
+        }
+        if (result == Messages.RESTART_VOTE_CAST) send(sender, result, "{vote}", choice);
+        else send(sender, result);
     }
 
-    private void finishVote() {
-        if (votes == null) return;
-        long yes = votes.values().stream().filter(Boolean::booleanValue).count();
-        long no = votes.size() - yes;
-        closeVote();
+    void finishVote() {
+        long yes;
+        long no;
+        TaskHandle oldVoteTask;
+        synchronized (stateLock) {
+            if (votes == null) return;
+            yes = votes.values().stream().filter(Boolean::booleanValue).count();
+            no = votes.size() - yes;
+            votes = null;
+            oldVoteTask = voteTask;
+            voteTask = TaskHandle.NONE;
+        }
+        oldVoteTask.cancel();
         broadcast(yes > no ? Messages.RESTART_VOTE_PASSED : Messages.RESTART_VOTE_FAILED,
                 "{yes}", Long.toString(yes), "{no}", Long.toString(no));
-        if (yes > no && (plan == null || secondsLeft(plan) > 120)) {
+        Plan current = plan;
+        if (yes > no && (current == null || secondsLeft(current) > 120)) {
             schedule(new Plan(Instant.now().plusSeconds(120), false, false));
         }
     }
 
     private void closeVote() {
-        votes = null;
-        voteTask.cancel();
-        voteTask = TaskHandle.NONE;
+        TaskHandle oldVoteTask;
+        synchronized (stateLock) {
+            votes = null;
+            oldVoteTask = voteTask;
+            voteTask = TaskHandle.NONE;
+        }
+        oldVoteTask.cancel();
     }
 
     private void cancel() {
-        plan = null;
-        task.cancel();
-        task = TaskHandle.NONE;
+        TaskHandle oldTask;
+        synchronized (stateLock) {
+            plan = null;
+            oldTask = task;
+            task = TaskHandle.NONE;
+        }
+        oldTask.cancel();
     }
 
     private void status(CommandSender sender) {
@@ -343,13 +484,15 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
     }
 
     private void discord(String message) {
-        if (settings.relay() && plugin.getServer().getPluginManager().isPluginEnabled("DiscordSRV")) {
+        RestartSettings currentSettings = settings;
+        if (currentSettings != null && currentSettings.relay()
+                && plugin.getServer().getPluginManager().isPluginEnabled("DiscordSRV")) {
             RestartDiscord.send(message, plugin.logger()::warning);
         }
     }
 
     private void send(CommandSender sender, Messages message, String... replacements) {
-        plugin.getMessageManager().send(sender, message, replacements);
+        UtilitySupport.send(plugin, sender, message, replacements);
     }
 
     private void broadcast(Messages message, String... replacements) {
@@ -360,5 +503,11 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
     public void close() {
         cancel();
         closeVote();
+        TaskHandle fallback;
+        synchronized (stateLock) {
+            fallback = shutdownFallback;
+            shutdownFallback = TaskHandle.NONE;
+        }
+        fallback.cancel();
     }
 }

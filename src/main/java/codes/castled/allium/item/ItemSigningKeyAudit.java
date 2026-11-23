@@ -8,6 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskScheduler;
 
 import java.util.ArrayDeque;
@@ -33,7 +34,16 @@ public final class ItemSigningKeyAudit implements Listener {
             // One inventory per tick on late enable; avoid a large synchronous startup scan.
             scheduler.repeatOnServer(() -> {
                 Player player = online.poll();
-                if (player != null && player.isOnline()) auditPlayer(player);
+                if (player != null) {
+                    Runnable audit = () -> {
+                        if (player.isOnline()) auditPlayer(player);
+                    };
+                    if (BukkitServerThread.isFolia()) {
+                        BukkitServerThread.runFor(plugin, scheduler, player, audit, () -> {}, 0L);
+                    } else {
+                        audit.run();
+                    }
+                }
                 return !online.isEmpty();
             }, TaskScheduler.MILLIS_PER_TICK, TaskScheduler.MILLIS_PER_TICK);
         }
@@ -58,12 +68,16 @@ public final class ItemSigningKeyAudit implements Listener {
         String[] parts = signature.split(":", -1);
         if (parts.length < 2) return; // Invalid signature is separately rejected by ItemService.
         String id = parts[0].startsWith("v") && parts.length >= 3 ? parts[1] : parts[0];
-        if (!knownKeys.contains(id) && reportedKeys.size() < 64 && reportedKeys.add(id)) {
+        if (!knownKeys.contains(id) && markReported(id)) {
             String safeId = id.replaceAll("[^A-Za-z0-9_.-]", "?");
             if (safeId.length() > 80) safeId = safeId.substring(0, 80);
             criticalLogger.accept("CRITICAL HMAC KEY MISMATCH: loaded inventory contains item signed with unknown key ID '"
                     + safeId + "'. Restore its key in .item-hmac-secret before use; active/retired IDs: " + knownKeys
                     + ". Inventory metadata was left unchanged.");
         }
+    }
+
+    private synchronized boolean markReported(String id) {
+        return reportedKeys.size() < 64 && reportedKeys.add(id);
     }
 }

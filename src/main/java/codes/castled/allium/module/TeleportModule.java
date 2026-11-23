@@ -15,8 +15,10 @@ public final class TeleportModule extends AbstractModule {
     @Override public void onEnable(){
         TeleportRepository repository=new TeleportRepository(plugin.getDatabaseManager().connectionSource(),plugin.getDatabaseManager().dialect(),System::currentTimeMillis);
         try{repository.migrate();}catch(SQLException e){throw new IllegalStateException("teleport storage unavailable",e);}
-        service=new TeleportService(plugin,repository,plugin.getScheduler().boundedPool("Allium-Teleport",1,512));service.enable();
-        companions=new codes.castled.allium.teleport.CompanionTeleports(plugin);companions.enable();
+        companions = new codes.castled.allium.teleport.CompanionTeleports(plugin);
+        service = new TeleportService(plugin, repository, plugin.getScheduler().boundedPool("Allium-Teleport", 1, 512), companions::arrived);
+        service.enable();
+        companions.enable();
         for(var spec:CoreCommandSpecs.TELEPORT_SPECS)plugin.getCommandManager().register(new TeleportCommand(plugin,service,spec));
     }
     @Override public void onDisable(){if(companions!=null)companions.close();if(service!=null)service.disable();}

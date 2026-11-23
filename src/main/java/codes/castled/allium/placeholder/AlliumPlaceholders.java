@@ -16,6 +16,7 @@ import codes.castled.allium.naming.PlayerNameVisibility;
 import codes.castled.allium.preference.EffectivePreferences;
 import codes.castled.allium.preference.PreferenceKey;
 import codes.castled.allium.preference.PreferenceSessions;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.text.TextFormatter;
 import org.bukkit.OfflinePlayer;
@@ -128,7 +129,10 @@ public final class AlliumPlaceholders {
         if (player == null) {
             return "";
         }
-        if (plugin.getScheduler().isServerThread()) {
+        boolean ownsPlayer = BukkitServerThread.isFolia()
+                ? BukkitServerThread.entity(plugin, player).isServerThread()
+                : plugin.getScheduler().isServerThread();
+        if (ownsPlayer) {
             String value = compute(player, key);
             return value == null ? "" : value;
         }
@@ -137,21 +141,37 @@ public final class AlliumPlaceholders {
     }
 
     void refreshSnapshots() {
-        Map<UUID, Map<String, String>> next = new HashMap<>();
-        for (Player player : plugin.getServer().getOnlinePlayers()) {
-            Map<String, String> values = new HashMap<>();
-            for (String key : PLAYER_KEYS) {
-                String value = compute(player, key);
-                values.put(key, value == null ? "" : value);
+        var online = plugin.getServer().getOnlinePlayers();
+        if (BukkitServerThread.isFolia()) {
+            java.util.Set<UUID> alive = new java.util.HashSet<>();
+            for (Player player : online) {
+                alive.add(player.getUniqueId());
+                BukkitServerThread.onOwner(plugin, plugin.getScheduler(), player, () -> {
+                    if (player.isOnline()) snapshots.put(player.getUniqueId(), snapshotPlayer(player));
+                });
             }
-            extra.forEach((key, fn) -> {
-                String value = safe(() -> fn.apply(player));
-                values.put(key, value == null ? "" : value);
-            });
-            next.put(player.getUniqueId(), Map.copyOf(values));
+            snapshots.keySet().retainAll(alive);
+            return;
+        }
+        Map<UUID, Map<String, String>> next = new HashMap<>();
+        for (Player player : online) {
+            next.put(player.getUniqueId(), snapshotPlayer(player));
         }
         snapshots.keySet().retainAll(next.keySet());
         snapshots.putAll(next);
+    }
+
+    private Map<String, String> snapshotPlayer(Player player) {
+        Map<String, String> values = new HashMap<>();
+        for (String key : PLAYER_KEYS) {
+            String value = compute(player, key);
+            values.put(key, value == null ? "" : value);
+        }
+        extra.forEach((key, fn) -> {
+            String value = safe(() -> fn.apply(player));
+            values.put(key, value == null ? "" : value);
+        });
+        return Map.copyOf(values);
     }
 
     void refreshStorage() {

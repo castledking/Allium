@@ -51,35 +51,38 @@ public final class AlliumScheduler implements TaskScheduler {
 
     @Override
     public TaskHandle runOnServer(Runnable task) {
-        return onServer(guard("server task", task), 0L, 0L);
+        return runOnServerLater(task, 0L);
     }
 
     @Override
     public TaskHandle runOnServerLater(Runnable task, long delayMillis) {
-        return onServer(guard("delayed server task", task), ticks(delayMillis), 0L);
+        return runOn(server, task, () -> {}, delayMillis);
+    }
+
+    @Override
+    public TaskHandle runOn(ServerThread owner, Runnable task, Runnable retired, long delayMillis) {
+        Runnable run = guard("server task", task);
+        return onServer(owner, ignored -> run.run(), guard("retired server task", retired), ticks(delayMillis), 0L);
     }
 
     @Override
     public TaskHandle repeatOnServer(BooleanSupplier step, long delayMillis, long periodMillis) {
+        return repeatOn(server, step, delayMillis, periodMillis);
+    }
+
+    @Override
+    public TaskHandle repeatOn(ServerThread owner, BooleanSupplier step, long delayMillis, long periodMillis) {
         Objects.requireNonNull(step, "step");
         if (periodMillis <= 0L) {
             throw new IllegalArgumentException("period must be positive");
         }
-        TaskHandle[] handle = new TaskHandle[1];
-        Runnable body = () -> {
-            boolean again;
+        return onServer(owner, handle -> {
             try {
-                again = step.getAsBoolean();
+                if (!step.getAsBoolean()) handle.cancel();
             } catch (Throwable e) {
                 report("repeating server task", e);
-                again = true;
             }
-            if (!again && handle[0] != null) {
-                handle[0].cancel();
-            }
-        };
-        handle[0] = onServer(body, ticks(delayMillis), Math.max(1L, ticks(periodMillis)));
-        return handle[0];
+        }, () -> {}, ticks(delayMillis), Math.max(1L, ticks(periodMillis)));
     }
 
     @Override
@@ -117,33 +120,74 @@ public final class AlliumScheduler implements TaskScheduler {
         return executor;
     }
 
-    private TaskHandle onServer(Runnable task, long delayTicks, long periodTicks) {
+    private TaskHandle onServer(ServerThread owner, Consumer<TaskHandle> task, Runnable retired,
+                                long delayTicks, long periodTicks) {
+        if (closed) return TaskHandle.NONE;
+        var handle = new ServerTask();
+        serverTasks.add(handle);
         if (closed) {
+            handle.cancel();
             return TaskHandle.NONE;
         }
-        TaskHandle[] tracked = new TaskHandle[1];
-        Runnable body = periodTicks > 0L ? task : () -> {
-            if (tracked[0] != null) {
-                serverTasks.remove(tracked[0]);
-            }
-            task.run();
-        };
-        TaskHandle platform = server.schedule(body, delayTicks, periodTicks);
-        TaskHandle handle = new TaskHandle() {
-            @Override
-            public void cancel() {
-                serverTasks.remove(this);
-                platform.cancel();
-            }
-
-            @Override
-            public boolean isCancelled() {
-                return platform.isCancelled();
-            }
-        };
-        tracked[0] = handle;
-        serverTasks.add(handle);
+        try {
+            handle.attach(owner.schedule(() -> {
+                if (handle.start(periodTicks == 0L)) task.accept(handle);
+            }, () -> { if (handle.retire()) retired.run(); }, delayTicks, periodTicks));
+        } catch (RuntimeException | Error failure) {
+            handle.cancel();
+            throw failure;
+        }
         return handle;
+    }
+
+    private final class ServerTask implements TaskHandle {
+        private TaskHandle platform;
+        private boolean finished;
+        private boolean cancelled;
+
+        void attach(TaskHandle handle) {
+            synchronized (this) {
+                if (!cancelled) {
+                    platform = handle;
+                    return;
+                }
+            }
+            handle.cancel();
+        }
+
+        synchronized boolean start(boolean oneShot) {
+            if (finished || cancelled || closed) return false;
+            if (oneShot) {
+                finished = true;
+                serverTasks.remove(this);
+            }
+            return true;
+        }
+
+        synchronized boolean retire() {
+            if (finished || cancelled) return false;
+            finished = true;
+            cancelled = true;
+            serverTasks.remove(this);
+            return !closed;
+        }
+
+        @Override
+        public void cancel() {
+            TaskHandle handle;
+            synchronized (this) {
+                if (finished || cancelled) return;
+                cancelled = true;
+                handle = platform;
+            }
+            serverTasks.remove(this);
+            if (handle != null) handle.cancel();
+        }
+
+        @Override
+        public synchronized boolean isCancelled() {
+            return cancelled || platform != null && platform.isCancelled();
+        }
     }
 
     /** Server-thread tasks still scheduled (one-shot tasks not yet run, and repeating tasks). */

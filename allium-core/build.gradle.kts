@@ -42,6 +42,13 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.test {
     useJUnitPlatform()
     // MySQL/MariaDB storage tests run only when a disposable database is supplied.
-    System.getenv("ALLIUM_TEST_MYSQL_URL")?.let { environment("ALLIUM_TEST_MYSQL_URL", it) }
+    val mysqlUrl = providers.environmentVariable("ALLIUM_TEST_MYSQL_URL").orNull?.takeIf { it.isNotBlank() }
+    inputs.property("mysqlTestsEnabled", mysqlUrl != null)
+    if (mysqlUrl != null) {
+        environment("ALLIUM_TEST_MYSQL_URL", mysqlUrl)
+        // A different database can be supplied without changing the source or the test filter.
+        outputs.upToDateWhen { false }
+        outputs.doNotCacheIf("Runs against a live database") { true }
+    }
     jvmArgs("-Xshare:off", "-Dnet.bytebuddy.experimental=true")
 }

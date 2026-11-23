@@ -10,6 +10,7 @@ import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.EffectivePreferences;
 import codes.castled.allium.preference.PreferenceChange;
 import codes.castled.allium.preference.PreferenceKey;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.entity.Player;
 
 /** Self-only, persisted opt-in. Permission is also checked at every observed delivery. */
@@ -48,11 +49,11 @@ public final class SocialSpyCommand implements SpecCommandHandler {
             preferences.sessions().change(player.getUniqueId(), PreferenceChange.set(PreferenceKey.SOCIAL_SPY, enabled))
                     .whenComplete((row, error) -> {
                         if (error != null) {
-                            plugin.getScheduler().runOnServer(() -> {
+                            BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
                                 if (player.isOnline()) {
                                     plugin.getMessageManager().send(player, Messages.SOCIALSPY_SAVE_FAILED);
                                 }
-                            });
+                            }, () -> {}, 0L);
                         }
                     });
         }

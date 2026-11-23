@@ -3,6 +3,7 @@ package codes.castled.allium.command.messaging;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.message.Messages;
@@ -95,7 +96,7 @@ public final class MsgToggleCommand implements SpecCommandHandler {
             plugin.getMessageManager().send(sender, accept ? Messages.MSGTOGGLE_ON : Messages.MSGTOGGLE_OFF);
         } else {
             plugin.getMessageManager().send(sender, accept ? Messages.MSGTOGGLE_OTHER_ON : Messages.MSGTOGGLE_OTHER_OFF, "{player}", target.getName());
-            plugin.getMessageManager().send(target, accept ? Messages.MSGTOGGLE_ON : Messages.MSGTOGGLE_OFF);
+            UtilitySupport.send(plugin, target, accept ? Messages.MSGTOGGLE_ON : Messages.MSGTOGGLE_OFF);
         }
     }
 

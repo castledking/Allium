@@ -1,5 +1,6 @@
 package codes.castled.allium.modguard;
 
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
@@ -43,7 +44,8 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
     private final YamlConfiguration bundled;
     private volatile YamlConfiguration config;
     private volatile List<Detection.Rule> rules = List.of();
-    private Detection.Severity minimumSeverity = Detection.Severity.WARNING;
+    private volatile Detection.Severity minimumSeverity = Detection.Severity.WARNING;
+    private volatile boolean closed;
     private final Map<UUID, ModGuardSession> sessions = new ConcurrentHashMap<>();
     private final AccessPolicy access;
     private final LunarWire lunar;
@@ -80,7 +82,11 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
         }
         Bukkit.getPluginManager().registerEvents(this, plugin);
         startProbe();
-        for (Player player : Bukkit.getOnlinePlayers()) begin(player);
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            BukkitServerThread.onOwner(plugin, scheduler, player, () -> {
+                if (player.isOnline()) begin(player);
+            });
+        }
         logger.info("[ModGuard] Watching with " + rules.size() + " rules (alerts from " + minimumSeverity + ").");
     }
 
@@ -120,6 +126,10 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
 
     private void startProbe() {
         if (!config.getBoolean("translation-probe.enabled", true) || !Bukkit.getPluginManager().isPluginEnabled("packetevents")) return;
+        if (BukkitServerThread.isFolia()) {
+            logger.info("[ModGuard] The translation probe is unavailable on Folia.");
+            return;
+        }
         try {
             probe = new TranslationProbe(plugin, scheduler, this);
             probe.register();
@@ -136,6 +146,7 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
 
     @Override
     public void close() {
+        closed = true;
         stopProbe();
         lunar.close();
         HandlerList.unregisterAll(this);
@@ -169,7 +180,10 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
 
     ConfigurationSection config() { return config; }
     YamlConfiguration bundled() { return bundled; }
-    ModGuardSession session(UUID id) { return sessions.get(id); }
+    ModGuardSession session(Player player) {
+        ModGuardSession session = sessions.get(player.getUniqueId());
+        return !closed && session != null && session.player == player ? session : null;
+    }
     public List<Detection.Rule> rules() { return rules; }
 
     boolean bypassed(Player player) {
@@ -178,10 +192,9 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
     }
 
     /** Whether ModGuard checks this player: never operators. */
-    private boolean monitoring(Player player) {
-        ModGuardSession session = player == null ? null : sessions.get(player.getUniqueId());
-        if (session == null) return false;
-        session.excluded = player.isOp();
+    boolean monitoring(ModGuardSession session) {
+        if (session == null || session(session.player) != session) return false;
+        session.excluded = session.player.isOp();
         return !session.excluded && config.getBoolean("enabled", true);
     }
 
@@ -196,22 +209,21 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
     }
 
     private void begin(Player player) {
+        if (closed || session(player) != null) return;
         ModGuardSession session = new ModGuardSession(player);
-        sessions.put(player.getUniqueId(), session);
-        if (!monitoring(player)) {
+        sessions.put(session.uuid, session);
+        if (!monitoring(session)) {
             session.started = true;
             return;
         }
-        sample(player);
+        sample(session);
         // Channels register over the first seconds; sample again as they arrive.
         for (long ticks : new long[]{20L, 60L, 200L}) {
-            scheduler.runOnServerLater(() -> {
-                if (sessions.get(player.getUniqueId()) != session || !player.isOnline()) return;
-                sample(player);
-                if (config.getBoolean("lunar.apollo-integration", true) && lunar.offered(player)) {
-                    lunar.request(player, mods -> reportedMods(player, mods, "LUNAR_DIRECT_JSON"), error -> session.lunarStatus = error);
-                }
-            }, ticks * TaskScheduler.MILLIS_PER_TICK);
+            BukkitServerThread.runFor(plugin, scheduler, player, () -> {
+                if (!player.isOnline() || !monitoring(session)) return;
+                sample(session);
+                requestLunar(session);
+            }, () -> {}, ticks * TaskScheduler.MILLIS_PER_TICK);
         }
         session.started = true;
     }
@@ -219,27 +231,32 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRegisterChannel(PlayerRegisterChannelEvent event) {
         Player player = event.getPlayer();
-        ModGuardSession session = sessions.get(player.getUniqueId());
-        if (session == null || !monitoring(player)) return;
+        ModGuardSession session = session(player);
+        if (!monitoring(session)) return;
         channel(session, event.getChannel(), "REGISTERED_CHANNEL");
         if (LunarWire.OFFER.equals(event.getChannel()) && config.getBoolean("lunar.apollo-integration", true)) {
-            scheduler.runOnServerLater(() -> {
-                if (sessions.get(player.getUniqueId()) == session && player.isOnline()) {
-                    lunar.request(player, mods -> reportedMods(player, mods, "LUNAR_DIRECT_JSON"), error -> session.lunarStatus = error);
-                }
-            }, 20 * TaskScheduler.MILLIS_PER_TICK);
+            BukkitServerThread.runFor(plugin, scheduler, player, () -> {
+                if (player.isOnline() && monitoring(session)) requestLunar(session);
+            }, () -> {}, 20 * TaskScheduler.MILLIS_PER_TICK);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
-        sessions.remove(event.getPlayer().getUniqueId());
-        lunar.quit(event.getPlayer().getUniqueId());
+        ModGuardSession session = session(event.getPlayer());
+        if (session == null) return;
+        sessions.remove(session.uuid, session);
+        lunar.quit(session);
     }
 
-    private void sample(Player player) {
-        ModGuardSession session = sessions.get(player.getUniqueId());
-        if (session == null || !monitoring(player)) return;
+    private void requestLunar(ModGuardSession session) {
+        if (!config.getBoolean("lunar.apollo-integration", true)) return;
+        lunar.request(session, mods -> reportedMods(session.player, mods, "LUNAR_DIRECT_JSON"),
+                error -> session.lunarStatus = error);
+    }
+
+    private void sample(ModGuardSession session) {
+        Player player = session.player;
         String brand = clientBrand(player);
         if (brand != null && !brand.isBlank()) brand(session, brand, "CLIENT_BRAND");
         for (String channel : player.getListeningPluginChannels()) channel(session, channel, "LISTENING_CHANNEL");
@@ -257,8 +274,8 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
 
     @Override
     public void onPluginMessageReceived(String rawChannel, Player player, byte[] data) {
-        ModGuardSession session = sessions.get(player.getUniqueId());
-        if (session == null || !monitoring(player)) return;
+        ModGuardSession session = session(player);
+        if (!monitoring(session)) return;
         long now = System.currentTimeMillis();
         if (now - session.windowStart >= 1000L) {
             session.windowStart = now;
@@ -298,8 +315,8 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
     }
 
     void reportedMods(Player player, List<Detection.Mod> mods, String source) {
-        ModGuardSession session = sessions.get(player.getUniqueId());
-        if (session == null || !monitoring(player)) return;
+        ModGuardSession session = session(player);
+        if (!monitoring(session)) return;
         for (Detection.Mod mod : mods) {
             if (mod == null || mod.id().isBlank()) continue;
             String id = Detection.clean(mod.id(), 256).toLowerCase(Locale.ROOT);
@@ -310,8 +327,8 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
 
     void handleTranslationProbeHit(Player player, String checkId, String key, String resolved, String fallback,
                                    String configuredAction, boolean requireCorroboration) {
-        ModGuardSession session = sessions.get(player.getUniqueId());
-        if (session == null || !monitoring(player)) return;
+        ModGuardSession session = session(player);
+        if (!monitoring(session)) return;
         String action = configuredAction == null ? "kick" : configuredAction.trim().toLowerCase(Locale.ROOT);
         if ("none".equals(action)) return;
         Detection.Severity severity = "alert".equals(action) ? Detection.Severity.WARNING : Detection.Severity.CRITICAL;
@@ -326,7 +343,7 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
         session.findings.put(checkId + ":TRANSLATION_PROBE", finding);
         boolean corroborated = !requireCorroboration || session.findings.values().stream()
                 .anyMatch(other -> !"TRANSLATION_PROBE".equals(other.source()));
-        boolean kick = "kick".equals(action) && corroborated && access.enabled && !bypassed(player) && !player.isOp();
+        boolean kick = "kick".equals(action) && corroborated && access.enabled() && !bypassed(player) && !player.isOp();
         if (kick) {
             access.disconnects.disconnect(player, kickMessage(checkId, player.getName()));
         }
@@ -340,8 +357,7 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
     }
 
     private void finding(ModGuardSession session, Detection.Rule rule, String source, String evidence, String confidence) {
-        Player player = Bukkit.getPlayer(session.uuid);
-        if (session.excluded || player != null && !monitoring(player)) return;
+        if (!monitoring(session)) return;
         String key = rule.id() + ":" + source;
         if (session.findings.containsKey(key)) {
             access.check(session);
@@ -352,7 +368,7 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
         session.findings.put(key, finding);
         access.check(session);
         if (finding.severity().ordinal() < minimumSeverity.ordinal() || !session.notifiedRules.add(rule.id())) return;
-        notifyStaff(player != null ? player.getName() : session.name, finding);
+        notifyStaff(session.name, finding);
     }
 
     private void notifyStaff(String playerName, Detection.Finding finding) {
@@ -361,10 +377,14 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
                 .replace("{rule}", finding.rule()).replace("{severity}", finding.severity().name());
         logger.warning("[ModGuard] " + playerName + " detected using " + finding.name() + " (" + finding.severity()
                 + ") via " + finding.source() + ": " + finding.evidence());
-        String permission = config.getString("staff-permission", "modguard.notify");
         scheduler.runOnServer(() -> {
+            if (closed) return;
             for (Player staff : Bukkit.getOnlinePlayers()) {
-                if (staff.hasPermission(permission) && alertsOn(staff)) TextSender.send(staff, message);
+                BukkitServerThread.onOwner(plugin, scheduler, staff, () -> {
+                    if (!closed && staff.isOnline() && staff.hasPermission(staffPermission()) && alertsOn(staff)) {
+                        TextSender.send(staff, message);
+                    }
+                });
             }
         });
     }

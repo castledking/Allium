@@ -22,6 +22,7 @@ import codes.castled.allium.moderation.MuteRecord;
 import codes.castled.allium.naming.PlayerNameRepository;
 import codes.castled.allium.preference.PreferenceChange;
 import codes.castled.allium.preference.PreferenceRepository;
+import codes.castled.allium.storage.SqlDialect;
 import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.travel.TravelRepository;
 import org.jetbrains.annotations.Nullable;
@@ -243,7 +244,7 @@ public final class EssentialsImportApplier {
     private static Result applyBalance(Record r, String runId, ImportLedger ledger, @Nullable EconomyEngine engine)
             throws SQLException {
         if (engine == null) throw new SQLException("Allium economy became unavailable during import");
-        if (r.status() == Status.PRESENT) return adoptBalance(r, runId, ledger);
+        if (r.status() == Status.PRESENT) return adoptBalance(r, runId, ledger, engine.dialect());
 
         // The import receipt identifies the payload across attempts. Each attempt gets its own economy request.
         String source = EssentialsImportPlan.SOURCE;
@@ -257,7 +258,7 @@ public final class EssentialsImportApplier {
         });
         if (mutation instanceof EconomyResult.Committed) return Result.APPLIED;
         if (mutation instanceof EconomyResult.Rejected rejected) {
-            if ("ACCOUNT_EXISTS".equals(rejected.reason())) return adoptBalance(r, runId, ledger);
+            if ("ACCOUNT_EXISTS".equals(rejected.reason())) return adoptBalance(r, runId, ledger, engine.dialect());
             if ("SETTINGS_CHANGED".equals(rejected.reason())) throw new SQLException("Economy settings changed during import");
             if (!"WORKFLOW_REFUSED".equals(rejected.reason())) return Result.CONFLICT;
         }
@@ -273,13 +274,14 @@ public final class EssentialsImportApplier {
         });
     }
 
-    private static Result adoptBalance(Record r, String runId, ImportLedger ledger) throws SQLException {
+    private static Result adoptBalance(Record r, String runId, ImportLedger ledger, SqlDialect dialect) throws SQLException {
         return ledger.transaction(c -> {
             String source = EssentialsImportPlan.SOURCE;
             var recorded = ledger.hash(c, source, r.domain().id(), r.key());
             if (recorded.isPresent()) return recorded.get().equals(r.payloadHash()) ? Result.REPLAYED : Result.CONFLICT;
+            String rowLock = dialect == SqlDialect.MYSQL ? " FOR UPDATE" : "";
             try (var statement = c.prepareStatement("SELECT balance_minor, reserved_minor FROM "
-                    + EconomySchema.ACCOUNTS + " WHERE account_uuid = ?")) {
+                    + EconomySchema.ACCOUNTS + " WHERE account_uuid = ?" + rowLock)) {
                 statement.setString(1, r.owner().toString());
                 try (var row = statement.executeQuery()) {
                     if (!row.next() || row.getLong(1) != r.money().minor() || row.getLong(2) != 0) {

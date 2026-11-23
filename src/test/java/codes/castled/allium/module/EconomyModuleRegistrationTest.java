@@ -53,8 +53,15 @@ class EconomyModuleRegistrationTest {
             verifyNoInteractions(p.getServer().getServicesManager());verify(mocked.constructed().get(0)).close();
         }
     }
-    @Test void mysqlIsRefusedEvenWithRetiredScaffoldFlag() {
-        var p=plugin();when(p.getDatabaseManager().getType()).thenReturn(DatabaseType.MYSQL);p.getConfig().set("economy.scaffold-vault-provider-enabled",true);
-        assertThrows(IllegalStateException.class,()->new EconomyModule(p).onEnable());verifyNoInteractions(p.getServer().getServicesManager());
+    @Test void mysqlRegistersCommandsAfterEconomyRecovery() {
+        var p=plugin();when(p.getDatabaseManager().getType()).thenReturn(DatabaseType.MYSQL);
+        try (var runtime = mockConstruction(EconomyRuntime.class, (m, c) -> when(m.ready()).thenReturn(true))) {
+            var module = new EconomyModule(p);
+            module.onEnable();
+            verify(p.getCommandManager(), atLeastOnce()).register(any(codes.castled.allium.economy.EconomyCommands.class));
+            verifyNoInteractions(p.getServer().getServicesManager());
+            module.onDisable();
+            verify(runtime.constructed().get(0)).close();
+        }
     }
 }

@@ -6,6 +6,7 @@ import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.*;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.module.ItemsModule;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -39,7 +40,7 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
 
     private final PluginStart plugin;
     private final NamespacedKey key;
-    private boolean closed;
+    private volatile boolean closed;
 
     public UnlimitedCommand(PluginStart plugin) {
         this.plugin = plugin;
@@ -60,16 +61,19 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
         }
         Player target = context.resolveSelfOrTarget(1);
         if (target == null) return;
-        Set<String> blocks = blocks(target);
         var sender = context.sender();
-        switch (args[0].toLowerCase(Locale.ROOT)) {
-            case "list" -> UtilitySupport.send(plugin, sender, Messages.UNLIMITED_LIST,
-                    "{player}", target.getName(), "{items}", blocks.isEmpty() ? "-" : String.join(", ", blocks));
-            case "clear" -> {
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "list" -> UtilitySupport.onTarget(plugin, sender, target, () -> {
+                Set<String> blocks = blocks(target);
+                UtilitySupport.send(plugin, sender, Messages.UNLIMITED_LIST,
+                        "{player}", target.getName(), "{items}", blocks.isEmpty() ? "-" : String.join(", ", blocks));
+            });
+            case "clear" -> UtilitySupport.onTarget(plugin, sender, target, () -> {
                 target.getPersistentDataContainer().remove(key);
                 UtilitySupport.send(plugin, sender, Messages.UNLIMITED_CLEARED, "{player}", target.getName());
                 UtilitySupport.audit(plugin, sender, "unlimited", "target=" + target.getName() + " cleared");
-            }
+            });
             default -> {
                 var module = plugin.getModuleManager().getModule("items");
                 Material material = module instanceof ItemsModule items && items.isEnabled()
@@ -79,19 +83,23 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
                     return;
                 }
                 String item = material.getKey().getKey();
-                boolean enabled = !blocks.remove(item);
-                if (enabled) {
-                    if (!canToggle(sender, item)) {
-                        UtilitySupport.send(plugin, sender, Messages.NO_PERMISSION, "{cmd}", "unlimited " + item);
-                        return;
+                boolean allowed = canToggle(sender, item);
+                UtilitySupport.onTarget(plugin, sender, target, () -> {
+                    Set<String> blocks = blocks(target);
+                    boolean enabled = !blocks.remove(item);
+                    if (enabled) {
+                        if (!allowed) {
+                            UtilitySupport.send(plugin, sender, Messages.NO_PERMISSION, "{cmd}", "unlimited " + item);
+                            return;
+                        }
+                        blocks.add(item);
                     }
-                    blocks.add(item);
-                }
-                target.getPersistentDataContainer().set(key, PersistentDataType.STRING, String.join(",", blocks));
-                UtilitySupport.send(plugin, sender, enabled ? Messages.UNLIMITED_ON : Messages.UNLIMITED_OFF,
-                        "{player}", target.getName(), "{item}", item);
-                UtilitySupport.audit(plugin, sender, "unlimited", "target=" + target.getName() + " item=" + item
-                        + " enabled=" + enabled);
+                    target.getPersistentDataContainer().set(key, PersistentDataType.STRING, String.join(",", blocks));
+                    UtilitySupport.send(plugin, sender, enabled ? Messages.UNLIMITED_ON : Messages.UNLIMITED_OFF,
+                            "{player}", target.getName(), "{item}", item);
+                    UtilitySupport.audit(plugin, sender, "unlimited", "target=" + target.getName() + " item=" + item
+                            + " enabled=" + enabled);
+                });
             }
         }
     }
@@ -121,7 +129,7 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
         var hand = event.getHand();
         int slot = player.getInventory().getHeldItemSlot();
         int expectedAmount = held.getAmount() - 1;
-        plugin.getScheduler().runOnServerLater(() -> {
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
             if (closed || plugin.getCommandManager().getFamilyPolicy().isDisabled(SPEC.canonicalName())
                     || event.isCancelled() || !event.canBuild() || !player.isOnline()
                     || player.getGameMode() != GameMode.SURVIVAL || !player.hasPermission(BASE)
@@ -136,7 +144,7 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
             ItemStack restored = new ItemStack(material, expectedAmount + 1);
             if (hand == org.bukkit.inventory.EquipmentSlot.OFF_HAND) inventory.setItemInOffHand(restored);
             else inventory.setItem(slot, restored);
-        }, 50);
+        }, () -> {}, 50);
     }
 
     public void close() {

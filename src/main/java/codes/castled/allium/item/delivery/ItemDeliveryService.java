@@ -2,6 +2,9 @@ package codes.castled.allium.item.delivery;
 
 import codes.castled.allium.item.library.ItemLibrary;
 import codes.castled.allium.item.library.SkullProfiles;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
+import codes.castled.allium.scheduler.TaskScheduler;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
@@ -10,6 +13,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 
 import java.util.ArrayList;
@@ -22,35 +26,84 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Delivers prepared items to a player and reports a {@link DeliveryOutcome}.
  *
- * <p>Async preparation (skull profiles) completes off the server thread; the delivery then hops
- * to the server thread, revalidates that the target is still online, fires the cancellable
- * {@link ItemGiveEvent}, equips armor into empty slots when asked ({@code -e} never overwrites),
- * and inserts the rest under the {@link OverflowPolicy}. {@link OverflowPolicy#REFUSE} is decided
- * from an {@link InventoryFit} plan before anything changes.
+ * <p>Async preparation (skull profiles) completes off the server thread; delivery then hops to the
+ * thread owning the recipient (on Folia, their entity region), revalidates that the same player
+ * connection is still online, fires the cancellable {@link ItemGiveEvent}, equips armor into empty
+ * slots when asked ({@code -e} never overwrites), and inserts the rest under the
+ * {@link OverflowPolicy}. {@link OverflowPolicy#REFUSE} is decided from an {@link InventoryFit}
+ * plan before anything changes.
  */
 public final class ItemDeliveryService {
 
-    private final Executor serverThread;
-    private final BooleanSupplier onServerThread;
+    /** Executes inventory, event, and world-drop work on the thread owning {@code target}. */
+    public interface TargetThread {
+        boolean owns(Player target);
+        void execute(Player target, Runnable task, Runnable retired);
+    }
+
+    private final TargetThread targetThread;
     private final Function<UUID, Player> players;
     private final PluginManager events;
-    private final java.util.function.Supplier<SkullFallback> skullFallback;
+    private final Supplier<SkullFallback> skullFallback;
 
     public ItemDeliveryService(Executor serverThread, BooleanSupplier onServerThread, Function<UUID, Player> players, PluginManager events) {
         this(serverThread, onServerThread, players, events, () -> SkullFallback.UNTEXTURED);
     }
 
     public ItemDeliveryService(Executor serverThread, BooleanSupplier onServerThread, Function<UUID, Player> players, PluginManager events,
-                               java.util.function.Supplier<SkullFallback> skullFallback) {
-        this.serverThread = Objects.requireNonNull(serverThread, "serverThread");
-        this.onServerThread = Objects.requireNonNull(onServerThread, "onServerThread");
+                               Supplier<SkullFallback> skullFallback) {
+        this(singleThread(serverThread, onServerThread), players, events, skullFallback);
+    }
+
+    public ItemDeliveryService(TargetThread targetThread, Function<UUID, Player> players, PluginManager events,
+                               Supplier<SkullFallback> skullFallback) {
+        this.targetThread = Objects.requireNonNull(targetThread, "targetThread");
         this.players = Objects.requireNonNull(players, "players");
         this.events = Objects.requireNonNull(events, "events");
         this.skullFallback = Objects.requireNonNull(skullFallback, "skullFallback");
+    }
+
+    /** Routes delivery to the recipient's entity scheduler on Folia, or the server thread elsewhere. */
+    public static TargetThread targetThread(Plugin plugin, TaskScheduler scheduler) {
+        Objects.requireNonNull(plugin, "plugin");
+        Objects.requireNonNull(scheduler, "scheduler");
+        return new TargetThread() {
+            @Override
+            public boolean owns(Player target) {
+                return BukkitServerThread.isFolia()
+                        ? BukkitServerThread.entity(plugin, target).isServerThread()
+                        : scheduler.isServerThread();
+            }
+
+            @Override
+            public void execute(Player target, Runnable task, Runnable retired) {
+                TaskHandle handle = BukkitServerThread.runFor(plugin, scheduler, target, task, retired, 0L);
+                if (handle == TaskHandle.NONE) {
+                    retired.run();
+                }
+            }
+        };
+    }
+
+    private static TargetThread singleThread(Executor serverThread, BooleanSupplier onServerThread) {
+        Objects.requireNonNull(serverThread, "serverThread");
+        Objects.requireNonNull(onServerThread, "onServerThread");
+        return new TargetThread() {
+            @Override
+            public boolean owns(Player target) {
+                return onServerThread.getAsBoolean();
+            }
+
+            @Override
+            public void execute(Player target, Runnable task, Runnable retired) {
+                serverThread.execute(task);
+            }
+        };
     }
 
     public CompletableFuture<DeliveryOutcome> deliver(CommandSender source, Player target, ItemLibrary.Prepared prepared,
@@ -62,11 +115,46 @@ public final class ItemDeliveryService {
                 pending.add(item.skull());
             }
         }
-        if (pending.isEmpty() && onServerThread.getAsBoolean()) {
-            return CompletableFuture.completedFuture(finish(source, targetId, prepared, equip, policy));
+        boolean ready = pending.stream().allMatch(future -> future.isDone() && !future.isCompletedExceptionally());
+        if (ready && targetThread.owns(target)) {
+            return CompletableFuture.completedFuture(finish(source, null, targetId, prepared, equip, policy));
         }
-        return CompletableFuture.allOf(pending.toArray(CompletableFuture[]::new))
-                .thenApplyAsync(ignored -> finish(source, targetId, prepared, equip, policy), serverThread);
+        CompletableFuture<DeliveryOutcome> result = new CompletableFuture<>();
+        Runnable dispatch = () -> {
+            try {
+                Player current = players.apply(targetId);
+                if (current == null || !current.isOnline()) {
+                    result.complete(DeliveryOutcome.nothing(DeliveryOutcome.Status.TARGET_OFFLINE,
+                            prepared.requested(), prepared.warnings()));
+                    return;
+                }
+                targetThread.execute(current,
+                        () -> {
+                            try {
+                                result.complete(finish(source, current, targetId, prepared, equip, policy));
+                            } catch (Throwable failure) {
+                                result.completeExceptionally(failure);
+                            }
+                        },
+                        () -> result.complete(DeliveryOutcome.nothing(DeliveryOutcome.Status.TARGET_OFFLINE,
+                                prepared.requested(), prepared.warnings())));
+            } catch (Throwable failure) {
+                result.completeExceptionally(failure);
+            }
+        };
+        if (ready) {
+            dispatch.run();
+        } else {
+            CompletableFuture.allOf(pending.toArray(CompletableFuture[]::new))
+                    .whenComplete((ignored, error) -> {
+                        if (error != null) {
+                            result.completeExceptionally(error);
+                        } else {
+                            dispatch.run();
+                        }
+                    });
+        }
+        return result;
     }
 
     /** A mail delivery never drops overflow. The caller journals the remainder before applying. */
@@ -83,9 +171,9 @@ public final class ItemDeliveryService {
         public int given() { return delivered.stream().mapToInt(Integer::intValue).sum(); }
     }
 
-    /** Server thread only. Null means a plugin cancelled or changed the inventory during its callback. */
+    /** Recipient-owning thread only. Null means a plugin cancelled or changed the inventory during its callback. */
     public MailPlan planMail(CommandSender source, Player target, List<ItemStack> items) {
-        if (!onServerThread.getAsBoolean()) throw new IllegalStateException("mail delivery requires the server thread");
+        if (!targetThread.owns(target)) throw new IllegalStateException("mail delivery requires the target's owning thread");
         ItemStack[] before = copy(target.getInventory().getStorageContents());
         List<ItemStack> inserts = items.stream().map(ItemStack::clone).toList();
         ItemGiveEvent event = new ItemGiveEvent(source, target, inserts, false);
@@ -125,7 +213,7 @@ public final class ItemDeliveryService {
 
     /** Revalidates the exact storage snapshot immediately before the journalled inventory mutation. */
     public boolean applyMail(Player target, MailPlan plan) {
-        if (!onServerThread.getAsBoolean()) throw new IllegalStateException("mail delivery requires the server thread");
+        if (!targetThread.owns(target)) throw new IllegalStateException("mail delivery requires the target's owning thread");
         if (!target.isOnline() || !java.util.Arrays.equals(plan.before(), target.getInventory().getStorageContents())) return false;
         target.getInventory().setStorageContents(plan.after());
         return true;
@@ -135,12 +223,17 @@ public final class ItemDeliveryService {
         return java.util.Arrays.stream(items).map(s -> s == null ? null : s.clone()).toArray(ItemStack[]::new);
     }
 
-    /** Runs on the server thread. */
+    /** Runs on the thread owning the recipient. */
     DeliveryOutcome finish(CommandSender source, UUID targetId, ItemLibrary.Prepared prepared, boolean equip, OverflowPolicy policy) {
+        return finish(source, null, targetId, prepared, equip, policy);
+    }
+
+    private DeliveryOutcome finish(CommandSender source, Player expected, UUID targetId, ItemLibrary.Prepared prepared,
+                                   boolean equip, OverflowPolicy policy) {
         List<String> warnings = new ArrayList<>(prepared.warnings());
         int requested = prepared.requested();
         Player target = players.apply(targetId);
-        if (target == null || !target.isOnline()) {
+        if (target == null || !target.isOnline() || (expected != null && target != expected)) {
             return DeliveryOutcome.nothing(DeliveryOutcome.Status.TARGET_OFFLINE, requested, warnings);
         }
         List<ItemStack> stacks = new ArrayList<>();

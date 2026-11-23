@@ -48,11 +48,14 @@ public final class BurnCommand implements SpecCommandHandler {
                 return;
             }
         }
-        target.setFireTicks(seconds * 20);
-        UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_BURN,
-                "{player}", target.getName(),
-                "{seconds}", Integer.toString(seconds));
-        UtilitySupport.audit(plugin, context.sender(), "burn",
-                "target=" + target.getName() + " seconds=" + seconds);
+        int burnSeconds = seconds;
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            target.setFireTicks(burnSeconds * 20);
+            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_BURN,
+                    "{player}", target.getName(),
+                    "{seconds}", Integer.toString(burnSeconds));
+            UtilitySupport.audit(plugin, context.sender(), "burn",
+                    "target=" + target.getName() + " seconds=" + burnSeconds);
+        });
     }
 }

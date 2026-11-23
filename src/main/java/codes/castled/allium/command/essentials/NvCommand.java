@@ -65,33 +65,35 @@ public final class NvCommand implements SpecCommandHandler {
             }
         }
 
-        boolean enable = explicitState != null
-                ? explicitState
-                : !target.hasPotionEffect(PotionEffectType.NIGHT_VISION);
-        if (enable) {
-            target.addPotionEffect(new PotionEffect(
-                    PotionEffectType.NIGHT_VISION,
-                    PotionEffect.INFINITE_DURATION,
-                    0,
-                    false,
-                    false,
-                    false
-            ));
-        } else {
-            target.removePotionEffect(PotionEffectType.NIGHT_VISION);
-        }
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            boolean enable = explicitState != null
+                    ? explicitState
+                    : !target.hasPotionEffect(PotionEffectType.NIGHT_VISION);
+            if (enable) {
+                target.addPotionEffect(new PotionEffect(
+                        PotionEffectType.NIGHT_VISION,
+                        PotionEffect.INFINITE_DURATION,
+                        0,
+                        false,
+                        false,
+                        false
+                ));
+            } else {
+                target.removePotionEffect(PotionEffectType.NIGHT_VISION);
+            }
 
-        String state = enable ? "&aenabled" : "&cdisabled";
-        UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_NV_TOGGLE,
-                "{state}", state,
-                "{player}", target.getName());
-        if (target != context.sender()) {
-            UtilitySupport.send(plugin, target, Messages.UTILITY_NV_TOGGLE,
+            String state = enable ? "&aenabled" : "&cdisabled";
+            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_NV_TOGGLE,
                     "{state}", state,
                     "{player}", target.getName());
-            UtilitySupport.audit(plugin, context.sender(), "nv",
-                    "target=" + target.getName() + " state=" + enable);
-        }
+            if (target != context.sender()) {
+                UtilitySupport.send(plugin, target, Messages.UTILITY_NV_TOGGLE,
+                        "{state}", state,
+                        "{player}", target.getName());
+                UtilitySupport.audit(plugin, context.sender(), "nv",
+                        "target=" + target.getName() + " state=" + enable);
+            }
+        });
     }
 
     private static Boolean parseState(String raw) {

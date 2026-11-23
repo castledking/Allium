@@ -1,5 +1,6 @@
 package codes.castled.allium.modguard;
 
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskScheduler;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -10,11 +11,11 @@ import org.bukkit.plugin.Plugin;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -26,27 +27,24 @@ final class LunarWire implements AutoCloseable {
     static final String HANDSHAKE = "lunarclient.apollo.player.v1.PlayerHandshakeMessage";
     static final String RESPONSE = "lunarclient.apollo.modsetting.v1.InstalledModsResponse";
 
+    private final Plugin plugin;
     private final TaskScheduler scheduler;
     private final ModGuard modGuard;
-    private final Map<UUID, Pending> pending = new HashMap<>();
-    boolean enabled = true;
+    private final Map<UUID, Pending> pending = new ConcurrentHashMap<>();
+    volatile boolean enabled = true;
     BiConsumer<Player, byte[]> sender;
 
     LunarWire(Plugin plugin, TaskScheduler scheduler, ModGuard modGuard) {
+        this.plugin = plugin;
         this.scheduler = scheduler;
         this.modGuard = modGuard;
         this.sender = (player, data) -> player.sendPluginMessage(plugin, CHANNEL, data);
     }
 
-    boolean offered(Player player) {
-        ModGuardSession session = modGuard.session(player.getUniqueId());
-        return session != null && (session.channels.contains(OFFER) || player.getListeningPluginChannels().contains(OFFER));
-    }
-
-    void request(Player player, Consumer<List<Detection.Mod>> success, Consumer<String> failure) {
+    void request(ModGuardSession session, Consumer<List<Detection.Mod>> success, Consumer<String> failure) {
         if (!enabled) return;
-        ModGuardSession session = modGuard.session(player.getUniqueId());
-        if (session == null || !player.isOnline() || player.isOp() || !offered(player)) return;
+        Player player = session.player;
+        if (!session.channels.contains(OFFER) && !player.getListeningPluginChannels().contains(OFFER)) return;
         Pending request = new Pending(session.token, success, failure);
         pending.put(session.uuid, request);
         JsonObject packet = new JsonObject();
@@ -58,14 +56,16 @@ final class LunarWire implements AutoCloseable {
             pending.remove(session.uuid, request);
             return;
         }
-        scheduler.runOnServerLater(() -> {
-            if (pending.remove(session.uuid, request)) failure.accept("Lunar mod-list request timed out");
-        }, 200 * TaskScheduler.MILLIS_PER_TICK);
+        BukkitServerThread.runFor(plugin, scheduler, player, () -> {
+            if (pending.remove(session.uuid, request) && modGuard.session(player) == session) {
+                failure.accept("Lunar mod-list request timed out");
+            }
+        }, () -> pending.remove(session.uuid, request), 200 * TaskScheduler.MILLIS_PER_TICK);
     }
 
     void receive(Player player, byte[] bytes) {
         Pending request = pending.get(player.getUniqueId());
-        ModGuardSession session = modGuard.session(player.getUniqueId());
+        ModGuardSession session = modGuard.session(player);
         if (session == null || player.isOp() || bytes.length > Wire.MAX_PAYLOAD) return;
         JsonObject packet;
         try {
@@ -109,8 +109,7 @@ final class LunarWire implements AutoCloseable {
             }
             request.count = total;
             request.pages.put(page, entries);
-            if (request.pages.size() == total) {
-                pending.remove(session.uuid, request);
+            if (request.pages.size() == total && pending.remove(session.uuid, request)) {
                 List<Detection.Mod> all = new ArrayList<>();
                 request.pages.values().forEach(all::addAll);
                 request.success.accept(List.copyOf(all));
@@ -129,8 +128,8 @@ final class LunarWire implements AutoCloseable {
         return object.has(key) ? object.get(key).getAsString() : "";
     }
 
-    void quit(UUID id) {
-        pending.remove(id);
+    void quit(ModGuardSession session) {
+        pending.computeIfPresent(session.uuid, (id, request) -> request.session.equals(session.token) ? null : request);
     }
 
     @Override

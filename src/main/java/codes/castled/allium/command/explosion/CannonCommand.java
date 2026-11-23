@@ -9,6 +9,7 @@ import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.explosion.ExplosionSettings.Explosive;
 import codes.castled.allium.explosion.RegenerationService;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.Location;
 import org.bukkit.entity.Bee;
 import org.bukkit.entity.Cat;
@@ -69,11 +70,16 @@ public final class CannonCommand implements SpecCommandHandler {
         }
         regeneration.tag(flier, bee ? Explosive.BEEZOOKA : Explosive.KITTYCANNON);
         flier.setVelocity(eye.getDirection().multiply(2.0D));
-        plugin.getScheduler().runOnServerLater(() -> {
+        Runnable pop = () -> {
             Location at = flier.getLocation();
             flier.remove();
             if (at.getWorld() != null) at.getWorld().createExplosion(at, 0.0F, false, false);
-        }, FLIGHT_MILLIS);
+        };
+        if (BukkitServerThread.isFolia()) {
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), flier, pop, () -> {}, FLIGHT_MILLIS);
+        } else {
+            plugin.getScheduler().runOnServerLater(pop, FLIGHT_MILLIS);
+        }
         UtilitySupport.audit(plugin, player, spec().canonicalName(), "");
     }
 }

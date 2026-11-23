@@ -43,6 +43,7 @@ class TimedFlightTest {
     private final UUID id = UUID.randomUUID();
     private boolean allowFlight, flying;
     private TimedFlight timed;
+    private ThreadPoolExecutor io;
     private final YamlConfiguration config = new YamlConfiguration();
 
     @BeforeEach
@@ -64,7 +65,7 @@ class TimedFlightTest {
             return TaskHandle.NONE;
         });
         when(scheduler.repeatOnServer(any(), anyLong(), anyLong())).thenReturn(TaskHandle.NONE);
-        ThreadPoolExecutor io = mock(ThreadPoolExecutor.class);
+        io = mock(ThreadPoolExecutor.class);
         doAnswer(inv -> {
             inv.<Runnable>getArgument(0).run();
             return null;
@@ -160,6 +161,24 @@ class TimedFlightTest {
         assertEquals(0, timed.seconds(id));
         assertFalse(allowFlight, "resetting a flier's time ends their timed flight");
         verify(messages).send(steve, Messages.TFLY_EXPIRED);
+    }
+
+    @Test
+    void countdownResumesFromTheCommittedBankAfterADeferredStaffChange() throws Exception {
+        var writes = new java.util.ArrayDeque<Runnable>();
+        doAnswer(call -> { writes.add(call.getArgument(0)); return null; }).when(io).execute(any(Runnable.class));
+        timed.toggle(steve);
+        timed.tick();
+        when(repository.add(id, 9)).thenReturn(15L);
+
+        timed.change(id, TimedFlight.Change.ADD, 10, ignored -> {});
+        timed.tick();
+        assertEquals(5, timed.seconds(id));
+        writes.remove().run();
+        timed.tick();
+
+        assertEquals(14, timed.seconds(id));
+        verify(repository).add(id, 9);
     }
 
     @Test

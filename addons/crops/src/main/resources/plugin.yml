@@ -6,6 +6,7 @@ depend: [Allium]
 allium-api: '^1.4'
 allium-addon-dir: true
 allium-pack: crops-pack.zip
+folia-supported: true
 commands:
   crops:
     aliases: [crop, hf, harvest]

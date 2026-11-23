@@ -1,6 +1,8 @@
 package codes.castled.allium.info;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.moderation.DurationParser;
 import codes.castled.allium.moderation.ModerationService;
@@ -221,11 +223,14 @@ public final class PlayerInfoService implements Listener {
             if (online == null) {
                 continue;
             }
-            PlayerSession session = new PlayerSession(online.getUniqueId(), online.getName(), now);
-            sessions.put(online.getUniqueId(), session);
-            boolean vanished = PlayerNameVisibility.isVanished(online);
-            syncSleepIgnored(online);
-            dispatchJoinPersistence(session, vanished);
+            UtilitySupport.onOwner(plugin, online, () -> {
+                if (closed || sessions.containsKey(online.getUniqueId())) return;
+                PlayerSession session = new PlayerSession(online.getUniqueId(), online.getName(), now);
+                sessions.put(online.getUniqueId(), session);
+                boolean vanished = PlayerNameVisibility.isVanished(online);
+                syncSleepIgnored(online);
+                dispatchJoinPersistence(session, vanished);
+            });
         }
 
         if (plugin.getScheduler() != null) {
@@ -260,7 +265,10 @@ public final class PlayerInfoService implements Listener {
                 continue;
             }
             boolean vanished = PlayerNameVisibility.isVanished(online);
-            online.setSleepingIgnored(moderation != null && moderation.isVanished(online));
+            if (!BukkitServerThread.isFolia() || plugin.isEnabled()) {
+                UtilitySupport.onOwner(plugin, online,
+                        () -> online.setSleepingIgnored(moderation != null && moderation.isVanished(online)));
+            }
             if (!vanished) {
                 UUID id = online.getUniqueId();
                 String name = online.getName();
@@ -297,7 +305,9 @@ public final class PlayerInfoService implements Listener {
         reloadConfigSnapshot();
         runOnServer(() -> {
             for (Player online : plugin.getServer().getOnlinePlayers()) {
-                syncSleepIgnored(online);
+                UtilitySupport.onOwner(plugin, online, () -> {
+                    if (!closed) syncSleepIgnored(online);
+                });
             }
         });
     }
@@ -327,29 +337,52 @@ public final class PlayerInfoService implements Listener {
 
     public Map<String, List<ListedEntry>> collectVisibleGroupedPlayers(CommandSender viewer) {
         InfoSettings current = settings;
+        List<ListedEntry> visible = new ArrayList<>();
+        for (Player target : plugin.getServer().getOnlinePlayers()) {
+            if (target != null && PlayerNameVisibility.canSee(viewer, target)) visible.add(listedEntry(target, current));
+        }
+        return groupListedPlayers(current, visible);
+    }
+
+    private record ListedPlayer(Player player, ListedEntry entry) {}
+
+    public void collectVisibleGroupedPlayers(CommandSender viewer,
+            java.util.function.Consumer<Map<String, List<ListedEntry>>> reply) {
+        if (!BukkitServerThread.isFolia()) {
+            reply.accept(collectVisibleGroupedPlayers(viewer));
+            return;
+        }
+        InfoSettings current = settings;
+        samplePlayers(viewer, plugin.getServer().getOnlinePlayers(),
+                target -> target.isOnline() ? new ListedPlayer(target, listedEntry(target, current)) : null, samples -> {
+                    List<ListedEntry> visible = new ArrayList<>();
+                    for (ListedPlayer sample : samples) {
+                        Player target = sample.player();
+                        if (target.isOnline() && PlayerNameVisibility.canSee(viewer, target)
+                                && (!sample.entry().vanished() || !(viewer instanceof Player)
+                                    || viewer == target || viewer.hasPermission("allium.vanish.see"))) {
+                            visible.add(sample.entry());
+                        }
+                    }
+                    reply.accept(groupListedPlayers(current, visible));
+                });
+    }
+
+    private ListedEntry listedEntry(Player target, InfoSettings current) {
+        String group = current.groupByPermission() ? resolveGroup(target, current) : current.defaultGroup();
+        return new ListedEntry(target.getName(), group, isAfk(target), PlayerNameVisibility.isVanished(target));
+    }
+
+    private static Map<String, List<ListedEntry>> groupListedPlayers(InfoSettings current, List<ListedEntry> visible) {
         Map<String, List<ListedEntry>> grouped = new LinkedHashMap<>();
         if (current.groupByPermission()) {
-            for (String g : current.groups()) {
-                grouped.put(displayGroupName(g), new ArrayList<>());
-            }
+            for (String group : current.groups()) grouped.put(displayGroupName(group), new ArrayList<>());
         }
-
-        List<ListedEntry> allEntries = new ArrayList<>();
-        for (Player target : plugin.getServer().getOnlinePlayers()) {
-            if (target == null || !PlayerNameVisibility.canSee(viewer, target)) {
-                continue;
-            }
-            boolean vanished = PlayerNameVisibility.isVanished(target);
-            boolean afk = isAfk(target);
-            String group = current.groupByPermission() ? resolveGroup(target, current) : current.defaultGroup();
-            allEntries.add(new ListedEntry(target.getName(), group, afk, vanished));
-        }
-
-        allEntries.sort(Comparator.comparing(e -> e.name().toLowerCase(Locale.ROOT)));
-        for (ListedEntry entry : allEntries) {
+        visible.sort(Comparator.comparing(entry -> entry.name().toLowerCase(Locale.ROOT)));
+        for (ListedEntry entry : visible) {
             grouped.computeIfAbsent(entry.group(), ignored -> new ArrayList<>()).add(entry);
         }
-        grouped.entrySet().removeIf(e -> e.getValue().isEmpty());
+        grouped.entrySet().removeIf(entry -> entry.getValue().isEmpty());
         return grouped;
     }
 
@@ -399,9 +432,62 @@ public final class PlayerInfoService implements Listener {
                 ));
             }
         }
-        found.sort(Comparator.comparingDouble(NearbyEntry::distance)
-                .thenComparing(e -> e.name().toLowerCase(Locale.ROOT)));
-        return List.copyOf(found);
+        return sortedNearby(found.stream());
+    }
+
+    public void findNearbyPlayers(Player origin, double radius, java.util.function.Consumer<List<NearbyEntry>> reply) {
+        if (!BukkitServerThread.isFolia()) {
+            reply.accept(findNearbyPlayers(origin, radius));
+            return;
+        }
+        Location start = origin.getLocation();
+        double maxDistanceSquared = radius * radius;
+        boolean seeVanished = origin.hasPermission("allium.vanish.see");
+        samplePlayers(origin, plugin.getServer().getOnlinePlayers(),
+                target -> target == origin ? null : sampleNearby(target, start, maxDistanceSquared, seeVanished), nearby -> {
+                    boolean maySeeVanished = seeVanished && origin.hasPermission("allium.vanish.see");
+                    reply.accept(sortedNearby(nearby.stream().filter(entry -> maySeeVanished || !entry.vanished())));
+                });
+    }
+
+    private <T> void samplePlayers(CommandSender viewer, java.util.Collection<? extends Player> players,
+                                  java.util.function.Function<Player, T> capture, java.util.function.Consumer<List<T>> reply) {
+        List<CompletableFuture<T>> samples = new ArrayList<>();
+        for (Player target : List.copyOf(players)) {
+            var sample = new CompletableFuture<T>();
+            samples.add(sample);
+            Runnable retired = () -> sample.complete(null);
+            TaskHandle task = BukkitServerThread.runFor(plugin, plugin.getScheduler(), target, () -> {
+                try {
+                    sample.complete(capture.apply(target));
+                } finally {
+                    // The scheduler logs capture failures. A failed sample must still let the reply complete.
+                    retired.run();
+                }
+            }, retired, 0L);
+            if (task == TaskHandle.NONE) retired.run();
+        }
+        CompletableFuture.allOf(samples.toArray(CompletableFuture[]::new)).thenRun(() ->
+                runFor(viewer, () -> {
+                    if (!closed && (!(viewer instanceof Player player) || player.isOnline())) {
+                        reply.accept(samples.stream().map(CompletableFuture::join)
+                                .filter(Objects::nonNull).toList());
+                    }
+                }));
+    }
+
+    private NearbyEntry sampleNearby(Player target, Location start, double maxDistanceSquared, boolean seeVanished) {
+        if (!target.isOnline() || !target.getWorld().equals(start.getWorld())) return null;
+        double distanceSquared = start.distanceSquared(target.getLocation());
+        if (distanceSquared > maxDistanceSquared) return null;
+        boolean vanished = PlayerNameVisibility.isVanished(target);
+        if (vanished && !seeVanished) return null;
+        return new NearbyEntry(target.getName(), Math.sqrt(distanceSquared), isAfk(target), vanished);
+    }
+
+    private static List<NearbyEntry> sortedNearby(java.util.stream.Stream<NearbyEntry> entries) {
+        return entries.sorted(Comparator.comparingDouble(NearbyEntry::distance)
+                .thenComparing(entry -> entry.name().toLowerCase(Locale.ROOT))).toList();
     }
 
     // -- /seen & /whois async profile lookup ------------------------------------------------------
@@ -594,13 +680,14 @@ public final class PlayerInfoService implements Listener {
             if (viewer == null || viewer.equals(subject)) {
                 continue;
             }
-            if (PlayerNameVisibility.canSee(viewer, subject)) {
+            UtilitySupport.onOwner(plugin, viewer, () -> {
+                if (closed || !PlayerNameVisibility.canSee(viewer, subject)) return;
                 if (entered && cleanMessage != null) {
                     sendWithUntrustedReason(viewer, key, subject.getName(), cleanMessage);
                 } else {
                     plugin.getMessageManager().send(viewer, key, "{player}", subject.getName());
                 }
-            }
+            });
         }
         if (plugin.getServer().getConsoleSender() != null) {
             if (entered && cleanMessage != null) {
@@ -612,26 +699,25 @@ public final class PlayerInfoService implements Listener {
     }
 
     public void tickAfk() {
+        for (Player player : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+            UtilitySupport.onOwner(plugin, player, () -> tickAfk(player));
+        }
+    }
+
+    private void tickAfk(Player player) {
+        if (closed || !player.isOnline()) return;
         InfoSettings current = settings;
         long now = clock.getAsLong();
-        long autoMillis = current.autoAfkSeconds() * 1_000L;
-        long kickMillis = current.kickAfterSeconds() * 1_000L;
-
-        for (Player player : List.copyOf(plugin.getServer().getOnlinePlayers())) {
-            if (player == null || !player.isOnline()) {
-                continue;
+        PlayerSession session = sessionFor(player);
+        if (!session.afk) {
+            if (current.autoAfkSeconds() > 0 && player.hasPermission(PERMISSION_AFK_AUTO)
+                    && now - session.lastActivity >= current.autoAfkSeconds() * 1_000L) {
+                setAfk(player, true, null);
             }
-            PlayerSession session = sessionFor(player);
-            if (!session.afk) {
-                if (current.autoAfkSeconds() > 0 && player.hasPermission(PERMISSION_AFK_AUTO) && now - session.lastActivity >= autoMillis) {
-                    setAfk(player, true, null);
-                }
-            } else if (current.kickOnAfk()
-                    && now - session.afkSince >= kickMillis
-                    && !player.hasPermission(PERMISSION_AFK_KICK_EXEMPT)) {
-                String kickMsg = codes.castled.allium.message.MessageManager.colorize(plugin.getMessageManager().resolve(Messages.INFO_AFK_KICK));
-                player.kickPlayer(kickMsg);
-            }
+        } else if (current.kickOnAfk() && now - session.afkSince >= current.kickAfterSeconds() * 1_000L
+                && !player.hasPermission(PERMISSION_AFK_KICK_EXEMPT)) {
+            String kickMsg = codes.castled.allium.message.MessageManager.colorize(plugin.getMessageManager().resolve(Messages.INFO_AFK_KICK));
+            player.kickPlayer(kickMsg);
         }
     }
 
@@ -773,7 +859,9 @@ public final class PlayerInfoService implements Listener {
         }
         session.lastActivity = clock.getAsLong();
         if (session.afk) {
-            runOnServer(() -> markActivity(sender));
+            runFor(sender, () -> {
+                if (!closed && sessions.get(sender.getUniqueId()) == session) markActivity(sender);
+            });
         }
     }
 
@@ -801,6 +889,14 @@ public final class PlayerInfoService implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getWhoClicked() instanceof Player player) {
             markActivity(player);
+        }
+    }
+
+    public void runFor(CommandSender sender, Runnable task) {
+        if (BukkitServerThread.isFolia()) {
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, task, () -> {}, 0L);
+        } else {
+            runOnServer(task);
         }
     }
 

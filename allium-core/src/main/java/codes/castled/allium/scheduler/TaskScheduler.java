@@ -30,8 +30,18 @@ public interface TaskScheduler {
 
     TaskHandle runOnServerLater(Runnable task, long delayMillis);
 
+    /** Runs on the specified owner. If the owner retires first, invokes lightweight cleanup instead. */
+    default TaskHandle runOn(ServerThread owner, Runnable task, Runnable retired, long delayMillis) {
+        throw new UnsupportedOperationException("This scheduler does not manage scoped execution targets");
+    }
+
     /** Runs {@code step} on the server thread every {@code periodMillis} until it returns false or is cancelled. */
     TaskHandle repeatOnServer(BooleanSupplier step, long delayMillis, long periodMillis);
+
+    /** Repeats on the owner as it moves, until the step stops or the owner retires. */
+    default TaskHandle repeatOn(ServerThread owner, BooleanSupplier step, long delayMillis, long periodMillis) {
+        throw new UnsupportedOperationException("This scheduler does not manage scoped execution targets");
+    }
 
     /** Runs a short task off the server thread after {@code delayMillis}. */
     TaskHandle runAsyncLater(Runnable task, long delayMillis);

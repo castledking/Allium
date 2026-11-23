@@ -1,6 +1,7 @@
 package codes.castled.allium.moderation;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.discord.DiscordFeeds;
 import codes.castled.allium.discord.StaffFeeds;
 import codes.castled.allium.discord.StaffPosts;
@@ -8,6 +9,8 @@ import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.MessagingService;
 import codes.castled.allium.messaging.UntrustedText;
 import codes.castled.allium.naming.NameCache;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.text.FormattedText;
 import codes.castled.allium.text.TextSender;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
@@ -17,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -113,8 +117,10 @@ public final class ReportService {
             return;
         }
         try {
-            plugin.getPlayerNames().resolve(args[0]).whenComplete((found, error) -> plugin.getScheduler().runOnServer(() ->
-                    deliver(sender, reporter, args, error == null && found != null ? found.orElse(null) : null, usage)));
+            plugin.getPlayerNames().resolve(args[0]).whenComplete((found, error) -> BukkitServerThread.runFor(
+                    plugin, plugin.getScheduler(), sender,
+                    () -> deliver(sender, reporter, args, error == null && found != null ? found.orElse(null) : null, usage),
+                    () -> {}, 0L));
         } catch (RejectedExecutionException busy) {
             deliver(sender, reporter, args, null, usage);
         }
@@ -134,7 +140,7 @@ public final class ReportService {
         if (reporter != null) lastReport.put(reporter.getUniqueId(), clock.getAsLong());
         String name = reporter == null ? "Console" : reporter.getName();
         String where = reporter == null ? null : where(reporter.getLocation());
-        for (Player staff : plugin.getServer().getOnlinePlayers()) {
+        for (Player staff : List.copyOf(plugin.getServer().getOnlinePlayers())) {
             if (staff == reporter || !staff.hasPermission(PERM_RECEIVE)) continue;
             Messages alert = parsed.player() == null ? Messages.REPORT_STAFF_GENERAL : Messages.REPORT_STAFF;
             literal(staff, alert, parsed.text(), "{reporter}", name, "{player}", parsed.player() == null ? "" : parsed.player(),
@@ -159,7 +165,7 @@ public final class ReportService {
         String reason = UntrustedText.clean(rawReason).trim();
         if (reason.length() > 1000) reason = reason.substring(0, 1000);
         String chat = reason.replace("\\n", " ").replaceAll("\\s+", " ");
-        for (Player online : plugin.getServer().getOnlinePlayers()) {
+        for (Player online : List.copyOf(plugin.getServer().getOnlinePlayers())) {
             if (!online.hasPermission(PERM_ESCALATE_RECEIVE)) continue;
             literal(online, Messages.ESCALATE_STAFF, chat, "{staff}", staffName, "{target}", targetName);
         }
@@ -195,12 +201,15 @@ public final class ReportService {
     }
 
     private void send(CommandSender sender, Messages message, String... replacements) {
-        plugin.getMessageManager().send(sender, message, replacements);
+        UtilitySupport.send(plugin, sender, message, replacements);
     }
 
     private void literal(CommandSender recipient, Messages message, String body, String... replacements) {
-        TextSender.sendLiteral(recipient, UntrustedText.insert(plugin.getMessageManager().resolve(message, replacements),
-                UntrustedText.parse(body, UntrustedText.Allow.NONE)));
-        if (recipient instanceof Player player) plugin.getMessageManager().playSoundIfPresent(player, message);
+        FormattedText formatted = UntrustedText.insert(plugin.getMessageManager().resolve(message, replacements),
+                UntrustedText.parse(body, UntrustedText.Allow.NONE));
+        UtilitySupport.onOwner(plugin, recipient, () -> {
+            TextSender.sendLiteral(recipient, formatted);
+            if (recipient instanceof Player player) plugin.getMessageManager().playSoundIfPresent(player, message);
+        });
     }
 }

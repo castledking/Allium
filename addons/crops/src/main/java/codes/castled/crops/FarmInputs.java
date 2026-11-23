@@ -146,7 +146,7 @@ final class FarmInputs implements Listener {
         for (int dx = -maximumRadius; dx <= maximumRadius; dx++) {
             for (int dz = -maximumRadius; dz <= maximumRadius; dz++) {
                 var placed = world.at(new ModelWorld.Cell(uuid, anchor.getX() + dx, anchor.getY(), anchor.getZ() + dz));
-                if (placed == null || !placed.kind.equals("sprinkler") || !placed.hitbox.isValid()) continue;
+                if (placed == null || !placed.kind.equals("sprinkler") || !placed.active) continue;
                 var sprinkler = sprinklers.get(placed.type);
                 if (sprinkler == null || Math.abs(dx) > sprinkler.radius() || Math.abs(dz) > sprinkler.radius()) continue;
                 speed *= sprinkler.speed();
@@ -204,8 +204,9 @@ final class FarmInputs implements Listener {
         if (!allowed(player) || !(player.hasPermission("crops.sprinkler.place")
                 || player.hasPermission("allium.harvest.sprinkler.place")) || !support.getType().isSolid()
                 || !plugin.connection().mayModify(player, cell, "place_sprinkler", event)) return;
-        long count = world.active().stream().filter(p -> p.kind.equals("sprinkler") && p.hitbox.getWorld().equals(cell.getWorld())
-                && p.cell().getX() >> 4 == cell.getX() >> 4 && p.cell().getZ() >> 4 == cell.getZ() >> 4).count();
+        long count = world.active().stream().filter(p -> p.active && p.kind.equals("sprinkler")
+                && p.cell.world().equals(cell.getWorld().getUID())
+                && (p.cell.x() >> 4) == (cell.getX() >> 4) && (p.cell.z() >> 4) == (cell.getZ() >> 4)).count();
         if (count >= maximumPerChunk) {
             player.sendMessage("§eThere are too many sprinklers in this chunk.");
             return;
@@ -237,27 +238,42 @@ final class FarmInputs implements Listener {
         if (attack != null && attack.getTimestamp() > placed.lastAttack) {
             placed.lastAttack = attack.getTimestamp();
             Player actor = attack.getPlayer().getPlayer();
-            if (actor != null && allowed(actor) && plugin.connection().mayModify(actor, cell, "break_sprinkler", null)) {
+            if (actor != null && (!plugin.connection().isFolia() || plugin.connection().ownsEntity(actor))
+                    && allowed(actor) && plugin.connection().mayModify(actor, cell, "break_sprinkler", null)) {
                 remove(placed);
                 return;
             }
         }
         long now = System.currentTimeMillis();
+        var bukkitWorld = cell.getWorld();
+        int baseX = cell.getX(), baseY = cell.getY() - 1, baseZ = cell.getZ();
         for (int x = -sprinkler.radius(); x <= sprinkler.radius(); x++) {
             for (int z = -sprinkler.radius(); z <= sprinkler.radius(); z++) {
-                Block soil = cell.getRelative(x, -1, z);
-                if (!soil.getWorld().isChunkLoaded(soil.getX() >> 4, soil.getZ() >> 4) || !soils.contains(soil.getType())) continue;
-                if (sprinkler.moist() && soil.getBlockData() instanceof Farmland farmland
-                        && farmland.getMoisture() < farmland.getMaximumMoisture()) {
-                    farmland.setMoisture(farmland.getMaximumMoisture());
-                    soil.setBlockData(farmland, false);
-                }
-                if (exhaustion && sprinkler.retain() > 0) {
-                    var prior = readSoil(soil, now);
-                    long until = now + sprinkler.retain();
-                    if (prior.expires() < until) putSoil(soil, new Soil(prior.fertilizer(), until));
+                int sx = baseX + x, sz = baseZ + z;
+                int cx = sx >> 4, cz = sz >> 4;
+                if (plugin.connection().ownsRegion(bukkitWorld, cx, cz)) {
+                    hydrateSoil(bukkitWorld, sx, baseY, sz, sprinkler, now);
+                } else if (plugin.connection().isFolia()) {
+                    plugin.connection().runForRegion(bukkitWorld, cx, cz,
+                            () -> hydrateSoil(bukkitWorld, sx, baseY, sz, sprinkler, now), 0L);
                 }
             }
+        }
+    }
+
+    private void hydrateSoil(org.bukkit.World bukkitWorld, int sx, int sy, int sz, Sprinkler sprinkler, long now) {
+        if (!bukkitWorld.isChunkLoaded(sx >> 4, sz >> 4)) return;
+        Block soil = bukkitWorld.getBlockAt(sx, sy, sz);
+        if (!soils.contains(soil.getType())) return;
+        if (sprinkler.moist() && soil.getBlockData() instanceof Farmland farmland
+                && farmland.getMoisture() < farmland.getMaximumMoisture()) {
+            farmland.setMoisture(farmland.getMaximumMoisture());
+            soil.setBlockData(farmland, false);
+        }
+        if (exhaustion && sprinkler.retain() > 0) {
+            var prior = readSoil(soil, now);
+            long until = now + sprinkler.retain();
+            if (prior.expires() < until) putSoil(soil, new Soil(prior.fertilizer(), until));
         }
     }
 

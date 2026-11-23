@@ -79,8 +79,18 @@ final class PacketWaypoints extends PacketListenerAbstract implements Waypoints 
     @Override
     public void apply(Player viewer, Player target, boolean show) {
         if (viewer.equals(target)) return;
+        if (!show) {
+            apply(viewer, target.getUniqueId(), 0, 0, 0, false);
+            return;
+        }
+        Location at = target.getLocation();
+        apply(viewer, target.getUniqueId(), at.getBlockX(), at.getBlockY(), at.getBlockZ(), true);
+    }
+
+    @Override
+    public void apply(Player viewer, UUID targetId, int x, int y, int z, boolean show) {
         UUID viewerId = viewer.getUniqueId();
-        UUID targetId = target.getUniqueId();
+        if (viewerId.equals(targetId)) return;
         Set<UUID> suppressed = hidden.computeIfAbsent(viewerId, key -> ConcurrentHashMap.newKeySet());
         Map<UUID, Sent> owned = sent.computeIfAbsent(viewerId, key -> new ConcurrentHashMap<>());
         if (!show) {
@@ -89,8 +99,7 @@ final class PacketWaypoints extends PacketListenerAbstract implements Waypoints 
             return;
         }
         suppressed.remove(targetId);
-        Location at = target.getLocation();
-        Sent position = new Sent(at.getBlockX(), at.getBlockY(), at.getBlockZ(), icons.getOrDefault(targetId, defaultIcon()));
+        Sent position = new Sent(x, y, z, icons.getOrDefault(targetId, defaultIcon()));
         if (same(owned.get(targetId), position)) return;
         // TRACK replaces an existing identifier too, including vanilla's bearing-only dot.
         if (send(viewer, WrapperPlayServerWaypoint.Operation.TRACK, targetId, position)) owned.put(targetId, position);

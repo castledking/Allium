@@ -33,17 +33,19 @@ public final class CoordsCommand implements SpecCommandHandler {
         if (target == null) {
             return;
         }
-        Location at = target.getLocation();
-        String[] values = {
-                "{player}", target.getName(),
-                "{world}", at.getWorld() == null ? "?" : at.getWorld().getName(),
-                "{x}", Integer.toString(at.getBlockX()),
-                "{y}", Integer.toString(at.getBlockY()),
-                "{z}", Integer.toString(at.getBlockZ()),
-                "{yaw}", Long.toString(Math.round(yaw(at.getYaw()))),
-                "{pitch}", Long.toString(Math.round(at.getPitch()))
-        };
-        UtilitySupport.send(plugin, context.sender(), target == context.sender() ? Messages.UTILITY_COORDS_SELF : Messages.UTILITY_COORDS_OTHER, values);
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            Location at = target.getLocation();
+            String[] values = {
+                    "{player}", target.getName(),
+                    "{world}", at.getWorld() == null ? "?" : at.getWorld().getName(),
+                    "{x}", Integer.toString(at.getBlockX()),
+                    "{y}", Integer.toString(at.getBlockY()),
+                    "{z}", Integer.toString(at.getBlockZ()),
+                    "{yaw}", Long.toString(Math.round(yaw(at.getYaw()))),
+                    "{pitch}", Long.toString(Math.round(at.getPitch()))
+            };
+            UtilitySupport.send(plugin, context.sender(), target == context.sender() ? Messages.UTILITY_COORDS_SELF : Messages.UTILITY_COORDS_OTHER, values);
+        });
     }
 
     /** Yaw in 0..360, as the debug screen shows it after wrapping. */

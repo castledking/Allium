@@ -16,7 +16,7 @@ import java.util.function.BooleanSupplier;
 final class NetworkDisconnect {
     static final String CHANNEL = "BungeeCord";
 
-    private Mode mode = Mode.AUTO;
+    private volatile Mode mode = Mode.AUTO;
     BooleanSupplier proxyDetected = () -> {
         try {
             return Bukkit.spigot().getConfig().getBoolean("settings.bungeecord", false);
@@ -35,7 +35,8 @@ final class NetworkDisconnect {
     }
 
     boolean usesProxy() {
-        return mode == Mode.PROXY || mode == Mode.AUTO && proxyDetected.getAsBoolean();
+        Mode current = mode;
+        return current == Mode.PROXY || current == Mode.AUTO && proxyDetected.getAsBoolean();
     }
 
     /** The proxy's KickPlayerRaw message: the player's name and the reason as a chat component. */

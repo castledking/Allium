@@ -141,10 +141,12 @@ public final class PlayerTimeCommand implements SpecCommandHandler {
                 return;
             }
             for (Player target : targets) {
-                target.resetPlayerTime();
-                if (!target.equals(sender)) {
-                    UtilitySupport.send(plugin, target, Messages.UTILITY_PTIME_RESET_SELF);
-                }
+                UtilitySupport.onTarget(plugin, sender, target, () -> {
+                    target.resetPlayerTime();
+                    if (!target.equals(sender)) {
+                        UtilitySupport.send(plugin, target, Messages.UTILITY_PTIME_RESET_SELF);
+                    }
+                });
             }
             UtilitySupport.send(plugin, sender, Messages.UTILITY_PTIME_RESET_ALL, "{count}", Integer.toString(targets.size()));
             UtilitySupport.audit(plugin, sender, "ptime", "target=* count=" + targets.size() + " mode=reset");
@@ -155,14 +157,16 @@ public final class PlayerTimeCommand implements SpecCommandHandler {
         if (target == null) {
             return;
         }
-        target.resetPlayerTime();
-        if (target.equals(sender)) {
-            UtilitySupport.send(plugin, target, Messages.UTILITY_PTIME_RESET_SELF);
-        } else {
-            UtilitySupport.send(plugin, sender, Messages.UTILITY_PTIME_RESET_OTHER, "{player}", target.getName());
-            UtilitySupport.send(plugin, target, Messages.UTILITY_PTIME_RESET_SELF);
-        }
-        UtilitySupport.audit(plugin, sender, "ptime", "target=" + target.getName() + " mode=reset");
+        UtilitySupport.onTarget(plugin, sender, target, () -> {
+            target.resetPlayerTime();
+            if (target.equals(sender)) {
+                UtilitySupport.send(plugin, target, Messages.UTILITY_PTIME_RESET_SELF);
+            } else {
+                UtilitySupport.send(plugin, sender, Messages.UTILITY_PTIME_RESET_OTHER, "{player}", target.getName());
+                UtilitySupport.send(plugin, target, Messages.UTILITY_PTIME_RESET_SELF);
+            }
+            UtilitySupport.audit(plugin, sender, "ptime", "target=" + target.getName() + " mode=reset");
+        });
     }
 
     private void handleSet(BukkitCommandContext context, long ticks, boolean fixed, String targetArg) {
@@ -192,12 +196,14 @@ public final class PlayerTimeCommand implements SpecCommandHandler {
                 return;
             }
             for (Player target : targets) {
-                applyTime(target, ticks, fixed);
-                if (!target.equals(sender)) {
-                    UtilitySupport.send(plugin, target,
-                            fixed ? Messages.UTILITY_PTIME_SET_FIXED_SELF : Messages.UTILITY_PTIME_SET_SELF,
-                            "{time}", formatted);
-                }
+                UtilitySupport.onTarget(plugin, sender, target, () -> {
+                    applyTime(target, ticks, fixed);
+                    if (!target.equals(sender)) {
+                        UtilitySupport.send(plugin, target,
+                                fixed ? Messages.UTILITY_PTIME_SET_FIXED_SELF : Messages.UTILITY_PTIME_SET_SELF,
+                                "{time}", formatted);
+                    }
+                });
             }
             UtilitySupport.send(plugin, sender,
                     fixed ? Messages.UTILITY_PTIME_SET_FIXED_ALL : Messages.UTILITY_PTIME_SET_ALL,
@@ -211,21 +217,23 @@ public final class PlayerTimeCommand implements SpecCommandHandler {
         if (target == null) {
             return;
         }
-        applyTime(target, ticks, fixed);
-        if (target.equals(sender)) {
-            UtilitySupport.send(plugin, target,
-                    fixed ? Messages.UTILITY_PTIME_SET_FIXED_SELF : Messages.UTILITY_PTIME_SET_SELF,
-                    "{time}", formatted);
-        } else {
-            UtilitySupport.send(plugin, sender,
-                    fixed ? Messages.UTILITY_PTIME_SET_FIXED_OTHER : Messages.UTILITY_PTIME_SET_OTHER,
-                    "{player}", target.getName(),
-                    "{time}", formatted);
-            UtilitySupport.send(plugin, target,
-                    fixed ? Messages.UTILITY_PTIME_SET_FIXED_SELF : Messages.UTILITY_PTIME_SET_SELF,
-                    "{time}", formatted);
-        }
-        UtilitySupport.audit(plugin, sender, "ptime", "target=" + target.getName() + " ticks=" + ticks + " fixed=" + fixed);
+        UtilitySupport.onTarget(plugin, sender, target, () -> {
+            applyTime(target, ticks, fixed);
+            if (target.equals(sender)) {
+                UtilitySupport.send(plugin, target,
+                        fixed ? Messages.UTILITY_PTIME_SET_FIXED_SELF : Messages.UTILITY_PTIME_SET_SELF,
+                        "{time}", formatted);
+            } else {
+                UtilitySupport.send(plugin, sender,
+                        fixed ? Messages.UTILITY_PTIME_SET_FIXED_OTHER : Messages.UTILITY_PTIME_SET_OTHER,
+                        "{player}", target.getName(),
+                        "{time}", formatted);
+                UtilitySupport.send(plugin, target,
+                        fixed ? Messages.UTILITY_PTIME_SET_FIXED_SELF : Messages.UTILITY_PTIME_SET_SELF,
+                        "{time}", formatted);
+            }
+            UtilitySupport.audit(plugin, sender, "ptime", "target=" + target.getName() + " ticks=" + ticks + " fixed=" + fixed);
+        });
     }
 
     private static void applyTime(Player target, long ticks, boolean fixed) {
@@ -251,18 +259,20 @@ public final class PlayerTimeCommand implements SpecCommandHandler {
     }
 
     private void sendPlayerStatus(CommandSender viewer, Player target) {
-        String formatted = WorldTimeParser.formatTime(target.getPlayerTime());
-        boolean relative = target.isPlayerTimeRelative();
-        long offset = target.getPlayerTimeOffset();
-        Messages message;
-        if (!relative) {
-            message = Messages.UTILITY_PTIME_STATUS_FIXED;
-        } else if (offset == 0L) {
-            message = Messages.UTILITY_PTIME_STATUS_NORMAL;
-        } else {
-            message = Messages.UTILITY_PTIME_STATUS_RELATIVE;
-        }
-        UtilitySupport.send(plugin, viewer, message, "{player}", target.getName(), "{time}", formatted);
+        UtilitySupport.onTarget(plugin, viewer, target, () -> {
+            String formatted = WorldTimeParser.formatTime(target.getPlayerTime());
+            boolean relative = target.isPlayerTimeRelative();
+            long offset = target.getPlayerTimeOffset();
+            Messages message;
+            if (!relative) {
+                message = Messages.UTILITY_PTIME_STATUS_FIXED;
+            } else if (offset == 0L) {
+                message = Messages.UTILITY_PTIME_STATUS_NORMAL;
+            } else {
+                message = Messages.UTILITY_PTIME_STATUS_RELATIVE;
+            }
+            UtilitySupport.send(plugin, viewer, message, "{player}", target.getName(), "{time}", formatted);
+        });
     }
 
     private boolean requireOthersPermission(CommandSender sender) {

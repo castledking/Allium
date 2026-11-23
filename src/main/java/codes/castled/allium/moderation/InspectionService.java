@@ -3,6 +3,7 @@ package codes.castled.allium.moderation;
 import codes.castled.allium.gui.GuiIcons;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.mail.PlayerDataFiles;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.MessagingService;
@@ -11,6 +12,7 @@ import codes.castled.allium.module.MailModule;
 import codes.castled.allium.naming.NameCache;
 import codes.castled.allium.naming.PlayerNameService;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -154,22 +156,23 @@ public final class InspectionService implements Listener {
         volatile boolean guardActive;
         volatile boolean writeInFlight;
         volatile boolean aborted;
+        final java.util.concurrent.atomic.AtomicBoolean refreshInFlight = new java.util.concurrent.atomic.AtomicBoolean();
         /** Offline sessions: slot changes saved so far, and whether the close summary still waits on a write. */
-        int savedChanges;
-        boolean summaryPending;
+        volatile int savedChanges;
+        volatile boolean summaryPending;
         /**
          * The held hotbar slot the GUI is laid out for (its item sits in the main-hand cell), or -1
          * when unknown. Captures always use the layout that was displayed.
          */
-        int held = -1;
+        volatile int held = -1;
         /** Shown in {@link #BACK_BUTTON_SLOT} when the menu was opened from another menu. */
         @Nullable BackButton back;
 
-        ItemStack[] lastSyncedSlots;
-        byte[] currentRawBytes;
-        byte[] currentHash;
-        Map<String, String> bukkitValues;
-        CompletableFuture<Void> loginFlushFuture;
+        volatile ItemStack[] lastSyncedSlots;
+        volatile byte[] currentRawBytes;
+        volatile byte[] currentHash;
+        volatile Map<String, String> bukkitValues;
+        volatile CompletableFuture<Void> loginFlushFuture;
 
         InspectionSession(
                 Player viewer,
@@ -355,12 +358,16 @@ public final class InspectionService implements Listener {
         for (InspectionSession session : List.copyOf(sessionsById.values())) {
             if (session.editable && session.flushScheduled) {
                 if (session.mode == InspectionLayout.InspectionMode.ONLINE) {
-                    flushOnlineSession(session);
+                    if (!BukkitServerThread.isFolia()) {
+                        flushOnlineSession(session);
+                    }
                 } else if (session.mode == InspectionLayout.InspectionMode.OFFLINE) {
-                    flushOfflineSession(session);
+                    if (!BukkitServerThread.isFolia()) {
+                        flushOfflineSession(session);
+                    }
                 }
             }
-            closeAndUnregisterSession(session, true, "plugin-disable");
+            closeAndUnregisterSession(session, !BukkitServerThread.isFolia() || plugin.isEnabled(), "plugin-disable");
         }
         HandlerList.unregisterAll(this);
         activeMutableSessions.clear();
@@ -493,7 +500,7 @@ public final class InspectionService implements Listener {
             return;
         }
         try {
-            names.resolve(rawTarget).whenComplete((found, error) -> runOnServer(() -> {
+            names.resolve(rawTarget).whenComplete((found, error) -> runFor(viewer, () -> {
                 if (closed || !viewer.isOnline()) {
                     return;
                 }
@@ -581,11 +588,15 @@ public final class InspectionService implements Listener {
             send(viewer, Messages.DISCIPLINE_EXEMPT);
             return;
         }
+        boolean editable = viewer.hasPermission(editPermission(type));
+        if (BukkitServerThread.isFolia() && !BukkitServerThread.entity(plugin, online).isServerThread()) {
+            openOnlineSessionRegional(viewer, online, type, editable, back);
+            return;
+        }
         if (type == InspectionLayout.InspectionType.INVSEE && online.isDead()) {
             send(viewer, Messages.INSPECT_TARGET_DEAD_OPEN, "{player}", MessagingService.safeName(online.getName()));
             return;
         }
-        boolean editable = viewer.hasPermission(editPermission(type));
         if (editable && busyPolicy.test(online)) {
             send(viewer, Messages.INSPECT_BUSY);
             return;
@@ -609,6 +620,72 @@ public final class InspectionService implements Listener {
     // ---------------------------------------------------------------------------------------------
     // Session creation (Online & Offline)
     // ---------------------------------------------------------------------------------------------
+
+    private void openOnlineSessionRegional(
+            Player viewer,
+            Player target,
+            InspectionLayout.InspectionType type,
+            boolean editable,
+            @Nullable BackButton back
+    ) {
+        InspectionSession session = new InspectionSession(
+                viewer,
+                target.getUniqueId(),
+                target.getName(),
+                type,
+                InspectionLayout.InspectionMode.ONLINE,
+                editable
+        );
+        session.back = back;
+        if (editable && activeMutableSessions.putIfAbsent(session.key(), session) != null) {
+            send(viewer, Messages.INSPECT_BUSY);
+            return;
+        }
+        Runnable releaseAndAbortOffline = () -> {
+            activeMutableSessions.remove(session.key(), session);
+            send(viewer, Messages.INSPECT_TARGET_OFFLINE, "{player}", session.targetName);
+        };
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), target, () -> {
+            if (closed || !target.isOnline()) {
+                releaseAndAbortOffline.run();
+                return;
+            }
+            if (type == InspectionLayout.InspectionType.INVSEE && target.isDead()) {
+                activeMutableSessions.remove(session.key(), session);
+                send(viewer, Messages.INSPECT_TARGET_DEAD_OPEN, "{player}", session.targetName);
+                return;
+            }
+            if (editable && busyPolicy.test(target)) {
+                activeMutableSessions.remove(session.key(), session);
+                send(viewer, Messages.INSPECT_BUSY);
+                return;
+            }
+            ItemStack[] snapshot = readLiveTargetSlots(target, type);
+            int held = type == InspectionLayout.InspectionType.INVSEE ? target.getInventory().getHeldItemSlot() : -1;
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), viewer, () -> {
+                if (closed || !viewer.isOnline() || !hasOpenCommandPermission(viewer, type, true)
+                        || (editable && !viewer.hasPermission(editPermission(type)))) {
+                    activeMutableSessions.remove(session.key(), session);
+                    return;
+                }
+                try {
+                    session.held = held;
+                    Inventory gui = buildGui(session, snapshot);
+                    session.gui = gui;
+                    session.lastSyncedSlots = cloneSlots(snapshot);
+                    session.active = true;
+                    registerSession(session);
+                    viewer.openInventory(gui);
+
+                    String detail = InspectionLayout.formatAuditDetail(type, InspectionLayout.InspectionMode.ONLINE, editable, "open", List.of());
+                    logInspection(openAction(type), session.viewerName, session.targetUuid, session.targetName, detail);
+                } catch (RuntimeException error) {
+                    unregisterSession(session);
+                    throw error;
+                }
+            }, () -> activeMutableSessions.remove(session.key(), session), 0L);
+        }, releaseAndAbortOffline, 0L);
+    }
 
     private void openOnlineSession(
             Player viewer,
@@ -679,69 +756,70 @@ public final class InspectionService implements Listener {
         }
 
         try {
+            Runnable releaseSession = () -> activeMutableSessions.remove(session.key(), session);
             io.execute(() -> {
                 if (closed || offlineStore.isOnlineOrFenced(targetUuid)) {
-                    runOnServer(() -> {
+                    runFor(viewer, () -> {
                         activeMutableSessions.remove(session.key(), session);
                         if (viewer.isOnline()) {
                             send(viewer, Messages.INSPECT_OFFLINE_UNAVAILABLE, "{player}", targetName);
                         }
-                    });
+                    }, releaseSession);
                     return;
                 }
                 if (editable && offlineHoldPolicy.test(targetUuid)) {
-                    runOnServer(() -> {
+                    runFor(viewer, () -> {
                         activeMutableSessions.remove(session.key(), session);
                         if (viewer.isOnline()) {
                             send(viewer, Messages.INSPECT_OFFLINE_HOLD, "{player}", targetName);
                         }
-                    });
+                    }, releaseSession);
                     return;
                 }
                 OfflinePlayerDataStore.LoadedSnapshot loaded;
                 try {
                     loaded = offlineStore.load(targetUuid, type);
                 } catch (FileNotFoundException | OfflinePlayerDataStore.LoginFencedException e) {
-                    runOnServer(() -> {
+                    runFor(viewer, () -> {
                         activeMutableSessions.remove(session.key(), session);
                         if (viewer.isOnline()) {
                             send(viewer, Messages.INSPECT_OFFLINE_UNAVAILABLE, "{player}", targetName);
                         }
-                    });
+                    }, releaseSession);
                     return;
                 } catch (PlayerDataCodec.DataVersionTooNewException newer) {
                     plugin.logger().warning("Refused offline " + type + " for " + targetName + " (" + targetUuid + "): " + newer.getMessage());
-                    runOnServer(() -> {
+                    runFor(viewer, () -> {
                         activeMutableSessions.remove(session.key(), session);
                         if (viewer.isOnline()) {
                             send(viewer, Messages.INSPECT_OFFLINE_NEWER_VERSION, "{player}", targetName);
                         }
-                    });
+                    }, releaseSession);
                     return;
                 } catch (IOException | RuntimeException corrupt) {
                     plugin.logger().warning("Corrupt offline player data for " + targetName + " (" + targetUuid + "): " + corrupt.getMessage());
-                    runOnServer(() -> {
+                    runFor(viewer, () -> {
                         activeMutableSessions.remove(session.key(), session);
                         if (viewer.isOnline()) {
                             send(viewer, Messages.INSPECT_OFFLINE_CORRUPT, "{player}", targetName);
                         }
-                    });
+                    }, releaseSession);
                     return;
                 }
                 int serverDataVersion = offlineStore.currentDataVersion();
                 if (editable && loaded.dataVersion() != serverDataVersion) {
                     plugin.logger().warning("Refused offline " + type + " edit for " + targetName + " (" + targetUuid
                             + "): DataVersion " + loaded.dataVersion() + " != server DataVersion " + serverDataVersion);
-                    runOnServer(() -> {
+                    runFor(viewer, () -> {
                         activeMutableSessions.remove(session.key(), session);
                         if (viewer.isOnline()) {
                             send(viewer, Messages.INSPECT_OFFLINE_VERSION_REWRITE, "{player}", targetName);
                         }
-                    });
+                    }, releaseSession);
                     return;
                 }
 
-                runOnServer(() -> {
+                runFor(viewer, () -> {
                     Player onlineNow = plugin.getServer().getPlayer(targetUuid);
                     if (closed || !viewer.isOnline() || !hasOfflineOpenPermission(viewer, type, editable)
                             || (editable && !offlineEditingEnabled)
@@ -772,7 +850,7 @@ public final class InspectionService implements Listener {
                             type, InspectionLayout.InspectionMode.OFFLINE, editable,
                             "dataVersion=" + loaded.dataVersion(), List.of());
                     logInspection(openAction(type), session.viewerName, session.targetUuid, session.targetName, detail);
-                });
+                }, releaseSession);
             });
         } catch (RejectedExecutionException rejected) {
             activeMutableSessions.remove(session.key(), session);
@@ -865,7 +943,7 @@ public final class InspectionService implements Listener {
             if (rawSlot == BACK_BUTTON_SLOT && session.back != null && session.type == InspectionLayout.InspectionType.INVSEE) {
                 // Opening the other menu closes this one, which flushes and ends the session as usual.
                 Runnable back = session.back.action();
-                scheduleOnServer(() -> {
+                runFor(clicker, () -> {
                     if (clicker.isOnline()) {
                         back.run();
                     }
@@ -927,7 +1005,7 @@ public final class InspectionService implements Listener {
                 rest.setAmount(remaining);
                 event.getClickedInventory().setItem(event.getSlot(), rest);
             }
-            scheduleOnServer(clicker::updateInventory);
+            runFor(clicker, clicker::updateInventory);
         }
     }
 
@@ -982,27 +1060,38 @@ public final class InspectionService implements Listener {
         }
         if (session.mode == InspectionLayout.InspectionMode.ONLINE) {
             Player target = plugin.getServer().getPlayer(session.targetUuid);
-            Messages unavailable = liveTargetUnavailable(session, target);
-            if (unavailable != null) {
-                abortSession(session, "target-unavailable", unavailable, session.targetName);
+            if (target == null || !target.isOnline()) {
+                abortSession(session, "target-unavailable", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
                 return false;
             }
-            if (busyPolicy.test(target)) {
-                abortSession(session, "target-busy", Messages.INSPECT_BUSY, null);
-                return false;
-            }
-            // Snapshot verification before allowing the click/drag
-            ItemStack[] live = readLiveTargetSlots(target, session.type);
-            if (!slotsEqual(live, session.lastSyncedSlots)) {
-                session.lastSyncedSlots = cloneSlots(live);
-                applySlotsToGui(session.type, session.gui, live, session.held);
-                return false;
+            boolean sameRegion = !BukkitServerThread.isFolia() || BukkitServerThread.entity(plugin, target).isServerThread();
+            if (sameRegion) {
+                Messages unavailable = liveTargetUnavailable(session, target);
+                if (unavailable != null) {
+                    abortSession(session, "target-unavailable", unavailable, session.targetName);
+                    return false;
+                }
+                if (busyPolicy.test(target)) {
+                    abortSession(session, "target-busy", Messages.INSPECT_BUSY, null);
+                    return false;
+                }
+                // Snapshot verification before allowing the click/drag
+                ItemStack[] live = readLiveTargetSlots(target, session.type);
+                if (!slotsEqual(live, session.lastSyncedSlots)) {
+                    session.lastSyncedSlots = cloneSlots(live);
+                    applySlotsToGui(session.type, session.gui, live, session.held);
+                    return false;
+                }
             }
             session.guardActive = true;
             activeTargetGuards.add(session.targetUuid);
             if (!session.flushScheduled) {
                 session.flushScheduled = true;
-                scheduleOnServer(() -> flushOnlineSession(session));
+                runFor(session.viewer, () -> flushOnlineSession(session), () -> {
+                    session.flushScheduled = false;
+                    session.guardActive = false;
+                    recomputeTargetGuard(session.targetUuid);
+                });
             }
             return true;
         }
@@ -1022,7 +1111,10 @@ public final class InspectionService implements Listener {
         }
         if (!session.flushScheduled) {
             session.flushScheduled = true;
-            scheduleOnServer(() -> flushOfflineSession(session));
+            runFor(session.viewer, () -> flushOfflineSession(session), () -> {
+                session.flushScheduled = false;
+                completeLoginFlush(session);
+            });
         }
         return true;
     }
@@ -1067,12 +1159,87 @@ public final class InspectionService implements Listener {
 
     private void flushOnlineSession(InspectionSession session) {
         session.flushScheduled = false;
-        session.guardActive = false;
-        recomputeTargetGuard(session.targetUuid);
         if (!session.active || session.aborted || closed) {
+            session.guardActive = false;
+            recomputeTargetGuard(session.targetUuid);
             return;
         }
         Player target = plugin.getServer().getPlayer(session.targetUuid);
+        if (target == null || !target.isOnline()) {
+            session.guardActive = false;
+            recomputeTargetGuard(session.targetUuid);
+            abortSession(session, "target-unavailable", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
+            return;
+        }
+        if (BukkitServerThread.isFolia() && !BukkitServerThread.entity(plugin, target).isServerThread()) {
+            ItemStack[] baseline = cloneSlots(session.lastSyncedSlots);
+            ItemStack[] newSlots = captureGuiSlots(session.type, session.gui, session.held);
+            List<InspectionLayout.SlotDelta> deltas = computeDeltas(baseline, newSlots);
+            if (deltas.isEmpty()) {
+                session.guardActive = false;
+                recomputeTargetGuard(session.targetUuid);
+                return;
+            }
+            Runnable releaseGuard = () -> {
+                session.guardActive = false;
+                recomputeTargetGuard(session.targetUuid);
+            };
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), target, () -> {
+                try {
+                    if (session.aborted || closed) {
+                        return;
+                    }
+                    Messages unavailable = liveTargetUnavailable(session, target);
+                    if (unavailable != null) {
+                        abortSession(session, "target-unavailable", unavailable, session.targetName);
+                        return;
+                    }
+                    if (busyPolicy.test(target)) {
+                        abortSession(session, "target-busy", Messages.INSPECT_BUSY, null);
+                        return;
+                    }
+                    ItemStack[] live = readLiveTargetSlots(target, session.type);
+                    boolean conflict = false;
+                    for (InspectionLayout.SlotDelta delta : deltas) {
+                        int slot = delta.playerSlot();
+                        if (!stackEquals(live[slot], baseline[slot])) {
+                            conflict = true;
+                            break;
+                        }
+                    }
+                    if (conflict) {
+                        ItemStack[] fresh = cloneSlots(live);
+                        runFor(session.viewer, () -> {
+                            if (session.active && !session.aborted && !closed) {
+                                session.lastSyncedSlots = cloneSlots(fresh);
+                                applySlotsToGui(session.type, session.gui, fresh, session.held);
+                            }
+                            send(session.viewer, Messages.INSPECT_CONFLICT, "{player}", session.targetName);
+                        });
+                        return;
+                    }
+                    applySlotsToLiveTarget(target, session.type, baseline, newSlots, deltas);
+                    ItemStack[] afterLive = readLiveTargetSlots(target, session.type);
+                    String detail = InspectionLayout.formatAuditDetail(
+                            session.type, InspectionLayout.InspectionMode.ONLINE, true, null, deltas);
+                    logInspection(editAction(session.type), session.viewerName, session.targetUuid, session.targetName, detail);
+                    runFor(session.viewer, () -> {
+                        if (session.active && !session.aborted && !closed) {
+                            session.lastSyncedSlots = cloneSlots(afterLive);
+                            applySlotsToGui(session.type, session.gui, afterLive, session.held);
+                        }
+                    });
+                } finally {
+                    releaseGuard.run();
+                }
+            }, () -> {
+                releaseGuard.run();
+                abortSession(session, "target-unavailable", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
+            }, 0L);
+            return;
+        }
+        session.guardActive = false;
+        recomputeTargetGuard(session.targetUuid);
         Messages unavailable = liveTargetUnavailable(session, target);
         if (unavailable != null) {
             abortSession(session, "target-unavailable", unavailable, session.targetName);
@@ -1123,15 +1290,20 @@ public final class InspectionService implements Listener {
         paintEquipmentIcons(session.type, session.gui, session.held);
 
         try {
+            Runnable settleFailedWrite = () -> {
+                session.writeInFlight = false;
+                session.lastSyncedSlots = baselineOnFailure;
+                completeLoginFlush(session);
+            };
             io.execute(() -> {
                 try {
                     if (offlineHoldPolicy.test(session.targetUuid)) {
-                        runOnServer(() -> {
+                        runFor(session.viewer, () -> {
                             session.writeInFlight = false;
                             session.lastSyncedSlots = baselineOnFailure;
                             completeLoginFlush(session);
                             abortSession(session, "pending-hold", Messages.INSPECT_OFFLINE_HOLD, session.targetName);
-                        });
+                        }, settleFailedWrite);
                         return;
                     }
                     OfflinePlayerDataStore.SavedSnapshot saved = offlineStore.save(
@@ -1145,12 +1317,15 @@ public final class InspectionService implements Listener {
                     String detail = InspectionLayout.formatAuditDetail(
                             session.type, InspectionLayout.InspectionMode.OFFLINE, true, null, deltas);
                     logInspection(editAction(session.type), session.viewerName, session.targetUuid, session.targetName, detail);
-                    runOnServer(() -> {
+                    Runnable commitSavedState = () -> {
                         session.writeInFlight = false;
                         session.currentRawBytes = saved.rawBytes();
                         session.currentHash = saved.sha256();
                         session.savedChanges += deltas.size();
                         completeLoginFlush(session);
+                    };
+                    runFor(session.viewer, () -> {
+                        commitSavedState.run();
                         // A click made while this write was in flight is still flushed after the viewer
                         // closed the window: its items live only in the GUI until they are saved.
                         if (!session.aborted && !closed && session.flushScheduled) {
@@ -1159,38 +1334,38 @@ public final class InspectionService implements Listener {
                         if (session.summaryPending && !session.writeInFlight) {
                             sendOfflineSummary(session);
                         }
-                    });
+                    }, commitSavedState);
                 } catch (OfflinePlayerDataStore.DataVersionRewriteException rewriteErr) {
                     plugin.logger().warning("Refused offline " + session.type + " edit for " + session.targetName + ": " + rewriteErr.getMessage());
-                    runOnServer(() -> {
+                    runFor(session.viewer, () -> {
                         session.writeInFlight = false;
                         session.lastSyncedSlots = baselineOnFailure;
                         completeLoginFlush(session);
                         abortSession(session, "dataversion-rewrite", Messages.INSPECT_OFFLINE_VERSION_REWRITE, session.targetName);
-                    });
+                    }, settleFailedWrite);
                 } catch (OfflinePlayerDataStore.CasConflictException conflict) {
                     plugin.logger().warning("Offline " + session.type + " CAS conflict for " + session.targetName + ": " + conflict.getMessage());
-                    runOnServer(() -> {
+                    runFor(session.viewer, () -> {
                         session.writeInFlight = false;
                         session.lastSyncedSlots = baselineOnFailure;
                         completeLoginFlush(session);
                         abortSession(session, "cas-conflict", Messages.INSPECT_CONFLICT, session.targetName);
-                    });
+                    }, settleFailedWrite);
                 } catch (OfflinePlayerDataStore.LoginFencedException fenced) {
-                    runOnServer(() -> {
+                    runFor(session.viewer, () -> {
                         session.writeInFlight = false;
                         session.lastSyncedSlots = baselineOnFailure;
                         completeLoginFlush(session);
                         abortSession(session, "login-fenced", Messages.INSPECT_TARGET_ONLINE, session.targetName);
-                    });
+                    }, settleFailedWrite);
                 } catch (IOException | RuntimeException ioErr) {
                     plugin.logger().warning("Offline " + session.type + " save failed for " + session.targetName + ": " + ioErr.getMessage());
-                    runOnServer(() -> {
+                    runFor(session.viewer, () -> {
                         session.writeInFlight = false;
                         session.lastSyncedSlots = baselineOnFailure;
                         completeLoginFlush(session);
                         abortSession(session, "io-error", Messages.INSPECT_OFFLINE_CORRUPT, session.targetName);
-                    });
+                    }, settleFailedWrite);
                 }
             });
         } catch (RejectedExecutionException rejected) {
@@ -1214,6 +1389,10 @@ public final class InspectionService implements Listener {
                 continue;
             }
             if (session.flushScheduled || session.guardActive) {
+                continue;
+            }
+            if (BukkitServerThread.isFolia()) {
+                refreshOnlineSessionRegional(session);
                 continue;
             }
             if (!session.viewer.isOnline() || !Objects.equals(session.viewer.getOpenInventory().getTopInventory(), session.gui)) {
@@ -1251,6 +1430,76 @@ public final class InspectionService implements Listener {
                 applySlotsToGui(session.type, session.gui, live, session.held);
             }
         }
+    }
+
+    private void refreshOnlineSessionRegional(InspectionSession session) {
+        if (!session.refreshInFlight.compareAndSet(false, true)) {
+            return;
+        }
+        Player target = plugin.getServer().getPlayer(session.targetUuid);
+        if (target == null || !target.isOnline()) {
+            session.refreshInFlight.set(false);
+            abortSession(session, "target-offline", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
+            return;
+        }
+        Runnable releaseTargetRetired = () -> {
+            session.refreshInFlight.set(false);
+            abortSession(session, "target-offline", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
+        };
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), target, () -> {
+            if (closed || !session.active || session.aborted || session.flushScheduled || session.guardActive) {
+                session.refreshInFlight.set(false);
+                return;
+            }
+            Messages unavailable = liveTargetUnavailable(session, target);
+            if (unavailable != null) {
+                session.refreshInFlight.set(false);
+                abortSession(session, unavailable == Messages.INSPECT_TARGET_DEAD ? "target-dead" : "target-offline",
+                        unavailable, session.targetName);
+                return;
+            }
+            if (session.editable && busyPolicy.test(target)) {
+                session.refreshInFlight.set(false);
+                abortSession(session, "target-busy", Messages.INSPECT_BUSY, null);
+                return;
+            }
+            int liveHeld = session.type == InspectionLayout.InspectionType.INVSEE
+                    ? target.getInventory().getHeldItemSlot() : -1;
+            ItemStack[] live = readLiveTargetSlots(target, session.type);
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), session.viewer, () -> {
+                try {
+                    if (closed || !session.active || session.aborted || session.flushScheduled || session.guardActive) {
+                        return;
+                    }
+                    if (!session.viewer.isOnline() || !Objects.equals(session.viewer.getOpenInventory().getTopInventory(), session.gui)) {
+                        closeAndUnregisterSession(session, false, "viewer-closed");
+                        return;
+                    }
+                    if (session.editable && !hasSessionEditPermission(session)) {
+                        abortSession(session, "permission-revoked", Messages.NO_PERMISSION, null);
+                        return;
+                    }
+                    if (!session.viewer.hasPermission(PERMISSION_BYPASS) && !canModeratePolicy.test(session.viewer, session.targetUuid)) {
+                        abortSession(session, "policy-revoked", Messages.DISCIPLINE_EXEMPT, null);
+                        return;
+                    }
+                    boolean heldChanged = session.type == InspectionLayout.InspectionType.INVSEE && session.held != liveHeld;
+                    boolean slotsChanged = !slotsEqual(live, session.lastSyncedSlots);
+                    if (heldChanged || slotsChanged) {
+                        if (heldChanged) {
+                            session.held = liveHeld;
+                        }
+                        session.lastSyncedSlots = cloneSlots(live);
+                        applySlotsToGui(session.type, session.gui, live, session.held);
+                    }
+                } finally {
+                    session.refreshInFlight.set(false);
+                }
+            }, () -> {
+                session.refreshInFlight.set(false);
+                closeAndUnregisterSession(session, false, "viewer-retired");
+            }, 0L);
+        }, releaseTargetRetired, 0L);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -1302,6 +1551,37 @@ public final class InspectionService implements Listener {
             return null;
         }
         CompletableFuture<Void> settled = new CompletableFuture<>();
+        if (BukkitServerThread.isFolia()) {
+            List<CompletableFuture<Void>> perSession = new ArrayList<>();
+            for (InspectionSession s : offlineSessions) {
+                CompletableFuture<Void> done = new CompletableFuture<>();
+                perSession.add(done);
+                runFor(s.viewer, () -> {
+                    if (!s.active || s.aborted) {
+                        done.complete(null);
+                        return;
+                    }
+                    if (s.editable && (s.flushScheduled || s.writeInFlight)) {
+                        CompletableFuture<Void> f = new CompletableFuture<>();
+                        s.loginFlushFuture = f;
+                        f.whenComplete((ignored, err) -> done.complete(null));
+                        if (s.flushScheduled && !s.writeInFlight) {
+                            flushOfflineSession(s);
+                        }
+                        abortSession(s, "target-login", Messages.INSPECT_TARGET_ONLINE, s.targetName);
+                    } else {
+                        abortSession(s, "target-login", Messages.INSPECT_TARGET_ONLINE, s.targetName);
+                        done.complete(null);
+                    }
+                }, () -> {
+                    closeAndUnregisterSession(s, false, "viewer-retired");
+                    done.complete(null);
+                });
+            }
+            CompletableFuture.allOf(perSession.toArray(CompletableFuture[]::new))
+                    .whenComplete((ignored, error) -> settled.complete(null));
+            return settled;
+        }
         scheduleOnServer(() -> {
             List<CompletableFuture<Void>> pending = new ArrayList<>();
             for (InspectionSession s : offlineSessions) {
@@ -1357,7 +1637,8 @@ public final class InspectionService implements Listener {
         if (targeted != null) {
             for (InspectionSession session : List.copyOf(targeted)) {
                 if (session.mode == InspectionLayout.InspectionMode.ONLINE) {
-                    if (session.editable && session.flushScheduled) {
+                    if (session.editable && session.flushScheduled
+                            && (!BukkitServerThread.isFolia() || BukkitServerThread.entity(plugin, session.viewer).isServerThread())) {
                         flushOnlineSession(session);
                     }
                     abortSession(session, "target-quit", Messages.INSPECT_TARGET_OFFLINE, session.targetName);
@@ -1402,7 +1683,9 @@ public final class InspectionService implements Listener {
             if (session.type == InspectionLayout.InspectionType.INVSEE) {
                 // Prevent death drop duplication if a click happened on the same tick before 1-tick flush.
                 if (session.editable && session.flushScheduled) {
-                    reconcileUnflushedInvseeDrops(session, event.getDrops());
+                    if (!BukkitServerThread.isFolia() || BukkitServerThread.entity(plugin, session.viewer).isServerThread()) {
+                        reconcileUnflushedInvseeDrops(session, event.getDrops());
+                    }
                     session.flushScheduled = false;
                 }
                 abortSession(session, "target-died", Messages.INSPECT_TARGET_DIED, session.targetName);
@@ -1603,9 +1886,13 @@ public final class InspectionService implements Listener {
 
     private void closeAndUnregisterSession(InspectionSession session, boolean closeWindow, String reason) {
         unregisterSession(session);
-        if (closeWindow && session.viewer.isOnline() && session.gui != null
-                && Objects.equals(session.viewer.getOpenInventory().getTopInventory(), session.gui)) {
-            session.viewer.closeInventory();
+        if (closeWindow && session.gui != null) {
+            UtilitySupport.onOwner(plugin, session.viewer, () -> {
+                if (session.viewer.isOnline()
+                        && Objects.equals(session.viewer.getOpenInventory().getTopInventory(), session.gui)) {
+                    session.viewer.closeInventory();
+                }
+            });
         }
     }
 
@@ -1847,12 +2134,34 @@ public final class InspectionService implements Listener {
         if (!resyncQueued.add(id)) {
             return;
         }
-        scheduleOnServer(() -> {
+        runFor(viewer, () -> {
             resyncQueued.remove(id);
             if (viewer.isOnline()) {
                 viewer.updateInventory();
             }
-        });
+        }, () -> resyncQueued.remove(id));
+    }
+
+    private void runFor(CommandSender target, Runnable task) {
+        runFor(target, task, () -> {});
+    }
+
+    private void runFor(CommandSender target, Runnable task, Runnable retired) {
+        if (closed) {
+            return;
+        }
+        if (plugin.getScheduler() != null) {
+            Runnable guarded = () -> {
+                if (!closed) {
+                    task.run();
+                }
+            };
+            if (BukkitServerThread.isFolia()) {
+                BukkitServerThread.runFor(plugin, plugin.getScheduler(), target, guarded, retired, 0L);
+            } else {
+                plugin.getScheduler().runOnServer(guarded);
+            }
+        }
     }
 
     private void scheduleOnServer(Runnable task) {
@@ -1876,7 +2185,7 @@ public final class InspectionService implements Listener {
         if (sender == null || (sender instanceof Player p && !p.isOnline())) {
             return;
         }
-        plugin.getMessageManager().send(sender, message, replacements);
+        UtilitySupport.send(plugin, sender, message, replacements);
     }
 
     public boolean hasActiveMutableSession(UUID targetUuid, InspectionLayout.InspectionType type) {
@@ -1933,7 +2242,7 @@ public final class InspectionService implements Listener {
                         continue;
                     }
                     var edit = new CompletableFuture<Integer>();
-                    runOnServer(() -> {
+                    runFor(sender, () -> {
                         try {
                             if (closed || !sender.hasPermission("allium.clearinventory")
                                     || !sender.hasPermission("allium.clearinventory.all")
@@ -1946,7 +2255,7 @@ public final class InspectionService implements Listener {
                         } catch (RuntimeException failure) {
                             edit.completeExceptionally(failure);
                         }
-                    });
+                    }, () -> edit.complete(-1));
                     int count = edit.get(3, TimeUnit.SECONDS);
                     if (count < 0) {
                         skipped++;
@@ -1978,12 +2287,12 @@ public final class InspectionService implements Listener {
             }
         } catch (IOException | java.nio.file.DirectoryIteratorException failed) {
             plugin.logger().warning("Offline clear could not enumerate player data: " + failed.getMessage());
-            runOnServer(() -> send(sender, Messages.INSPECT_UNAVAILABLE));
+            runFor(sender, () -> send(sender, Messages.INSPECT_UNAVAILABLE));
         }
         String items = Long.toString(removed);
         String players = Integer.toString(changed);
         String failures = Integer.toString(skipped);
-        runOnServer(() -> send(sender, Messages.UTILITY_CLEAR_OFFLINE,
+        runFor(sender, () -> send(sender, Messages.UTILITY_CLEAR_OFFLINE,
                 "{count}", items, "{players}", players, "{skipped}", failures));
     }
 

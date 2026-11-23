@@ -11,6 +11,8 @@ import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.EffectivePreferences;
 import codes.castled.allium.preference.PreferenceKey;
 import codes.castled.allium.preference.PreferenceSessions;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.ServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.util.AlliumLogger;
@@ -29,12 +31,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -140,6 +144,67 @@ class TeleportServiceTest {
     }
 
     private final java.util.Set<String> granted = new java.util.HashSet<>();
+
+    @Test
+    void regionalMoveAwaitsSafetyAndNativeCompletionBeforeReportingArrival() throws Exception {
+        enable();
+        clearInvocations(mover);
+        var console = mock(org.bukkit.command.ConsoleCommandSender.class);
+        when(console.hasPermission(anyString())).thenReturn(true);
+        var owner = mock(ServerThread.class);
+        var regional = new ArrayDeque<Runnable>();
+        when(scheduler.runOn(eq(owner), any(), any(), eq(0L))).thenAnswer(call -> {
+            regional.add(call.getArgument(1));
+            return TaskHandle.NONE;
+        });
+        var destination = destination();
+        var checked = new CompletableFuture<DestinationSafety.RegionalResult>();
+        when(safety.resolveRegional(eq(plugin), eq(destination), any())).thenReturn(checked);
+        var moved = new CompletableFuture<Boolean>();
+        var outcomes = new ArrayList<Boolean>();
+        try (var platform = mockStatic(BukkitServerThread.class, CALLS_REAL_METHODS)) {
+            platform.when(BukkitServerThread::isFolia).thenReturn(true);
+            platform.when(() -> BukkitServerThread.entity(plugin, mover)).thenReturn(owner);
+            platform.when(() -> BukkitServerThread.teleportRegional(mover, destination, PlayerTeleportEvent.TeleportCause.PLUGIN))
+                    .thenReturn(moved);
+            service.forceLocation(console, mover, destination, "tp", outcomes::add);
+            verify(mover, never()).getLocation();
+            when(owner.isServerThread()).thenReturn(true);
+            regional.remove().run();
+            assertTrue(service.warming(mover.getUniqueId()));
+            assertTrue(outcomes.isEmpty());
+            platform.verify(() -> BukkitServerThread.teleportRegional(any(), any(), any()), never());
+
+            when(owner.isServerThread()).thenReturn(false);
+            checked.complete(new DestinationSafety.RegionalResult(Optional.of(destination), false));
+            when(owner.isServerThread()).thenReturn(true);
+            regional.remove().run();
+            assertTrue(service.warming(mover.getUniqueId()));
+            assertTrue(outcomes.isEmpty());
+            verify(mover, never()).teleport(any(Location.class), any(PlayerTeleportEvent.TeleportCause.class));
+
+            when(owner.isServerThread()).thenReturn(false);
+            moved.complete(true);
+            assertTrue(outcomes.isEmpty());
+            when(owner.isServerThread()).thenReturn(true);
+            regional.remove().run();
+            assertEquals(List.of(true), outcomes);
+            assertTrue(service.historyPending(mover.getUniqueId()));
+            drainWorker();
+            regional.remove().run();
+            assertFalse(service.warming(mover.getUniqueId()));
+            assertFalse(service.historyPending(mover.getUniqueId()));
+            verify(repository).saveHistory(eq(mover.getUniqueId()), any(SavedLocation.class), anyMap());
+
+            config.set("teleport.warmup-seconds", 5);
+            service.reloadSettings();
+            assertTrue(service.teleport(mover, destination, "tp", outcomes::add));
+            verify(scheduler).repeatOn(eq(owner), any(BooleanSupplier.class), eq(50L), eq(50L));
+            service.move(new org.bukkit.event.player.PlayerMoveEvent(mover, mover.getLocation(), destination));
+            assertEquals(List.of(true, false), outcomes);
+            assertFalse(service.warming(mover.getUniqueId()));
+        }
+    }
 
     @Test
     void perTypeCooldownBypassCoversTheTypeOrItsGroup() throws Exception {

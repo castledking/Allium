@@ -1,6 +1,7 @@
 package codes.castled.allium.economy;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.database.ServerIdentity;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.economy.EconomyResult.*;
 import codes.castled.allium.module.*;
@@ -8,6 +9,8 @@ import codes.castled.allium.naming.PlayerNameVisibility;
 import codes.castled.allium.preference.PreferenceKey;
 import codes.castled.allium.preference.PreferenceChange;
 import codes.castled.allium.preference.PreferenceSessions;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.storage.SqlDialect;
 import codes.castled.allium.text.SpigotComponents;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
@@ -20,6 +23,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.player.PlayerJoinEvent;
 import java.math.BigDecimal;
+import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -55,7 +59,10 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         this.plugin=plugin;
         readPresentation();
         EconomySettings initialSettings=readSettings(plugin);
-        engine=new EconomyEngine(plugin.getDatabaseManager().connectionSource(),initialSettings,this::permits,(c,id)->{
+        var database = plugin.getDatabaseManager();
+        var source = database.connectionSource();
+        var dialect = database.dialect();
+        engine=new EconomyEngine(source,dialect,initialSettings,this::permits,(c,id)->{
             boolean capture=false;
             if(codes.castled.allium.core.FaultInjection.armed("economy.capture.halt-before")>0||codes.castled.allium.core.FaultInjection.armed("economy.capture.halt-after")>0){
                 try(var s=c.prepareStatement("SELECT kind FROM allium_economy_operations WHERE operation_id=?")){s.setString(1,id.toString());try(var r=s.executeQuery()){capture=r.next()&&(r.getString(1).equals("CAPTURE")||r.getString(1).equals("SPEND"));}}
@@ -67,12 +74,15 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             if(codes.castled.allium.core.FaultInjection.trip("economy.halt-after-commit"))Runtime.getRuntime().halt(78);
             if(codes.castled.allium.core.FaultInjection.trip("economy.commit-unknown"))throw new SQLException("fault injection: committed acknowledgement discarded");
         },VaultMoney::validate);
+        if (dialect == SqlDialect.MYSQL) {
+            try { engine.bindRecoveryOwner(ServerIdentity.load(plugin.getDataFolder().toPath())); }
+            catch (IOException failure) { throw new SQLException("Cannot establish economy recovery ownership", failure); }
+        }
         openSystemAccount(initialSettings.tax().accountUuid());
-        EconomyRecovery.sweep(plugin.getDatabaseManager().connectionSource(),engine.reservations(),
+        EconomyRecovery.sweep(source,dialect,engine.reservations(),
                 codes.castled.allium.mail.PlayerDataFiles.directory(plugin.getServer()),
                 id->plugin.getServer().getPlayer(id)!=null,initialSettings.tax().accountUuid(),message->plugin.logger().warning(message));
         worker=plugin.getScheduler().boundedPool("Allium-Economy",1,256);
-        var source=plugin.getDatabaseManager().connectionSource();
         ChequeService chequeService=null;
         try{chequeService=new ChequeService(plugin,this,new ChequeRepository(source),plugin.getScheduler().boundedPool("Allium-Cheques",1,128));}
         catch(IllegalStateException unavailable){plugin.logger().warning("Cheques are unavailable: "+unavailable.getMessage());}
@@ -213,7 +223,14 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         try{worker.execute(()->{try{task.run();}finally{accepted.arriveAndDeregister();}});return true;}
         catch(RejectedExecutionException error){accepted.arriveAndDeregister();if(sender!=null)tell(sender,Messages.ECO_BUSY);return false;}
     }
-    private void tell(CommandSender sender,Messages message,String... args){plugin.getScheduler().runOnServer(()->{if(!closed&&(!(sender instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(sender,message,args);});}
+    private void reply(CommandSender sender, Runnable task) {
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, () -> {
+            if (!closed && (!(sender instanceof Player p) || p.isOnline())) task.run();
+        }, () -> {}, 0);
+    }
+    private void tell(CommandSender sender, Messages message, String... args) {
+        reply(sender, () -> plugin.getMessageManager().send(sender, message, args));
+    }
     private static Messages refusal(){return Messages.ECO_REFUSED;}
     public void dispatch(CommandSender sender,String action,String[] args){
         if(closed||reloading){tell(sender,Messages.ECO_UNAVAILABLE);return;}
@@ -359,7 +376,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
                       java.util.function.Consumer<Boolean> outcome) {
         if (!submit(sender, () -> {
             Balance result = engine.balance(id);
-            plugin.getScheduler().runOnServer(() -> {
+            var task = BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, () -> {
                 if (closed || !valid.getAsBoolean()) { outcome.accept(false); return; }
                 if (result instanceof Found found) {
                     plugin.getMessageManager().send(sender, Messages.BALANCE, "{amount}", display.format(found.available()));
@@ -368,7 +385,8 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
                     plugin.getMessageManager().send(sender, result instanceof Missing ? Messages.ECO_MISSING : Messages.ECO_STORAGE);
                     outcome.accept(false);
                 }
-            });
+            }, () -> outcome.accept(false), 0L);
+            if (BukkitServerThread.isFolia() && task == codes.castled.allium.scheduler.TaskHandle.NONE) outcome.accept(false);
         })) outcome.accept(false);
     }
     private void toggle(CommandSender sender,String[] args){
@@ -573,8 +591,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
                     }
                 }
                 String totalFormatted=display.format(totalMinor.movePointLeft(2));
-                plugin.getScheduler().runOnServer(()->{
-                    if(sender instanceof Player p&&!p.isOnline())return;
+                reply(sender, () -> {
                     var messages=plugin.getMessageManager();
                     messages.send(sender,Messages.ECO_TOP,"{page}",Integer.toString(page),"{pages}",Integer.toString(pages));
                     messages.send(sender,Messages.ECO_TOP_TOTAL,"{total}",totalFormatted);

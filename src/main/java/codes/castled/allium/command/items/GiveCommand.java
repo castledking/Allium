@@ -15,6 +15,7 @@ import codes.castled.allium.item.spec.GiveSpec;
 import codes.castled.allium.item.spec.ItemReference;
 import codes.castled.allium.item.spec.ItemSpecException;
 import codes.castled.allium.item.spec.ItemSpecParser;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.command.CommandSender;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.entity.Entity;
@@ -170,36 +171,44 @@ public final class GiveCommand implements SpecCommandHandler {
                         DeliveryOutcome outcome, Throwable error) {
         if (error != null) {
             plugin.logger().warning("Give to " + targetName + " failed: " + error);
-            send(sender, "failed", "{item}", item, "{reason}", String.valueOf(error.getMessage()));
+            onOwner(sender, () -> send(sender, "failed", "{item}", item, "{reason}", String.valueOf(error.getMessage())));
             return;
         }
         String[] values = {"{player}", targetName, "{item}", item, "{amount}", Integer.toString(outcome.requested()),
                 "{given}", Integer.toString(outcome.given()), "{dropped}", Integer.toString(outcome.dropped()),
                 "{leftover}", Integer.toString(outcome.leftover()), "{policy}", policy.configName()};
-        switch (outcome.status()) {
-            case DELIVERED -> {
-                send(sender, outcome.dropped() > 0 ? "dropped" : "delivered", values);
-                if (target.isOnline() && target != sender) {
-                    send(target, "received", values);
-                }
-            }
-            case DEGRADED -> {
-                send(sender, "degraded", values);
-                if (target.isOnline() && target != sender) {
-                    send(target, "received", values);
-                }
-            }
-            case PARTIAL -> send(sender, "partial", values);
-            case REFUSED_FULL -> send(sender, "refused", values);
-            case REFUSED_UNRESOLVED -> send(sender, "refused-unresolved", values);
-            case TARGET_OFFLINE -> send(sender, "offline", values);
-            case CANCELLED_BY_EVENT -> send(sender, "cancelled", values);
-            case FAILED -> send(sender, "failed", "{item}", item, "{reason}", "delivery failed");
+        if ((outcome.status() == DeliveryOutcome.Status.DELIVERED || outcome.status() == DeliveryOutcome.Status.DEGRADED)
+                && target != sender) {
+            onOwner(target, () -> {
+                if (target.isOnline()) send(target, "received", values);
+            });
         }
-        for (String warning : outcome.warnings()) {
-            if(codes.castled.allium.item.library.EnchantFeedback.send(plugin,sender,warning))continue;
-            send(sender, "warning", "{warning}", warning);
+        onOwner(sender, () -> {
+            switch (outcome.status()) {
+                case DELIVERED -> send(sender, outcome.dropped() > 0 ? "dropped" : "delivered", values);
+                case DEGRADED -> send(sender, "degraded", values);
+                case PARTIAL -> send(sender, "partial", values);
+                case REFUSED_FULL -> send(sender, "refused", values);
+                case REFUSED_UNRESOLVED -> send(sender, "refused-unresolved", values);
+                case TARGET_OFFLINE -> send(sender, "offline", values);
+                case CANCELLED_BY_EVENT -> send(sender, "cancelled", values);
+                case FAILED -> send(sender, "failed", "{item}", item, "{reason}", "delivery failed");
+            }
+            for (String warning : outcome.warnings()) {
+                if (codes.castled.allium.item.library.EnchantFeedback.send(plugin, sender, warning)) continue;
+                send(sender, "warning", "{warning}", warning);
+            }
+        });
+    }
+
+    private void onOwner(CommandSender recipient, Runnable action) {
+        if (!BukkitServerThread.isFolia()) {
+            action.run();
+            return;
         }
+        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), recipient, () -> {
+            if (!(recipient instanceof Player player) || player.isOnline()) action.run();
+        });
     }
 
     /**

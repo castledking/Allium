@@ -3,6 +3,7 @@ package codes.castled.allium.command.messaging;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.message.Messages;
@@ -82,7 +83,7 @@ public final class IgnoreCommands {
             String shown = target.getName();
             switch (ignores.add(player.getUniqueId(), target.getUniqueId(), saved -> {
                 if (!saved && player.isOnline()) {
-                    plugin.getMessageManager().send(player, Messages.IGNORE_FAILED);
+                    UtilitySupport.send(plugin, player, Messages.IGNORE_FAILED);
                 }
             })) {
                 case DONE -> plugin.getMessageManager().send(player, Messages.IGNORE_ADDED, "{player}", shown);
@@ -131,7 +132,7 @@ public final class IgnoreCommands {
             String shown = nameOf(match);
             ignores.remove(player.getUniqueId(), match, saved -> {
                 if (!saved && player.isOnline()) {
-                    plugin.getMessageManager().send(player, Messages.IGNORE_FAILED);
+                    UtilitySupport.send(plugin, player, Messages.IGNORE_FAILED);
                 }
             });
             plugin.getMessageManager().send(player, Messages.IGNORE_REMOVED, "{player}", shown);

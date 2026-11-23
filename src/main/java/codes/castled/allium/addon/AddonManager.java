@@ -324,7 +324,7 @@ public final class AddonManager {
                 plugin.getScheduler().runOnServer(() -> {
                     if (!outcome.success()) {
                         plugin.logger().warning("Addon download failed for " + entry.displayName() + ": " + outcome.message());
-                        plugin.getMessageManager().send(sender, Messages.ADDON_DOWNLOAD_FAILED,
+                        codes.castled.allium.command.essentials.UtilitySupport.send(plugin, sender, Messages.ADDON_DOWNLOAD_FAILED,
                                 "{addon}", entry.displayName(), "{reason}", outcome.message());
                         return;
                     }
@@ -334,7 +334,7 @@ public final class AddonManager {
                     }
                     plugin.logger().info("Downloaded addon " + entry.displayName() + " (" + outcome.jarPath().getFileName()
                             + ") and enabled addons.enabled." + entry.key() + " in config.yml. Restart the server to load it.");
-                    plugin.getMessageManager().send(sender, Messages.ADDON_DOWNLOAD_COMPLETE,
+                    codes.castled.allium.command.essentials.UtilitySupport.send(plugin, sender, Messages.ADDON_DOWNLOAD_COMPLETE,
                             "{addon}", entry.displayName(),
                             "{file}", outcome.jarPath().getFileName().toString(),
                             "{key}", entry.key());

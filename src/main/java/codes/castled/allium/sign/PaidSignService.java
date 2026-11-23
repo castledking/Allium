@@ -9,12 +9,14 @@ import codes.castled.allium.economy.EconomyResult;
 import codes.castled.allium.economy.EconomyRuntime;
 import codes.castled.allium.economy.PaidWorkflowSupport;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,7 +33,7 @@ public final class PaidSignService {
 
     private final PluginStart plugin;
     private final Executor io;
-    private final Set<UUID> busy = new HashSet<>();
+    private final Set<UUID> busy = ConcurrentHashMap.newKeySet();
     private volatile boolean closed;
 
     public PaidSignService(PluginStart plugin) {
@@ -70,7 +72,10 @@ public final class PaidSignService {
     private record Purchase(Player player, UUID account, UUID workflow, SignIdentity sign, String price) {}
 
     private void reserve(Purchase purchase, BooleanSupplier allowed, Action action) {
-        if (closed) return;
+        if (closed) {
+            forget(purchase);
+            return;
+        }
         EconomyResult.Mutation result;
         try {
             var sign = purchase.sign();
@@ -80,17 +85,17 @@ public final class PaidSignService {
                             sign.argument(), Long.toString(sign.price().minor())), c -> true);
         } catch (SQLException | RuntimeException failure) {
             warn(purchase, "could not reserve the price", failure);
-            plugin.getScheduler().runOnServer(() -> finish(purchase, Messages.ECO_STORAGE));
+            onPlayer(purchase, () -> finish(purchase, Messages.ECO_STORAGE), () -> forget(purchase));
             return;
         }
         if (result instanceof EconomyResult.Committed && closed) {
             settleOnWorker(purchase, false);
         } else {
-            plugin.getScheduler().runOnServer(() -> {
+            onPlayer(purchase, () -> {
                 if (result instanceof EconomyResult.Committed) {
                     deliver(purchase, allowed, action);
                 } else if (result instanceof EconomyResult.Rejected refused) {
-                    busy.remove(purchase.account());
+                    forget(purchase);
                     if (!current(purchase)) return;
                     if ("INSUFFICIENT_FUNDS".equals(refused.reason()) || "MISSING_ACCOUNT".equals(refused.reason())) {
                         plugin.getMessageManager().send(purchase.player(), Messages.SIGN_INSUFFICIENT_FUNDS,
@@ -102,6 +107,12 @@ public final class PaidSignService {
                             "{operation}", unknown.operationId().toString());
                     settle(purchase, false);
                 } else finish(purchase, Messages.ECO_STORAGE);
+            }, () -> {
+                if (result instanceof EconomyResult.Committed || result instanceof EconomyResult.Unknown) {
+                    settle(purchase, false);
+                } else {
+                    forget(purchase);
+                }
             });
         }
     }
@@ -126,7 +137,7 @@ public final class PaidSignService {
             io.execute(() -> settleOnWorker(purchase, delivered));
         } catch (RejectedExecutionException full) {
             warn(purchase, "could not queue settlement; restart recovery will release any outstanding hold", full);
-            finish(purchase, Messages.ECO_STORAGE);
+            onPlayer(purchase, () -> finish(purchase, Messages.ECO_STORAGE), () -> forget(purchase));
         }
     }
 
@@ -144,7 +155,7 @@ public final class PaidSignService {
             warn(purchase, "settlement failed; restart recovery will release any outstanding hold", failure);
         }
         boolean confirmed = settled;
-        plugin.getScheduler().runOnServer(() -> {
+        onPlayer(purchase, () -> {
             finish(purchase, confirmed ? null : Messages.ECO_STORAGE);
             if (confirmed && delivered && current(purchase)) {
                 String key = purchase.sign().type().key();
@@ -157,11 +168,31 @@ public final class PaidSignService {
                         "type=" + key + " arg=" + purchase.sign().argument() + " price=" + purchase.sign().price().minor()
                                 + " op=" + operation + " workflow=" + purchase.workflow());
             }
-        });
+        }, () -> forget(purchase));
+    }
+
+    private void onPlayer(Purchase purchase, Runnable action, Runnable retired) {
+        var started = new AtomicBoolean();
+        Runnable unavailable = () -> {
+            if (started.compareAndSet(false, true)) retired.run();
+        };
+        try {
+            TaskHandle handle = BukkitServerThread.runFor(plugin, plugin.getScheduler(), purchase.player(), () -> {
+                if (started.compareAndSet(false, true)) action.run();
+            }, unavailable, 0L);
+            if (BukkitServerThread.isFolia() && handle == TaskHandle.NONE) unavailable.run();
+        } catch (RuntimeException failure) {
+            warn(purchase, "could not schedule player work", failure);
+            unavailable.run();
+        }
+    }
+
+    private void forget(Purchase purchase) {
+        busy.remove(purchase.account());
     }
 
     private void finish(Purchase purchase, Messages message) {
-        busy.remove(purchase.account());
+        forget(purchase);
         if (message != null && current(purchase)) plugin.getMessageManager().send(purchase.player(), message);
     }
 

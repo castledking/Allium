@@ -1,6 +1,7 @@
 package codes.castled.allium.chat;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.message.MessageSoundSpec;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.command.BukkitCommandContext;
@@ -9,26 +10,33 @@ import codes.castled.allium.messaging.UntrustedText;
 import codes.castled.allium.moderation.StaffSpyService;
 import codes.castled.allium.module.*;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.text.*;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.player.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** One server-thread owner for audiences, render/history and replay; one bounded storage lane. */
+/** Region-safe chat owner for audiences, render/history and replay; one bounded storage lane. */
 public final class ChatService implements Listener,AutoCloseable {
     private final PluginStart plugin;
     private final ChatRepository repository;
     private final Executor io;
     private final Map<UUID,Session> sessions=new ConcurrentHashMap<>();
-    private final ArrayDeque<Player> refresh=new ArrayDeque<>();
-    private final Map<UUID,Replay> replays=new LinkedHashMap<>();
+    private final Queue<Session> refresh=new ConcurrentLinkedQueue<>();
+    private final Set<Session> refreshInFlight=ConcurrentHashMap.newKeySet();
+    private final Map<UUID,Replay> replays=new ConcurrentHashMap<>();
     private final ChatHistory history=new ChatHistory(4096,200,15*60_000);
+    private final Object discordLock=new Object();
     private final LinkedHashMap<String,Boolean> discordSeen=new LinkedHashMap<>();
     private final Map<String,String> discordLinks=new HashMap<>();
     private final ChatDecorations decorations;
@@ -41,9 +49,13 @@ public final class ChatService implements Listener,AutoCloseable {
     private static final class Session {
         final Player player;
         volatile String nickname,display,gradient;
-        String write="";Set<String> reads=Set.of();boolean ready,busy;
-        long decorationsAt;ChatDecorations.Value decor=ChatDecorations.Value.EMPTY;
-        String lastTab,lastDisplay;
+        volatile String write="";
+        volatile Set<String> reads=Set.of();
+        volatile boolean ready;
+        final AtomicBoolean busy=new AtomicBoolean();
+        volatile long decorationsAt;
+        volatile ChatDecorations.Value decor=ChatDecorations.Value.EMPTY;
+        volatile String lastTab,lastDisplay;
         Session(Player p){player=p;display=p.getName();gradient=p.getName();}
     }
     private static final class Replay {
@@ -52,7 +64,7 @@ public final class ChatService implements Listener,AutoCloseable {
         int clear;
         boolean headerSent;
         final Set<String> sent = new HashSet<>();
-        boolean dirty;
+        volatile boolean dirty;
         Replay(Player player, boolean clearing) {
             this.player = player;
             this.clearing = clearing;
@@ -77,29 +89,50 @@ public final class ChatService implements Listener,AutoCloseable {
     public void reload(){ChatSettings replacement=ChatSettings.read(plugin.getConfig());settings=replacement;for(Session s:sessions.values()){s.decorationsAt=0;if(!replacement.channels().containsKey(s.write))tell(s.player,Messages.CHAT_WRITE_CHANNEL_REMOVED);}}
     @EventHandler public void joined(PlayerJoinEvent e){join(e.getPlayer());}
     private void join(Player p){
-        var session=new Session(p);sessions.put(p.getUniqueId(),session);refresh.add(p);
+        var session=new Session(p);sessions.put(p.getUniqueId(),session);refresh.add(session);
         load(session,0);
     }
     private void load(Session session,int attempt){
         Player p=session.player;
-        work(()->repository.load(p.getUniqueId()),stored->{
+        workFor(p,()->repository.load(p.getUniqueId()),stored->{
             if(!same(session))return;session.nickname=stored.nickname();session.write=stored.writeChannel().isEmpty()?settings.defaultChannel():stored.writeChannel();
             var reads=new LinkedHashSet<>(stored.reads());reads.add(settings.defaultChannel());
             if(stored.writeChannel().isEmpty())for(var c:settings.channels().values())if(p.hasPermission("allium.channel.autojoin."+c.id()+".read"))reads.add(c.id());
             session.reads=Set.copyOf(reads);session.ready=true;update(session);
         },error->{if(same(session)){
-            if(attempt<5)plugin.getScheduler().runOnServerLater(()->{if(same(session))load(session,attempt+1);},Math.min(10_000,500L<<attempt));
+            if(attempt<5)BukkitServerThread.runFor(plugin,plugin.getScheduler(),p,()->{if(same(session))load(session,attempt+1);},()->{},Math.min(10_000,500L<<attempt));
             else {tell(p,Messages.CHAT_PROFILE_LOAD_FAILED);plugin.logger().warning("Chat profile load failed for "+p.getUniqueId());}
         }});
     }
-    @EventHandler public void quit(PlayerQuitEvent e){Session s=sessions.remove(e.getPlayer().getUniqueId());refresh.remove(e.getPlayer());replays.remove(e.getPlayer().getUniqueId());history.forget(e.getPlayer().getUniqueId());if(s!=null&&s.lastTab!=null&&e.getPlayer().isOnline())e.getPlayer().setPlayerListName(null);}
+    @EventHandler public void quit(PlayerQuitEvent e){
+        UUID id=e.getPlayer().getUniqueId();
+        Session s=sessions.remove(id);
+        if(s!=null){refresh.remove(s);refreshInFlight.remove(s);}
+        replays.remove(id);history.forget(id);
+        if(s!=null&&s.lastTab!=null&&e.getPlayer().isOnline())e.getPlayer().setPlayerListName(null);
+    }
     private boolean same(Session session){return !closed&&sessions.get(session.player.getUniqueId())==session&&session.player.isOnline();}
     private void refresh(){
         int n=Math.min(settings.updatesPerTick(),refresh.size());long now=System.currentTimeMillis();
         for(int i=0;i<n;i++){
-            Player p=refresh.removeFirst();Session s=sessions.get(p.getUniqueId());if(s==null||!same(s))continue;refresh.addLast(p);
-            if(now-s.decorationsAt>=1000){s.decor=decorations.query(p);s.decorationsAt=now;}
-            if(s.ready)update(s);
+            Session s=refresh.poll();if(s==null)break;
+            if(!same(s)){refreshInFlight.remove(s);continue;}
+            refresh.add(s);
+            if(BukkitServerThread.isFolia()){
+                if(!refreshInFlight.add(s))continue;
+                Player p=s.player;
+                BukkitServerThread.runFor(plugin,plugin.getScheduler(),p,()->{
+                    try{
+                        if(!same(s))return;
+                        long tickNow=System.currentTimeMillis();
+                        if(tickNow-s.decorationsAt>=1000){s.decor=decorations.query(p);s.decorationsAt=tickNow;}
+                        if(s.ready)update(s);
+                    }finally{refreshInFlight.remove(s);}
+                },()->refreshInFlight.remove(s),0L);
+            }else{
+                if(now-s.decorationsAt>=1000){s.decor=decorations.query(s.player);s.decorationsAt=now;}
+                if(s.ready)update(s);
+            }
         }
     }
     private void update(Session s){
@@ -131,7 +164,7 @@ public final class ChatService implements Listener,AutoCloseable {
         if(paperChat||!ownsChat())return;
         var allowed=event.getRecipients().stream().map(Player::getUniqueId).collect(java.util.stream.Collectors.toUnmodifiableSet());
         String body=event.getMessage();event.setCancelled(true);Player source=event.getPlayer();
-        plugin.getScheduler().runOnServer(()->send(source,null,body,allowed));
+        BukkitServerThread.runFor(plugin,plugin.getScheduler(),source,()->send(source,null,body,allowed),()->{},0L);
     }
     @SuppressWarnings("unchecked") private boolean installPaperInput(){
         try{
@@ -142,7 +175,9 @@ public final class ChatService implements Listener,AutoCloseable {
                 try{
                     Player source=(Player)player.invoke(raw);String body=PaperText.plain(message.invoke(raw));
                     Set<UUID> audience=new HashSet<>();for(Object viewer:(Set<?>)viewers.invoke(raw))if(viewer instanceof Player p)audience.add(p.getUniqueId());
-                    ((Cancellable)raw).setCancelled(true);plugin.getScheduler().runOnServer(()->send(source,null,body,Set.copyOf(audience)));
+                    ((Cancellable)raw).setCancelled(true);
+                    Set<UUID> frozenAudience=Set.copyOf(audience);
+                    BukkitServerThread.runFor(plugin,plugin.getScheduler(),source,()->send(source,null,body,frozenAudience),()->{},0L);
                 }catch(ReflectiveOperationException error){((Cancellable)raw).setCancelled(true);plugin.logger().warning("Paper chat input refused: "+error.getMessage());}
             },plugin,true);return true;
         }catch(ClassNotFoundException unavailable){return false;}
@@ -173,8 +208,16 @@ public final class ChatService implements Listener,AutoCloseable {
     private static final Pattern MENTION_PATTERN=Pattern.compile("(?<![A-Za-z0-9_])@([A-Za-z0-9_]{1,16})(?![A-Za-z0-9_])");
     static boolean containsUrl(String text){return text!=null&&URL_PATTERN.matcher(text).find();}
     public void send(Player p,String explicit,String raw,Set<UUID> originalAudience){
+        if(BukkitServerThread.isFolia()){
+            BukkitServerThread.onOwner(plugin,plugin.getScheduler(),p,()->sendOnOwner(p,explicit,raw,originalAudience));
+            return;
+        }
+        sendOnOwner(p,explicit,raw,originalAudience);
+    }
+    private void sendOnOwner(Player p,String explicit,String raw,Set<UUID> originalAudience){
         if(!ownsChat()||!p.isOnline()||!allowed(p))return;
         Session s=sessions.get(p.getUniqueId());
+        if(s==null||!same(s))return;
         if(!settings.channelsEnabled()&&explicit==null&&(!s.write.equals(settings.defaultChannel())||raw.startsWith("#"))){tell(p,Messages.CHAT_CHANNELS_DISABLED_SELECT_GLOBAL);return;}
         String target=!settings.channelsEnabled()?settings.defaultChannel():explicit==null?s.write:explicit;
         if(settings.channelsEnabled()&&explicit==null&&target.equals(settings.staffChannel())&&raw.startsWith(">")){target=settings.defaultChannel();raw=raw.substring(1).strip();}
@@ -195,22 +238,80 @@ public final class ChatService implements Listener,AutoCloseable {
         if(settings.urlsRequirePermission()&&!p.hasPermission(PERM_URL)&&containsUrl(raw)){tell(p,Messages.CHAT_URL_DENIED);return;}
         var allow=new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient"));
         var origin=p.getLocation();
-        var recipients=new ArrayList<Session>();
         // /g and /shout with a message are shouts; a ?question from local chat is a question.
         boolean shout=!question&&explicit!=null&&c.id().equals(settings.defaultChannel());
         String receive=question?RECEIVE_QUESTION:shout?RECEIVE_SHOUT:c.local()?RECEIVE_LOCAL:null;
         boolean senderIgnoreExempt=p.hasPermission(PERM_IGNORE_EXEMPT);
         MessagingModule messaging=plugin.getModuleManager()!=null&&plugin.getModuleManager().getModule("messaging") instanceof MessagingModule m&&m.isEnabled()?m:null;
+        if(c.local()&&BukkitServerThread.isFolia()){
+            World originWorld=origin==null?null:origin.getWorld();
+            Location originCopy=origin==null?null:origin.clone();
+            double maxDistSq=(double)c.radius()*c.radius();
+            Queue<Session> matched=new ConcurrentLinkedQueue<>();
+            List<Session> remoteCandidates=new ArrayList<>();
+            for(Session viewer:sessions.values()){
+                Player recipient=viewer.player;
+                boolean own=recipient==p&&canRead(p,c);
+                if(!viewer.ready||!same(viewer)||!(own||listening(viewer,c))||originalAudience!=null&&!originalAudience.contains(recipient.getUniqueId()))continue;
+                if(!own&&receive!=null&&!recipient.hasPermission(receive))continue;
+                if(!own&&!senderIgnoreExempt&&messaging!=null&&messaging.ignores().ignores(recipient.getUniqueId(),p.getUniqueId())==MessagePolicy.Ignore.YES)continue;
+                if(own){
+                    matched.add(viewer);
+                }else if(BukkitServerThread.entity(plugin,recipient).isServerThread()){
+                    Location loc=recipient.getLocation();
+                    if(originWorld!=null&&originCopy!=null&&loc!=null&&originWorld.equals(loc.getWorld())&&originCopy.distanceSquared(loc)<=maxDistSq){
+                        matched.add(viewer);
+                    }
+                }else{
+                    remoteCandidates.add(viewer);
+                }
+            }
+            if(remoteCandidates.isEmpty()){
+                finishSend(p,s,c,raw,allow,question,new ArrayList<>(matched));
+                return;
+            }
+            final var channel=c;
+            final String bodyRaw=raw;
+            final boolean isQuestion=question;
+            AtomicInteger remaining=new AtomicInteger(1);
+            Runnable finish=()->{
+                if(remaining.decrementAndGet()==0){
+                    BukkitServerThread.onOwner(plugin,plugin.getScheduler(),p,()->{
+                        if(!ownsChat()||!same(s))return;
+                        finishSend(p,s,channel,bodyRaw,allow,isQuestion,new ArrayList<>(matched));
+                    });
+                }
+            };
+            for(Session viewer:remoteCandidates){
+                remaining.incrementAndGet();
+                BukkitServerThread.runFor(plugin,plugin.getScheduler(),viewer.player,()->{
+                    try{
+                        if(!closed&&same(viewer)){
+                            Location loc=viewer.player.getLocation();
+                            if(originWorld!=null&&originCopy!=null&&loc!=null&&originWorld.equals(loc.getWorld())&&originCopy.distanceSquared(loc)<=maxDistSq){
+                                matched.add(viewer);
+                            }
+                        }
+                    }finally{finish.run();}
+                },finish,0L);
+            }
+            finish.run();
+            return;
+        }
+        var recipients=new ArrayList<Session>();
         for(Session viewer:sessions.values()){
             Player recipient=viewer.player;
             // The sender always sees their own message, also in a channel they write to without reading it (/a <message>).
             boolean own=recipient==p&&canRead(p,c);
             if(!viewer.ready||!same(viewer)||!(own||listening(viewer,c))||originalAudience!=null&&!originalAudience.contains(recipient.getUniqueId()))continue;
-            if(c.local()&&(!origin.getWorld().equals(recipient.getWorld())||origin.distanceSquared(recipient.getLocation())>c.radius()*c.radius()))continue;
+            if(c.local()&&(!origin.getWorld().equals(recipient.getWorld())||origin.distanceSquared(recipient.getLocation())>(double)c.radius()*c.radius()))continue;
             if(!own&&receive!=null&&!recipient.hasPermission(receive))continue;
             if(!own&&!senderIgnoreExempt&&messaging!=null&&messaging.ignores().ignores(recipient.getUniqueId(),p.getUniqueId())==MessagePolicy.Ignore.YES)continue;
             recipients.add(viewer);
         }
+        finishSend(p,s,c,raw,allow,question,recipients);
+    }
+    private void finishSend(Player p,Session s,ChatSettings.Channel c,String raw,UntrustedText.Allow allow,boolean question,List<Session> recipients){
         Set<Player> mentioned=new LinkedHashSet<>();
         FormattedText body=parseWithMentions(p,raw,allow,recipients,mentioned);
         String id=history.nextId();var render=new LinkedHashMap<UUID,String>();
@@ -227,7 +328,7 @@ public final class ChatService implements Listener,AutoCloseable {
             MessageSoundSpec spec=new MessageSoundSpec(settings.mentionSound(),settings.mentionVolume(),settings.mentionPitch());
             for(Player targetPlayer:mentioned){
                 if(!targetPlayer.getUniqueId().equals(p.getUniqueId())&&render.containsKey(targetPlayer.getUniqueId())){
-                    plugin.getMessageManager().playMessageSound(targetPlayer,spec);
+                    UtilitySupport.onOwner(plugin,targetPlayer,()->plugin.getMessageManager().playMessageSound(targetPlayer,spec));
                 }
             }
         }
@@ -237,6 +338,11 @@ public final class ChatService implements Listener,AutoCloseable {
         if(!c.local()&&!c.discordId().isEmpty())relay.send(message,c,p.getName(),body.toPlainText());
         plugin.getServer().getConsoleSender().sendMessage("["+c.id()+"] "+p.getName()+": "+body.toPlainText()+" ["+id+"]");
     }
+    private static boolean canSeePlayer(CommandSender viewer,Player target){
+        return BukkitServerThread.isFolia()
+                ? PlayerNameVisibility.canSeeTarget(viewer,target)
+                : PlayerNameVisibility.canSee(viewer,target);
+    }
     private FormattedText parseWithMentions(Player sender,String raw,UntrustedText.Allow allow,List<Session> recipients,Set<Player> mentioned){
         if(!settings.mentionsEnabled()||!sender.hasPermission(PERM_MENTION)||!raw.contains("@")){
             return UntrustedText.parse(raw,allow);
@@ -245,7 +351,7 @@ public final class ChatService implements Listener,AutoCloseable {
         for(Session viewer:recipients){
             Player r=viewer.player;
             // Without allium.chat.receive.mention a player is not highlighted or pinged.
-            if(PlayerNameVisibility.canSee(sender,r)&&r.hasPermission(RECEIVE_MENTION)){
+            if(canSeePlayer(sender,r)&&r.hasPermission(RECEIVE_MENTION)){
                 visibleByName.put(r.getName().toLowerCase(Locale.ROOT),r);
             }
         }
@@ -276,12 +382,12 @@ public final class ChatService implements Listener,AutoCloseable {
         String template=plugin.getMessageManager().resolve(Messages.CHAT_SPY_FORMAT,"{player}",sender.getName());
         if(template==null||template.isEmpty())return;
         FormattedText formatted=UntrustedText.insert(template,body);
-        for(Player observer:plugin.getServer().getOnlinePlayers()){
+        for(Player observer:List.copyOf(plugin.getServer().getOnlinePlayers())){
             if(delivered.contains(observer.getUniqueId()))continue;
             if(!observer.hasPermission(StaffSpyService.PERM_CHAT_SPY))continue;
             if(!spy.isSpyingLocal(observer.getUniqueId(),sender.getUniqueId()))continue;
-            if(!PlayerNameVisibility.canSee(observer,sender))continue;
-            TextSender.sendLiteral(observer,formatted);
+            if(!canSeePlayer(observer,sender))continue;
+            UtilitySupport.onOwner(plugin,observer,()->TextSender.sendLiteral(observer,formatted));
         }
     }
     /** {@code /me <message>}: {@code chat.action-format} to everyone online, as chat (deletable, never relayed). */
@@ -306,19 +412,26 @@ public final class ChatService implements Listener,AutoCloseable {
     }
     public void inbound(String discordId,String destination,String author,String body){
         plugin.getScheduler().runOnServer(()->{
-            if(!ownsChat()||discordSeen.putIfAbsent(discordId,Boolean.TRUE)!=null)return;
-            while(discordSeen.size()>4096)discordSeen.remove(discordSeen.keySet().iterator().next());
+            if(!ownsChat())return;
+            synchronized(discordLock){
+                if(discordSeen.putIfAbsent(discordId,Boolean.TRUE)!=null)return;
+                while(discordSeen.size()>4096)discordSeen.remove(discordSeen.keySet().iterator().next());
+            }
             var c=settings.channels().values().stream().filter(v->!v.local()&&!v.discordId().isEmpty()&&v.discordId().equals(destination)).findFirst().orElse(null);if(c==null)return;
             String incomingBody=body.length()>settings.maxBody()?body.substring(0,settings.maxBody()):body;
             String id=history.nextId();var render=new LinkedHashMap<UUID,String>();Map<String,FormattedText> values=Map.of("discord_username",UntrustedText.parse(author,UntrustedText.Allow.NONE),"message",UntrustedText.parse(incomingBody,UntrustedText.Allow.NONE));
             var rendered = ChatOutput.prepare(c.discordIn(), values, id, "Discord", "default", plugin.getConfig(), ChatOutput.Hooks.PLAIN);
             for(Session s:sessions.values())if(s.ready&&same(s)&&listening(s,c))render.put(s.player.getUniqueId(),rendered.forViewer(s.player));
-            var message=history.add(id,new UUID(0,0),author,c.id(),System.currentTimeMillis(),render);discordLinks.put(discordId,id);while(discordLinks.size()>4096)discordLinks.remove(discordLinks.keySet().iterator().next());
+            var message=history.add(id,new UUID(0,0),author,c.id(),System.currentTimeMillis(),render);
+            synchronized(discordLock){
+                discordLinks.put(discordId,id);
+                while(discordLinks.size()>4096)discordLinks.remove(discordLinks.keySet().iterator().next());
+            }
             plugin.getServer().getConsoleSender().sendMessage("[Discord/"+c.id()+"] "+UntrustedText.clean(author)+": "+UntrustedText.clean(incomingBody)+" ["+id+"]");
             render.forEach((viewer,json)->{var s=sessions.get(viewer);if(s!=null&&!replays.containsKey(viewer)&&!message.deleted().get())ChatOutput.send(s.player,json);});
         });
     }
-    public void discordDeleted(String id){plugin.getScheduler().runOnServer(()->{String linked=discordLinks.get(id);if(linked!=null)deleteIds(List.of(linked));});}
+    public void discordDeleted(String id){plugin.getScheduler().runOnServer(()->{String linked;synchronized(discordLock){linked=discordLinks.get(id);}if(linked!=null)deleteIds(List.of(linked));});}
     private void deleteIds(List<String> ids){
         Set<UUID> affected=new HashSet<>();
         for (String id : ids) {
@@ -327,32 +440,49 @@ public final class ChatService implements Listener,AutoCloseable {
                     .filter(viewer -> history.retained(viewer, id)).forEach(affected::add));
             relay.delete(id);
         }
-        for(UUID viewer:affected){Session s=sessions.get(viewer);if(s==null||!same(s))continue;var existing=replays.get(viewer);if(existing!=null){if(!existing.clearing||!existing.sent.isEmpty())existing.dirty=true;}else replays.put(viewer,new Replay(s.player,false));}
+        for(UUID viewer:affected){
+            Session s=sessions.get(viewer);if(s==null||!same(s))continue;
+            replays.compute(viewer,(key,existing)->{
+                if(existing!=null){
+                    synchronized(existing){if(!existing.clearing||!existing.sent.isEmpty())existing.dirty=true;}
+                    return existing;
+                }
+                return new Replay(s.player,false);
+            });
+        }
     }
     private void replayTick(){
         int budget=settings.packetBudget();var jobs=new ArrayList<>(replays.entrySet());
-        for(var entry:jobs){if(budget<=0)break;Replay job=entry.getValue();Session s=sessions.get(entry.getKey());if(s==null||s.player!=job.player||!same(s)){replays.remove(entry.getKey());continue;}
-            while(budget>0&&job.clear<settings.clearEntries()){ChatOutput.send(job.player,ChatOutput.blank(job.clear++));budget--;}
-            if(job.clear<settings.clearEntries())continue;
-            if (!job.clearing && !job.headerSent && plugin.getConfig().getBoolean("chat.deletion_resend.header_enabled")) {
-                if (budget == 0) continue;
-                String header = plugin.getConfig().getString("chat.deletion_resend.header", "");
-                if (!header.isEmpty()) {
-                    ChatOutput.replay(job.player, net.md_5.bungee.chat.ComponentSerializer.toString(
-                            SpigotComponents.of(TextFormatter.parse(header))));
-                    budget--;
+        for(var entry:jobs){if(budget<=0)break;UUID viewerId=entry.getKey();Replay job=entry.getValue();Session s=sessions.get(viewerId);if(s==null||s.player!=job.player||!same(s)){replays.remove(viewerId,job);continue;}
+            boolean exhausted;
+            synchronized(job){
+                while(budget>0&&job.clear<settings.clearEntries()){ChatOutput.send(job.player,ChatOutput.blank(job.clear++));budget--;}
+                if(job.clear<settings.clearEntries())continue;
+                if (!job.clearing && !job.headerSent && plugin.getConfig().getBoolean("chat.deletion_resend.header_enabled")) {
+                    if (budget == 0) continue;
+                    String header = plugin.getConfig().getString("chat.deletion_resend.header", "");
+                    if (!header.isEmpty()) {
+                        ChatOutput.replay(job.player, net.md_5.bungee.chat.ComponentSerializer.toString(
+                                SpigotComponents.of(TextFormatter.parse(header))));
+                        budget--;
+                    }
+                    job.headerSent = true;
                 }
-                job.headerSent = true;
+                exhausted=true;
+                for(var message:history.visible(viewerId,System.currentTimeMillis())){
+                    if(job.sent.contains(message.id())||message.deleted().get())continue;
+                    // Foreign packets reached the client already. Only Allium messages queued during a clear need delivery.
+                    if (job.clearing && message.channel().equals("external")) continue;
+                    if(budget<=0){exhausted=false;break;}
+                    ChatOutput.replay(job.player,message.rendered().get(viewerId));job.sent.add(message.id());budget--;
+                }
             }
-            boolean exhausted=true;
-            for(var message:history.visible(entry.getKey(),System.currentTimeMillis())){
-                if(job.sent.contains(message.id())||message.deleted().get())continue;
-                // Foreign packets reached the client already. Only Allium messages queued during a clear need delivery.
-                if (job.clearing && message.channel().equals("external")) continue;
-                if(budget<=0){exhausted=false;break;}
-                ChatOutput.replay(job.player,message.rendered().get(entry.getKey()));job.sent.add(message.id());budget--;
+            if(exhausted){
+                replays.compute(viewerId,(key,current)->{
+                    if(current!=job)return current;
+                    return job.dirty?new Replay(job.player,false):null;
+                });
             }
-            if(exhausted){if(job.dirty)replays.put(entry.getKey(),new Replay(job.player,false));else replays.remove(entry.getKey());}
         }
     }
 
@@ -368,7 +498,7 @@ public final class ChatService implements Listener,AutoCloseable {
         }
         Collection<? extends Player> audience;
         if (context.args().length == 0) {
-            audience = plugin.getServer().getOnlinePlayers();
+            audience = List.copyOf(plugin.getServer().getOnlinePlayers());
         } else {
             if (!(sender instanceof Player player && player.getName().equalsIgnoreCase(context.args()[0]))
                     && !sender.hasPermission("allium.clearchat.others")) {
@@ -411,7 +541,7 @@ public final class ChatService implements Listener,AutoCloseable {
         List<String> matches = sessions.values().stream()
                 .filter(session -> session.ready && session.player.isOnline() && session.nickname != null)
                 .filter(session -> TextFormatter.parse(session.nickname).toPlainText().equalsIgnoreCase(query))
-                .filter(session -> PlayerNameVisibility.canSee(sender, session.player))
+                .filter(session -> canSeePlayer(sender, session.player))
                 .map(session -> session.player.getName()).sorted(String.CASE_INSENSITIVE_ORDER).toList();
         if (matches.isEmpty()) {
             tell(sender, Messages.REALNAME_NOT_FOUND);
@@ -431,26 +561,34 @@ public final class ChatService implements Listener,AutoCloseable {
         }
         if(args.length==1){if(!(sender instanceof Player p))throw new ChatFailure(Messages.CHAT_NICK_CONSOLE_TARGET);saveNick(sender,p.getUniqueId(),reset?null:raw);return;}
         if(!sender.hasPermission("allium.nick.others")){tell(sender,Messages.NO_PERMISSION);return;}
-        Player online=plugin.getServer().getPlayerExact(args[0]);if(online!=null&&!PlayerNameVisibility.canSee(sender,online)){tell(sender,Messages.CHAT_PLAYER_LOOKUP_FAILED);return;}
-        plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{if(error!=null||found.isEmpty())tell(sender,Messages.CHAT_PLAYER_LOOKUP_FAILED);else saveNick(sender,found.get().uuid(),reset?null:raw);}));
+        Player online=plugin.getServer().getPlayerExact(args[0]);if(online!=null&&!canSeePlayer(sender,online)){tell(sender,Messages.CHAT_PLAYER_LOOKUP_FAILED);return;}
+        plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->BukkitServerThread.runFor(plugin,plugin.getScheduler(),sender,()->{if(closed)return;if(error!=null||found.isEmpty())tell(sender,Messages.CHAT_PLAYER_LOOKUP_FAILED);else saveNick(sender,found.get().uuid(),reset?null:raw);},()->{},0L));
     }
     private void saveNick(CommandSender sender,UUID id,String raw){
         String plain=raw==null?"":TextFormatter.parse(raw).toPlainText();
         if(raw!=null&&plain.matches("[A-Za-z0-9_]{1,16}")&&!sender.hasPermission("allium.nick.impersonate")){
-            plugin.getPlayerNames().resolve(plain).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{
+            plugin.getPlayerNames().resolve(plain).whenComplete((found,error)->BukkitServerThread.runFor(plugin,plugin.getScheduler(),sender,()->{
                 if(closed)return;if(error!=null){tell(sender,Messages.CHAT_NICK_LOOKUP_UNAVAILABLE);return;}
                 if(found.isPresent()&&!found.get().uuid().equals(id)){tell(sender,Messages.CHAT_NICK_UNAVAILABLE);return;}
                 persistNick(sender,id,raw);
-            }));return;
+            },()->{},0L));return;
         }
         persistNick(sender,id,raw);
     }
     private void persistNick(CommandSender sender,UUID id,String raw){
-        Session session=sessions.get(id);if(session!=null&&session.busy){tell(sender,Messages.CHAT_PROFILE_BUSY);return;}
-        if(session!=null)session.busy=true;
-        work(()->{repository.nickname(id,raw);return repository.load(id);},stored->{
-            Session current=sessions.get(id);if(current!=null){current.nickname=stored.nickname();current.busy=false;if(current.ready)update(current);}if(raw==null)tell(sender,Messages.NICK_RESET);else tell(sender,Messages.NICK_SET,"{nick}",stored.nickname());
-        },error->{if(session!=null)session.busy=false;tell(sender,Messages.CHAT_NICK_SAVE_FAILED);});
+        Session session=sessions.get(id);if(session!=null&&!session.busy.compareAndSet(false,true)){tell(sender,Messages.CHAT_PROFILE_BUSY);return;}
+        workFor(sender,()->{repository.nickname(id,raw);return repository.load(id);},stored->{
+            Session current=sessions.get(id);
+            if(session!=null&&session!=current)session.busy.set(false);
+            if(current!=null){
+                current.nickname=stored.nickname();
+                current.busy.set(false);
+                if(current.ready){
+                    UtilitySupport.onOwner(plugin,current.player,()->{if(same(current)&&current.ready)update(current);});
+                }
+            }
+            if(raw==null)tell(sender,Messages.NICK_RESET);else tell(sender,Messages.NICK_SET,"{nick}",stored.nickname());
+        },error->{if(session!=null)session.busy.set(false);tell(sender,Messages.CHAT_NICK_SAVE_FAILED);});
     }
     private void channel(CommandSender sender,String label,String[] args){
         if(!(sender instanceof Player p))throw new ChatFailure(Messages.CHAT_CHANNEL_PLAYER_ONLY);Session s=sessions.get(p.getUniqueId());if(s==null||!s.ready)throw new ChatFailure(Messages.CHAT_PROFILE_NOT_READY);
@@ -476,8 +614,11 @@ public final class ChatService implements Listener,AutoCloseable {
     public static final String SHOUT="allium.chat.shout";
     private void choose(Session s,String id,boolean write){var c=settings.channels().get(id);if(c==null||!(write?canWrite(s.player,c):canRead(s.player,c)))throw new ChatFailure(Messages.CHAT_CHANNEL_JOIN_DENIED);var reads=new LinkedHashSet<>(s.reads);reads.add(id);saveChannels(s,write?id:s.write,reads);}
     private void saveChannels(Session s,String write,Set<String> reads){
-        if(s.busy)throw new ChatFailure(Messages.CHAT_PROFILE_BUSY);s.busy=true;
-        work(()->{repository.channels(s.player.getUniqueId(),write,reads);return Boolean.TRUE;},saved->{if(same(s)){s.write=write;s.reads=Set.copyOf(reads);s.busy=false;tell(s.player,Messages.CHAT_CHANNEL_SAVED,"{channel}",write);}},error->{s.busy=false;tell(s.player,Messages.CHAT_CHANNEL_SAVE_FAILED);});
+        if(!s.busy.compareAndSet(false,true))throw new ChatFailure(Messages.CHAT_PROFILE_BUSY);
+        workFor(s.player,()->{repository.channels(s.player.getUniqueId(),write,reads);return Boolean.TRUE;},saved->{
+            s.busy.set(false);
+            if(same(s)){s.write=write;s.reads=Set.copyOf(reads);tell(s.player,Messages.CHAT_CHANNEL_SAVED,"{channel}",write);}
+        },error->{s.busy.set(false);tell(s.player,Messages.CHAT_CHANNEL_SAVE_FAILED);});
     }
     public List<String> complete(Player p,String prefix){return settings.channels().values().stream().filter(c->canRead(p,c)&&c.id().startsWith(prefix.toLowerCase(Locale.ROOT))).map(ChatSettings.Channel::id).sorted().limit(64).toList();}
     private void delete(CommandSender sender,String[] args){
@@ -485,7 +626,7 @@ public final class ChatService implements Listener,AutoCloseable {
         if(args.length==1){if(history.find(args[0]).isEmpty()){tell(sender,Messages.CHAT_DELETE_NOT_FOUND);return;}auditDeletion(sender,List.of(args[0]));deleteIds(List.of(args[0]));tell(sender,Messages.CHAT_DELETE_SUCCESS);return;}
         if(args.length==2){final int amount;try{amount=Integer.parseInt(args[1]);}catch(NumberFormatException invalid){tell(sender,Messages.CHAT_DELETE_AMOUNT);return;}
             if(amount<1||amount>200){tell(sender,Messages.CHAT_DELETE_AMOUNT);return;}
-            plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->plugin.getScheduler().runOnServer(()->{if(error!=null||found.isEmpty()){tell(sender,Messages.CHAT_PLAYER_NOT_FOUND);return;}var ids=history.recentBySender(found.get().uuid(),amount).stream().map(ChatHistory.Message::id).toList();auditDeletion(sender,ids);deleteIds(ids);tell(sender,Messages.CHAT_DELETE_MULTIPLE);}));return;}
+            plugin.getPlayerNames().resolve(args[0]).whenComplete((found,error)->BukkitServerThread.runFor(plugin,plugin.getScheduler(),sender,()->{if(closed)return;if(error!=null||found.isEmpty()){tell(sender,Messages.CHAT_PLAYER_NOT_FOUND);return;}var ids=history.recentBySender(found.get().uuid(),amount).stream().map(ChatHistory.Message::id).toList();auditDeletion(sender,ids);deleteIds(ids);tell(sender,Messages.CHAT_DELETE_MULTIPLE);},()->{},0L));return;}
         throw new UsageFailure();
     }
     public boolean deletedIdentity(String id){return history.find(id).map(m->m.deleted().get()).orElse(true);}
@@ -505,14 +646,46 @@ public final class ChatService implements Listener,AutoCloseable {
         }catch(ReflectiveOperationException error){plugin.logger().warning("InteractiveChat delayed-deletion guard unavailable.");}
     }
     private void auditDeletion(CommandSender sender,List<String> ids){plugin.logger().info("Chat deletion actor="+(sender instanceof Player p?p.getUniqueId():"CONSOLE")+" messages="+String.join(",",ids));}
-    private void tell(CommandSender sender,Messages message,String... args){if(!closed&&(!(sender instanceof Player p)||p.isOnline()))plugin.getMessageManager().send(sender,message,args);}
+    private void tell(CommandSender sender,Messages message,String... args){
+        if(closed||sender instanceof Player p&&!p.isOnline())return;
+        UtilitySupport.onOwner(plugin,sender,()->{
+            if(!closed&&(!(sender instanceof Player p)||p.isOnline())){
+                plugin.getMessageManager().send(sender,message,args);
+            }
+        });
+    }
     /** Wrong or missing arguments: answered with the command's usage card. */
     private static final class UsageFailure extends IllegalArgumentException {UsageFailure(){super("usage");}}
     private static final class ChatFailure extends IllegalArgumentException {final Messages message;ChatFailure(Messages message){super(message.getDefault());this.message=message;}}
     @FunctionalInterface private interface Query<T>{T run()throws Exception;}
-    private <T> void work(Query<T> query,java.util.function.Consumer<T> done,java.util.function.Consumer<Throwable> failed){
-        try{io.execute(()->{try{T result=query.run();plugin.getScheduler().runOnServer(()->{if(!closed)done.accept(result);});}catch(Exception error){plugin.getScheduler().runOnServer(()->{if(!closed)failed.accept(error);});}});}
+    private <T> void workFor(CommandSender target,Query<T> query,java.util.function.Consumer<T> done,java.util.function.Consumer<Throwable> failed){
+        try{io.execute(()->{
+            try{
+                T result=query.run();
+                BukkitServerThread.runFor(plugin,plugin.getScheduler(),target,()->{if(!closed)done.accept(result);},()->{if(!closed)done.accept(result);},0L);
+            }catch(Exception error){
+                BukkitServerThread.runFor(plugin,plugin.getScheduler(),target,()->{if(!closed)failed.accept(error);},()->{if(!closed)failed.accept(error);},0L);
+            }
+        });}
         catch(RejectedExecutionException error){failed.accept(error);}
     }
-    @Override public void close(){closed=true;tick.cancel();HandlerList.unregisterAll(this);relay.close();if(packetMirror!=null)try{packetMirror.close();}catch(Exception ignored){}for(Session s:sessions.values()){if(s.player.isOnline()){s.player.setDisplayName(s.player.getName());if(s.lastTab!=null)s.player.setPlayerListName(null);}}sessions.clear();refresh.clear();history.clear();replays.clear();}
+    @Override public void close(){
+        closed=true;tick.cancel();HandlerList.unregisterAll(this);relay.close();
+        if(packetMirror!=null)try{packetMirror.close();}catch(Exception ignored){}
+        List<Session> snapshot=List.copyOf(sessions.values());
+        sessions.clear();refresh.clear();refreshInFlight.clear();history.clear();replays.clear();
+        for(Session s:snapshot){
+            if(!s.player.isOnline())continue;
+            boolean resetTab=s.lastTab!=null;
+            if(!BukkitServerThread.isFolia()||!plugin.isEnabled()){
+                s.player.setDisplayName(s.player.getName());
+                if(resetTab)s.player.setPlayerListName(null);
+            }else{
+                UtilitySupport.onOwner(plugin,s.player,()->{
+                    s.player.setDisplayName(s.player.getName());
+                    if(resetTab)s.player.setPlayerListName(null);
+                });
+            }
+        }
+    }
 }

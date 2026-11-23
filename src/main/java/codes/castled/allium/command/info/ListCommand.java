@@ -37,7 +37,10 @@ public final class ListCommand implements SpecCommandHandler {
             return;
         }
         CommandSender sender = context.sender();
-        Map<String, List<PlayerInfoService.ListedEntry>> grouped = info.collectVisibleGroupedPlayers(sender);
+        info.collectVisibleGroupedPlayers(sender, grouped -> report(sender, grouped));
+    }
+
+    private void report(CommandSender sender, Map<String, List<PlayerInfoService.ListedEntry>> grouped) {
         int visibleCount = grouped.values().stream().mapToInt(List::size).sum();
         int max = plugin.getServer().getMaxPlayers();
         if (visibleCount == 0) {

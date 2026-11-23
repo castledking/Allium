@@ -1,6 +1,7 @@
 package codes.castled.allium.glow;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
@@ -16,12 +17,14 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 /**
@@ -86,12 +89,12 @@ public final class GlowService implements Listener, AutoCloseable {
     private final NamespacedKey spectatorOnlyKey;
     @Nullable
     private final Teams teams;
-    private final Map<UUID, String> choices = new HashMap<>();
+    private final Map<UUID, String> choices = new ConcurrentHashMap<>();
     /** What each player shows now: a colour, or rainbow. */
-    private final Map<UUID, String> shown = new HashMap<>();
+    private final Map<UUID, String> shown = new ConcurrentHashMap<>();
     private volatile Settings settings;
     private TaskHandle tick = TaskHandle.NONE;
-    private int step;
+    private final AtomicInteger step = new AtomicInteger();
 
     public GlowService(PluginStart plugin) {
         this(plugin, loadTeams(plugin));
@@ -121,11 +124,19 @@ public final class GlowService implements Listener, AutoCloseable {
     public void close() {
         tick.cancel();
         HandlerList.unregisterAll(this);
-        for (Player player : plugin.getServer().getOnlinePlayers()) {
-            if (shown.containsKey(player.getUniqueId())) hide(player);
-        }
+        Set<UUID> active = Set.copyOf(shown.keySet());
         shown.clear();
         choices.clear();
+        List<Player> online = List.copyOf(plugin.getServer().getOnlinePlayers());
+        for (Player player : online) {
+            if (!active.contains(player.getUniqueId())) continue;
+            if (teams != null) teams.hide(player, online);
+            if (!BukkitServerThread.isFolia() || !plugin.isEnabled()) {
+                player.setGlowing(false);
+            } else {
+                onPlayer(player, () -> player.setGlowing(false));
+            }
+        }
     }
 
     /** Whether PacketEvents colours the glow; without it the outline is white. */
@@ -199,6 +210,10 @@ public final class GlowService implements Listener, AutoCloseable {
 
     /** Brings the shown glow in line with what the player should show. */
     public void evaluate(Player player) {
+        onPlayer(player, () -> evaluateDirect(player));
+    }
+
+    private void evaluateDirect(Player player) {
         if (!player.isOnline()) return;
         String want = desired(player);
         String now = shown.get(player.getUniqueId());
@@ -209,29 +224,30 @@ public final class GlowService implements Listener, AutoCloseable {
         if (want.equals(now) && player.isGlowing()) return;
         shown.put(player.getUniqueId(), want);
         player.setGlowing(true);
-        if (teams != null) teams.show(player, RAINBOW.equals(want) ? RAINBOW_COLORS.get(step % RAINBOW_COLORS.size()) : want,
-                plugin.getServer().getOnlinePlayers());
+        if (teams != null) teams.show(player, RAINBOW.equals(want) ? RAINBOW_COLORS.get(step.get() % RAINBOW_COLORS.size()) : want,
+                List.copyOf(plugin.getServer().getOnlinePlayers()));
     }
 
     private void hide(Player player) {
         shown.remove(player.getUniqueId());
         player.setGlowing(false);
-        if (teams != null) teams.hide(player, plugin.getServer().getOnlinePlayers());
+        if (teams != null) teams.hide(player, List.copyOf(plugin.getServer().getOnlinePlayers()));
     }
 
     /** Every 200 ms: the next rainbow colour; every 2 s, everyone is re-checked (gamemodes, permissions). */
     void tick() {
-        step++;
+        int current = step.incrementAndGet();
+        List<Player> online = List.copyOf(plugin.getServer().getOnlinePlayers());
         if (teams != null) {
-            String color = RAINBOW_COLORS.get(step % RAINBOW_COLORS.size());
+            String color = RAINBOW_COLORS.get(current % RAINBOW_COLORS.size());
             for (Map.Entry<UUID, String> e : shown.entrySet()) {
                 if (!RAINBOW.equals(e.getValue())) continue;
                 Player player = plugin.getServer().getPlayer(e.getKey());
-                if (player != null) teams.show(player, color, plugin.getServer().getOnlinePlayers());
+                if (player != null) teams.show(player, color, online);
             }
         }
-        if (step % 10 == 0) {
-            for (Player player : plugin.getServer().getOnlinePlayers()) evaluate(player);
+        if (current % 10 == 0) {
+            for (Player player : online) evaluate(player);
         }
     }
 
@@ -241,24 +257,24 @@ public final class GlowService implements Listener, AutoCloseable {
     public void onJoin(PlayerJoinEvent event) {
         Player joined = event.getPlayer();
         if (teams != null) {
+            int current = step.get();
             for (Map.Entry<UUID, String> e : shown.entrySet()) {
                 Player target = plugin.getServer().getPlayer(e.getKey());
                 if (target != null && target != joined) {
-                    String color = RAINBOW.equals(e.getValue()) ? RAINBOW_COLORS.get(step % RAINBOW_COLORS.size()) : e.getValue();
+                    String color = RAINBOW.equals(e.getValue()) ? RAINBOW_COLORS.get(current % RAINBOW_COLORS.size()) : e.getValue();
                     teams.introduce(target, color, joined);
                 }
             }
         }
         // A glow flag saved with the player is not a choice: start from nothing.
         joined.setGlowing(false);
-        evaluate(joined);
+        evaluateDirect(joined);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        if (shown.containsKey(player.getUniqueId())) {
-            shown.remove(player.getUniqueId());
+        if (shown.remove(player.getUniqueId()) != null) {
             player.setGlowing(false);
             if (teams != null) {
                 List<Player> others = plugin.getServer().getOnlinePlayers().stream().filter(p -> p != player).map(p -> (Player) p).toList();
@@ -271,8 +287,31 @@ public final class GlowService implements Listener, AutoCloseable {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGameMode(PlayerGameModeChangeEvent event) {
         Player player = event.getPlayer();
-        // The mode changes after the event: look again on the next tick.
-        plugin.getScheduler().runOnServer(() -> evaluate(player));
+        // The mode changes after the event: look again on the next tick on the player's owning region.
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+            if (isCurrent(player)) evaluateDirect(player);
+        }, () -> {}, 0L);
+    }
+
+    private void onPlayer(Player player, Runnable action) {
+        if (!BukkitServerThread.isFolia() || plugin.getScheduler() == null) {
+            action.run();
+            return;
+        }
+        var owner = BukkitServerThread.entity(plugin, player);
+        if (owner.isServerThread()) {
+            if (player.isOnline()) action.run();
+            return;
+        }
+        plugin.getScheduler().runOn(owner, () -> {
+            if (isCurrent(player)) action.run();
+        }, () -> {}, 0L);
+    }
+
+    private boolean isCurrent(Player player) {
+        if (!player.isOnline()) return false;
+        Player current = plugin.getServer().getPlayer(player.getUniqueId());
+        return current == null || current == player;
     }
 
     private static Map<String, Character> colors() {

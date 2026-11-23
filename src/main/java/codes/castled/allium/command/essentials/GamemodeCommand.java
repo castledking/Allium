@@ -61,13 +61,19 @@ public final class GamemodeCommand implements SpecCommandHandler.Immediate {
             return false;
         }
 
-        target.setGameMode(mode);
-        if (target.getGameMode() != mode) return false;
-        if (target != context.sender()) {
-            context.sendOutcome(context.sender(), "other", "{player}", target.getName(), "{mode}", modeName);
-        }
-        context.sendOutcome(target, "self", "{mode}", modeName);
-        return true;
+        boolean[] applied = {true};
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            target.setGameMode(mode);
+            if (target.getGameMode() != mode) {
+                applied[0] = false;
+                return;
+            }
+            if (target != context.sender()) {
+                context.sendOutcome(context.sender(), "other", "{player}", target.getName(), "{mode}", modeName);
+            }
+            context.sendOutcome(target, "self", "{mode}", modeName);
+        });
+        return applied[0];
     }
 
     /** {@code allium.gamemode.<mode>}, required to switch anyone (yourself or, with .others, another player) to that mode. */

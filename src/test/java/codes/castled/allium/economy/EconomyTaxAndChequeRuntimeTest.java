@@ -76,6 +76,7 @@ public class EconomyTaxAndChequeRuntimeTest {
         new codes.castled.allium.preference.PreferenceRepository(connSrc, codes.castled.allium.storage.SqlDialect.SQLITE, System::currentTimeMillis).migrate();
         new codes.castled.allium.messaging.IgnoreRepository(connSrc, codes.castled.allium.storage.SqlDialect.SQLITE, System::currentTimeMillis).migrate();
         when(db.connectionSource()).thenReturn(connSrc);
+        when(db.dialect()).thenReturn(codes.castled.allium.storage.SqlDialect.SQLITE);
         when(db.getConnection()).thenAnswer(c -> DriverManager.getConnection(dbUrl));
 
         HandleServer server = mock(HandleServer.class);

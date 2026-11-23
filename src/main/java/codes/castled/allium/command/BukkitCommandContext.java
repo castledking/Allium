@@ -3,6 +3,7 @@ package codes.castled.allium.command;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
@@ -104,7 +105,14 @@ public final class BukkitCommandContext {
     public void sendOutcome(CommandSender recipient, String outcomeName, String... replacements) {
         String key = spec.messageKeys().outcomeKey(outcomeName);
         if (key != null) {
-            plugin.getMessageManager().sendByKey(recipient, key, replacements);
+            Runnable deliver = () -> plugin.getMessageManager().sendByKey(recipient, key, replacements);
+            if (BukkitServerThread.isFolia() && plugin.getScheduler() != null) {
+                BukkitServerThread.onOwner(plugin, plugin.getScheduler(), recipient, () -> {
+                    if (!(recipient instanceof Player player) || player.isOnline()) deliver.run();
+                });
+            } else {
+                deliver.run();
+            }
         }
     }
 }

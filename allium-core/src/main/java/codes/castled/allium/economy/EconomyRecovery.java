@@ -17,13 +17,17 @@ public final class EconomyRecovery {
     }
     public static void sweep(ConnectionSource source,EconomyReservations holds,Path directory,
                              Predicate<UUID> online,UUID taxAccount,Consumer<String> warning)throws SQLException {
+        sweep(source, SqlDialect.SQLITE, holds, directory, online, taxAccount, warning);
+    }
+    public static void sweep(ConnectionSource source, SqlDialect dialect, EconomyReservations holds,Path directory,
+                             Predicate<UUID> online,UUID taxAccount,Consumer<String> warning)throws SQLException {
         var ids=new ArrayList<EconomyReservations.Identity>();
         // Materialize first: no borrowed connection or write transaction during native file I/O.
         try(var c=source.connection();var s=c.createStatement();var r=s.executeQuery("SELECT workflow_kind,workflow_id FROM "+EconomySchema.RESERVATIONS+" WHERE state='HELD' ORDER BY workflow_kind,workflow_id")){
             while(r.next())ids.add(new EconomyReservations.Identity(EconomyReservations.Kind.valueOf(r.getString(1)),UUID.fromString(r.getString(2))));
         }
-        var kits=new KitRepository(source,SqlDialect.SQLITE,System::currentTimeMillis);
-        var mail=new MailRepository(source,SqlDialect.SQLITE,System::currentTimeMillis);
+        var kits=new KitRepository(source,dialect,System::currentTimeMillis);
+        var mail=new MailRepository(source,dialect,System::currentTimeMillis);
         var cheques=new ChequeRepository(source);
         for(var identity:ids){
             try{

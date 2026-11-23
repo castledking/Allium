@@ -2,7 +2,6 @@ package codes.castled.allium.message;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.config.ResourceSyncManager;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.Nullable;
@@ -19,27 +18,31 @@ public final class LanguageManager {
 
     private final PluginStart plugin;
     private final ResourceSyncManager syncManager;
-    private final Map<String, FileConfiguration> loadedLocales = new HashMap<>();
-    private String activeLocale;
+    private volatile LocaleSnapshot locales = new LocaleSnapshot(DEFAULT_LOCALE, Map.of());
+
+    /** Each configuration is prepared before publication and read only afterward. */
+    private record LocaleSnapshot(String active, Map<String, FileConfiguration> loaded) {
+        LanguageEntry activeEntry(String key) { return readEntry(loaded.get(active), key); }
+        LanguageEntry defaultEntry(String key) { return readEntry(loaded.get(DEFAULT_LOCALE), key); }
+    }
 
     public LanguageManager(PluginStart plugin, ResourceSyncManager syncManager) {
         this.plugin = plugin;
         this.syncManager = syncManager;
     }
 
-    public void load() {
-        activeLocale = plugin.getConfig().getString("settings.locale", DEFAULT_LOCALE);
-
-        loadLocale(DEFAULT_LOCALE);
-
-        if (!DEFAULT_LOCALE.equals(activeLocale)) {
-            loadLocale(activeLocale);
+    public synchronized void load() {
+        String active = plugin.getConfig().getString("settings.locale", DEFAULT_LOCALE);
+        Map<String, FileConfiguration> loaded = new HashMap<>();
+        loaded.put(DEFAULT_LOCALE, loadLocale(DEFAULT_LOCALE));
+        if (!DEFAULT_LOCALE.equals(active)) {
+            loaded.put(active, loadLocale(active));
         }
-
-        syncAllMissingKeys();
+        syncAllMissingKeys(loaded);
+        locales = new LocaleSnapshot(active, Map.copyOf(loaded));
     }
 
-    private void loadLocale(String locale) {
+    private FileConfiguration loadLocale(String locale) {
         String resourcePath = LANG_DIR + "/" + locale + ".yml";
         File file = new File(plugin.getDataFolder(), resourcePath);
 
@@ -55,8 +58,8 @@ public final class LanguageManager {
         syncManager.syncResource(resourcePath);
 
         FileConfiguration config = YamlConfiguration.loadConfiguration(file);
-        loadedLocales.put(locale, config);
         plugin.logger().info("Loaded locale: " + locale);
+        return config;
     }
 
     /** A locale Allium does not ship starts as a copy of the bundled default locale, sounds included. */
@@ -81,8 +84,8 @@ public final class LanguageManager {
         }
     }
 
-    private void syncAllMissingKeys() {
-        for (Map.Entry<String, FileConfiguration> entry : loadedLocales.entrySet()) {
+    private void syncAllMissingKeys(Map<String, FileConfiguration> loaded) {
+        for (Map.Entry<String, FileConfiguration> entry : loaded.entrySet()) {
             String locale = entry.getKey();
             FileConfiguration config = entry.getValue();
             File file = new File(plugin.getDataFolder(), LANG_DIR + "/" + locale + ".yml");
@@ -112,12 +115,13 @@ public final class LanguageManager {
 
     /** The text at {@code key} in the active locale, then the default locale, else {@code defaultText}. */
     public String get(String key, String defaultText) {
-        LanguageEntry entry = readEntry(loadedLocales.get(activeLocale), key);
+        LocaleSnapshot current = locales;
+        LanguageEntry entry = current.activeEntry(key);
         if (entry != null) {
             return entry.text();
         }
 
-        entry = readEntry(loadedLocales.get(DEFAULT_LOCALE), key);
+        entry = current.defaultEntry(key);
         if (entry != null) {
             return entry.text();
         }
@@ -138,12 +142,13 @@ public final class LanguageManager {
 
     @Nullable
     public String getActionBar(String key, @Nullable String defaultText) {
-        LanguageEntry entry = readEntry(loadedLocales.get(activeLocale), key);
+        LocaleSnapshot current = locales;
+        LanguageEntry entry = current.activeEntry(key);
         if (entry != null) {
             return entry.actionBar();
         }
 
-        entry = readEntry(loadedLocales.get(DEFAULT_LOCALE), key);
+        entry = current.defaultEntry(key);
         if (entry != null) {
             return entry.actionBar();
         }
@@ -159,18 +164,19 @@ public final class LanguageManager {
 
     @Nullable
     public MessageSoundSpec getSound(String key) {
-        LanguageEntry active = readEntry(loadedLocales.get(activeLocale), key);
+        LocaleSnapshot current = locales;
+        LanguageEntry active = current.activeEntry(key);
         // A translation without a sound line keeps the default locale's sound; [sound] none silences it.
-        if (active != null && (active.soundDeclared() || DEFAULT_LOCALE.equals(activeLocale))) return active.sound();
+        if (active != null && (active.soundDeclared() || DEFAULT_LOCALE.equals(current.active()))) return active.sound();
 
-        LanguageEntry fallback = readEntry(loadedLocales.get(DEFAULT_LOCALE), key);
+        LanguageEntry fallback = current.defaultEntry(key);
         return fallback != null ? fallback.sound() : active == null ? null : active.sound();
     }
 
     /** Whether the active or default locale has a message (text, actionbar, or sound) at {@code key}. */
     public boolean hasKey(String key) {
-        return readEntry(loadedLocales.get(activeLocale), key) != null
-                || readEntry(loadedLocales.get(DEFAULT_LOCALE), key) != null;
+        LocaleSnapshot current = locales;
+        return current.activeEntry(key) != null || current.defaultEntry(key) != null;
     }
 
     @Nullable
@@ -183,22 +189,24 @@ public final class LanguageManager {
     }
 
     public String getActiveLocale() {
-        return activeLocale;
+        return locales.active();
     }
 
-    public void setActiveLocale(String locale) {
-        if (!loadedLocales.containsKey(locale)) {
-            loadLocale(locale);
+    public synchronized void setActiveLocale(String locale) {
+        Map<String, FileConfiguration> loaded = locales.loaded();
+        if (!loaded.containsKey(locale)) {
+            var updated = new HashMap<>(loaded);
+            updated.put(locale, loadLocale(locale));
+            loaded = Map.copyOf(updated);
         }
-        this.activeLocale = locale;
+        locales = new LocaleSnapshot(locale, loaded);
     }
 
     public void reload() {
-        loadedLocales.clear();
         load();
     }
 
     public boolean isLocaleLoaded(String locale) {
-        return loadedLocales.containsKey(locale);
+        return locales.loaded().containsKey(locale);
     }
 }

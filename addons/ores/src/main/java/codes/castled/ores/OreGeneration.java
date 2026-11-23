@@ -1,5 +1,6 @@
 package codes.castled.ores;
 
+import codes.castled.allium.api.AddonConnection;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.scheduler.TaskScheduler;
 import org.bukkit.Chunk;
@@ -29,6 +30,7 @@ final class OreGeneration implements AutoCloseable {
     private static final NamespacedKey FIRST_VERSION_MARKER = NamespacedKey.fromString("allium:allium_ore_generated");
 
     private final Plugin plugin;
+    private final AddonConnection core;
     private final TaskScheduler scheduler;
     private final OrePlacement placement;
     private volatile Settings settings;
@@ -51,11 +53,22 @@ final class OreGeneration implements AutoCloseable {
     }
 
     OreGeneration(Plugin plugin, TaskScheduler scheduler, OrePlacement placement, Settings settings) {
+        this(plugin, null, scheduler, placement, settings);
+    }
+
+    OreGeneration(Plugin plugin, AddonConnection core, OrePlacement placement, Settings settings) {
+        this(plugin, core, core.scheduler(), placement, settings);
+    }
+
+    private OreGeneration(Plugin plugin, AddonConnection core, TaskScheduler scheduler, OrePlacement placement, Settings settings) {
         this.plugin = plugin;
+        this.core = core;
         this.scheduler = scheduler;
         this.placement = placement;
         this.settings = settings;
     }
+
+    AddonConnection core() { return core; }
 
     void reload(Settings next) {
         stopGeneration();
@@ -144,8 +157,14 @@ final class OreGeneration implements AutoCloseable {
             var position = current.cursor.next();
             current.inFlight.incrementAndGet();
             Chunks.load(current.world, position.x(), position.z()).whenComplete((chunk, error) -> {
+                if (error != null) {
+                    Runnable fail = () -> finishChunk(current, 0, error);
+                    if (core != null && core.isFolia()) fail.run();
+                    else if (scheduler.isServerThread()) fail.run();
+                    else scheduler.runOnServer(fail);
+                    return;
+                }
                 Runnable step = () -> {
-                    if (error != null) { finishChunk(current, 0, error); return; }
                     if (closed || job != current || current.future.isDone()) { finishChunk(current, 0, null); return; }
                     try {
                         chunk.addPluginChunkTicket(plugin);
@@ -156,7 +175,8 @@ final class OreGeneration implements AutoCloseable {
                         chunk.removePluginChunkTicket(plugin);
                     }
                 };
-                if (scheduler.isServerThread()) step.run();
+                if (core != null && core.isFolia()) core.onRegion(current.world, position.x(), position.z(), step);
+                else if (scheduler.isServerThread()) step.run();
                 else scheduler.runOnServer(step);
             });
         }

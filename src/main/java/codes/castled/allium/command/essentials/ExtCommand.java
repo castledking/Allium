@@ -31,14 +31,16 @@ public final class ExtCommand implements SpecCommandHandler {
         if (target == null) {
             return;
         }
-        target.setFireTicks(0);
-        if (target == context.sender()) {
-            UtilitySupport.send(plugin, target, Messages.UTILITY_EXT_SELF);
-        } else {
-            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_EXT_OTHER,
-                    "{player}", target.getName());
-            UtilitySupport.send(plugin, target, Messages.UTILITY_EXT_SELF);
-            UtilitySupport.audit(plugin, context.sender(), "ext", "target=" + target.getName());
-        }
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            target.setFireTicks(0);
+            if (target == context.sender()) {
+                UtilitySupport.send(plugin, target, Messages.UTILITY_EXT_SELF);
+            } else {
+                UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_EXT_OTHER,
+                        "{player}", target.getName());
+                UtilitySupport.send(plugin, target, Messages.UTILITY_EXT_SELF);
+                UtilitySupport.audit(plugin, context.sender(), "ext", "target=" + target.getName());
+            }
+        });
     }
 }

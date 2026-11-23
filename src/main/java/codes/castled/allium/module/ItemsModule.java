@@ -126,8 +126,8 @@ public final class ItemsModule extends AbstractModule {
         try{database=codes.castled.allium.item.library.LegacyItemDatabase.load(plugin);library.database(database);}catch(java.io.IOException|org.bukkit.configuration.InvalidConfigurationException invalid){throw new IllegalStateException("Item database unavailable",invalid);}
         reloadDatabase();
         delivery = new ItemDeliveryService(
-                plugin.getScheduler().serverExecutor(), plugin.getScheduler()::isServerThread, Bukkit::getPlayer,
-                Bukkit.getPluginManager(), () -> skullFallback);
+                ItemDeliveryService.targetThread(plugin, plugin.getScheduler()),
+                Bukkit::getPlayer, Bukkit.getPluginManager(), () -> skullFallback);
         GiveCommand giveCommand = new GiveCommand(plugin, () -> parser, library, delivery, () -> overflow);
         String route = registerGive(giveCommand);
         plugin.getCommandManager().register(new codes.castled.allium.command.items.ItemSelfCommand(plugin, giveCommand));

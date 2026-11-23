@@ -6,6 +6,7 @@ import codes.castled.allium.item.ProviderKey;
 import codes.castled.allium.message.LangMessage;
 import codes.castled.allium.protection.ProtectionDecision;
 import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.scheduler.TaskScheduler;
 import org.bukkit.Bukkit;
@@ -23,6 +24,7 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -104,6 +106,8 @@ public final class FellTreeBehavior {
         public void cancel() { handle.cancel(); }
     }
 
+    @Nullable
+    private final Plugin plugin;
     private final ItemService items;
     private final ProtectionService protection;
     private final TaskScheduler scheduler;
@@ -134,7 +138,22 @@ public final class FellTreeBehavior {
             RandomGenerator random,
             Collection<FellTreeTool> tools
     ) {
-        this(items, protection, scheduler, notifier, diagnostics, clock, random, Bukkit::getPlayer,
+        this(null, items, protection, scheduler, notifier, diagnostics, clock, random, Bukkit::getPlayer,
+                event -> Bukkit.getPluginManager().callEvent(event), tools);
+    }
+
+    public FellTreeBehavior(
+            @Nullable Plugin plugin,
+            ItemService items,
+            ProtectionService protection,
+            TaskScheduler scheduler,
+            Notifier notifier,
+            Consumer<String> diagnostics,
+            LongSupplier clock,
+            RandomGenerator random,
+            Collection<FellTreeTool> tools
+    ) {
+        this(plugin, items, protection, scheduler, notifier, diagnostics, clock, random, Bukkit::getPlayer,
                 event -> Bukkit.getPluginManager().callEvent(event), tools);
     }
 
@@ -150,6 +169,23 @@ public final class FellTreeBehavior {
             Consumer<Event> events,
             Collection<FellTreeTool> tools
     ) {
+        this(null, items, protection, scheduler, notifier, diagnostics, clock, random, players, events, tools);
+    }
+
+    public FellTreeBehavior(
+            @Nullable Plugin plugin,
+            ItemService items,
+            ProtectionService protection,
+            TaskScheduler scheduler,
+            Notifier notifier,
+            Consumer<String> diagnostics,
+            LongSupplier clock,
+            RandomGenerator random,
+            Function<UUID, Player> players,
+            Consumer<Event> events,
+            Collection<FellTreeTool> tools
+    ) {
+        this.plugin = plugin;
         this.items = Objects.requireNonNull(items, "items");
         this.protection = Objects.requireNonNull(protection, "protection");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
@@ -285,8 +321,32 @@ public final class FellTreeBehavior {
             lastUse.put(player.getUniqueId(), now);
         }
 
-        TaskHandle handle = scheduler.repeatOnServer(() -> stepJob(job), 50L, 50L);
+        if (BukkitServerThread.isFolia() && plugin != null) {
+            scheduleFoliaStep(player, job);
+        } else {
+            TaskHandle handle = scheduler.repeatOnServer(() -> stepJob(job), 50L, 50L);
+            job.setHandle(handle);
+        }
+    }
+
+    private void scheduleFoliaStep(Player player, FellJob job) {
+        TaskHandle handle = BukkitServerThread.runFor(plugin, scheduler, player, () -> {
+            if (activeJobs.get(job.playerId()) != job) {
+                return;
+            }
+            if (stepJob(job) && activeJobs.get(job.playerId()) == job) {
+                Player current = players.apply(job.playerId());
+                if (current != null && current.isOnline() && !current.isDead()) {
+                    scheduleFoliaStep(current, job);
+                } else {
+                    finishJob(job);
+                }
+            }
+        }, () -> finishJob(job), 50L);
         job.setHandle(handle);
+        if (handle == TaskHandle.NONE) {
+            finishJob(job);
+        }
     }
 
     private boolean stepJob(FellJob job) {
@@ -344,6 +404,10 @@ public final class FellTreeBehavior {
             if (!job.world().isChunkLoaded(pos.x() >> 4, pos.z() >> 4)) {
                 finishJob(job);
                 return false;
+            }
+            if (BukkitServerThread.isFolia() && plugin != null
+                    && !BukkitServerThread.region(plugin, job.world(), pos.x() >> 4, pos.z() >> 4).isServerThread()) {
+                continue;
             }
 
             Block block = job.world().getBlockAt(pos.x(), pos.y(), pos.z());

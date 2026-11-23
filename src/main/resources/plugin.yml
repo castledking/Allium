@@ -5,6 +5,7 @@ api-version: '1.20'
 description: A modern essentials suite
 authors: [castledking]
 softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
+folia-supported: true
 
 commands:
   grindstone:

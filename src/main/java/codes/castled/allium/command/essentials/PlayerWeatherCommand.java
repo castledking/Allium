@@ -132,10 +132,12 @@ public final class PlayerWeatherCommand implements SpecCommandHandler {
                 return;
             }
             for (Player target : targets) {
-                target.resetPlayerWeather();
-                if (!target.equals(sender)) {
-                    UtilitySupport.send(plugin, target, Messages.UTILITY_PWEATHER_RESET_SELF);
-                }
+                UtilitySupport.onTarget(plugin, sender, target, () -> {
+                    target.resetPlayerWeather();
+                    if (!target.equals(sender)) {
+                        UtilitySupport.send(plugin, target, Messages.UTILITY_PWEATHER_RESET_SELF);
+                    }
+                });
             }
             UtilitySupport.send(plugin, sender, Messages.UTILITY_PWEATHER_RESET_ALL, "{count}", Integer.toString(targets.size()));
             UtilitySupport.audit(plugin, sender, "pweather", "target=* count=" + targets.size() + " weather=reset");
@@ -146,14 +148,16 @@ public final class PlayerWeatherCommand implements SpecCommandHandler {
         if (target == null) {
             return;
         }
-        target.resetPlayerWeather();
-        if (target.equals(sender)) {
-            UtilitySupport.send(plugin, target, Messages.UTILITY_PWEATHER_RESET_SELF);
-        } else {
-            UtilitySupport.send(plugin, sender, Messages.UTILITY_PWEATHER_RESET_OTHER, "{player}", target.getName());
-            UtilitySupport.send(plugin, target, Messages.UTILITY_PWEATHER_RESET_SELF);
-        }
-        UtilitySupport.audit(plugin, sender, "pweather", "target=" + target.getName() + " weather=reset");
+        UtilitySupport.onTarget(plugin, sender, target, () -> {
+            target.resetPlayerWeather();
+            if (target.equals(sender)) {
+                UtilitySupport.send(plugin, target, Messages.UTILITY_PWEATHER_RESET_SELF);
+            } else {
+                UtilitySupport.send(plugin, sender, Messages.UTILITY_PWEATHER_RESET_OTHER, "{player}", target.getName());
+                UtilitySupport.send(plugin, target, Messages.UTILITY_PWEATHER_RESET_SELF);
+            }
+            UtilitySupport.audit(plugin, sender, "pweather", "target=" + target.getName() + " weather=reset");
+        });
     }
 
     private void handleSet(BukkitCommandContext context, WeatherType weather, String targetArg) {
@@ -184,10 +188,12 @@ public final class PlayerWeatherCommand implements SpecCommandHandler {
                 return;
             }
             for (Player target : targets) {
-                target.setPlayerWeather(weather);
-                if (!target.equals(sender)) {
-                    UtilitySupport.send(plugin, target, selfMsg);
-                }
+                UtilitySupport.onTarget(plugin, sender, target, () -> {
+                    target.setPlayerWeather(weather);
+                    if (!target.equals(sender)) {
+                        UtilitySupport.send(plugin, target, selfMsg);
+                    }
+                });
             }
             UtilitySupport.send(plugin, sender, allMsg, "{count}", Integer.toString(targets.size()));
             UtilitySupport.audit(plugin, sender, "pweather", "target=* count=" + targets.size() + " weather=" + weather.name().toLowerCase(Locale.ROOT));
@@ -198,14 +204,16 @@ public final class PlayerWeatherCommand implements SpecCommandHandler {
         if (target == null) {
             return;
         }
-        target.setPlayerWeather(weather);
-        if (target.equals(sender)) {
-            UtilitySupport.send(plugin, target, selfMsg);
-        } else {
-            UtilitySupport.send(plugin, sender, otherMsg, "{player}", target.getName());
-            UtilitySupport.send(plugin, target, selfMsg);
-        }
-        UtilitySupport.audit(plugin, sender, "pweather", "target=" + target.getName() + " weather=" + weather.name().toLowerCase(Locale.ROOT));
+        UtilitySupport.onTarget(plugin, sender, target, () -> {
+            target.setPlayerWeather(weather);
+            if (target.equals(sender)) {
+                UtilitySupport.send(plugin, target, selfMsg);
+            } else {
+                UtilitySupport.send(plugin, sender, otherMsg, "{player}", target.getName());
+                UtilitySupport.send(plugin, target, selfMsg);
+            }
+            UtilitySupport.audit(plugin, sender, "pweather", "target=" + target.getName() + " weather=" + weather.name().toLowerCase(Locale.ROOT));
+        });
     }
 
     private void listAllPlayers(CommandSender sender) {
@@ -220,16 +228,18 @@ public final class PlayerWeatherCommand implements SpecCommandHandler {
     }
 
     private void sendPlayerStatus(CommandSender viewer, Player target) {
-        WeatherType wt = target.getPlayerWeather();
-        Messages message;
-        if (wt == null) {
-            message = Messages.UTILITY_PWEATHER_STATUS_NORMAL;
-        } else if (wt == WeatherType.CLEAR) {
-            message = Messages.UTILITY_PWEATHER_STATUS_CLEAR;
-        } else {
-            message = Messages.UTILITY_PWEATHER_STATUS_STORM;
-        }
-        UtilitySupport.send(plugin, viewer, message, "{player}", target.getName());
+        UtilitySupport.onTarget(plugin, viewer, target, () -> {
+            WeatherType wt = target.getPlayerWeather();
+            Messages message;
+            if (wt == null) {
+                message = Messages.UTILITY_PWEATHER_STATUS_NORMAL;
+            } else if (wt == WeatherType.CLEAR) {
+                message = Messages.UTILITY_PWEATHER_STATUS_CLEAR;
+            } else {
+                message = Messages.UTILITY_PWEATHER_STATUS_STORM;
+            }
+            UtilitySupport.send(plugin, viewer, message, "{player}", target.getName());
+        });
     }
 
     private boolean requireOthersPermission(CommandSender sender) {

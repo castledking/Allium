@@ -2,13 +2,12 @@ package codes.castled.allium.module;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.core.AbstractModule;
-import codes.castled.allium.database.DatabaseType;
 import codes.castled.allium.economy.EconomyRuntime;
 import codes.castled.allium.economy.EconomyUnavailableException;
 import codes.castled.allium.naming.PlayerNameRepository;
 import java.sql.SQLException;
 
-/** Phase 1 SQLite engine. The legacy scaffold writer and provider flag are retired. */
+/** Enables the journaled economy after the configured database and recovery checks pass. */
 public final class EconomyModule extends AbstractModule {
     private EconomyRuntime runtime;
     private AutoCloseable vaultRegistration;
@@ -16,14 +15,12 @@ public final class EconomyModule extends AbstractModule {
     @Override public String getName(){return "economy";}
     public EconomyRuntime runtime(){return runtime;}
     @Override public void onEnable(){
-        if(plugin.getDatabaseManager().getType()!=DatabaseType.SQLITE)
-            throw new IllegalStateException("Phase 1 economy requires a single SQLite server");
         try {
             runtime=new EconomyRuntime(plugin);runtime.enable();
             for(var spec:codes.castled.allium.command.spec.CoreCommandSpecs.ECONOMY_SPECS)
                 plugin.getCommandManager().register(new codes.castled.allium.economy.EconomyCommands(spec,runtime));
             if(!runtime.ready())throw new IllegalStateException("economy schema/recovery is not ready");
-            plugin.logger().info("Journalled SQLite economy enabled; WAL synchronous=FULL.");
+            plugin.logger().info("Journalled economy enabled on " + plugin.getDatabaseManager().getType() + ".");
             if(!plugin.getConfig().getBoolean("economy.vault-provider-enabled",false)){
                 plugin.logger().info("Vault economy provider is off (economy.vault-provider-enabled=false).");
             }else if(plugin.getServer().getPluginManager().getPlugin("Vault")!=null){
@@ -46,7 +43,7 @@ public final class EconomyModule extends AbstractModule {
                 catch(SQLException error){throw new EconomyUnavailableException("authoritative name storage unavailable",error);}
             });
             plugin.getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class,provider,plugin,org.bukkit.plugin.ServicePriority.Highest);
-            plugin.logger().info("Vault economy registered after SQLite schema/recovery readiness.");
+            plugin.logger().info("Vault economy registered after schema and recovery checks.");
         }
         @Override public void close(){plugin.getServer().getServicesManager().unregister(net.milkbowl.vault.economy.Economy.class,provider);}
     }

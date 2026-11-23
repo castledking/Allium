@@ -10,7 +10,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 
 /**
- * Main-thread-only pending requests, with one request per requester and a bounded total size.
+ * Pending requests shared by player regions, with one request per requester and a bounded total size.
  * Callers supply the current time; expired requests stay available to {@link #expire(long)} for
  * notification, but can never be selected by {@link #incoming(UUID, UUID, long)}.
  */
@@ -51,7 +51,7 @@ public final class RequestTracker {
      *
      * @throws IllegalStateException if a new requester would exceed the bound
      */
-    public void put(Request request) {
+    public synchronized void put(Request request) {
         Objects.requireNonNull(request, "request");
         boolean hasExisting = requests.keySet().stream().anyMatch(k -> k.requester().equals(request.requester()));
         if (!hasExisting && requests.size() >= maximum) {
@@ -67,7 +67,7 @@ public final class RequestTracker {
      *
      * @throws IllegalStateException if adding a new pair would exceed the bound
      */
-    public void putAdditional(Request request) {
+    public synchronized void putAdditional(Request request) {
         Objects.requireNonNull(request, "request");
         Key key = new Key(request.requester(), request.recipient());
         if (!requests.containsKey(key) && requests.size() >= maximum) {
@@ -78,7 +78,7 @@ public final class RequestTracker {
     }
 
     /** Finds an unexpired request; a null requester selects the most recently put request. */
-    public Optional<Request> incoming(UUID recipient, UUID requester, long now) {
+    public synchronized Optional<Request> incoming(UUID recipient, UUID requester, long now) {
         Objects.requireNonNull(recipient, "recipient");
         if (requester != null) {
             Request request = requests.get(new Key(requester, recipient));
@@ -94,10 +94,10 @@ public final class RequestTracker {
         return Optional.ofNullable(latest);
     }
 
-    public int size() { return requests.size(); }
+    public synchronized int size() { return requests.size(); }
 
     /** Unexpired requests {@code player} sent or received. */
-    public int involving(UUID player, long now) {
+    public synchronized int involving(UUID player, long now) {
         int count = 0;
         for (Request request : requests.values()) {
             if (now < request.expiresAt() && (request.requester().equals(player) || request.recipient().equals(player))) {
@@ -108,38 +108,38 @@ public final class RequestTracker {
     }
 
     /** Removes all pending requests sent by {@code requester}, returning the newest removed one if any. */
-    public Optional<Request> remove(UUID requester) {
+    public synchronized Optional<Request> remove(UUID requester) {
         Objects.requireNonNull(requester, "requester");
         List<Request> removed = removeMatching(request -> request.requester().equals(requester));
         return removed.isEmpty() ? Optional.empty() : Optional.of(removed.get(removed.size() - 1));
     }
 
     /** Removes one specific pending request between {@code requester} and {@code recipient}. */
-    public Optional<Request> remove(UUID requester, UUID recipient) {
+    public synchronized Optional<Request> remove(UUID requester, UUID recipient) {
         Objects.requireNonNull(requester, "requester");
         Objects.requireNonNull(recipient, "recipient");
         return Optional.ofNullable(requests.remove(new Key(requester, recipient)));
     }
 
     /** Removes matching pending requests without notification and returns the removed entries. */
-    public List<Request> removeIf(Predicate<Request> predicate) {
+    public synchronized List<Request> removeIf(Predicate<Request> predicate) {
         return removeMatching(Objects.requireNonNull(predicate, "predicate"));
     }
 
     /** Cancels all requests addressed to this recipient, oldest first. */
-    public List<Request> cancelIncoming(UUID recipient) {
+    public synchronized List<Request> cancelIncoming(UUID recipient) {
         Objects.requireNonNull(recipient, "recipient");
         return removeMatching(request -> request.recipient().equals(recipient));
     }
 
     /** Cancels this player's outgoing request and all their incoming requests, oldest first. */
-    public List<Request> cancelPlayer(UUID player) {
+    public synchronized List<Request> cancelPlayer(UUID player) {
         Objects.requireNonNull(player, "player");
         return removeMatching(request -> request.requester().equals(player) || request.recipient().equals(player));
     }
 
     /** Removes requests at or after their deadline, oldest first. */
-    public List<Request> expire(long now) {
+    public synchronized List<Request> expire(long now) {
         return removeMatching(request -> now >= request.expiresAt());
     }
 

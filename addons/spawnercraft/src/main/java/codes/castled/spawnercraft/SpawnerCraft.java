@@ -46,7 +46,7 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
         try {
             heads = new Heads(core.items(), Objects.requireNonNull(getResource("heads.tsv")),
                     Objects.requireNonNull(getResource("legacy-heads.tsv")));
-            recipes = new HeadRecipes(heads, core.items(), this::cards);
+            recipes = new HeadRecipes(heads, core, this::cards);
             loadRecipes(readImported());
             if (core.powerTools().available()) {
                 saveResourceIfMissing("spawner_changer.yml");
@@ -109,6 +109,7 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
     @Override
     protected void onAddonDisable() {
         for (Player player : getServer().getOnlinePlayers()) {
+            if (allium().isFolia() && !allium().ownsEntity(player)) continue;
             Inventory top = player.getOpenInventory().getTopInventory();
             if (top.getHolder() instanceof Guide guide) {
                 guide.close();
@@ -175,7 +176,7 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
             if (!cancelled && guide.pages.size() > 1 && slot >= 0 && slot < top.getSize()
                     && (event.getClick() == ClickType.LEFT || event.getClick() == ClickType.RIGHT)) {
                 int step = event.getClick() == ClickType.RIGHT ? -1 : 1;
-                allium().scheduler().runOnServer(() -> advanceGuide(player, guide, step));
+                allium().runForEntity(player, () -> advanceGuide(player, guide, step), guide::close, 0L);
             }
             return;
         }
@@ -232,7 +233,7 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
         renderGuide(guide);
         InventoryView opened = player.openInventory(guide.inventory);
         if (opened != null && opened.getTopInventory() == guide.inventory && available.size() > 1) {
-            guide.timer = allium().scheduler().repeatOnServer(
+            guide.timer = allium().repeatForEntity(player,
                     () -> advanceGuide(player, guide, 1), GUIDE_PAGE_MILLIS, GUIDE_PAGE_MILLIS);
         }
     }
@@ -343,7 +344,7 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
             return;
         }
         Player player = Bukkit.getPlayerExact(args[1]);
-        if (player == null || !allium().canEditInventory(player)) {
+        if (player == null) {
             sender.sendMessage("§cPlayer inventory unavailable.");
             return;
         }
@@ -351,14 +352,22 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
         int amount = args.length == 5 ? Integer.parseInt(args[4]) : 1;
         if (amount < 1 || amount > 64) throw new IllegalArgumentException("Amount must be between 1 and 64");
         Heads.Head head = heads.find(id);
-        if (head == null || (args[2].equals("core") && heads.type(head.mob()) == null)) {
+        boolean coreItem = args[2].equals("core");
+        if (head == null || (coreItem && heads.type(head.mob()) == null)) {
             throw new IllegalArgumentException("Unknown or unavailable mob: " + id);
         }
-        ItemStack stack = args[2].equals("core") ? heads.core(head.mob()) : heads.create(head);
+        ItemStack stack = coreItem ? heads.core(head.mob()) : heads.create(head);
         stack.setAmount(amount);
-        player.getInventory().addItem(stack).values().forEach(extra ->
-                player.getWorld().dropItemNaturally(player.getLocation(), extra));
-        sender.sendMessage("§aGave " + player.getName() + " " + amount + " " + stack.getItemMeta().getDisplayName() + "§a.");
+        String displayName = stack.getItemMeta().getDisplayName();
+        allium().onOwner(player, () -> {
+            if (!player.isOnline() || !allium().canEditInventory(player)) {
+                allium().onOwner(sender, () -> sender.sendMessage("§cPlayer inventory unavailable."));
+                return;
+            }
+            player.getInventory().addItem(stack).values().forEach(extra ->
+                    player.getWorld().dropItemNaturally(player.getLocation(), extra));
+            allium().onOwner(sender, () -> sender.sendMessage("§aGave " + player.getName() + " " + amount + " " + displayName + "§a."));
+        });
     }
 
     private void importPlushies(CommandSender sender, String[] args) throws IOException, InvalidConfigurationException {

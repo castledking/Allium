@@ -5,6 +5,7 @@ import codes.castled.allium.message.MessageSoundSpec;
 import codes.castled.allium.message.SoundSettings;
 import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.EffectivePreferences;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
 import org.bukkit.command.CommandSender;
@@ -23,6 +24,19 @@ public final class NotificationRouter implements NotificationService {
 
     @Override
     public void send(CommandSender recipient, Notification notification) {
+        if (BukkitServerThread.isFolia() && recipient instanceof Player player) {
+            var owner = BukkitServerThread.entity(plugin, player);
+            if (!owner.isServerThread()) {
+                plugin.getScheduler().runOn(owner, () -> {
+                    if (player.isOnline()) deliver(player, notification);
+                }, () -> {}, 0);
+                return;
+            }
+        }
+        deliver(recipient, notification);
+    }
+
+    private void deliver(CommandSender recipient, Notification notification) {
         List<String> replacements = new ArrayList<>();
         notification.placeholders().forEach((key, value) -> {
             replacements.add(key);

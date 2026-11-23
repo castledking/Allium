@@ -1,8 +1,8 @@
 package codes.castled.allium.scheduler;
 
 /**
- * The platform's server (main) thread, as {@link AlliumScheduler} needs it. The Bukkit
- * implementation wraps {@code BukkitScheduler}; tests use a manual tick loop.
+ * An execution target on the platform, such as the global scheduler, an entity's scheduler, or
+ * the scheduler for a world chunk. Traditional servers use the main thread for each target.
  */
 public interface ServerThread {
 
@@ -13,4 +13,9 @@ public interface ServerThread {
      * then every {@code periodTicks} ticks when {@code periodTicks > 0}.
      */
     TaskHandle schedule(Runnable task, long delayTicks, long periodTicks);
+
+    /** The retirement callback can run without ownership and must only release pending application state. */
+    default TaskHandle schedule(Runnable task, Runnable retired, long delayTicks, long periodTicks) {
+        return schedule(task, delayTicks, periodTicks);
+    }
 }

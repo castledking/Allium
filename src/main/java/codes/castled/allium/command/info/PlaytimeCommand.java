@@ -10,6 +10,7 @@ import codes.castled.allium.info.PlayerInfoService;
 import codes.castled.allium.info.Playtime;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.placeholder.PlaceholderFormats;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -58,7 +59,7 @@ public final class PlaytimeCommand implements SpecCommandHandler {
             return;
         }
         String query = args[0].trim();
-        info.lookupProfile(sender, query, false).whenComplete((found, error) -> info.runOnServer(() -> {
+        info.lookupProfile(sender, query, false).whenComplete((found, error) -> info.runFor(sender, () -> {
             if (error != null) {
                 plugin.getMessageManager().send(sender, Messages.INFO_STORAGE_FAILED);
                 return;
@@ -69,29 +70,41 @@ public final class PlaytimeCommand implements SpecCommandHandler {
             }
             PlayerInfoRecord record = found.get().record();
             Player online = plugin.getServer().getPlayer(record.uuid());
-            if (online != null && PlayerNameVisibility.canSeeTarget(sender, online)) {
-                tell(sender, online.getName(), Playtime.seconds(online), Playtime.firstJoin(plugin, online));
+            if (online == null) {
+                tellOffline(sender, record);
                 return;
             }
-            Path world = plugin.getServer().getWorlds().get(0).getWorldFolder().toPath();
-            plugin.getScheduler().runAsyncLater(() -> {
-                OptionalLong seconds;
-                try {
-                    seconds = Playtime.offlineSeconds(world, record.uuid());
-                } catch (java.io.IOException | RuntimeException unreadable) {
-                    seconds = OptionalLong.empty();
+            boolean seeVanished = !(sender instanceof Player) || sender == online || sender.hasPermission("allium.vanish.see");
+            Runnable offline = () -> tellOffline(sender, record);
+            UtilitySupport.onTarget(plugin, sender, online, () -> {
+                if (!seeVanished && PlayerNameVisibility.isVanished(online)) {
+                    UtilitySupport.onOwner(plugin, sender, offline);
+                    return;
                 }
-                long played = seconds.orElse(0);
-                info.runOnServer(() -> {
-                    long first = record.firstJoin() > 0 ? record.firstJoin() : plugin.getServer().getOfflinePlayer(record.uuid()).getFirstPlayed();
-                    tell(sender, record.lastName(), played, first);
-                });
-            }, 0);
+                tell(sender, online.getName(), Playtime.seconds(online), Playtime.firstJoin(plugin, online));
+            }, offline);
         }));
     }
 
+    private void tellOffline(CommandSender sender, PlayerInfoRecord record) {
+        Path world = plugin.getServer().getWorlds().get(0).getWorldFolder().toPath();
+        plugin.getScheduler().runAsyncLater(() -> {
+            OptionalLong seconds;
+            try {
+                seconds = Playtime.offlineSeconds(world, record.uuid());
+            } catch (java.io.IOException | RuntimeException unreadable) {
+                seconds = OptionalLong.empty();
+            }
+            long played = seconds.orElse(0);
+            info.runFor(sender, () -> {
+                long first = record.firstJoin() > 0 ? record.firstJoin() : plugin.getServer().getOfflinePlayer(record.uuid()).getFirstPlayed();
+                tell(sender, record.lastName(), played, first);
+            });
+        }, 0);
+    }
+
     private void tell(CommandSender sender, String name, long seconds, long firstJoin) {
-        plugin.getMessageManager().send(sender, Messages.INFO_PLAYTIME_OTHER, "{player}", name,
+        UtilitySupport.send(plugin, sender, Messages.INFO_PLAYTIME_OTHER, "{player}", name,
                 "{playtime}", PlaceholderFormats.duration(seconds), "{first_join}", Playtime.date(plugin, firstJoin));
     }
 }

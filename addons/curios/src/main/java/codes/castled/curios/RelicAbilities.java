@@ -26,8 +26,8 @@ final class RelicAbilities implements Listener {
     private final CuriosPlugin plugin;
     private final NamespacedKey aggro;
     private final codes.castled.allium.scheduler.TaskScheduler scheduler;
-    private final Map<UUID, EnumMap<Catalog.Ability, Long>> cooldowns = new HashMap<>();
-    private boolean retaliating;
+    private final Map<UUID, EnumMap<Catalog.Ability, Long>> cooldowns = new java.util.concurrent.ConcurrentHashMap<>();
+    private final ThreadLocal<Boolean> retaliating = ThreadLocal.withInitial(() -> false);
 
     RelicAbilities(CuriosPlugin plugin, codes.castled.allium.scheduler.TaskScheduler scheduler) {
         this.plugin = plugin;
@@ -54,7 +54,7 @@ final class RelicAbilities implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void damage(EntityDamageByEntityEvent event) {
-        if (retaliating || !(event.getEntity() instanceof LivingEntity victim) || event.getFinalDamage() <= 0) return;
+        if (retaliating.get() || !(event.getEntity() instanceof LivingEntity victim) || event.getFinalDamage() <= 0) return;
         Entity source = event.getDamager() instanceof Projectile projectile && projectile.getShooter() instanceof Entity shooter
                 ? shooter : event.getDamager();
         if (source instanceof Player attacker) {
@@ -71,11 +71,11 @@ final class RelicAbilities implements Listener {
         }
         if (victim instanceof Player target && source instanceof LivingEntity attacker && attacker != target
                 && target.isInWater() && plugin.hasAbility(target, WATER_RETALIATE)) {
-            retaliating = true;
+            retaliating.set(true);
             try {
                 attacker.damage(2.0, target);
             } finally {
-                retaliating = false;
+                retaliating.set(false);
             }
         }
     }
@@ -87,12 +87,14 @@ final class RelicAbilities implements Listener {
                 || !plugin.hasAbility(player, PURIFY) || !acquire(player, PURIFY, 30_000)) return;
         event.setCancelled(true);
         var type = event.getNewEffect().getType();
-        scheduler.runOnServer(() -> {
+        Runnable apply = () -> {
             if (player.isOnline() && !player.isDead()) {
                 player.removePotionEffect(type);
                 player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 0));
             }
-        });
+        };
+        if (plugin.core() != null) plugin.core().runForEntity(player, apply, () -> {}, 0L);
+        else scheduler.runOnServer(apply);
     }
 
     @EventHandler
@@ -113,8 +115,10 @@ final class RelicAbilities implements Listener {
     private boolean acquire(Player player, Catalog.Ability ability, long duration) {
         long now = System.currentTimeMillis();
         var state = cooldowns.computeIfAbsent(player.getUniqueId(), ignored -> new EnumMap<>(Catalog.Ability.class));
-        if (state.getOrDefault(ability, 0L) > now) return false;
-        state.put(ability, now + duration);
-        return true;
+        synchronized (state) {
+            if (state.getOrDefault(ability, 0L) > now) return false;
+            state.put(ability, now + duration);
+            return true;
+        }
     }
 }

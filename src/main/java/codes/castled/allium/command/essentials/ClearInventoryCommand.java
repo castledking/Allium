@@ -20,12 +20,12 @@ import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 public final class ClearInventoryCommand implements SpecCommandHandler {
@@ -39,7 +39,7 @@ public final class ClearInventoryCommand implements SpecCommandHandler {
     private final Map<Object, Pending> pending;
 
     public ClearInventoryCommand(PluginStart plugin) {
-        this(plugin, CoreCommandSpecs.CLEARINVENTORY, new HashMap<>());
+        this(plugin, CoreCommandSpecs.CLEARINVENTORY, new ConcurrentHashMap<>());
     }
 
     private ClearInventoryCommand(PluginStart plugin, CommandSpec spec, Map<Object, Pending> pending) {
@@ -161,7 +161,7 @@ public final class ClearInventoryCommand implements SpecCommandHandler {
     private boolean confirmed(CommandSender sender, String[] args, Object target) {
         if (sender instanceof Player player
                 && player.getPersistentDataContainer().has(confirmationDisabled, PersistentDataType.BYTE)) return true;
-        Object key = sender instanceof Player player ? player.getUniqueId() : sender;
+        Object key = sender instanceof Player player && player.getUniqueId() != null ? player.getUniqueId() : sender;
         long now = System.currentTimeMillis();
         pending.values().removeIf(entry -> entry.expires() <= now);
         List<String> command = List.copyOf(Arrays.asList(args));
@@ -197,21 +197,23 @@ public final class ClearInventoryCommand implements SpecCommandHandler {
     }
 
     private void clear(CommandSender sender, Player target, Predicate<ItemStack> filter, int max, String item) {
-        if (!UtilitySupport.guardInventoryNotBusy(plugin, sender, target)) return;
-        if (plugin.getModuleManager().getModule("moderation") instanceof ModerationModule moderation
-                && moderation.isEnabled() && moderation.inspection().hasActiveMutableSession(target.getUniqueId(),
-                codes.castled.allium.moderation.InspectionLayout.InspectionType.INVSEE)) {
-            send(sender, Messages.UTILITY_INVENTORY_BUSY, "{player}", target.getName());
-            return;
-        }
-        ItemStack[] contents = target.getInventory().getContents();
-        int removed = clearMatching(contents, filter, max);
-        if (removed > 0) target.getInventory().setContents(contents);
-        if (target != sender) send(sender, Messages.UTILITY_CLEAR_OTHER,
-                "{count}", Integer.toString(removed), "{player}", target.getName());
-        send(target, Messages.UTILITY_CLEAR_SELF, "{count}", Integer.toString(removed));
-        UtilitySupport.audit(plugin, sender, "clearinventory",
-                "target=" + target.getName() + " item=" + Objects.toString(item, "*") + " max=" + max + " removed=" + removed);
+        UtilitySupport.onTarget(plugin, sender, target, () -> {
+            if (!UtilitySupport.guardInventoryNotBusy(plugin, sender, target)) return;
+            if (plugin.getModuleManager().getModule("moderation") instanceof ModerationModule moderation
+                    && moderation.isEnabled() && moderation.inspection().hasActiveMutableSession(target.getUniqueId(),
+                    codes.castled.allium.moderation.InspectionLayout.InspectionType.INVSEE)) {
+                send(sender, Messages.UTILITY_INVENTORY_BUSY, "{player}", target.getName());
+                return;
+            }
+            ItemStack[] contents = target.getInventory().getContents();
+            int removed = clearMatching(contents, filter, max);
+            if (removed > 0) target.getInventory().setContents(contents);
+            if (target != sender) send(sender, Messages.UTILITY_CLEAR_OTHER,
+                    "{count}", Integer.toString(removed), "{player}", target.getName());
+            send(target, Messages.UTILITY_CLEAR_SELF, "{count}", Integer.toString(removed));
+            UtilitySupport.audit(plugin, sender, "clearinventory",
+                    "target=" + target.getName() + " item=" + Objects.toString(item, "*") + " max=" + max + " removed=" + removed);
+        });
     }
 
     private static int clearMatching(ItemStack[] contents, Predicate<ItemStack> filter, int max) {

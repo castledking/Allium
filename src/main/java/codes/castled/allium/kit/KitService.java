@@ -17,6 +17,7 @@ import codes.castled.allium.mail.PlayerDataFiles;
 import codes.castled.allium.mail.PlayerDataReceiptProof;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.module.MailModule;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
@@ -53,7 +54,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -109,15 +112,15 @@ public final class KitService implements Listener {
     private volatile Map<String, KitDefinition> definitions = Map.of();
     private final Set<String> blockedPermissions = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Long> generations = new ConcurrentHashMap<>();
-    private final Map<Player, Long> connections = new IdentityHashMap<>();
+    private final Map<Player, Long> connections = Collections.synchronizedMap(new IdentityHashMap<>());
     private final AtomicLong generationCounter = new AtomicLong();
     private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
-    private final Set<Player> recovering = Collections.newSetFromMap(new IdentityHashMap<>());
-    private final Set<Player> recoveryBusy = Collections.newSetFromMap(new IdentityHashMap<>());
-    private final Set<Player> quarantined = Collections.newSetFromMap(new IdentityHashMap<>());
-    private final Map<Player, Integer> recoveryFailures = new IdentityHashMap<>();
+    private final Set<Player> recovering = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
+    private final Set<Player> recoveryBusy = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
+    private final Set<Player> quarantined = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
+    private final Map<Player, Integer> recoveryFailures = Collections.synchronizedMap(new IdentityHashMap<>());
     private TaskHandle recoveryTimer;
-    private boolean closed;
+    private volatile boolean closed;
 
     public KitService(PluginStart plugin, KitRepository repository, KitDefinitionLoader loader,
                       Supplier<ItemSpecParser> parser, Supplier<ItemLibrary> library,
@@ -156,13 +159,22 @@ public final class KitService implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         plugin.getServer().getPluginManager().registerEvents(locks, plugin);
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            joined(online);
+            onPlayerNow(online, () -> joined(online), () -> {});
         }
         recoveryTimer = plugin.getScheduler().repeatOnServer(() -> {
-            for (Player player : List.copyOf(recovering)) {
-                if (same(player) && !quarantined.contains(player) && !recoveryBusy.contains(player)) {
-                    joined(player);
-                }
+            List<Player> pending;
+            synchronized (recovering) {
+                pending = List.copyOf(recovering);
+            }
+            for (Player player : pending) {
+                onPlayer(player, () -> {
+                    if (same(player) && !quarantined.contains(player) && !recoveryBusy.contains(player)) {
+                        joined(player);
+                    }
+                }, () -> {
+                    recovering.remove(player);
+                    recoveryBusy.remove(player);
+                });
             }
             return true;
         }, 2_000L, 2_000L);
@@ -312,7 +324,7 @@ public final class KitService implements Listener {
             send(creator, Messages.KIT_FAILED);
             return;
         }
-        ensurePermission(name);
+        codes.castled.allium.command.essentials.UtilitySupport.onGlobal(plugin, () -> ensurePermission(name));
         Map<String, KitDefinition> next = new LinkedHashMap<>(definitions);
         next.put(name, definition);
         definitions = Map.copyOf(next);
@@ -448,13 +460,13 @@ public final class KitService implements Listener {
             present.run();
         } else {
             CompletableFuture.allOf(pendingSkulls.toArray(CompletableFuture[]::new))
-                    .whenCompleteAsync((ignored, error) -> {
+                    .whenComplete((ignored, error) -> onSender(sender, () -> {
                         if (error != null) {
                             send(sender, Messages.KIT_FAILED);
                             return;
                         }
                         present.run();
-                    }, plugin.getScheduler().serverExecutor());
+                    }));
         }
     }
 
@@ -499,7 +511,7 @@ public final class KitService implements Listener {
             return;
         }
         try {
-            names.resolve(targetArg).whenComplete((found, error) -> onServer(() -> {
+            names.resolve(targetArg).whenComplete((found, error) -> onSender(actor, () -> {
                 if (error != null) {
                     send(actor, Messages.KIT_FAILED);
                     return;
@@ -522,7 +534,7 @@ public final class KitService implements Listener {
             io.execute(() -> {
                 try {
                     boolean cleared = repository.resetUsage(targetId, kitName);
-                    onServer(() -> {
+                    onSender(actor, () -> {
                         if (!cleared) {
                             send(actor, Messages.KIT_RESET_NONE, "{name}", kitName, "{player}", targetName);
                         } else if (self) {
@@ -533,7 +545,7 @@ public final class KitService implements Listener {
                     });
                 } catch (SQLException e) {
                     plugin.logger().warning("Could not reset kit " + kitName + " for " + targetName + ": " + e.getMessage());
-                    onServer(() -> send(actor, Messages.KIT_FAILED));
+                    onSender(actor, () -> send(actor, Messages.KIT_FAILED));
                 }
             });
         } catch (RejectedExecutionException rejected) {
@@ -542,7 +554,7 @@ public final class KitService implements Listener {
     }
 
     public void claim(CommandSender actor, Player target, String rawName) {
-        claim(actor, target, rawName, null);
+        claim(actor, target, rawName, null, () -> true);
     }
 
     /**
@@ -552,14 +564,19 @@ public final class KitService implements Listener {
      * claiming free when {@code signPriceOverride} is zero).
      */
     public void claimFromSign(Player player, String rawName, @Nullable Money signPriceOverride) {
+        claimFromSign(player, rawName, signPriceOverride, () -> true);
+    }
+
+    /** Claims a kit from a {@code [Kit]} sign with an optional sign-price override and sign-validity recheck. */
+    public void claimFromSign(Player player, String rawName, @Nullable Money signPriceOverride, BooleanSupplier valid) {
         if (!player.hasPermission(PERMISSION_KIT)) {
             send(player, Messages.NO_PERMISSION);
             return;
         }
-        claim(player, player, rawName, signPriceOverride);
+        claim(player, player, rawName, signPriceOverride, valid == null ? () -> true : valid);
     }
 
-    private void claim(CommandSender actor, Player target, String rawName, @Nullable Money signPriceOverride) {
+    private void claim(CommandSender actor, Player target, String rawName, @Nullable Money signPriceOverride, BooleanSupplier valid) {
         if (!same(target)) {
             send(actor, Messages.PLAYER_NOT_FOUND, "{player}", target.getName());
             return;
@@ -604,7 +621,8 @@ public final class KitService implements Listener {
             send(actor, Messages.KIT_FAILED);
             return;
         }
-        if (busyOrLocked(target) || !emptyCursor(target)) {
+        boolean bypassCooldown = other || actor.hasPermission(PERMISSION_BYPASS_COOLDOWN);
+        if (busyOrLocked(target) || (!other && !emptyCursor(target))) {
             send(actor, Messages.KIT_BUSY);
             return;
         }
@@ -631,18 +649,28 @@ public final class KitService implements Listener {
             return;
         }
 
+        String targetName = target.getName();
+        Runnable missingTarget = () -> {
+            if (other) send(actor, Messages.PLAYER_NOT_FOUND, "{player}", targetName);
+        };
         if (pendingSkulls.isEmpty()) {
-            startDurableClaim(actor, target, other, def, materializeStacks(preparedItems));
+            List<ItemStack> stacks = materializeStacks(preparedItems);
+            onPlayerNow(target, () -> startDurableClaim(actor, target, other, bypassCooldown, def, stacks, valid), missingTarget);
         } else {
             CompletableFuture.allOf(pendingSkulls.toArray(CompletableFuture[]::new))
-                    .whenCompleteAsync((ignored, error) -> {
-                        if (!same(target)) return;
+                    .whenComplete((ignored, error) -> {
                         if (error != null) {
                             send(actor, Messages.KIT_FAILED);
                             return;
                         }
-                        startDurableClaim(actor, target, other, def, materializeStacks(preparedItems));
-                    }, plugin.getScheduler().serverExecutor());
+                        onPlayer(target, () -> {
+                            if (!same(target)) {
+                                missingTarget.run();
+                                return;
+                            }
+                            startDurableClaim(actor, target, other, bypassCooldown, def, materializeStacks(preparedItems), valid);
+                        }, missingTarget);
+                    });
         }
     }
 
@@ -662,8 +690,8 @@ public final class KitService implements Listener {
         return stacks;
     }
 
-    private void startDurableClaim(CommandSender actor, Player target, boolean other,
-                                   KitDefinition def, List<ItemStack> stacks) {
+    private void startDurableClaim(CommandSender actor, Player target, boolean other, boolean bypassCooldown,
+                                   KitDefinition def, List<ItemStack> stacks, BooleanSupplier valid) {
         if (!same(target)) {
             if (other) send(actor, Messages.PLAYER_NOT_FOUND, "{player}", target.getName());
             return;
@@ -676,7 +704,6 @@ public final class KitService implements Listener {
         long generation = generation(playerId);
         UUID deliveryId = UUID.randomUUID();
         UUID token = UUID.randomUUID();
-        boolean bypassCooldown = other || actor.hasPermission(PERMISSION_BYPASS_COOLDOWN);
         int totalItems = stacks.stream().mapToInt(ItemStack::getAmount).sum();
         String payload = String.join("\n", def.items());
         long now = System.currentTimeMillis();
@@ -694,21 +721,26 @@ public final class KitService implements Listener {
                 failIfArmed();
                 KitRepository.BeginOutcome outcome = beginClaim(record,def,baselineFile,baseline);
                 if (!(outcome instanceof KitRepository.BeginOutcome.Claiming claiming)) {
-                    onServer(() -> {
+                    Runnable finish = () -> {
                         finishInFlight(target, deliveryId);
                         reportRefusedBegin(actor, def.name(), outcome);
-                    });
+                    };
+                    onPlayer(target, finish, finish);
                     return;
                 }
                 if (FaultInjection.trip(FAULT_CLAIM_SLOW)) {
                     sleep(SLOW_MILLIS);
                 }
-                onServer(() -> deliverClaim(actor, target, other, generation, claiming.delivery(), stacks,def.paid()));
+                onPlayer(target, () -> deliverClaim(actor, target, other, generation, claiming.delivery(), stacks, def.paid(), valid),
+                        () -> releaseRetired(target, claiming.delivery().id(), claiming.delivery().claimToken(), baselineFile, baseline));
             } catch (SQLException e) {
                 plugin.logger().warning("Kit claim for " + target.getName() + " failed before delivery: " + e.getMessage());
-                onServer(() -> {
+                onPlayer(target, () -> {
                     finishInFlight(target, deliveryId);
                     deferRecovery(target);
+                    send(actor, Messages.KIT_FAILED);
+                }, () -> {
+                    finishInFlight(target, deliveryId);
                     send(actor, Messages.KIT_FAILED);
                 });
             }
@@ -760,11 +792,11 @@ public final class KitService implements Listener {
     }
 
     private void deliverClaim(CommandSender actor, Player target, boolean other, long generation,
-                              KitDeliveryRecord record, List<ItemStack> stacks,boolean paid) {
+                              KitDeliveryRecord record, List<ItemStack> stacks, boolean paid, BooleanSupplier valid) {
         if (FaultInjection.trip(FAULT_CLAIM_HALT_BEFORE)) {
             Runtime.getRuntime().halt(77);
         }
-        if (!same(target) || generation(target.getUniqueId()) != generation) {
+        if (!same(target) || generation(target.getUniqueId()) != generation || !valid.getAsBoolean()) {
             release(target, record.id(), record.claimToken());
             return;
         }
@@ -826,7 +858,7 @@ public final class KitService implements Listener {
                 PlayerDataReceiptProof.verify(playerFile, PlayerDataReceiptProof.KIT_RECEIPTS, expectedReceipt);
                 failIfArmed();
                 boolean finished = finishClaim(record.id(),record.claimToken(),System.currentTimeMillis(),playerFile,expectedReceipt);
-                onServer(() -> {
+                onPlayer(target, () -> {
                     finishInFlight(target, record.id());
                     if (!same(target) || generation(target.getUniqueId()) != generation) return;
                     if (!finished) {
@@ -838,33 +870,42 @@ public final class KitService implements Listener {
                     if (other) {
                         send(actor, Messages.KIT_GIVEN, "{name}", record.kitName(), "{player}", target.getName());
                     }
-                });
+                }, () -> finishInFlight(target, record.id()));
             } catch (IOException e) {
-                onServer(() -> {
+                onPlayer(target, () -> {
                     finishInFlight(target, record.id());
                     quarantine(target, "Kit claim " + record.id() + " has no confirmed saved delivery receipt", e);
-                });
+                }, () -> finishInFlight(target, record.id()));
             } catch (SQLException e) {
                 plugin.logger().warning("Kit claim " + record.id() + " awaits receipt recovery: " + e.getMessage());
-                onServer(() -> {
+                onPlayer(target, () -> {
                     finishInFlight(target, record.id());
                     deferRecovery(target);
-                });
+                }, () -> finishInFlight(target, record.id()));
             }
         }, true);
     }
 
     private void release(Player target, UUID deliveryId, UUID token) {
-        Path proofFile=playerFile(target);String proofReceipt=playerReceipt(target);
+        Path proofFile = playerFile(target);
+        String proofReceipt = playerReceipt(target);
+        releaseWithProof(target, deliveryId, token, proofFile, proofReceipt);
+    }
+
+    private void releaseRetired(Player target, UUID deliveryId, UUID token, Path proofFile, @Nullable String proofReceipt) {
+        releaseWithProof(target, deliveryId, token, proofFile, proofReceipt);
+    }
+
+    private void releaseWithProof(Player target, UUID deliveryId, UUID token, Path proofFile, @Nullable String proofReceipt) {
         submitCritical(target, deliveryId, () -> {
             try {
-                releaseClaim(deliveryId,token,proofFile,proofReceipt);
-                onServer(() -> finishInFlight(target, deliveryId));
+                releaseClaim(deliveryId, token, proofFile, proofReceipt);
+                onPlayer(target, () -> finishInFlight(target, deliveryId), () -> finishInFlight(target, deliveryId));
             } catch (SQLException e) {
-                onServer(() -> {
+                onPlayer(target, () -> {
                     finishInFlight(target, deliveryId);
                     deferRecovery(target);
-                });
+                }, () -> finishInFlight(target, deliveryId));
             }
         }, false);
     }
@@ -924,14 +965,14 @@ public final class KitService implements Listener {
                 }
                 List<KitDeliveryRecord> claiming = repository.claimingFor(player.getUniqueId(), serverId);
                 if(receipts.isEmpty())for(var row:claiming)if(repository.paid(row.id()))PaidWorkflowSupport.prove(savedFile,PlayerDataReceiptProof.KIT_RECEIPTS,expectedReceipt);
-                onServer(() -> recover(player, generation, receipts, claiming));
+                onPlayer(player, () -> recover(player, generation, receipts, claiming), () -> finishRecoveryRetired(player));
             } catch (IOException e) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     recoveryBusy.remove(player);
                     quarantine(player, "Kit recovery has no confirmed saved receipt for " + player.getUniqueId(), e);
-                });
+                }, () -> finishRecoveryRetired(player));
             } catch (SQLException e) {
-                onServer(() -> recoveryFailed(player, generation, e));
+                onPlayer(player, () -> recoveryFailed(player, generation, e), () -> finishRecoveryRetired(player));
             }
         });
     }
@@ -979,7 +1020,7 @@ public final class KitService implements Listener {
                 for (RecoveryStep step : steps) {
                     step.run();
                 }
-                onServer(() -> {
+                onPlayer(player, () -> {
                     if (!same(player) || generation(player.getUniqueId()) != generation) return;
                     if (!receipts.isEmpty()) {
                         removeReceipt(player, receipts::contains);
@@ -989,9 +1030,9 @@ public final class KitService implements Listener {
                     recoveryBusy.remove(player);
                     recoveryFailures.remove(player);
                     locks.unlock(player);
-                });
+                }, () -> finishRecoveryRetired(player));
             } catch (SQLException error) {
-                onServer(() -> recoveryFailed(player, generation, error));
+                onPlayer(player, () -> recoveryFailed(player, generation, error), () -> finishRecoveryRetired(player));
             }
         });
     }
@@ -1100,7 +1141,8 @@ public final class KitService implements Listener {
                 try {
                     task.run();
                 } catch (RuntimeException error) {
-                    onServer(() -> rejectedCritical(player, deliveryId, pendingProof, error));
+                    onPlayer(player, () -> rejectedCritical(player, deliveryId, pendingProof, error),
+                            () -> finishInFlight(player, deliveryId));
                 }
             });
         } catch (RejectedExecutionException error) {
@@ -1125,12 +1167,18 @@ public final class KitService implements Listener {
                 try {
                     task.run();
                 } catch (RuntimeException error) {
-                    onServer(() -> recoveryFailed(player, generation, error));
+                    onPlayer(player, () -> recoveryFailed(player, generation, error),
+                            () -> finishRecoveryRetired(player));
                 }
             });
         } catch (RejectedExecutionException error) {
             recoveryFailed(player, generation, error);
         }
+    }
+
+    private void finishRecoveryRetired(Player player) {
+        recoveryBusy.remove(player);
+        locks.unlock(player);
     }
 
     private String playerReceipt(Player player) {
@@ -1183,18 +1231,59 @@ public final class KitService implements Listener {
         }
     }
 
-    private void onServer(Runnable task) {
-        if (!closed) {
-            plugin.getScheduler().runOnServer(() -> {
-                if (!closed) task.run();
-            });
+    private void onPlayer(Player player, Runnable action, Runnable retired) {
+        if (closed) {
+            retired.run();
+            return;
+        }
+        var started = new AtomicBoolean();
+        Runnable unavailable = () -> {
+            if (started.compareAndSet(false, true)) retired.run();
+        };
+        try {
+            TaskHandle handle = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+                if (started.compareAndSet(false, true)) {
+                    if (!closed) action.run();
+                    else retired.run();
+                }
+            }, unavailable, 0L);
+            if (BukkitServerThread.isFolia() && handle == TaskHandle.NONE) unavailable.run();
+        } catch (RuntimeException failure) {
+            plugin.logger().warning("Kit could not schedule player work for " + player.getName() + ": " + failure.getMessage());
+            unavailable.run();
         }
     }
 
-    private void send(CommandSender to, Messages message, String... replacements) {
-        if (!(to instanceof Player p) || same(p)) {
-            plugin.getMessageManager().send(to, message, replacements);
+    private void onPlayerNow(Player player, Runnable action, Runnable retired) {
+        if (closed) {
+            retired.run();
+            return;
         }
+        if (!BukkitServerThread.isFolia() || BukkitServerThread.entity(plugin, player).isServerThread()) {
+            action.run();
+            return;
+        }
+        onPlayer(player, action, retired);
+    }
+
+    private void onSender(CommandSender sender, Runnable task) {
+        if (closed) return;
+        if (sender instanceof Player player) {
+            onPlayer(player, task, () -> {});
+            return;
+        }
+        plugin.getScheduler().runOnServer(() -> {
+            if (!closed) task.run();
+        });
+    }
+
+    private void send(CommandSender to, Messages message, String... replacements) {
+        if (closed) return;
+        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), to, () -> {
+            if (!closed && (!(to instanceof Player p) || same(p))) {
+                plugin.getMessageManager().send(to, message, replacements);
+            }
+        });
     }
 
     private static void sleep(long millis) {

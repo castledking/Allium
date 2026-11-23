@@ -1,5 +1,11 @@
 package codes.castled.allium.teleport;
 
+import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.ServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
+import codes.castled.allium.scheduler.TaskScheduler;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -16,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -24,6 +31,41 @@ import static org.mockito.Mockito.*;
 class DestinationSafetyTest {
 
     private final DestinationSafety safety = new DestinationSafety();
+
+    @Test
+    void regionalSafetyRejectsAHazardAcrossTheChunkBoundary() {
+        var terrain = new Terrain();
+        terrain.groundY = 63;
+        terrain.put(16, 64, 0, Material.LAVA);
+        var plugin = mock(PluginStart.class);
+        var scheduler = mock(TaskScheduler.class);
+        when(plugin.getScheduler()).thenReturn(scheduler);
+        var left = mock(ServerThread.class);
+        var right = mock(ServerThread.class);
+        var queued = new HashMap<ServerThread, Runnable>();
+        when(scheduler.runOn(any(), any(), any(), eq(0L))).thenAnswer(call -> {
+            queued.put(call.getArgument(0), call.getArgument(1));
+            return TaskHandle.NONE;
+        });
+        var loaded = CompletableFuture.completedFuture(mock(Chunk.class));
+        try (var platform = mockStatic(BukkitServerThread.class)) {
+            platform.when(() -> BukkitServerThread.region(plugin, terrain.world, 0, 0)).thenReturn(left);
+            platform.when(() -> BukkitServerThread.region(plugin, terrain.world, 1, 0)).thenReturn(right);
+            platform.when(() -> BukkitServerThread.loadRegionalChunk(terrain.world, 0, 0, false)).thenReturn(loaded);
+            platform.when(() -> BukkitServerThread.loadRegionalChunk(terrain.world, 1, 0, false)).thenReturn(loaded);
+            var point = terrain.at(15.9, 64, .5);
+            var checked = safety.resolveRegional(plugin, point, rules(false, 0, 0, true, true, false));
+            assertTrue(terrain.reads.isEmpty());
+            queued.remove(left).run();
+            assertFalse(checked.isDone());
+            assertTrue(terrain.reads.stream().allMatch(block -> block.x() == 15));
+            terrain.reads.clear();
+            queued.remove(right).run();
+            assertTrue(checked.join().destination().isEmpty());
+            assertFalse(checked.join().ungenerated());
+            assertTrue(terrain.reads.stream().allMatch(block -> block.x() == 16));
+        }
+    }
 
     @Test void enabledFlightAcceptsClearAirButStillRejectsLavaAndSuffocation(){
         Terrain terrain=new Terrain();Location air=terrain.at(.5,100,.5);var base=rules(false,0,0,true,true,false);

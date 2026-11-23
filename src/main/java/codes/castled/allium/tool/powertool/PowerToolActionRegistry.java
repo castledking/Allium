@@ -3,6 +3,7 @@ package codes.castled.allium.tool.powertool;
 import codes.castled.allium.item.ItemService;
 import codes.castled.allium.protection.ProtectionDecision;
 import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.text.TextFormatter;
@@ -92,7 +93,9 @@ public final class PowerToolActionRegistry {
         }
     }
 
-    private final Map<String, PowerToolActionHandler> handlers = new LinkedHashMap<>();
+    private final Map<String, PowerToolActionHandler> handlers = new ConcurrentHashMap<>();
+    @Nullable
+    private final org.bukkit.plugin.Plugin plugin;
     private final ItemService items;
     private final ProtectionService protection;
     private final TaskScheduler scheduler;
@@ -134,7 +137,20 @@ public final class PowerToolActionRegistry {
             LongSupplier clock,
             RandomGenerator random
     ) {
-        this(items, protection, scheduler, settings, diagnostics, clock, random, Bukkit::getPlayer);
+        this(null, items, protection, scheduler, settings, diagnostics, clock, random, Bukkit::getPlayer);
+    }
+
+    public PowerToolActionRegistry(
+            @Nullable org.bukkit.plugin.Plugin plugin,
+            ItemService items,
+            ProtectionService protection,
+            TaskScheduler scheduler,
+            Supplier<PowerToolSettings> settings,
+            Consumer<String> diagnostics,
+            LongSupplier clock,
+            RandomGenerator random
+    ) {
+        this(plugin, items, protection, scheduler, settings, diagnostics, clock, random, Bukkit::getPlayer);
     }
 
     public PowerToolActionRegistry(
@@ -147,6 +163,21 @@ public final class PowerToolActionRegistry {
             RandomGenerator random,
             Function<UUID, Player> players
     ) {
+        this(null, items, protection, scheduler, settings, diagnostics, clock, random, players);
+    }
+
+    public PowerToolActionRegistry(
+            @Nullable org.bukkit.plugin.Plugin plugin,
+            ItemService items,
+            ProtectionService protection,
+            TaskScheduler scheduler,
+            Supplier<PowerToolSettings> settings,
+            Consumer<String> diagnostics,
+            LongSupplier clock,
+            RandomGenerator random,
+            Function<UUID, Player> players
+    ) {
+        this.plugin = plugin;
         this.items = Objects.requireNonNull(items, "items");
         this.protection = Objects.requireNonNull(protection, "protection");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
@@ -235,8 +266,12 @@ public final class PowerToolActionRegistry {
                 diagnostics.accept("PowerTool '" + ctx.toolId() + "' blocked console command containing selector: " + command);
                 return false;
             }
-            ConsoleCommandSender console = Bukkit.getConsoleSender();
-            Bukkit.dispatchCommand(console, command);
+            if (BukkitServerThread.isFolia() && !scheduler.isServerThread()) {
+                scheduler.runOnServer(() -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command));
+            } else {
+                ConsoleCommandSender console = Bukkit.getConsoleSender();
+                Bukkit.dispatchCommand(console, command);
+            }
             return true;
         }
         return ctx.player().performCommand(command);
@@ -422,8 +457,32 @@ public final class PowerToolActionRegistry {
                 handleBox
         );
         activeFellJobs.put(player.getUniqueId(), job);
-        handleBox[0] = scheduler.repeatOnServer(() -> stepFellJob(job), 50L, 50L);
+        if (BukkitServerThread.isFolia() && plugin != null) {
+            scheduleFoliaFellStep(player, job);
+        } else {
+            handleBox[0] = scheduler.repeatOnServer(() -> stepFellJob(job), 50L, 50L);
+        }
         return true;
+    }
+
+    private void scheduleFoliaFellStep(Player player, ActiveFellJob job) {
+        TaskHandle handle = BukkitServerThread.runFor(plugin, scheduler, player, () -> {
+            if (activeFellJobs.get(job.playerId()) != job) {
+                return;
+            }
+            if (stepFellJob(job) && activeFellJobs.get(job.playerId()) == job) {
+                Player current = players.apply(job.playerId());
+                if (current != null && current.isOnline() && !current.isDead()) {
+                    scheduleFoliaFellStep(current, job);
+                } else {
+                    finishFellJob(job);
+                }
+            }
+        }, () -> finishFellJob(job), 50L);
+        job.handleBox()[0] = handle;
+        if (handle == TaskHandle.NONE) {
+            finishFellJob(job);
+        }
     }
 
     private boolean stepFellJob(ActiveFellJob job) {
@@ -460,6 +519,10 @@ public final class PowerToolActionRegistry {
             }
 
             TreeScanner.Pos pos = job.remainingLogs().remove(0);
+            if (BukkitServerThread.isFolia() && plugin != null
+                    && !BukkitServerThread.region(plugin, job.world(), pos.x() >> 4, pos.z() >> 4).isServerThread()) {
+                continue;
+            }
             Block block = job.world().getBlockAt(pos.x(), pos.y(), pos.z());
             if (block.getType().isAir()) {
                 continue;

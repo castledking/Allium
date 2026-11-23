@@ -55,9 +55,11 @@ public final class NukeCommand implements SpecCommandHandler {
         }
         List<String> names = new ArrayList<>();
         for (Player target : targets) {
-            drop(target);
-            UtilitySupport.send(plugin, target, Messages.NUKE_INCOMING);
             names.add(target.getName());
+            UtilitySupport.onTarget(plugin, sender, target, () -> {
+                drop(target);
+                UtilitySupport.send(plugin, target, Messages.NUKE_INCOMING);
+            });
         }
         if (!(targets.size() == 1 && targets.contains(sender)) && !names.isEmpty()) {
             UtilitySupport.send(plugin, sender, Messages.NUKE_SENT, "{players}", String.join(", ", names));
@@ -71,10 +73,16 @@ public final class NukeCommand implements SpecCommandHandler {
         World world = at.getWorld();
         if (world == null) return;
         int y = world.getHighestBlockYAt(at) + 64;
+        int baseX = at.getBlockX();
+        int baseZ = at.getBlockZ();
         for (int x = -10; x <= 10; x += 5) {
             for (int z = -10; z <= 10; z += 5) {
-                TNTPrimed tnt = world.spawn(new Location(world, at.getBlockX() + x + 0.5D, y, at.getBlockZ() + z + 0.5D), TNTPrimed.class);
-                regeneration.tag(tnt, Explosive.NUKE);
+                int bx = baseX + x;
+                int bz = baseZ + z;
+                UtilitySupport.onRegion(plugin, world, bx >> 4, bz >> 4, () -> {
+                    TNTPrimed tnt = world.spawn(new Location(world, bx + 0.5D, y, bz + 0.5D), TNTPrimed.class);
+                    regeneration.tag(tnt, Explosive.NUKE);
+                });
             }
         }
     }

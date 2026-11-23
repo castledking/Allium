@@ -5,6 +5,10 @@ import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.*;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -14,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 public final class RemoveCommand implements SpecCommandHandler {
@@ -89,26 +94,93 @@ public final class RemoveCommand implements SpecCommandHandler {
             UtilitySupport.send(plugin, sender, Messages.NO_PERMISSION, "{cmd}", "remove across a world");
             return;
         }
-        Location center = radius > 0 ? player.getLocation() : null;
-        int removed = 0;
+        Location center = radius > 0 ? player.getLocation().clone() : null;
         var protection = plugin.getProtectionService();
+        if (BukkitServerThread.isFolia() && plugin.getScheduler() != null) {
+            removeRegional(sender, player, world, center, radius, args[0], groups, filters, protection);
+            return;
+        }
+        int removed = 0;
         for (var chunk : world.getLoadedChunks()) {
-            if (center != null && (Math.abs(chunk.getX() - (center.getBlockX() >> 4)) > (radius >> 4) + 1
-                    || Math.abs(chunk.getZ() - (center.getBlockZ() >> 4)) > (radius >> 4) + 1)) continue;
-            for (Entity entity : chunk.getEntities()) {
-                if (entity instanceof HumanEntity || entity.hasMetadata("NPC")
-                        || center != null && center.distanceSquared(entity.getLocation()) > (double) radius * radius
-                        || entity instanceof Tameable pet && pet.isTamed() && !groups.contains("tamed")
-                        || entity.getCustomName() != null && !groups.contains("named")
-                        || filters.stream().noneMatch(test -> test.test(entity))) continue;
-                if (player != null && protection != null
-                        && !protection.checkEntityInteraction(player, entity, "remove", null).allowed()) continue;
-                entity.remove();
-                removed++;
+            if (!chunkInRange(chunk.getX(), chunk.getZ(), center, radius)) continue;
+            removed += removeInChunk(chunk, player, center, radius, groups, filters, protection);
+        }
+        finishRemoval(sender, world, args[0], radius, removed);
+    }
+
+    private void removeRegional(CommandSender sender, Player player, World world, Location center, int radius,
+                                String rawGroups, List<String> groups, List<Predicate<Entity>> filters,
+                                ProtectionService protection) {
+        List<int[]> chunks = new ArrayList<>();
+        for (Chunk chunk : world.getLoadedChunks()) {
+            if (chunkInRange(chunk.getX(), chunk.getZ(), center, radius)) {
+                chunks.add(new int[]{chunk.getX(), chunk.getZ()});
             }
         }
+        if (chunks.isEmpty()) {
+            finishRemoval(sender, world, rawGroups, radius, 0);
+            return;
+        }
+        AtomicInteger removed = new AtomicInteger();
+        AtomicInteger remaining = new AtomicInteger(chunks.size() + 1);
+        Runnable finish = () -> {
+            if (remaining.decrementAndGet() == 0) {
+                finishRemoval(sender, world, rawGroups, radius, removed.get());
+            }
+        };
+        for (int[] coords : chunks) {
+            int cx = coords[0];
+            int cz = coords[1];
+            Runnable step = () -> {
+                try {
+                    if (world.isChunkLoaded(cx, cz)) {
+                        removed.addAndGet(removeInChunk(world.getChunkAt(cx, cz), player, center, radius, groups, filters, protection));
+                    }
+                } finally {
+                    finish.run();
+                }
+            };
+            var region = BukkitServerThread.region(plugin, world, cx, cz);
+            if (region.isServerThread()) {
+                step.run();
+            } else {
+                TaskHandle handle = plugin.getScheduler().runOn(region, step, finish, 0L);
+                if (handle == TaskHandle.NONE) {
+                    finish.run();
+                }
+            }
+        }
+        finish.run();
+    }
+
+    private static boolean chunkInRange(int cx, int cz, Location center, int radius) {
+        if (center == null) return true;
+        int chunkRadius = (radius >> 4) + 1;
+        return Math.abs(cx - (center.getBlockX() >> 4)) <= chunkRadius
+                && Math.abs(cz - (center.getBlockZ() >> 4)) <= chunkRadius;
+    }
+
+    private static int removeInChunk(Chunk chunk, Player player, Location center, int radius,
+                                     List<String> groups, List<Predicate<Entity>> filters,
+                                     ProtectionService protection) {
+        int removed = 0;
+        for (Entity entity : chunk.getEntities()) {
+            if (entity instanceof HumanEntity || entity.hasMetadata("NPC")
+                    || center != null && center.distanceSquared(entity.getLocation()) > (double) radius * radius
+                    || entity instanceof Tameable pet && pet.isTamed() && !groups.contains("tamed")
+                    || entity.getCustomName() != null && !groups.contains("named")
+                    || filters.stream().noneMatch(test -> test.test(entity))) continue;
+            if (player != null && protection != null
+                    && !protection.checkEntityInteraction(player, entity, "remove", null).allowed()) continue;
+            entity.remove();
+            removed++;
+        }
+        return removed;
+    }
+
+    private void finishRemoval(CommandSender sender, World world, String rawGroups, int radius, int removed) {
         UtilitySupport.send(plugin, sender, Messages.REMOVE_COUNT, "{count}", Integer.toString(removed));
-        UtilitySupport.audit(plugin, sender, "remove", "world=" + world.getName() + " groups=" + args[0]
+        UtilitySupport.audit(plugin, sender, "remove", "world=" + world.getName() + " groups=" + rawGroups
                 + " radius=" + radius + " removed=" + removed);
     }
 

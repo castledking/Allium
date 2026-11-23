@@ -1,9 +1,11 @@
 package codes.castled.allium.alts;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.naming.NameCache;
 import codes.castled.allium.naming.PlayerNameRepository;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -155,11 +157,16 @@ public final class AltService implements Listener {
                 // group can be assigned, since nothing else marks the account.
                 if (current.notifyStaff() && assignment != Assignment.ALREADY) {
                     String accounts = linked.isEmpty() ? "?" : String.join(", ", linked);
+                    String targetName = player.getName();
+                    String group = current.group();
                     for (Player staff : plugin.getServer().getOnlinePlayers()) {
-                        if (staff.hasPermission(PERMISSION_ALERTS) && staff != player) {
-                            plugin.getMessageManager().send(staff, Messages.ALTS_DETECTED, "{player}", player.getName(),
-                                    "{accounts}", accounts, "{group}", current.group());
-                        }
+                        if (staff == player) continue;
+                        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), staff, () -> {
+                            if (!closed && staff.isOnline() && staff.hasPermission(PERMISSION_ALERTS)) {
+                                plugin.getMessageManager().send(staff, Messages.ALTS_DETECTED, "{player}", targetName,
+                                        "{accounts}", accounts, "{group}", group);
+                            }
+                        });
                     }
                 }
             });

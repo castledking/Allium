@@ -130,12 +130,14 @@ final class Planting implements Listener {
         return true;
     }
 
-    private static boolean water(Block soil) {
+    private boolean water(Block soil) {
         if (soil.getBlockData() instanceof Farmland farmland) return farmland.getMoisture() > 0;
         for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++) {
+            int bx = soil.getX() + x, bz = soil.getZ() + z;
+            World w = soil.getWorld();
+            if (!plugin.connection().ownsRegion(w, bx >> 4, bz >> 4) || !w.isChunkLoaded(bx >> 4, bz >> 4)) continue;
             Block block = soil.getRelative(x, 0, z);
-            if (block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)
-                    && (block.getType() == Material.WATER || block.getRelative(BlockFace.UP).getType() == Material.WATER)) return true;
+            if (block.getType() == Material.WATER || block.getRelative(BlockFace.UP).getType() == Material.WATER) return true;
         }
         return false;
     }
@@ -156,7 +158,9 @@ final class Planting implements Listener {
         if (attack != null && attack.getTimestamp() > planted.lastAttack) {
             planted.lastAttack = attack.getTimestamp();
             Player player = attack.getPlayer().getPlayer();
-            if (player != null) harvest(player, planted, true, null);
+            if (player != null && (!plugin.connection().isFolia() || plugin.connection().ownsEntity(player))) {
+                harvest(player, planted, true, null);
+            }
             if (!planted.hitbox.isValid()) return;
         }
         Block soil = planted.cell().getRelative(BlockFace.DOWN);

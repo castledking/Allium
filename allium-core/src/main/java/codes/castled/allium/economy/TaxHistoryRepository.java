@@ -12,7 +12,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-/** SQLite persistence for {@code /tax impose}, {@code /tax history} and {@code /tax refund}. */
+/** Persistence for {@code /tax impose}, {@code /tax history} and {@code /tax refund}. */
 public final class TaxHistoryRepository {
 
     public record AccountBalance(UUID accountUuid, Money available) {}

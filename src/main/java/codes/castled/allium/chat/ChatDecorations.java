@@ -17,21 +17,21 @@ public final class ChatDecorations {
     public record Value(String prefix,String suffix,String group,List<Integer> colors){public static final Value EMPTY=new Value("","","default",List.of());}
     private final PluginStart plugin;
     private static final Pattern UNRESOLVED = Pattern.compile("%[a-zA-Z][a-zA-Z0-9]*_[^%\\r\\n]+%");
-    private boolean resolving;
+    private final ThreadLocal<Boolean> resolving = ThreadLocal.withInitial(() -> Boolean.FALSE);
     public ChatDecorations(PluginStart plugin){this.plugin=plugin;}
     public Value query(Player player){
         var metadata=PlayerMeta.of(plugin,player);
         String prefix=metadata.prefix(),suffix=metadata.suffix(),group=metadata.group().isEmpty()?"default":metadata.group();
         List<Integer> colors=List.of();
-        if(resolving)return new Value(prefix,suffix,group,colors);
+        if(Boolean.TRUE.equals(resolving.get()))return new Value(prefix,suffix,group,colors);
         try{
-            resolving=true;
+            resolving.set(Boolean.TRUE);
             if(plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")){
                 if(prefix.isEmpty())prefix=Papi.value(player,"%luckperms_prefix%");
                 if(suffix.isEmpty())suffix=Papi.value(player,"%luckperms_suffix%");
                 if(plugin.getConfig().getBoolean("nickname.gradientplus-enabled",true))colors=palette(Papi.value(player,"%gradient_displayname%"));
             }
-        }catch(LinkageError|RuntimeException ignored){}finally{resolving=false;}
+        }catch(LinkageError|RuntimeException ignored){}finally{resolving.set(Boolean.FALSE);}
         return new Value(prefix,suffix,group,colors);
     }
     public static List<Integer> palette(String rendered){

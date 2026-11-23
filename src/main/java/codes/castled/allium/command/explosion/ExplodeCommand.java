@@ -11,6 +11,7 @@ import codes.castled.allium.explosion.ExplosionSettings.Explosive;
 import codes.castled.allium.explosion.RegenerationService;
 import codes.castled.allium.message.MessageManager;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.tool.BukkitParticles;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -103,13 +104,18 @@ public final class ExplodeCommand implements SpecCommandHandler {
                 return;
             }
         }
-        launch(target, power, settings.explodeIncendiary());
-        if (target == sender) {
-            UtilitySupport.send(plugin, sender, Messages.EXPLODE_SELF, "{power}", Integer.toString(power));
-        } else {
-            UtilitySupport.send(plugin, sender, Messages.EXPLODE_OTHER, "{player}", target.getName(), "{power}", Integer.toString(power));
-        }
-        UtilitySupport.audit(plugin, sender, "explode", "target=" + target.getName() + " power=" + power);
+        int chosenPower = power;
+        boolean incendiary = settings.explodeIncendiary();
+        String targetName = target.getName();
+        UtilitySupport.onTarget(plugin, sender, target, () -> {
+            launch(target, chosenPower, incendiary);
+            if (target == sender) {
+                UtilitySupport.send(plugin, sender, Messages.EXPLODE_SELF, "{power}", Integer.toString(chosenPower));
+            } else {
+                UtilitySupport.send(plugin, sender, Messages.EXPLODE_OTHER, "{player}", target.getName(), "{power}", Integer.toString(chosenPower));
+            }
+            UtilitySupport.audit(plugin, sender, "explode", "target=" + target.getName() + " power=" + chosenPower);
+        }, () -> UtilitySupport.send(plugin, sender, Messages.PLAYER_NOT_FOUND, "{player}", targetName));
     }
 
     private void launch(Player target, int power, boolean incendiary) {
@@ -168,9 +174,11 @@ public final class ExplodeCommand implements SpecCommandHandler {
         }
         if (power >= 101) {
             double baseY = at.getY();
+            int centerChunkX = ((int) Math.floor(x)) >> 4;
+            int centerChunkZ = ((int) Math.floor(z)) >> 4;
             for (int i = 0; i < 15; i++) {
                 int height = i;
-                plugin.getScheduler().runOnServerLater(() -> {
+                scheduleRegionLater(world, centerChunkX, centerChunkZ, () -> {
                     double spiral = Math.max(0.5D, 7.0D - height * 0.4D);
                     for (int degrees = 0; degrees < 360; degrees += 15) {
                         double angle = Math.toRadians(degrees);
@@ -183,7 +191,7 @@ public final class ExplodeCommand implements SpecCommandHandler {
             int shockwave = 10 + (power - 100) / 3;
             for (int r = 1; r <= shockwave; r++) {
                 int ring = r;
-                plugin.getScheduler().runOnServerLater(() -> {
+                scheduleRegionLater(world, centerChunkX, centerChunkZ, () -> {
                     for (int degrees = 0; degrees < 360; degrees += 10) {
                         double angle = Math.toRadians(degrees);
                         particle(world, "cloud", new Location(world, x + ring * Math.cos(angle), baseY, z + ring * Math.sin(angle)),
@@ -194,10 +202,21 @@ public final class ExplodeCommand implements SpecCommandHandler {
             world.playSound(at, "minecraft:entity.generic.explode", 2.0F, 0.3F);
             world.playSound(at, "minecraft:entity.wither.spawn", 1.0F, 0.4F);
             world.playSound(at, "minecraft:entity.ender_dragon.growl", 1.0F, 0.5F);
+            String victimName = target.getName();
             for (Player online : plugin.getServer().getOnlinePlayers()) {
-                title(online, Messages.EXPLODE_TITLE_CATACLYSM, target.getName());
-                online.playSound(online.getLocation(), "minecraft:ambient.cave", 1.0F, 0.5F);
+                UtilitySupport.onOwner(plugin, online, () -> {
+                    title(online, Messages.EXPLODE_TITLE_CATACLYSM, victimName);
+                    online.playSound(online.getLocation(), "minecraft:ambient.cave", 1.0F, 0.5F);
+                });
             }
+        }
+    }
+
+    private void scheduleRegionLater(World world, int chunkX, int chunkZ, Runnable action, long delayMillis) {
+        if (BukkitServerThread.isFolia()) {
+            plugin.getScheduler().runOn(BukkitServerThread.region(plugin, world, chunkX, chunkZ), action, () -> {}, delayMillis);
+        } else {
+            plugin.getScheduler().runOnServerLater(action, delayMillis);
         }
     }
 

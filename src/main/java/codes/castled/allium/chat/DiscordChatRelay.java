@@ -83,10 +83,25 @@ public final class DiscordChatRelay implements ChatRelay {
         }
     }
     private void link(ChatHistory.Message message,Runnable remove){
-        if(message.deleted().get()){remove.run();return;}if(closed)return;
-        linked.put(message.id(),remove);while(linked.size()>4096)linked.remove(linked.keySet().iterator().next());
+        boolean deleteNow=false;
+        synchronized(linked){
+            if(message.deleted().get()){deleteNow=true;}
+            else if(!closed){
+                linked.put(message.id(),remove);
+                while(linked.size()>4096)linked.remove(linked.keySet().iterator().next());
+            }
+        }
+        if(deleteNow)remove.run();
     }
-    @Override public void delete(String id){Runnable action=linked.remove(id);if(action!=null)action.run();}
+    @Override public void delete(String id){
+        Runnable action;
+        synchronized(linked){action=linked.remove(id);}
+        if(action!=null)action.run();
+    }
     private void failed(String id){plugin.logger().warning("Discord chat relay operation unavailable for "+id+"; no automatic resend.");}
-    @Override public void close(){closed=true;backend.unsubscribe(this);var jda=backend.jda();if(jda!=null)jda.removeEventListener(deletes);linked.clear();}
+    @Override public void close(){
+        closed=true;backend.unsubscribe(this);
+        var jda=backend.jda();if(jda!=null)jda.removeEventListener(deletes);
+        synchronized(linked){linked.clear();}
+    }
 }

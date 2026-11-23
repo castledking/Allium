@@ -1,6 +1,7 @@
 package codes.castled.allium.command.creative;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
@@ -143,13 +144,14 @@ public final class CreativeManageCommand implements SpecCommandHandler {
             send(sender, Messages.PLAYER_NOT_FOUND, "{player}", name);
             return;
         }
-        plugin.getPlayerNames().resolve(name).whenComplete((found, error) -> plugin.getScheduler().runOnServer(() -> {
+        plugin.getPlayerNames().resolve(name).whenComplete((found, error) -> BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, () -> {
+            if (sender instanceof Player viewer && !viewer.isOnline()) return;
             if (error != null || found == null || found.isEmpty()) {
                 send(sender, Messages.PLAYER_NOT_FOUND, "{player}", name);
             } else {
                 then.accept(CreativeHolder.player(found.get().uuid(), found.get().name()));
             }
-        }));
+        }, () -> {}, 0L));
     }
 
     private void act(CommandSender sender, CreativeHolder holder, String action, CreativeFlag flag) {
@@ -159,7 +161,7 @@ public final class CreativeManageCommand implements SpecCommandHandler {
                     menus.openFlags(viewer, holder, null, 0);
                 }
             }
-            case "list" -> access.read(holder, (values, error) -> {
+            case "list" -> access.read(sender, holder, (values, error) -> {
                 if (error != null) {
                     failed(sender, holder, error);
                     return;
@@ -173,7 +175,7 @@ public final class CreativeManageCommand implements SpecCommandHandler {
                             "{flags}", String.join(", ", shown));
                 }
             });
-            case "check" -> access.read(holder, (values, error) -> {
+            case "check" -> access.read(sender, holder, (values, error) -> {
                 if (error != null) {
                     failed(sender, holder, error);
                     return;
@@ -209,7 +211,7 @@ public final class CreativeManageCommand implements SpecCommandHandler {
             send(sender, Messages.CREATIVE_MANAGE_UNAVAILABLE);
             return;
         }
-        access.read(holder, (values, error) -> {
+        access.read(sender, holder, (values, error) -> {
             if (error != null) {
                 failed(sender, holder, error);
                 return;

@@ -1,6 +1,8 @@
 package codes.castled.allium.restore;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.gui.GuiIcons;
 import codes.castled.allium.item.library.SkullProfiles;
 import codes.castled.allium.mail.MailItemCodec;
@@ -57,6 +59,7 @@ public final class RestoreMenus implements Listener {
     private final PluginStart plugin;
     private final RestoreService restore;
     private final Supplier<SkullProfiles> skulls;
+    private volatile boolean closed;
 
     public RestoreMenus(PluginStart plugin, RestoreService restore) {
         this(plugin, restore, () -> null);
@@ -74,10 +77,14 @@ public final class RestoreMenus implements Listener {
     }
 
     public void disable() {
+        closed = true;
         HandlerList.unregisterAll(this);
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            InventoryHolder holder = online.getOpenInventory().getTopInventory().getHolder();
-            if (holder instanceof Menu) online.closeInventory();
+            if (!plugin.isEnabled() && BukkitServerThread.isFolia()) break;
+            UtilitySupport.onOwner(plugin, online, () -> {
+                InventoryHolder holder = online.getOpenInventory().getTopInventory().getHolder();
+                if (holder instanceof Menu) online.closeInventory();
+            });
         }
     }
 
@@ -161,10 +168,10 @@ public final class RestoreMenus implements Listener {
                 total = restore.repository().count(target);
                 shown = restore.repository().page(target, page * PAGE_SIZE, PAGE_SIZE);
             } catch (SQLException e) {
-                plugin.getScheduler().runOnServer(() -> plugin.getMessageManager().send(viewer, Messages.RESTORE_FAILED));
+                nextTick(viewer, () -> plugin.getMessageManager().send(viewer, Messages.RESTORE_FAILED));
                 return;
             }
-            plugin.getScheduler().runOnServer(() -> {
+            nextTick(viewer, () -> {
                 if (!viewer.isOnline()) return;
                 if (total == 0) {
                     plugin.getMessageManager().send(viewer, Messages.RESTORE_EMPTY, "{player}", targetName);
@@ -245,7 +252,7 @@ public final class RestoreMenus implements Listener {
         inventory.setItem(INFO, named(Material.PAPER, "§e" + snapshot.reason(), info));
         inventory.setItem(BACK, named(Material.ARROW, "§cBack", List.of("§7Return to the history", "§8Discards panel edits")));
         viewer.openInventory(inventory);
-        if (!own) paintTargetSkin(session, list.targetName);
+        if (!own) paintTargetSkin(viewer, session, list.targetName);
     }
 
     /**
@@ -253,7 +260,7 @@ public final class RestoreMenus implements Listener {
      * an online target, otherwise after a cached, rate-limited lookup off the server thread. The panel
      * opens with the plain head and keeps it when no skin can be found.
      */
-    private void paintTargetSkin(SessionMenu session, String targetName) {
+    private void paintTargetSkin(Player viewer, SessionMenu session, String targetName) {
         SkullProfiles profiles = skulls.get();
         if (profiles == null) return;
         java.util.concurrent.CompletableFuture<SkullProfiles.Resolved> lookup;
@@ -262,7 +269,7 @@ public final class RestoreMenus implements Listener {
         } catch (RuntimeException invalidName) {
             return;
         }
-        lookup.whenComplete((resolved, error) -> plugin.getScheduler().runOnServer(() -> {
+        lookup.whenComplete((resolved, error) -> nextTick(viewer, () -> {
             if (error != null || resolved == null || resolved.degraded() || session.inventory == null) return;
             ItemStack head = session.inventory.getItem(EVERYTHING);
             if (head == null || head.getType() != Material.PLAYER_HEAD || !(head.getItemMeta() instanceof SkullMeta meta)) return;
@@ -301,7 +308,7 @@ public final class RestoreMenus implements Listener {
         if (holder instanceof ListMenu list) {
             event.setCancelled(true);
             if (!inTop) return;
-            if (raw < list.shown.size()) openSession(viewer, list, list.shown.get(raw));
+            if (raw < list.shown.size()) menuAction(viewer, list, () -> openSession(viewer, list, list.shown.get(raw)));
             else if (raw == 45 && list.page > 0) open(viewer, list.target, list.targetName, list.page - 1);
             else if (raw == 53 && (list.page + 1) * PAGE_SIZE < list.total) open(viewer, list.target, list.targetName, list.page + 1);
             return;
@@ -310,18 +317,18 @@ public final class RestoreMenus implements Listener {
             boolean mainHand = raw == MAIN_HAND && InspectionLayout.validHeld(session.held);
             if (inTop && (raw >= 41 && !mainHand || raw == InspectionLayout.heldMarkerGuiSlot(InspectionLayout.InspectionType.INVSEE, session.held))) {
                 event.setCancelled(true);
-                if (raw >= 45) control(viewer, session, raw);
+                if (raw >= 45) menuAction(viewer, session, () -> control(viewer, session, raw));
                 return;
             }
             contentClick(event, viewer, session.editable, inTop, raw, event.getView().getTopInventory(), STORAGE_CELLS,
                     InspectionLayout.heldMarkerGuiSlot(InspectionLayout.InspectionType.INVSEE, session.held));
-            if (inTop) plugin.getScheduler().runOnServer(() -> paintIcons(session.inventory, session.held));
+            if (inTop) nextTick(viewer, () -> paintIcons(session.inventory, session.held));
             return;
         }
         if (holder instanceof EnderMenu ender) {
             if (inTop && raw >= 27) {
                 event.setCancelled(true);
-                enderControl(viewer, ender, raw);
+                menuAction(viewer, ender, () -> enderControl(viewer, ender, raw));
                 return;
             }
             contentClick(event, viewer, ender.session.editable, inTop, raw, event.getView().getTopInventory(), 27, -1);
@@ -365,7 +372,7 @@ public final class RestoreMenus implements Listener {
                 rest.setAmount(remaining);
                 from.setItem(slot, rest);
             }
-            plugin.getScheduler().runOnServer(viewer::updateInventory);
+            nextTick(viewer, viewer::updateInventory);
             return;
         }
         if (inTop && GuiIcons.isIcon(top.getItem(raw))) {
@@ -417,7 +424,7 @@ public final class RestoreMenus implements Listener {
                 if (!session.editable) return;
                 RestoreService.Contents edited = contents(session);
                 restore.save(restore.manual(snapshot, edited, viewer.getName())).whenComplete((ok, error) ->
-                        plugin.getScheduler().runOnServer(() -> plugin.getMessageManager().send(viewer,
+                        nextTick(viewer, () -> plugin.getMessageManager().send(viewer,
                                 error == null ? Messages.RESTORE_SAVED : Messages.RESTORE_FAILED, "{player}", session.targetName)));
             }
             case INVENTORY_ONLY -> restoreToOwner(viewer, session, EnumSet.of(RestoreService.Part.INVENTORY));
@@ -430,8 +437,15 @@ public final class RestoreMenus implements Listener {
                     return;
                 }
                 viewer.closeInventory();
-                viewer.teleport(new Location(world, snapshot.x(), snapshot.y(), snapshot.z(), snapshot.yaw(), snapshot.pitch()));
-                plugin.getMessageManager().send(viewer, Messages.RESTORE_TELEPORTED);
+                Location destination = new Location(world, snapshot.x(), snapshot.y(), snapshot.z(), snapshot.yaw(), snapshot.pitch());
+                if (BukkitServerThread.isFolia()) {
+                    BukkitServerThread.teleportRegional(viewer, destination, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN)
+                            .whenComplete((moved, error) -> nextTick(viewer, () -> plugin.getMessageManager().send(viewer,
+                                    error == null && Boolean.TRUE.equals(moved) ? Messages.RESTORE_TELEPORTED : Messages.RESTORE_FAILED)));
+                } else {
+                    viewer.teleport(destination);
+                    plugin.getMessageManager().send(viewer, Messages.RESTORE_TELEPORTED);
+                }
             }
             case ENDER -> openEnder(viewer, session);
             case BACK -> open(viewer, session.back.target, session.back.targetName, session.back.page);
@@ -481,7 +495,7 @@ public final class RestoreMenus implements Listener {
         Player online = plugin.getServer().getPlayer(target);
         if (online == null) {
             SnapshotRepository.Snapshot frozen = restore.manual(session.snapshot, contents, viewer.getName());
-            restore.queue(target, frozen, parts, viewer.getName()).whenComplete((ok, error) -> plugin.getScheduler().runOnServer(() -> {
+            restore.queue(target, frozen, parts, viewer.getName()).whenComplete((ok, error) -> nextTick(viewer, () -> {
                 plugin.getMessageManager().send(viewer, error == null ? Messages.RESTORE_QUEUED : Messages.RESTORE_FAILED,
                         "{player}", targetName, "{parts}", described);
                 if (error == null) plugin.logger().info("[RestoreAudit] " + viewer.getName() + " queued a restore of " + described
@@ -489,20 +503,39 @@ public final class RestoreMenus implements Listener {
             }));
             return;
         }
-        if (online == viewer) {
-            // The viewer's own inventory is about to be replaced: close the panel first.
-            viewer.closeInventory();
+        UtilitySupport.onTarget(plugin, viewer, online, () -> {
+            if (closed) return;
+            if (online == viewer) {
+                // The viewer's own inventory is about to be replaced: close the panel first.
+                viewer.closeInventory();
+            }
+            if (!restore.apply(online, contents, parts)) {
+                UtilitySupport.send(plugin, viewer, Messages.RESTORE_BUSY, "{player}", online.getName());
+                return;
+            }
+            plugin.getMessageManager().send(online, Messages.RESTORE_APPLIED, "{parts}", described, "{reason}", session.snapshot.reason(),
+                    "{time}", RestoreService.formatTime(session.snapshot.createdAt()));
+            if (online != viewer) UtilitySupport.send(plugin, viewer, Messages.RESTORE_APPLIED_OTHER, "{player}", online.getName(),
+                    "{parts}", described);
+            plugin.logger().info("[RestoreAudit] " + viewer.getName() + " restored " + described + " to " + online.getName()
+                    + " from snapshot " + session.snapshot.id() + " (" + session.snapshot.reason() + ")");
+        }, () -> UtilitySupport.send(plugin, viewer, Messages.PLAYER_NOT_FOUND, "{player}", targetName));
+    }
+
+    private void nextTick(Player viewer, Runnable action) {
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), viewer, () -> {
+            if (!closed && viewer.isOnline()) action.run();
+        }, () -> {}, 0L);
+    }
+
+    private void menuAction(Player viewer, Menu menu, Runnable action) {
+        if (BukkitServerThread.isFolia()) {
+            nextTick(viewer, () -> {
+                if (viewer.getOpenInventory().getTopInventory() == menu.getInventory()) action.run();
+            });
+        } else {
+            action.run();
         }
-        if (!restore.apply(online, contents, parts)) {
-            plugin.getMessageManager().send(viewer, Messages.RESTORE_BUSY, "{player}", online.getName());
-            return;
-        }
-        plugin.getMessageManager().send(online, Messages.RESTORE_APPLIED, "{parts}", described, "{reason}", session.snapshot.reason(),
-                "{time}", RestoreService.formatTime(session.snapshot.createdAt()));
-        if (online != viewer) plugin.getMessageManager().send(viewer, Messages.RESTORE_APPLIED_OTHER, "{player}", online.getName(),
-                "{parts}", described);
-        plugin.logger().info("[RestoreAudit] " + viewer.getName() + " restored " + described + " to " + online.getName()
-                + " from snapshot " + session.snapshot.id() + " (" + session.snapshot.reason() + ")");
     }
 
     // -- Helpers -----------------------------------------------------------------------------------

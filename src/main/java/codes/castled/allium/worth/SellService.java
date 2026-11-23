@@ -1,6 +1,8 @@
 package codes.castled.allium.worth;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.economy.EconomyRequest;
@@ -33,13 +35,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.zip.GZIPInputStream;
@@ -91,9 +91,9 @@ public final class SellService implements Listener {
     private final Executor io;
     private final Path playerData;
     private final MailItemCodec codec = new MailItemCodec();
-    /** Players with a sale or a recovery in flight: one at a time. Server thread only. */
-    private final Set<UUID> busy = new HashSet<>();
-    private final Map<UUID, Pending> confirmations = new HashMap<>();
+    /** One sale or recovery in flight per account, tied to the connection that started it. */
+    private final Map<UUID, Player> busy = new ConcurrentHashMap<>();
+    private final Map<UUID, Pending> confirmations = new ConcurrentHashMap<>();
     private volatile boolean closed;
 
     public SellService(PluginStart plugin, WorthService worth) {
@@ -110,7 +110,9 @@ public final class SellService implements Listener {
     public void enable() {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            recover(online);
+            UtilitySupport.onOwner(plugin, online, () -> {
+                if (!closed) recover(online);
+            });
         }
     }
 
@@ -121,7 +123,7 @@ public final class SellService implements Listener {
     }
 
     public boolean busy(Player player) {
-        return busy.contains(player.getUniqueId());
+        return busy.containsKey(player.getUniqueId());
     }
 
     /** Whether {@code player} may sell in their game mode. */
@@ -228,7 +230,7 @@ public final class SellService implements Listener {
 
     private void start(Player player, SalePlan plan) {
         UUID account = player.getUniqueId();
-        busy.add(account);
+        busy.put(account, player);
         if (!submit(player, () -> {
             String refusal;
             try {
@@ -244,17 +246,17 @@ public final class SellService implements Listener {
                 refusal = "UNAVAILABLE";
             }
             String refused = refusal;
-            onServer(() -> {
+            onPlayer(player, () -> {
                 if (refused == null) {
                     remove(player, plan);
                     return;
                 }
-                busy.remove(account);
+                busy.remove(account, player);
                 if (refused.equals("UNAVAILABLE")) send(player, Messages.ECO_STORAGE);
                 else EconomyRuntime.sendRefusal(plugin, player, refused);
             });
         })) {
-            busy.remove(account);
+            busy.remove(account, player);
             send(player, Messages.ECO_BUSY);
         }
     }
@@ -263,11 +265,11 @@ public final class SellService implements Listener {
     private void remove(Player player, SalePlan plan) {
         UUID account = player.getUniqueId();
         if (closed || plugin.getServer().getPlayer(account) != player || !player.isOnline()) {
-            busy.remove(account);
+            busy.remove(account, player);
             return;
         }
         if (!unchanged(player, plan) || !emptyCursor(player) || !gameModeAllows(player)) {
-            busy.remove(account);
+            busy.remove(account, player);
             send(player, Messages.SELL_CHANGED);
             return;
         }
@@ -275,7 +277,7 @@ public final class SellService implements Listener {
         try {
             items = pack(codec.encode(plan.removed()));
         } catch (IOException | IllegalArgumentException tooLarge) {
-            busy.remove(account);
+            busy.remove(account, player);
             send(player, Messages.SELL_TOO_MANY);
             return;
         }
@@ -283,7 +285,7 @@ public final class SellService implements Listener {
         try {
             receipts = SaleReceipts.parse(receipt(player));
         } catch (IllegalArgumentException malformed) {
-            busy.remove(account);
+            busy.remove(account, player);
             plugin.logger().warning(player.getName() + "'s sale receipt is unreadable; selling is refused until staff clear "
                     + PlayerDataReceiptProof.SALE_RECEIPTS + ": " + malformed.getMessage());
             send(player, Messages.ECO_STORAGE);
@@ -317,21 +319,23 @@ public final class SellService implements Listener {
                 plugin.logger().warning("Fault " + FAULT_HALT_AFTER_PAY + ": halting with sale " + sale + " paid, receipt kept.");
                 Runtime.getRuntime().halt(77);
             }
+            if (settled instanceof Paid paid) {
+                if (paid.done() != null) logTrade(paid, player);
+                UtilitySupport.audit(plugin, player, "sell", "sale=" + sale + " items=" + plan.count() + " total=" + plan.total().minor());
+            }
             Settlement result = settled;
-            onServer(() -> finish(player, sale, plan, result));
+            onPlayer(player, () -> finish(player, sale, plan, result));
         })) {
-            busy.remove(account);
+            busy.remove(account, player);
             send(player, Messages.SELL_PENDING, "{operation}", sale.toString());
         }
     }
 
     private void finish(Player player, UUID sale, SalePlan plan, Settlement result) {
         UUID account = player.getUniqueId();
-        busy.remove(account);
-        boolean here = plugin.getServer().getPlayer(account) == player && player.isOnline();
-        if (result instanceof Paid paid) {
-            if (here) forget(player, sale);
-            if (paid.done() != null) logTrade(paid, player);
+        busy.remove(account, player);
+        if (result instanceof Paid) {
+            forget(player, sale);
             if (plan.lines().size() == 1) {
                 SalePlan.Line line = plan.lines().get(0);
                 send(player, Messages.SELL_SOLD, "{amount}", Integer.toString(line.amount()),
@@ -340,9 +344,7 @@ public final class SellService implements Listener {
             } else {
                 send(player, Messages.SELL_SOLD_BULK, "{items}", describe(plan), "{total}", worth.format(plan.total()));
             }
-            UtilitySupport.audit(plugin, player, "sell", "sale=" + sale + " items=" + plan.count() + " total=" + plan.total().minor());
         } else if (result instanceof Refused refused) {
-            if (!here) return;
             giveBack(player, sale, plan.removed());
             EconomyRuntime.sendRefusal(plugin, player, refused.reason());
             send(player, Messages.SELL_RETURNED);
@@ -397,7 +399,7 @@ public final class SellService implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
-        busy.remove(id);
+        busy.remove(id, event.getPlayer());
         confirmations.remove(id);
     }
 
@@ -420,7 +422,7 @@ public final class SellService implements Listener {
             return;
         }
         UUID account = player.getUniqueId();
-        busy.add(account);
+        busy.put(account, player);
         player.saveData();
         Path file = file(account);
         if (!submit(player, () -> {
@@ -430,24 +432,22 @@ public final class SellService implements Listener {
                 EconomyRuntime runtime = PaidWorkflowSupport.runtime(plugin);
                 for (var sale : live.entrySet()) {
                     if (sale.getValue().equals(saved.get(sale.getKey()))) {
-                        settled.put(sale.getKey(), settle(runtime, account, sale.getKey(), sale.getValue()));
+                        Settlement result = settle(runtime, account, sale.getKey(), sale.getValue());
+                        if (result instanceof Paid paid && paid.done() != null) logTrade(paid, player);
+                        settled.put(sale.getKey(), result);
                     }
                 }
             } catch (SQLException | IOException | RuntimeException error) {
                 plugin.logger().warning("Sale recovery for " + player.getName() + " is retried on their next join: " + error.getMessage());
             }
-            onServer(() -> {
-                busy.remove(account);
-                if (plugin.getServer().getPlayer(account) != player || !player.isOnline()) {
-                    return;
-                }
+            onPlayer(player, () -> {
+                busy.remove(account, player);
                 boolean returned = false;
                 for (var entry : settled.entrySet()) {
                     UUID sale = entry.getKey();
                     Settlement result = entry.getValue();
-                    if (result instanceof Paid paid) {
+                    if (result instanceof Paid) {
                         forget(player, sale);
-                        if (paid.done() != null) logTrade(paid, player);
                         send(player, Messages.SELL_RECOVERED_PAID, "{total}", worth.format(live.get(sale)));
                         plugin.logger().info("Paid interrupted sale " + sale + " of " + live.get(sale) + " to " + player.getName() + ".");
                     } else if (result instanceof Refused refused) {
@@ -470,7 +470,7 @@ public final class SellService implements Listener {
                 if (!returned && !settled.isEmpty()) player.saveData();
             });
         })) {
-            busy.remove(account);
+            busy.remove(account, player);
         }
     }
 
@@ -572,9 +572,16 @@ public final class SellService implements Listener {
         }
     }
 
-    private void onServer(Runnable task) {
-        plugin.getScheduler().runOnServer(() -> {
-            if (!closed) task.run();
-        });
+    private void onPlayer(Player player, Runnable task) {
+        UUID account = player.getUniqueId();
+        Runnable retired = () -> busy.remove(account, player);
+        TaskHandle handle = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+            if (closed || plugin.getServer().getPlayer(account) != player || !player.isOnline()) {
+                retired.run();
+                return;
+            }
+            task.run();
+        }, retired, 0L);
+        if (handle == TaskHandle.NONE) retired.run();
     }
 }

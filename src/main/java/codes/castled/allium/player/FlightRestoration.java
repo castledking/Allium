@@ -2,6 +2,7 @@ package codes.castled.allium.player;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
@@ -11,17 +12,49 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.*;
 import java.util.*;
 
-/** Native playerdata persists flight preferences; all player APIs stay on the server thread. */
+/** Native playerdata persists flight preferences. Player work follows the owning entity scheduler. */
 public final class FlightRestoration implements Listener,AutoCloseable {
  private final PluginStart plugin;
  private final NamespacedKey slowOff,allow,flying;
- private final Map<Player,Boolean> previous=new IdentityHashMap<>();
- private final Set<Player> protectedFall=Collections.newSetFromMap(new IdentityHashMap<>());
- private final Map<Player,boolean[]> worldFlight=new IdentityHashMap<>();
+ private final Map<Player,Boolean> previous=Collections.synchronizedMap(new IdentityHashMap<>());
+ private final Set<Player> protectedFall=Collections.newSetFromMap(Collections.synchronizedMap(new IdentityHashMap<>()));
+ private final Map<Player,boolean[]> worldFlight=Collections.synchronizedMap(new IdentityHashMap<>());
  private TaskHandle timer=TaskHandle.NONE;
- private boolean closed;
+ private volatile boolean closed;
  public FlightRestoration(PluginStart plugin){this.plugin=plugin;slowOff=new NamespacedKey(plugin,"slowfall_disabled_v1");allow=new NamespacedKey(plugin,"flight_allowed_v1");flying=new NamespacedKey(plugin,"flight_flying_v1");}
- public void enable(){plugin.getServer().getPluginManager().registerEvents(this,plugin);for(Player p:plugin.getServer().getOnlinePlayers())restore(p);timer=plugin.getScheduler().repeatOnServer(()->{if(closed)return false;for(Player p:plugin.getServer().getOnlinePlayers())tick(p);return true;},50,250);}
+ public void enable() {
+  plugin.getServer().getPluginManager().registerEvents(this, plugin);
+  if (BukkitServerThread.isFolia()) {
+   plugin.getServer().getOnlinePlayers().forEach(this::watch);
+  } else {
+   plugin.getServer().getOnlinePlayers().forEach(this::restore);
+   timer = plugin.getScheduler().repeatOnServer(() -> {
+    if (closed) return false;
+    plugin.getServer().getOnlinePlayers().forEach(this::tick);
+    return true;
+   }, 50, 250);
+  }
+ }
+
+ private void watch(Player player) {
+  plugin.getScheduler().repeatOn(BukkitServerThread.entity(plugin, player), () -> {
+   if (!current(player)) return false;
+   if (!previous.containsKey(player)) restore(player);
+   tick(player);
+   persistFlight(player);
+   return true;
+  }, 50, 250);
+ }
+
+ private boolean current(Player player) {
+  return !closed && player.isOnline() && plugin.getServer().getPlayer(player.getUniqueId()) == player;
+ }
+
+ private void nextTick(Player player, Runnable action) {
+  BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+   if (current(player)) action.run();
+  }, () -> {}, 50);
+ }
  private static boolean nativeFlight(Player p){return p.getGameMode()==GameMode.CREATIVE||p.getGameMode()==GameMode.SPECTATOR;}
  public boolean disabled(Player p){return p.getPersistentDataContainer().getOrDefault(slowOff,PersistentDataType.BYTE,(byte)0)!=0;}
  public void toggle(Player p,String input){
@@ -31,7 +64,23 @@ public final class FlightRestoration implements Listener,AutoCloseable {
  }
  private void send(Player p,boolean off){plugin.getMessageManager().send(p,Messages.SLOWFALL_TOGGLE,"{state}",off?"&cdisabled":"&aenabled");}
  public void changed(Player p){if(!p.getAllowFlight()&&!nativeFlight(p)&&airborne(p))protect(p);remember(p);p.saveData();}
- private void remember(Player p){if(!nativeFlight(p)){p.getPersistentDataContainer().set(allow,PersistentDataType.BYTE,(byte)(p.getAllowFlight()?1:0));p.getPersistentDataContainer().set(flying,PersistentDataType.BYTE,(byte)(p.isFlying()?1:0));}previous.put(p,p.getAllowFlight());}
+ private void remember(Player player) {
+  persistFlight(player);
+  previous.put(player, player.getAllowFlight());
+ }
+
+ private void persistFlight(Player player) {
+  if (nativeFlight(player)) return;
+  var data = player.getPersistentDataContainer();
+  byte allowed = (byte) (player.getAllowFlight() ? 1 : 0);
+  byte airborne = (byte) (player.isFlying() ? 1 : 0);
+  if (!Objects.equals(data.get(allow, PersistentDataType.BYTE), allowed)) {
+   data.set(allow, PersistentDataType.BYTE, allowed);
+  }
+  if (!Objects.equals(data.get(flying, PersistentDataType.BYTE), airborne)) {
+   data.set(flying, PersistentDataType.BYTE, airborne);
+  }
+ }
  private static boolean airborne(Player p){return !p.isOnGround()&&!p.isInWater()&&!p.isFlying();}
  public static boolean needsSafeLogin(Player p){
   if(p.isInWater()||p.isOnGround())return false;
@@ -54,10 +103,54 @@ public final class FlightRestoration implements Listener,AutoCloseable {
  private void protect(Player p){if(disabled(p)||nativeFlight(p)||p.isFlying())return;var existing=p.getPotionEffect(PotionEffectType.SLOW_FALLING);if(existing==null){p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING,60,0,false,false,true));protectedFall.add(p);}}
  private void removeOwned(Player p){if(!protectedFall.remove(p))return;var e=p.getPotionEffect(PotionEffectType.SLOW_FALLING);if(e!=null&&e.getAmplifier()==0&&e.getDuration()<=60&&!e.hasParticles())p.removePotionEffect(PotionEffectType.SLOW_FALLING);}
  private void tick(Player p){boolean was=previous.getOrDefault(p,false);if(was&&!p.getAllowFlight()&&airborne(p))protect(p);previous.put(p,p.getAllowFlight());if(protectedFall.contains(p)){if(!airborne(p)||disabled(p)){removeOwned(p);return;}var e=p.getPotionEffect(PotionEffectType.SLOW_FALLING);if(e==null||e.getAmplifier()==0&&e.getDuration()<20&&!e.hasParticles())p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING,60,0,false,false,true));}}
- @EventHandler public void join(PlayerJoinEvent e){Player p=e.getPlayer();plugin.getScheduler().runOnServerLater(()->{if(plugin.getServer().getPlayer(p.getUniqueId())==p)restore(p);},50);}
+ @EventHandler public void join(PlayerJoinEvent e){Player p=e.getPlayer();if(BukkitServerThread.isFolia())watch(p);else nextTick(p,()->restore(p));}
  @EventHandler(priority=EventPriority.MONITOR) public void quit(PlayerQuitEvent e){remember(e.getPlayer());previous.remove(e.getPlayer());protectedFall.remove(e.getPlayer());worldFlight.remove(e.getPlayer());}
  @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void teleport(PlayerTeleportEvent e){if(e.getTo()!=null&&e.getTo().getWorld()!=e.getFrom().getWorld())worldFlight.put(e.getPlayer(),new boolean[]{e.getPlayer().getAllowFlight(),e.getPlayer().isFlying()});}
- @EventHandler public void world(PlayerChangedWorldEvent e){Player p=e.getPlayer();boolean[] before=worldFlight.remove(p);plugin.getScheduler().runOnServerLater(()->{if(closed||!p.isOnline()||nativeFlight(p))return;if(before!=null&&before[0]&&p.hasPermission("allium.fly")){p.setAllowFlight(true);p.setFlying(before[1]);}else if(airborne(p))protect(p);previous.put(p,p.getAllowFlight());},50);}
- @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void mode(PlayerGameModeChangeEvent e){Player p=e.getPlayer();GameMode old=p.getGameMode();plugin.getScheduler().runOnServerLater(()->{if(closed||!p.isOnline()||p.getGameMode()!=e.getNewGameMode())return;if(nativeFlight(p))removeOwned(p);else if(old==GameMode.CREATIVE||old==GameMode.SPECTATOR){if(p.hasPermission("allium.fly"))p.setAllowFlight(true);if(airborne(p))protect(p);}previous.put(p,p.getAllowFlight());},50);}
- public void close(){closed=true;timer.cancel();HandlerList.unregisterAll(this);for(Player p:plugin.getServer().getOnlinePlayers()){remember(p);removeOwned(p);p.saveData();}previous.clear();worldFlight.clear();}
+ @EventHandler public void world(PlayerChangedWorldEvent event) {
+  Player player = event.getPlayer();
+  boolean[] before = worldFlight.remove(player);
+  nextTick(player, () -> {
+   if (nativeFlight(player)) return;
+   if (before != null && before[0] && player.hasPermission("allium.fly")) {
+    player.setAllowFlight(true);
+    player.setFlying(before[1]);
+   } else if (airborne(player)) {
+    protect(player);
+   }
+   remember(player);
+  });
+ }
+
+ @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+ public void mode(PlayerGameModeChangeEvent event) {
+  Player player = event.getPlayer();
+  GameMode old = player.getGameMode(), next = event.getNewGameMode();
+  nextTick(player, () -> {
+   if (player.getGameMode() != next) return;
+   if (nativeFlight(player)) {
+    removeOwned(player);
+   } else if (old == GameMode.CREATIVE || old == GameMode.SPECTATOR) {
+    if (player.hasPermission("allium.fly")) player.setAllowFlight(true);
+    if (airborne(player)) protect(player);
+   }
+   remember(player);
+  });
+ }
+
+ public void close() {
+  closed = true;
+  timer.cancel();
+  HandlerList.unregisterAll(this);
+  // Folia saves native player data after plugins stop. Its shutdown thread owns no players.
+  if (!BukkitServerThread.isFolia()) {
+   for (Player player : plugin.getServer().getOnlinePlayers()) {
+    remember(player);
+    removeOwned(player);
+    player.saveData();
+   }
+  }
+  previous.clear();
+  protectedFall.clear();
+  worldFlight.clear();
+ }
 }

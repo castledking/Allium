@@ -65,25 +65,28 @@ public final class TreeCommand implements SpecCommandHandler {
         }
         var origin = block.getRelative(BlockFace.UP).getLocation();
         var world = player.getWorld();
-        List<BlockState> changes = new ArrayList<>();
-        boolean generated = world.generateTree(origin, ThreadLocalRandom.current(), type, (Predicate<BlockState>) state -> {
-            changes.add(state);
-            return false;
+        UtilitySupport.onRegion(plugin, world, origin.getBlockX() >> 4, origin.getBlockZ() >> 4, () -> {
+            List<BlockState> changes = new ArrayList<>();
+            boolean generated = world.generateTree(origin, ThreadLocalRandom.current(), type, (Predicate<BlockState>) state -> {
+                changes.add(state);
+                return false;
+            });
+            if (!generated || changes.isEmpty()) {
+                UtilitySupport.send(plugin, player, Messages.TREE_FAILED);
+                return;
+            }
+            var protection = plugin.getProtectionService();
+            if (protection != null && changes.stream().anyMatch(state ->
+                    !protection.checkBlockBreak(player, state.getLocation(), "tree", null).allowed())) {
+                UtilitySupport.send(plugin, player, Messages.BLOCK_TOOL_DENIED);
+                return;
+            }
+            for (BlockState state : changes) {
+                UtilitySupport.onRegion(plugin, state.getWorld(), state.getX() >> 4, state.getZ() >> 4,
+                        () -> state.update(true, false));
+            }
+            UtilitySupport.send(plugin, player, Messages.TREE_GROWN);
         });
-        if (!generated || changes.isEmpty()) {
-            UtilitySupport.send(plugin, player, Messages.TREE_FAILED);
-            return;
-        }
-        var protection = plugin.getProtectionService();
-        if (protection != null && changes.stream().anyMatch(state ->
-                !protection.checkBlockBreak(player, state.getLocation(), "tree", null).allowed())) {
-            UtilitySupport.send(plugin, player, Messages.BLOCK_TOOL_DENIED);
-            return;
-        }
-        for (BlockState state : changes) {
-            state.update(true, false);
-        }
-        UtilitySupport.send(plugin, player, Messages.TREE_GROWN);
     }
 
     private TreeType type(String[] args) {

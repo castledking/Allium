@@ -7,6 +7,7 @@ softdepend: [packetevents]
 allium-api: '^1.1'
 allium-addon-dir: true
 allium-pack: curios-pack.zip
+folia-supported: true
 commands:
   curios:
     aliases: [relics, reliques, tradingcards, cards]

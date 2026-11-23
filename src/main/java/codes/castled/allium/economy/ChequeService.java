@@ -7,6 +7,8 @@ import codes.castled.allium.mail.MailInventoryLock;
 import codes.castled.allium.mail.PlayerDataFiles;
 import codes.castled.allium.mail.PlayerDataReceiptProof;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
@@ -37,9 +39,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Journalled, anti-dupe money cheques ({@code /cheque}).
@@ -52,7 +56,7 @@ import java.util.concurrent.ThreadLocalRandom;
  *   <li><b>Admin-issued ({@code /cheque <amount|min-max> <player>}):</b> requires
  *       {@code allium.cheque.others} (or console), mints an {@code ISSUED} cheque without
  *       withdrawing from the staff member, and supports ranged amounts such as {@code 500-1000}.</li>
- *   <li><b>Redemption:</b> right-clicking a cheque note executes a single atomic SQLite
+ *   <li><b>Redemption:</b> right-clicking a cheque note executes a single atomic economy
  *       {@code DEPOSIT} coupled with {@code ISSUED -> REDEEMED}, so duplicated notes or crashes
  *       can never pay twice.</li>
  * </ul>
@@ -72,7 +76,7 @@ public final class ChequeService implements Listener {
     private final NamespacedKey chequeSignerKey;
     private final NamespacedKey receiptKey;
     private final MailInventoryLock locks = new MailInventoryLock();
-    private final Set<UUID> busy = new HashSet<>();
+    private final Set<UUID> busy = ConcurrentHashMap.newKeySet();
     private volatile boolean closed;
 
     public ChequeService(PluginStart plugin, EconomyRuntime runtime, ChequeRepository repository, Executor io) {
@@ -94,7 +98,7 @@ public final class ChequeService implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         plugin.getServer().getPluginManager().registerEvents(locks, plugin);
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            recover(online);
+            onPlayerNow(online, () -> recover(online), () -> {});
         }
     }
 
@@ -178,8 +182,12 @@ public final class ChequeService implements Listener {
         long now = System.currentTimeMillis();
         ChequeRecord pending = new ChequeRecord(chequeId, faceValue, tax, account, signerName,
                 false, "PENDING", null, null, null, now, null);
-        busy.add(account);
+        if (!busy.add(account)) {
+            send(player, Messages.UTILITY_INVENTORY_BUSY, "{player}", player.getName());
+            return;
+        }
         locks.lock(player);
+        Runnable forget = () -> finishBusy(player, account);
         if (!submit(player, () -> {
             try {
                 PaidWorkflowSupport.prove(file, PlayerDataReceiptProof.CHEQUE_RECEIPTS, baseline);
@@ -189,36 +197,36 @@ public final class ChequeService implements Listener {
                                 Long.toString(gross.minor()), Long.toString(faceValue.minor()), Long.toString(tax.minor())),
                         c -> repository.insertPending(c, pending));
                 if (reserved instanceof EconomyResult.Rejected refused) {
-                    onServer(() -> {
+                    onPlayer(player, () -> {
                         finishBusy(player, account);
                         if (refused.reason().equals("INSUFFICIENT_FUNDS") || refused.reason().equals("MISSING_ACCOUNT")) {
                             send(player, Messages.ECO_CHEQUE_FUNDS, "{amount}", display.format(gross));
                         } else {
                             EconomyRuntime.sendRefusal(plugin, player, refused.reason());
                         }
-                    });
+                    }, forget);
                     return;
                 }
                 PaidWorkflowSupport.committed(reserved);
             } catch (PaidWorkflowSupport.UnknownCommit unknown) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishBusy(player, account);
                     send(player, Messages.ECO_UNKNOWN, "{operation}", unknown.operationId().toString());
-                });
+                }, forget);
                 return;
             } catch (SQLException error) {
                 plugin.logger().warning("Cheque for " + signerName + " was not started: " + error.getMessage());
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishBusy(player, account);
                     send(player, Messages.ECO_STORAGE);
-                });
+                }, forget);
                 return;
             }
             if (FaultInjection.trip(FAULT_HALT_AFTER_RESERVE)) {
                 plugin.logger().warning("Fault " + FAULT_HALT_AFTER_RESERVE + ": halting with cheque " + chequeId + " held.");
                 Runtime.getRuntime().halt(77);
             }
-            onServer(() -> deliverPlayerCheque(player, chequeId, gross, faceValue, tax, taxSettings, signerName, baseline));
+            onPlayer(player, () -> deliverPlayerCheque(player, chequeId, gross, faceValue, tax, taxSettings, signerName, baseline), forget);
         })) {
             finishBusy(player, account);
             send(player, Messages.ECO_BUSY);
@@ -276,7 +284,7 @@ public final class ChequeService implements Listener {
                 captured = false;
             }
             boolean done = captured;
-            onServer(() -> {
+            onPlayer(player, () -> {
                 finishBusy(player, account);
                 if (!done) {
                     send(player, Messages.ECO_CHEQUE_PENDING);
@@ -297,7 +305,7 @@ public final class ChequeService implements Listener {
                 }
                 UtilitySupport.audit(plugin, player, "cheque_issue", "cheque=" + chequeId
                         + " gross=" + gross.minor() + " face=" + faceValue.minor() + " tax=" + tax.minor());
-            });
+            }, () -> finishBusy(player, account));
         })) {
             finishBusy(player, account);
             send(player, Messages.ECO_CHEQUE_PENDING);
@@ -312,14 +320,14 @@ public final class ChequeService implements Listener {
                 PaidWorkflowSupport.prove(file, PlayerDataReceiptProof.CHEQUE_RECEIPTS, baseline);
                 PaidWorkflowSupport.committed(runtime.reservations().release(
                         EconomyReservations.Kind.CHEQUE, chequeId, c -> repository.markVoided(c, chequeId)));
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishBusy(player, account);
                     then.run();
-                });
+                }, () -> finishBusy(player, account));
             } catch (SQLException error) {
                 plugin.logger().warning("Cheque hold " + chequeId + " stays held until " + player.getName()
                         + "'s next join: " + error.getMessage());
-                onServer(() -> finishBusy(player, account));
+                onPlayer(player, () -> finishBusy(player, account), () -> finishBusy(player, account));
             }
         })) {
             finishBusy(player, account);
@@ -329,63 +337,75 @@ public final class ChequeService implements Listener {
     // -- Admin cheque ------------------------------------------------------------------------------
 
     private void startAdminCheque(CommandSender sender, Player target, Money amount) {
-        if (busy(target) || UtilitySupport.isInventoryBusy(plugin, target)) {
-            send(sender, Messages.UTILITY_INVENTORY_BUSY, "{player}", target.getName());
-            return;
-        }
-        if (target.getInventory().firstEmpty() < 0) {
-            send(sender, Messages.ECO_CHEQUE_FULL, "{player}", target.getName());
-            return;
-        }
-        UUID chequeId = UUID.randomUUID();
         UUID issuerUuid = sender instanceof Player p ? p.getUniqueId() : null;
         String signerName = sender instanceof Player p ? p.getName() : "Console";
-        EconomyDisplay display = runtime.display();
-        ChequeRecord record = new ChequeRecord(chequeId, amount, new Money(0), issuerUuid, signerName,
-                true, "ISSUED", null, null, null, System.currentTimeMillis(), null);
-        UUID targetId = target.getUniqueId();
-        busy.add(targetId);
-        if (!submit(sender, () -> {
-            try {
-                if (!repository.insertAdminIssued(record)) {
-                    throw new SQLException("admin cheque insert affected 0 rows");
-                }
-            } catch (SQLException error) {
-                plugin.logger().warning("Admin cheque for " + target.getName() + " failed: " + error.getMessage());
-                onServer(() -> {
-                    busy.remove(targetId);
-                    send(sender, Messages.ECO_STORAGE);
-                });
+        String targetName = target.getName();
+        onPlayerNow(target, () -> {
+            if (closed || plugin.getServer().getPlayer(target.getUniqueId()) != target || !target.isOnline()) {
+                send(sender, Messages.PLAYER_NOT_FOUND, "{player}", targetName);
                 return;
             }
-            onServer(() -> {
-                busy.remove(targetId);
-                if (closed || plugin.getServer().getPlayer(targetId) != target || !target.isOnline()) {
-                    voidAsync(chequeId);
-                    send(sender, Messages.PLAYER_NOT_FOUND, "{player}", target.getName());
-                    return;
-                }
-                ItemStack note = createChequeItem(chequeId, amount, signerName, display);
-                if (!target.getInventory().addItem(note).isEmpty()) {
-                    voidAsync(chequeId);
-                    send(sender, Messages.ECO_CHEQUE_FULL, "{player}", target.getName());
-                    return;
-                }
+            if (busy(target) || UtilitySupport.isInventoryBusy(plugin, target)) {
+                send(sender, Messages.UTILITY_INVENTORY_BUSY, "{player}", target.getName());
+                return;
+            }
+            if (target.getInventory().firstEmpty() < 0) {
+                send(sender, Messages.ECO_CHEQUE_FULL, "{player}", target.getName());
+                return;
+            }
+            UUID chequeId = UUID.randomUUID();
+            EconomyDisplay display = runtime.display();
+            ChequeRecord record = new ChequeRecord(chequeId, amount, new Money(0), issuerUuid, signerName,
+                    true, "ISSUED", null, null, null, System.currentTimeMillis(), null);
+            UUID targetId = target.getUniqueId();
+            if (!busy.add(targetId)) {
+                send(sender, Messages.UTILITY_INVENTORY_BUSY, "{player}", target.getName());
+                return;
+            }
+            if (!submit(sender, () -> {
                 try {
-                    target.saveData();
-                } catch (RuntimeException ignored) {
+                    if (!repository.insertAdminIssued(record)) {
+                        throw new SQLException("admin cheque insert affected 0 rows");
+                    }
+                } catch (SQLException error) {
+                    plugin.logger().warning("Admin cheque for " + targetName + " failed: " + error.getMessage());
+                    busy.remove(targetId);
+                    send(sender, Messages.ECO_STORAGE);
+                    return;
                 }
-                send(sender, Messages.ECO_CHEQUE_GIVEN, "{amount}", display.format(amount), "{player}", target.getName());
-                if (sender != target) {
-                    send(target, Messages.ECO_CHEQUE_RECEIVED, "{amount}", display.format(amount), "{signer}", signerName);
-                }
-                UtilitySupport.audit(plugin, sender, "cheque_admin_give",
-                        "cheque=" + chequeId + " target=" + target.getName() + " amount=" + amount.minor());
-            });
-        })) {
-            busy.remove(targetId);
-            send(sender, Messages.ECO_BUSY);
-        }
+                onPlayer(target, () -> {
+                    busy.remove(targetId);
+                    if (closed || plugin.getServer().getPlayer(targetId) != target || !target.isOnline()) {
+                        voidAsync(chequeId);
+                        send(sender, Messages.PLAYER_NOT_FOUND, "{player}", targetName);
+                        return;
+                    }
+                    ItemStack note = createChequeItem(chequeId, amount, signerName, display);
+                    if (!target.getInventory().addItem(note).isEmpty()) {
+                        voidAsync(chequeId);
+                        send(sender, Messages.ECO_CHEQUE_FULL, "{player}", target.getName());
+                        return;
+                    }
+                    try {
+                        target.saveData();
+                    } catch (RuntimeException ignored) {
+                    }
+                    send(sender, Messages.ECO_CHEQUE_GIVEN, "{amount}", display.format(amount), "{player}", target.getName());
+                    if (sender != target) {
+                        send(target, Messages.ECO_CHEQUE_RECEIVED, "{amount}", display.format(amount), "{signer}", signerName);
+                    }
+                    UtilitySupport.audit(plugin, sender, "cheque_admin_give",
+                            "cheque=" + chequeId + " target=" + target.getName() + " amount=" + amount.minor());
+                }, () -> {
+                    busy.remove(targetId);
+                    voidAsync(chequeId);
+                    send(sender, Messages.PLAYER_NOT_FOUND, "{player}", targetName);
+                });
+            })) {
+                busy.remove(targetId);
+                send(sender, Messages.ECO_BUSY);
+            }
+        }, () -> send(sender, Messages.PLAYER_NOT_FOUND, "{player}", targetName));
     }
 
     private void voidAsync(UUID chequeId) {
@@ -434,40 +454,44 @@ public final class ChequeService implements Listener {
         EquipmentSlot hand = event.getHand() == null ? EquipmentSlot.HAND : event.getHand();
         UUID playerId = player.getUniqueId();
         EconomyDisplay display = runtime.display();
-        busy.add(playerId);
+        if (!busy.add(playerId)) {
+            send(player, Messages.UTILITY_INVENTORY_BUSY, "{player}", player.getName());
+            return;
+        }
         locks.lock(player);
+        Runnable forget = () -> finishBusy(player, playerId);
         if (!submit(player, () -> {
             Optional<ChequeRecord> found;
             try {
                 found = repository.find(chequeId);
             } catch (SQLException error) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishBusy(player, playerId);
                     send(player, Messages.ECO_STORAGE);
-                });
+                }, forget);
                 return;
             }
             if (found.isEmpty()) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishBusy(player, playerId);
                     send(player, Messages.ECO_CHEQUE_INVALID);
-                });
+                }, forget);
                 return;
             }
             ChequeRecord record = found.get();
             if ("PENDING".equals(record.state())) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishBusy(player, playerId);
                     send(player, Messages.ECO_CHEQUE_PENDING);
-                });
+                }, forget);
                 return;
             }
             if (!"ISSUED".equals(record.state())) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     consumeChequeItem(player, hand, chequeId);
                     finishBusy(player, playerId);
                     send(player, Messages.ECO_CHEQUE_SPENT);
-                });
+                }, forget);
                 return;
             }
             UUID opId = UUID.randomUUID();
@@ -475,7 +499,7 @@ public final class ChequeService implements Listener {
                     EconomyRequest.Kind.DEPOSIT, playerId.toString(), playerId, null, record.amount());
             EconomyResult.Mutation result = runtime.synchronousWorkflow(request,
                     c -> repository.markRedeemed(c, chequeId, record.amount(), opId, playerId, System.currentTimeMillis()));
-            onServer(() -> {
+            onPlayer(player, () -> {
                 if (result instanceof EconomyResult.Committed done) {
                     consumeChequeItem(player, hand, chequeId);
                     try {
@@ -508,7 +532,7 @@ public final class ChequeService implements Listener {
                 } else {
                     send(player, Messages.ECO_STORAGE);
                 }
-            });
+            }, forget);
         })) {
             finishBusy(player, playerId);
             send(player, Messages.ECO_BUSY);
@@ -526,7 +550,7 @@ public final class ChequeService implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         busy.remove(id);
-        locks.unlock(event.getPlayer());
+        locks.clear(event.getPlayer());
     }
 
     private void recover(Player player) {
@@ -577,7 +601,7 @@ public final class ChequeService implements Listener {
             }
             int issued = captured;
             int refunded = released;
-            onServer(() -> {
+            onPlayer(player, () -> {
                 finishBusy(player, account);
                 if (plugin.getServer().getPlayer(account) != player) return;
                 Set<UUID> live = RepairReceipts.parse(receipt(player));
@@ -588,7 +612,7 @@ public final class ChequeService implements Listener {
                     send(player, Messages.ECO_CHEQUE_RECOVERED,
                             "{captured}", Integer.toString(issued), "{released}", Integer.toString(refunded));
                 }
-            });
+            }, () -> finishBusy(player, account));
         })) {
             finishBusy(player, account);
         }
@@ -694,15 +718,47 @@ public final class ChequeService implements Listener {
         }
     }
 
-    private void onServer(Runnable task) {
-        plugin.getScheduler().runOnServer(() -> {
-            if (!closed) task.run();
-        });
+    private void onPlayer(Player player, Runnable action, Runnable retired) {
+        if (closed) {
+            retired.run();
+            return;
+        }
+        var started = new AtomicBoolean();
+        Runnable unavailable = () -> {
+            if (started.compareAndSet(false, true)) retired.run();
+        };
+        try {
+            TaskHandle handle = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+                if (started.compareAndSet(false, true)) {
+                    if (!closed) action.run();
+                    else retired.run();
+                }
+            }, unavailable, 0L);
+            if (BukkitServerThread.isFolia() && handle == TaskHandle.NONE) unavailable.run();
+        } catch (RuntimeException failure) {
+            plugin.logger().warning("Cheque could not schedule player work for " + player.getName() + ": " + failure.getMessage());
+            unavailable.run();
+        }
+    }
+
+    private void onPlayerNow(Player player, Runnable action, Runnable retired) {
+        if (closed) {
+            retired.run();
+            return;
+        }
+        if (!BukkitServerThread.isFolia() || BukkitServerThread.entity(plugin, player).isServerThread()) {
+            action.run();
+            return;
+        }
+        onPlayer(player, action, retired);
     }
 
     private void send(CommandSender sender, Messages message, String... args) {
-        if (!closed && (!(sender instanceof Player p) || p.isOnline())) {
-            plugin.getMessageManager().send(sender, message, args);
-        }
+        if (closed) return;
+        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), sender, () -> {
+            if (!closed && (!(sender instanceof Player p) || p.isOnline())) {
+                plugin.getMessageManager().send(sender, message, args);
+            }
+        });
     }
 }

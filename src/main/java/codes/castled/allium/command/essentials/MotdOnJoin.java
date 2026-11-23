@@ -1,6 +1,7 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -45,7 +46,7 @@ public final class MotdOnJoin implements Listener {
         if (ticks == 0) {
             show.run();
         } else {
-            plugin.getScheduler().runOnServerLater(show, ticks * 50L);
+            BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, show, () -> {}, ticks * 50L);
         }
     }
 }

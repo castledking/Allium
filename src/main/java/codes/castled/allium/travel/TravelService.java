@@ -1,6 +1,8 @@
 package codes.castled.allium.travel;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.teleport.SavedLocation;
 import codes.castled.allium.teleport.TeleportService;
@@ -61,13 +63,13 @@ public final class TravelService implements Listener {
     private final TeleportService teleports;
     private final ThreadPoolExecutor io;
     private final boolean homesEnabled,warpsEnabled;
-    private final Map<UUID,Session> sessions=new HashMap<>();
-    private Map<String,SavedLocation> warps=Map.of();
-    private final Map<String,Long> warpRevisions=new HashMap<>();
-    private final Map<String,Long> warpEpochs=new HashMap<>();
-    private final Set<String> blockedPermissions=new HashSet<>();
+    private final Map<UUID,Session> sessions=new java.util.concurrent.ConcurrentHashMap<>();
+    private volatile Map<String,SavedLocation> warps=Map.of();
+    private final Map<String,Long> warpRevisions=new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String,Long> warpEpochs=new java.util.concurrent.ConcurrentHashMap<>();
+    private final Set<String> blockedPermissions=java.util.concurrent.ConcurrentHashMap.newKeySet();
     private Settings settings;
-    private boolean warpsLoaded,closed;
+    private volatile boolean warpsLoaded,closed;
     private long settingsEpoch;
 
     private static final class Session {
@@ -75,7 +77,7 @@ public final class TravelService implements Listener {
         Map<String,SavedLocation> homes=Map.of();
         final Map<String,Long> revisions=new HashMap<>();
         int dbOverride=-1;
-        boolean loaded,busy;
+        volatile boolean loaded,busy;
         Confirmation confirmation;
         Session(Player player){this.player=player;}
     }
@@ -512,8 +514,85 @@ public final class TravelService implements Listener {
     /** A paid warp checks the sign again and reports the result of the physical teleport. */
     public void useSign(Player p, String raw, boolean publicAccess, java.util.function.BooleanSupplier valid,
                         Consumer<Boolean> outcome) {
-        use(p, raw, true, publicAccess, valid, outcome);
+        if (BukkitServerThread.isFolia()) {
+            useRegionalPaidWarp(p, raw, publicAccess, valid, outcome);
+        } else {
+            use(p, raw, true, publicAccess, valid, outcome);
+        }
     }
+
+    private void useRegionalPaidWarp(Player player, String raw, boolean publicAccess, BooleanSupplier valid,
+                                     Consumer<Boolean> outcome) {
+        if (!canUseSign(player, raw, publicAccess)) {
+            outcome.accept(false);
+            return;
+        }
+        Session session = session(player);
+        if (session == null || !admit(session)) {
+            outcome.accept(false);
+            return;
+        }
+        String name = TravelNames.normalize(raw);
+        long epoch = warpEpochs.getOrDefault(name, 0L);
+        Runnable retired = () -> {
+            session.busy = false;
+            outcome.accept(false);
+        };
+        try {
+            io.execute(() -> {
+                Optional<StoredDestination> found;
+                try {
+                    found = repository.warp(name);
+                } catch (SQLException | RuntimeException failure) {
+                    plugin.logger().warning("Paid warp lookup failed for " + name + ": " + failure.getMessage());
+                    onPaidWarpOwner(player, () -> {
+                        send(player, Messages.TRAVEL_STORAGE_FAILED);
+                        retired.run();
+                    }, retired);
+                    return;
+                }
+                onPaidWarpOwner(player, () -> {
+                    session.busy = false;
+                    if (!same(session) || !valid.getAsBoolean()) {
+                        outcome.accept(false);
+                        return;
+                    }
+                    if (found.isEmpty()) {
+                        notFound(player, name, true);
+                        outcome.accept(false);
+                        return;
+                    }
+                    StoredDestination entry = found.get();
+                    BooleanSupplier canTravel = () -> same(session) && session.loaded && warpsLoaded
+                            && player.hasPermission("allium.warp") && (publicAccess || access(player, name))
+                            && epoch == warpEpochs.getOrDefault(name, 0L)
+                            && Objects.equals(warpRevisions.get(name), entry.revision())
+                            && Objects.equals(warps.get(name), entry.location()) && valid.getAsBoolean();
+                    teleports.teleport(player, () -> location(entry.location()), "warp", canTravel, outcome);
+                }, retired);
+            });
+        } catch (RejectedExecutionException full) {
+            send(player, Messages.TRAVEL_STORAGE_FAILED);
+            retired.run();
+        }
+    }
+
+    private void onPaidWarpOwner(Player player, Runnable task, Runnable retired) {
+        var started = new java.util.concurrent.atomic.AtomicBoolean();
+        Runnable unavailable = () -> {
+            if (started.compareAndSet(false, true)) retired.run();
+        };
+        try {
+            TaskHandle handle = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+                if (started.compareAndSet(false, true)) task.run();
+            }, unavailable, 0L);
+            if (handle == TaskHandle.NONE) unavailable.run();
+        } catch (RuntimeException failure) {
+            plugin.logger().warning("Could not schedule paid warp delivery: " + failure.getMessage());
+            unavailable.run();
+        }
+    }
+
     /** Non-mutating readiness and access precheck for priced {@code [Warp]} signs before charging. */
     public boolean canUseSign(Player p,String raw,boolean publicAccess){
         if(!permission(p,"warp"))return false;

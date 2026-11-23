@@ -1,6 +1,7 @@
 package codes.castled.allium.economy;
 
 import codes.castled.allium.storage.ConnectionSource;
+import codes.castled.allium.storage.SqlDialect;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -8,7 +9,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.security.MessageDigest;
 import static codes.castled.allium.economy.EconomyResult.*;
 
-/** One-process, one-commit SQLite engine. No Bukkit, network, refunds or hidden account creation. */
+/** Exact-balance engine that commits money, journal receipts and workflow effects together. */
 public final class EconomyEngine {
     @FunctionalInterface public interface PaymentPolicy { boolean permits(Connection transaction, UUID sender, UUID recipient) throws SQLException; }
     /** Fault boundary used by integration/live gates; real commit remains exactly once. */
@@ -17,6 +18,7 @@ public final class EconomyEngine {
     public EconomyReservations reservations(){return reservations(this::execute);}
     public EconomyReservations reservations(EconomyReservations.Executor executor){return new EconomyReservations(this,connections,executor);}
     private final ConnectionSource connections;
+    private final SqlDialect dialect;
     private final EconomyCoordinator coordinator=new EconomyCoordinator();
     private final PaymentPolicy policy;
     private final Committer committer;
@@ -34,24 +36,42 @@ public final class EconomyEngine {
         this(connections,settings,policy,committer,ignored->{});
     }
     public EconomyEngine(ConnectionSource connections,EconomySettings settings,PaymentPolicy policy,Committer committer,java.util.function.Consumer<Mutation> validator)throws SQLException {
+        this(connections, SqlDialect.SQLITE, settings, policy, committer, validator);
+    }
+    public EconomyEngine(ConnectionSource connections, SqlDialect dialect, EconomySettings settings, PaymentPolicy policy) throws SQLException {
+        this(connections, dialect, settings, policy, (c, id) -> { try (var s = c.createStatement()) { s.execute("COMMIT"); } }, ignored -> {});
+    }
+    public EconomyEngine(ConnectionSource connections, SqlDialect dialect, EconomySettings settings, PaymentPolicy policy,
+                         Committer committer, java.util.function.Consumer<Mutation> validator) throws SQLException {
         this.connections=Objects.requireNonNull(connections);this.settings=Objects.requireNonNull(settings);
+        this.dialect=Objects.requireNonNull(dialect);
         this.policy=Objects.requireNonNull(policy);this.committer=Objects.requireNonNull(committer);
         this.validator=Objects.requireNonNull(validator);
-        EconomySchema.migrate(connections);
+        if (dialect == SqlDialect.MYSQL) MysqlEconomySchema.migrate(connections);
+        else EconomySchema.migrate(connections);
         installSettings(settings);
         try(var c=connection();var s=c.createStatement()){
             try(var r=s.executeQuery("SELECT COUNT(*) FROM "+EconomySchema.OPERATIONS+" WHERE (state='COMMITTED' AND (result_code<>'OK' OR source_balance IS NULL OR (recipient_uuid IS NOT NULL AND recipient_balance IS NULL))) OR (state='REJECTED' AND result_code IN ('OK','PENDING'))")){
                 if(!r.next()||r.getLong(1)!=0)throw new SQLException("economy recovery found incomplete journal receipts");
             }
-            for(String table:List.of(EconomySchema.ACCOUNTS,EconomySchema.OPERATIONS,EconomySchema.ENTRIES,EconomySchema.RESERVATIONS))
-                try(var r=s.executeQuery("PRAGMA foreign_key_check("+table+")")){if(r.next())throw new SQLException("economy recovery found foreign-key violation");}
+            if (dialect == SqlDialect.SQLITE) {
+                for(String table:List.of(EconomySchema.ACCOUNTS,EconomySchema.OPERATIONS,EconomySchema.ENTRIES,EconomySchema.RESERVATIONS))
+                    try(var r=s.executeQuery("PRAGMA foreign_key_check("+table+")")){if(r.next())throw new SQLException("economy recovery found foreign-key violation");}
+            }
         }
         try(var c=connection();var s=c.createStatement();var r=s.executeQuery("SELECT a.account_uuid FROM "+EconomySchema.ACCOUNTS+" a WHERE a.reserved_minor<>(SELECT COALESCE(SUM(amount_minor),0) FROM "+EconomySchema.RESERVATIONS+" r WHERE r.account_uuid=a.account_uuid AND r.state='HELD') LIMIT 1")){
             if(r.next())throw new SQLException("economy held-reservation invariant failed");
         }
         ready=true;
     }
+
+    public void bindRecoveryOwner(String owner) throws SQLException {
+        if (dialect != SqlDialect.MYSQL) return;
+        if (owner == null || !owner.matches("[A-Za-z0-9_.:-]{1,64}")) throw new IllegalArgumentException("invalid recovery owner");
+        try (var connection = connection()) { MysqlEconomySchema.bindRecoveryOwner(connection, owner); }
+    }
     public EconomySettings settings(){return settings;}
+    public SqlDialect dialect() { return dialect; }
     public EconomyRequest request(UUID id,String origin,String key,EconomyRequest.Kind kind,String actor,UUID source,UUID recipient,Money amount){
         return new EconomyRequest(id,origin,key,kind,actor,source,recipient,amount,settings);
     }
@@ -67,6 +87,10 @@ public final class EconomyEngine {
         Connection c=EconomyTiming.wrap(acquired);
         try(var s=c.createStatement()){
             if(!c.getAutoCommit()) throw new SQLException("economy requires a clean autocommit connection");
+            if (dialect == SqlDialect.MYSQL) {
+                if (readOnly) throw new SQLException("read-only WAL experiment requires SQLite");
+                return c;
+            }
             s.execute("PRAGMA busy_timeout=1000");s.execute("PRAGMA foreign_keys=ON");if(!readOnly)s.execute("PRAGMA journal_mode=WAL");
             else try(var r=s.executeQuery("PRAGMA journal_mode")){if(!r.next()||!r.getString(1).equalsIgnoreCase("wal"))throw new SQLException("read-only experiment requires WAL");}s.execute("PRAGMA synchronous=FULL");
             try(var r=s.executeQuery("PRAGMA synchronous")){if(!r.next()||r.getInt(1)!=2)throw new SQLException("SQLite FULL durability unavailable");}
@@ -128,14 +152,23 @@ public final class EconomyEngine {
         boolean begun=false, committing=false;
         Connection c=null;
         try{
-            c=connection();try(var s=c.createStatement()){s.execute("BEGIN IMMEDIATE");}begun=true;
+            c=connection();
+            if (dialect == SqlDialect.MYSQL) {
+                MysqlEconomySchema.requireDurableCommits(c);
+                c.setAutoCommit(false);
+                begun=true;
+                MysqlEconomySchema.lockWriter(c);
+            } else {
+                try(var s=c.createStatement()){s.execute("BEGIN IMMEDIATE");}
+                begun=true;
+            }
             byte[] payload=q.payload(),hash=MessageDigest.getInstance("SHA-256").digest(payload);
             try { insertOperation(c,q,payload,hash); }
             catch(SQLException conflict) {
                 String message=String.valueOf(conflict.getMessage());
                 boolean operationKey=(conflict.getErrorCode()==19 || conflict.getErrorCode()==1555 || conflict.getErrorCode()==2067)
                         && (message.contains(EconomySchema.OPERATIONS+".operation_id") || message.contains(EconomySchema.OPERATIONS+".origin, "+EconomySchema.OPERATIONS+".request_key"));
-                if(!operationKey)throw conflict;
+                if(!operationKey && !(dialect == SqlDialect.MYSQL && conflict.getErrorCode() == 1062)) throw conflict;
                 Mutation previous=replay(c,q,payload,hash);
                 if(previous==null)throw conflict;
                 rollback(c);begun=false;return previous;
@@ -162,7 +195,7 @@ public final class EconomyEngine {
                 if(a==null)rejection="MISSING_ACCOUNT";
                 else{String refusal=reservation(c,q,a);if(refusal!=null)rejection=refusal;else a=read(c,q.source());}
             }else{
-                // BEGIN IMMEDIATE owns the SQLite writer lock. Point reads still use UUID order.
+                // The backend writer lock serializes ledger effects. Point reads still use UUID order.
                 var ids=new ArrayList<UUID>();ids.add(q.source());if(q.recipient()!=null)ids.add(q.recipient());if(q.taxAccount()!=null)ids.add(q.taxAccount());ids.sort(Comparator.comparing(UUID::toString));
                 Map<UUID,Found> snapshots=new HashMap<>();for(UUID id:ids)snapshots.put(id,read(c,id));
                 a=snapshots.get(q.source());b=q.recipient()==null?null:snapshots.get(q.recipient());
@@ -312,7 +345,7 @@ public final class EconomyEngine {
     // SQL savepoints stay inside the explicitly begun execution transaction.
     private record SqlSavepoint(Connection c){
         SqlSavepoint{try(var s=c.createStatement()){s.execute("SAVEPOINT effect");}catch(SQLException e){throw new IllegalStateException(e);}}
-        void rollback()throws SQLException{try(var s=c.createStatement()){s.execute("ROLLBACK TO effect");}}
-        void release()throws SQLException{try(var s=c.createStatement()){s.execute("RELEASE effect");}}
+        void rollback()throws SQLException{try(var s=c.createStatement()){s.execute("ROLLBACK TO SAVEPOINT effect");}}
+        void release()throws SQLException{try(var s=c.createStatement()){s.execute("RELEASE SAVEPOINT effect");}}
     }
 }

@@ -27,12 +27,14 @@ public final class FeedCommand implements SpecCommandHandler {
             return;
         }
 
-        target.setFoodLevel(20);
-        target.setSaturation(20f);
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            target.setFoodLevel(20);
+            target.setSaturation(20f);
 
-        if (target != context.sender()) {
-            context.sendOutcome(context.sender(), "other", "{player}", target.getName());
-        }
-        context.sendOutcome(target, "self");
+            if (target != context.sender()) {
+                context.sendOutcome(context.sender(), "other", "{player}", target.getName());
+            }
+            context.sendOutcome(target, "self");
+        });
     }
 }

@@ -30,7 +30,7 @@ final class HeldCardBar implements Listener {
 
     private final CuriosPlugin plugin;
     /** Players showing a title, so a clear only goes to those who had one. */
-    private final Map<UUID, String> shown = new HashMap<>();
+    private final Map<UUID, String> shown = new java.util.concurrent.ConcurrentHashMap<>();
     private TaskHandle task;
 
     HeldCardBar(CuriosPlugin plugin) {
@@ -39,7 +39,14 @@ final class HeldCardBar implements Listener {
 
     void start() {
         task = plugin.core().scheduler().repeatOnServer(() -> {
-            for (Player player : plugin.getServer().getOnlinePlayers()) update(player, false);
+            if (plugin.core().isFolia()) {
+                for (Player player : plugin.getServer().getOnlinePlayers()) {
+                    plugin.core().runForEntity(player, () -> update(player, false),
+                            () -> shown.remove(player.getUniqueId()), 0L);
+                }
+            } else {
+                for (Player player : plugin.getServer().getOnlinePlayers()) update(player, false);
+            }
             return true;
         }, PERIOD_MILLIS, PERIOD_MILLIS);
     }
@@ -49,7 +56,7 @@ final class HeldCardBar implements Listener {
         task = null;
         for (UUID id : shown.keySet()) {
             Player player = plugin.getServer().getPlayer(id);
-            if (player != null) send(player, "");
+            if (player != null && (!plugin.core().isFolia() || plugin.core().ownsEntity(player))) send(player, "");
         }
         shown.clear();
     }
@@ -91,7 +98,8 @@ final class HeldCardBar implements Listener {
     }
 
     private void nextTick(Player player) {
-        plugin.core().scheduler().runOnServer(() -> update(player, true));
+        plugin.core().runForEntity(player, () -> update(player, true),
+                () -> shown.remove(player.getUniqueId()), 0L);
     }
 
     @EventHandler

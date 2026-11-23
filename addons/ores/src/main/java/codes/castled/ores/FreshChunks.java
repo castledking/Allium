@@ -41,13 +41,22 @@ final class FreshChunks implements Listener, AutoCloseable {
     }
 
     private void drain() {
+        var core = generation.core();
+        boolean folia = core != null && core.isFolia();
         for (int i = 0; i < generation.settings().chunksPerTick(); i++) {
             Pending pending = queue.poll();
             if (pending == null) return;
             queued.remove(pending);
             var world = Bukkit.getWorld(pending.world());
-            if (world == null || !generation.automaticIn(world) || !world.isChunkLoaded(pending.x(), pending.z())) continue;
-            generation.generateOresInChunk(world.getChunkAt(pending.x(), pending.z()));
+            if (world == null || !generation.automaticIn(world)) continue;
+            if (folia) {
+                core.runForRegion(world, pending.x(), pending.z(), () -> {
+                    if (closed || !generation.automaticIn(world) || !world.isChunkLoaded(pending.x(), pending.z())) return;
+                    generation.generateOresInChunk(world.getChunkAt(pending.x(), pending.z()));
+                }, 0L);
+            } else if (world.isChunkLoaded(pending.x(), pending.z())) {
+                generation.generateOresInChunk(world.getChunkAt(pending.x(), pending.z()));
+            }
         }
     }
 

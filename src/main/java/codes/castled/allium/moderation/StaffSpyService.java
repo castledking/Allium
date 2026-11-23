@@ -1,6 +1,7 @@
 package codes.castled.allium.moderation;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.message.MessageManager;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.UntrustedText;
@@ -9,6 +10,7 @@ import codes.castled.allium.naming.PlayerNameVisibility;
 import codes.castled.allium.preference.EffectivePreferences;
 import codes.castled.allium.preference.PreferenceChange;
 import codes.castled.allium.preference.PreferenceKey;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.text.SpigotComponents;
 import codes.castled.allium.text.TextFormatter;
 import codes.castled.allium.text.TextSender;
@@ -317,16 +319,16 @@ public final class StaffSpyService implements Listener {
                     .replace("{player}", staff.getName())
                     .replace("{target}", target.getName());
             if (asPlayer) {
-                staff.performCommand(expanded);
+                UtilitySupport.onOwner(plugin, staff, () -> staff.performCommand(expanded));
             } else {
                 String consoleCommand = (!explicitConsole && !hadPlayerPlaceholder)
                         ? expandSelfShorthandForConsole(expanded, staff.getName())
                         : expanded;
-                plugin.getServer().dispatchCommand(console, consoleCommand);
+                UtilitySupport.onGlobal(plugin, () -> plugin.getServer().dispatchCommand(console, consoleCommand));
             }
         }
         plugin.logger().info("Spectate audit actor=" + staff.getUniqueId() + " target=" + target.getUniqueId());
-        plugin.getMessageManager().send(staff, Messages.SPECTATE_STARTED, "{player}", target.getName());
+        UtilitySupport.send(plugin, staff, Messages.SPECTATE_STARTED, "{player}", target.getName());
     }
 
     /**
@@ -384,17 +386,26 @@ public final class StaffSpyService implements Listener {
         UUID actorId = actor.getUniqueId();
         String template = plugin.getMessageManager().resolve(Messages.COMMANDSPY_FORMAT, "{player}", actor.getName());
         var literalCmd = UntrustedText.parse(raw, UntrustedText.Allow.NONE);
-        for (Player observer : plugin.getServer().getOnlinePlayers()) {
+        var formatted = UntrustedText.insert(template.replace("{command}", "{message}"), literalCmd);
+        for (Player observer : List.copyOf(plugin.getServer().getOnlinePlayers())) {
             if (observer.getUniqueId().equals(actorId)) {
                 continue;
             }
             if (!observer.hasPermission(PERM_COMMANDSPY) || !isSpyingCommands(observer.getUniqueId(), actorId)) {
                 continue;
             }
-            if (!PlayerNameVisibility.canSee(observer, actor)) {
-                continue;
+            if (BukkitServerThread.isFolia()) {
+                UtilitySupport.onOwner(plugin, observer, () -> {
+                    if (observer.isOnline() && observer.canSee(actor) && PlayerNameVisibility.canSeeTarget(observer, actor)) {
+                        TextSender.sendLiteral(observer, formatted);
+                    }
+                });
+            } else {
+                if (!PlayerNameVisibility.canSee(observer, actor)) {
+                    continue;
+                }
+                TextSender.sendLiteral(observer, formatted);
             }
-            TextSender.sendLiteral(observer, UntrustedText.insert(template.replace("{command}", "{message}"), literalCmd));
         }
     }
 

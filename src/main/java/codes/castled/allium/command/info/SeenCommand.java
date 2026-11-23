@@ -9,6 +9,7 @@ import codes.castled.allium.info.PlayerInfoRecord;
 import codes.castled.allium.info.PlayerInfoService;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -40,7 +41,7 @@ public final class SeenCommand implements SpecCommandHandler {
         CommandSender sender = context.sender();
         String query = args[0].trim();
 
-        info.lookupProfile(sender, query, false).whenComplete((opt, error) -> info.runOnServer(() -> {
+        info.lookupProfile(sender, query, false).whenComplete((opt, error) -> info.runFor(sender, () -> {
             if (error != null) {
                 plugin.logger().warning("Failed /seen lookup for " + query + ": " + error.getMessage());
                 plugin.getMessageManager().send(sender, Messages.INFO_STORAGE_FAILED);
@@ -53,36 +54,36 @@ public final class SeenCommand implements SpecCommandHandler {
 
             PlayerInfoRecord record = opt.get().record();
             Player liveOnline = plugin.getServer().getPlayer(record.uuid());
-            boolean visibleOnline = liveOnline != null
-                    && liveOnline.isOnline()
-                    && PlayerNameVisibility.canSeeTarget(sender, liveOnline);
-
             String firstJoin = info.formatTimestamp(record.firstJoin());
-            if (visibleOnline) {
-                String tags = (info.isAfk(liveOnline) ? " &7[AFK]" : "")
-                        + (PlayerNameVisibility.isVanished(liveOnline) ? " &8[Vanished]" : "");
-                String duration = PlayerInfoService.formatElapsed(info.onlineDurationMillis(liveOnline, record));
-                plugin.getMessageManager().send(
-                        sender,
-                        Messages.INFO_SEEN_ONLINE,
-                        "{player}", liveOnline.getName(),
-                        "{tags}", tags,
-                        "{duration}", duration,
-                        "{first_join}", firstJoin
-                );
-            } else {
-                String lastSeenAgo = info.formatDurationSince(record.lastSeen());
-                String lastSeenDate = info.formatTimestamp(record.lastSeen());
-                plugin.getMessageManager().send(
-                        sender,
-                        Messages.INFO_SEEN_OFFLINE,
+            var extras = new codes.castled.allium.info.WhoisExtras(plugin);
+            Runnable offline = () -> {
+                plugin.getMessageManager().send(sender, Messages.INFO_SEEN_OFFLINE,
                         "{player}", record.lastName(),
-                        "{last_seen}", lastSeenAgo,
-                        "{last_seen_date}", lastSeenDate,
-                        "{first_join}", firstJoin
-                );
+                        "{last_seen}", info.formatDurationSince(record.lastSeen()),
+                        "{last_seen_date}", info.formatTimestamp(record.lastSeen()),
+                        "{first_join}", firstJoin);
+                extras.sendSeen(sender, record.uuid());
+            };
+            if (liveOnline == null) {
+                offline.run();
+                return;
             }
-            new codes.castled.allium.info.WhoisExtras(plugin).sendSeen(sender, record.uuid());
+            boolean seeVanished = !(sender instanceof Player) || sender == liveOnline || sender.hasPermission("allium.vanish.see");
+            UtilitySupport.onTarget(plugin, sender, liveOnline, () -> {
+                boolean vanished = PlayerNameVisibility.isVanished(liveOnline);
+                if (!liveOnline.isOnline() || vanished && !seeVanished) {
+                    UtilitySupport.onOwner(plugin, sender, offline);
+                    return;
+                }
+                String tags = (info.isAfk(liveOnline) ? " &7[AFK]" : "") + (vanished ? " &8[Vanished]" : "");
+                String duration = PlayerInfoService.formatElapsed(info.onlineDurationMillis(liveOnline, record));
+                String name = liveOnline.getName();
+                UtilitySupport.onOwner(plugin, sender, () -> {
+                    plugin.getMessageManager().send(sender, Messages.INFO_SEEN_ONLINE,
+                            "{player}", name, "{tags}", tags, "{duration}", duration, "{first_join}", firstJoin);
+                    extras.sendSeen(sender, record.uuid());
+                });
+            }, offline);
         }));
     }
 }

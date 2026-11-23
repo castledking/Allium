@@ -110,20 +110,23 @@ public final class XpCommand implements SpecCommandHandler {
                 amount = new Experience.Amount(-amount.value(), amount.levels());
             }
         }
+        Experience.Amount delta = amount;
         List<Player> targets = targets(sender, args[1]);
         for (Player target : targets) {
-            Experience.State before = state(target);
-            Experience.State after = action.equals("give") || action.equals("take")
-                    ? Experience.add(before, amount)
-                    : Experience.set(before, amount);
-            apply(target, after);
-            String[] values = values(target, after);
-            UtilitySupport.send(plugin, sender, Messages.UTILITY_XP_CHANGED, values);
-            if (target != sender) {
-                UtilitySupport.send(plugin, target, Messages.UTILITY_XP_NOTIFY, values);
-            }
-            UtilitySupport.audit(plugin, sender, "xp_" + action, "target=" + target.getName()
-                    + " before=" + before.total() + " after=" + after.total());
+            UtilitySupport.onTarget(plugin, sender, target, () -> {
+                Experience.State before = state(target);
+                Experience.State after = action.equals("give") || action.equals("take")
+                        ? Experience.add(before, delta)
+                        : Experience.set(before, delta);
+                apply(target, after);
+                String[] values = values(target, after);
+                UtilitySupport.send(plugin, sender, Messages.UTILITY_XP_CHANGED, values);
+                if (target != sender) {
+                    UtilitySupport.send(plugin, target, Messages.UTILITY_XP_NOTIFY, values);
+                }
+                UtilitySupport.audit(plugin, sender, "xp_" + action, "target=" + target.getName()
+                        + " before=" + before.total() + " after=" + after.total());
+            });
         }
     }
 
@@ -140,9 +143,11 @@ public final class XpCommand implements SpecCommandHandler {
     }
 
     private void show(CommandSender sender, Player target) {
-        Experience.State state = state(target);
-        UtilitySupport.send(plugin, sender, target == sender ? Messages.UTILITY_XP_SELF : Messages.UTILITY_XP_OTHER,
-                values(target, state));
+        UtilitySupport.onTarget(plugin, sender, target, () -> {
+            Experience.State state = state(target);
+            UtilitySupport.send(plugin, sender, target == sender ? Messages.UTILITY_XP_SELF : Messages.UTILITY_XP_OTHER,
+                    values(target, state));
+        });
     }
 
     private static String[] values(Player target, Experience.State state) {

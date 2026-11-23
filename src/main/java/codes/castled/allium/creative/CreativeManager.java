@@ -1,6 +1,8 @@
 package codes.castled.allium.creative;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.creative.CreativeInventoryPolicy.Group;
 import codes.castled.allium.mail.MailItemCodec;
 import codes.castled.allium.message.Messages;
@@ -62,6 +64,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -109,10 +112,11 @@ public final class CreativeManager implements Listener {
     private final NamespacedKey savedArmorKey;
     private volatile CreativeItems.Settings items;
     @Nullable
-    private CreativePlacedBlocks placedBlocks;
-    private final Map<UUID, Long> lastMessage = new HashMap<>();
+    private volatile CreativePlacedBlocks placedBlocks;
+    private final Map<UUID, Long> lastMessage = new ConcurrentHashMap<>();
     /** Swaps prepared at HIGHEST and applied at MONITOR, by player, for the event being dispatched. */
-    private final Map<UUID, PreparedSwap> prepared = new HashMap<>();
+    private final Map<UUID, PreparedSwap> prepared = new ConcurrentHashMap<>();
+    private volatile boolean closed;
 
     private volatile Settings settings;
 
@@ -213,16 +217,20 @@ public final class CreativeManager implements Listener {
     }
 
     public void enable() {
+        closed = false;
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         placedBlocks = new CreativePlacedBlocks(plugin);
         placedBlocks.enable();
         hookPickBlock();
         for (Player player : plugin.getServer().getOnlinePlayers()) {
-            reconcile(player);
+            UtilitySupport.onOwner(plugin, player, () -> {
+                if (!closed) reconcile(player);
+            });
         }
     }
 
     public void disable() {
+        closed = true;
         HandlerList.unregisterAll(this);
         if (placedBlocks != null) placedBlocks.disable();
         prepared.clear();
@@ -494,9 +502,11 @@ public final class CreativeManager implements Listener {
         plugin.getLogger().warning("[GamemodeAudit] " + player.getName() + " " + cause + " " + mode + " (from "
                 + from.name().toLowerCase(Locale.ROOT) + ") without allium.gamemode." + mode);
         for (Player staff : plugin.getServer().getOnlinePlayers()) {
-            if (staff.hasPermission(PERMISSION_ALERTS)) {
-                plugin.getMessageManager().send(staff, Messages.CREATIVE_AUDIT, replacements);
-            }
+            UtilitySupport.onOwner(plugin, staff, () -> {
+                if (!closed && staff.hasPermission(PERMISSION_ALERTS)) {
+                    plugin.getMessageManager().send(staff, Messages.CREATIVE_AUDIT, replacements);
+                }
+            });
         }
     }
 
@@ -855,25 +865,19 @@ public final class CreativeManager implements Listener {
         // Clearing a slot (or the trash slot) is allowed; putting any item anywhere is not, since
         // the creative client cannot tell the server whether it came from the menu.
         if (placed == null || placed.getType().isAir()) return;
-        event.setCancelled(true);
-        plugin.getScheduler().runOnServer(() -> {
-            if (player.isOnline()) {
-                player.setItemOnCursor(null);
-                player.updateInventory();
-            }
-        });
+        refuse(event, player);
         deny(player, "take items from the creative menu", null);
     }
 
     /** Refuses a creative inventory change and resynchronises the client, which already shows it. */
     private void refuse(InventoryCreativeEvent event, Player player) {
         event.setCancelled(true);
-        plugin.getScheduler().runOnServer(() -> {
-            if (player.isOnline()) {
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+            if (!closed && player.isOnline() && creative(player)) {
                 player.setItemOnCursor(null);
                 player.updateInventory();
             }
-        });
+        }, () -> {}, 0L);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

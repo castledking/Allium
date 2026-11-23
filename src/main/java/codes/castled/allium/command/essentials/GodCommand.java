@@ -28,12 +28,14 @@ public final class GodCommand implements SpecCommandHandler {
             return;
         }
 
-        boolean enabled = !GodModeCompatProvider.current().isGodMode(target);
-        GodModeCompatProvider.current().setGodMode(target, enabled);
-        String state = enabled ? "&aenabled" : "&cdisabled";
-        context.sendOutcome(context.sender(), "toggle", "{state}", state, "{player}", target.getName());
-        if (target != context.sender()) {
-            context.sendOutcome(target, "toggle", "{state}", state, "{player}", target.getName());
-        }
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            boolean enabled = !GodModeCompatProvider.current().isGodMode(target);
+            GodModeCompatProvider.current().setGodMode(target, enabled);
+            String state = enabled ? "&aenabled" : "&cdisabled";
+            context.sendOutcome(context.sender(), "toggle", "{state}", state, "{player}", target.getName());
+            if (target != context.sender()) {
+                context.sendOutcome(target, "toggle", "{state}", state, "{player}", target.getName());
+            }
+        });
     }
 }

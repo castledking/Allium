@@ -5,6 +5,7 @@ import codes.castled.allium.command.essentials.GcCommand;
 import codes.castled.allium.customtext.CustomTextDocument;
 import codes.castled.allium.naming.PlayerNameVisibility;
 import codes.castled.allium.placeholder.AlliumPlaceholders;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -26,6 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -183,9 +186,77 @@ public final class TextFile {
 
     /** Sends {@code lines} to one recipient, with placeholders filled for them when {@code placeholders}. */
     public void send(CommandSender sender, List<String> lines, boolean placeholders) {
+        send(sender, lines, placeholders, () -> {});
+    }
+
+    /** Runs the footer on the recipient's owner after the text has been delivered. */
+    public void send(CommandSender sender, List<String> lines, boolean placeholders, Runnable footer) {
+        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), sender, () -> {
+            if (BukkitServerThread.isFolia() && sender instanceof Player player && !player.isOnline()) return;
+            if (placeholders) {
+                delivery(lines).send(sender, () -> true, footer);
+            } else {
+                sendLines(sender, lines, InteractiveText::escape);
+                footer.run();
+            }
+        });
+    }
+
+    /** Shares one on-demand roster collection between recipients of the same announcement. */
+    public Delivery delivery(List<String> lines) {
+        return new Delivery(lines.stream().map(InteractiveText::escape).toList());
+    }
+
+    public final class Delivery {
+        private final List<String> lines;
+        private final TextRoster roster = new TextRoster(plugin);
+
+        private Delivery(List<String> lines) {
+            this.lines = lines;
+        }
+
+        /** Call on the recipient's owner. Delivery is conditional when a roster lookup defers it. */
+        public void send(CommandSender sender, BooleanSupplier eligible) {
+            send(sender, eligible, () -> {});
+        }
+
+        private void send(CommandSender sender, BooleanSupplier eligible, Runnable footer) {
+            if (!eligible.getAsBoolean()) return;
+            if (!BukkitServerThread.isFolia()) {
+                sendLines(sender, lines, line -> fill(sender, line));
+                footer.run();
+                return;
+            }
+            var expanded = lines.stream().map(line -> expandPlaceholders(sender, line)).toList();
+            if (expanded.stream().anyMatch(TextFile::needsRoster)) {
+                roster.collect().thenAccept(entries ->
+                        BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, () -> {
+                            if ((sender instanceof Player player && !player.isOnline()) || !eligible.getAsBoolean()) return;
+                            render(sender, expanded, roster.visibleTo(sender, entries), footer);
+                        }, () -> {}, 0));
+            } else {
+                render(sender, expanded, null, footer);
+            }
+        }
+    }
+
+    private static boolean needsRoster(String line) {
+        var keywords = KEYWORD.matcher(line);
+        while (keywords.find()) {
+            if (keywords.group(1).equalsIgnoreCase("playerlist")
+                    || keywords.group(1).equalsIgnoreCase("online") && keywords.group(2) == null) return true;
+        }
+        return false;
+    }
+
+    private void render(CommandSender sender, List<String> lines, @Nullable List<TextRoster.Entry> roster, Runnable footer) {
+        sendLines(sender, lines, line -> fillKeywords(sender, line, roster));
+        footer.run();
+    }
+
+    private void sendLines(CommandSender sender, List<String> lines, UnaryOperator<String> format) {
         for (String raw : lines) {
-            String escaped = InteractiveText.escape(raw);
-            String line = placeholders ? fill(sender, escaped) : escaped;
+            String line = format.apply(raw);
             if (sender instanceof Player player && player.spigot() != null) {
                 // An empty line still takes a row, as in the file.
                 player.spigot().sendMessage(line.isEmpty()
@@ -207,31 +278,38 @@ public final class TextFile {
      * lose {@code <} and {@code >}, so a display name cannot open a click tag.
      */
     String fill(CommandSender sender, String line) {
-        Player player = sender instanceof Player p ? p : null;
-        String out = line;
-        if (player != null && plugin.getServer().getPluginManager() != null
-                && plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI") && out.indexOf('%') >= 0) {
+        return fillKeywords(sender, expandPlaceholders(sender, line), null);
+    }
+
+    private String expandPlaceholders(CommandSender sender, String line) {
+        if (line.indexOf('%') >= 0 && sender instanceof Player player && plugin.getServer().getPluginManager() != null
+                && plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             try {
-                out = Papi.apply(player, out);
+                return Papi.apply(player, line);
             } catch (LinkageError | RuntimeException unavailable) {
                 // keep the text without PlaceholderAPI values
             }
         }
-        if (out.indexOf('{') < 0) {
-            return out;
+        return line;
+    }
+
+    private String fillKeywords(CommandSender sender, String line, @Nullable List<TextRoster.Entry> roster) {
+        if (line.indexOf('{') < 0) {
+            return line;
         }
-        Matcher m = KEYWORD.matcher(out);
+        Player player = sender instanceof Player p ? p : null;
+        Matcher m = KEYWORD.matcher(line);
         StringBuilder sb = new StringBuilder();
         PlayerMeta.Value[] meta = new PlayerMeta.Value[1];
         while (m.find()) {
             String keyword = m.group(1).toLowerCase(Locale.ROOT);
             String value;
             if (keyword.equals("playerlist")) {
-                value = playerList(sender, m.group(2), m.group(3));
+                value = playerList(sender, m.group(2), m.group(3), roster);
             } else if (m.group(2) != null) {
                 value = null;
             } else {
-                value = keyword(sender, player, keyword, meta);
+                value = keyword(sender, player, keyword, meta, roster);
             }
             m.appendReplacement(sb, Matcher.quoteReplacement(value == null ? m.group() : value.replace("<", "").replace(">", "")));
         }
@@ -241,7 +319,8 @@ public final class TextFile {
 
     /** A keyword's value for {@code sender}; null when it is no keyword. */
     @Nullable
-    private String keyword(CommandSender sender, @Nullable Player player, String keyword, PlayerMeta.Value[] meta) {
+    private String keyword(CommandSender sender, @Nullable Player player, String keyword, PlayerMeta.Value[] meta,
+                           @Nullable List<TextRoster.Entry> roster) {
         var server = plugin.getServer();
         switch (keyword) {
             case "player", "username" -> {
@@ -292,6 +371,7 @@ public final class TextFile {
                 return placeholder(player, "world_date");
             }
             case "online" -> {
+                if (roster != null) return Integer.toString(roster.size());
                 return Long.toString(server.getOnlinePlayers().stream().filter(other -> PlayerNameVisibility.canSee(sender, other)).count());
             }
             case "max", "maxplayers" -> {
@@ -344,9 +424,13 @@ public final class TextFile {
      * The players online {@code sender} can see, by display name without its colours; with a group,
      * only that primary group's, and {@code fallback} when there are none.
      */
-    private String playerList(CommandSender sender, @Nullable String group, @Nullable String fallback) {
+    private String playerList(CommandSender sender, @Nullable String group, @Nullable String fallback,
+                              @Nullable List<TextRoster.Entry> roster) {
         String wanted = group == null ? "" : group.trim();
-        String list = plugin.getServer().getOnlinePlayers().stream()
+        String list = roster != null
+                ? roster.stream().filter(entry -> wanted.isEmpty() || wanted.equalsIgnoreCase(entry.group()))
+                        .map(TextRoster.Entry::displayName).collect(Collectors.joining(", "))
+                : plugin.getServer().getOnlinePlayers().stream()
                 .filter(other -> PlayerNameVisibility.canSee(sender, other))
                 .filter(other -> wanted.isEmpty() || wanted.equalsIgnoreCase(PlayerMeta.of(plugin, other).group()))
                 .sorted(Comparator.comparing(Player::getName, String.CASE_INSENSITIVE_ORDER))
@@ -365,7 +449,7 @@ public final class TextFile {
     }
 
     /** Players who have ever joined, counted at most once a minute. */
-    private int unique() {
+    private synchronized int unique() {
         long now = System.currentTimeMillis();
         if (uniqueCountedAt == Long.MIN_VALUE || now - uniqueCountedAt > UNIQUE_REFRESH_MILLIS) {
             var offline = plugin.getServer().getOfflinePlayers();

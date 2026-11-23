@@ -1,6 +1,7 @@
 package codes.castled.allium.command.tools;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.CommandUsageCard;
 import codes.castled.allium.command.SpecCommandHandler;
@@ -937,17 +938,19 @@ public final class PowerToolCommand implements SpecCommandHandler {
             return;
         }
         ItemStack stack = res.itemStack().get();
-        Map<Integer, ItemStack> overflow = target.getInventory().addItem(stack);
-        for (ItemStack drop : overflow.values()) {
-            target.getWorld().dropItemNaturally(target.getLocation(), drop);
-        }
-        String localName = rawTool.contains(":") ? rawTool.substring(rawTool.indexOf(':') + 1) : rawTool;
-        if (sender == target) {
-            send(sender, Messages.POWERTOOL_GIVEN_SELF, "{name}", localName, "{amount}", Integer.toString(amount));
-        } else {
-            send(sender, Messages.POWERTOOL_GIVEN_OTHER, "{player}", target.getName(), "{name}", localName, "{amount}", Integer.toString(amount));
-            send(target, Messages.POWERTOOL_GIVEN_SELF, "{name}", localName, "{amount}", Integer.toString(amount));
-        }
+        UtilitySupport.onTarget(plugin, sender, target, () -> {
+            Map<Integer, ItemStack> overflow = target.getInventory().addItem(stack);
+            for (ItemStack drop : overflow.values()) {
+                target.getWorld().dropItemNaturally(target.getLocation(), drop);
+            }
+            String localName = rawTool.contains(":") ? rawTool.substring(rawTool.indexOf(':') + 1) : rawTool;
+            if (sender == target) {
+                UtilitySupport.send(plugin, sender, Messages.POWERTOOL_GIVEN_SELF, "{name}", localName, "{amount}", Integer.toString(amount));
+            } else {
+                UtilitySupport.send(plugin, sender, Messages.POWERTOOL_GIVEN_OTHER, "{player}", target.getName(), "{name}", localName, "{amount}", Integer.toString(amount));
+                UtilitySupport.send(plugin, target, Messages.POWERTOOL_GIVEN_SELF, "{name}", localName, "{amount}", Integer.toString(amount));
+            }
+        });
     }
 
     private void handleInfo(CommandSender sender, PowerToolBehavior behavior, String[] args) {

@@ -5,14 +5,19 @@ import codes.castled.allium.message.MessageManager;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.protection.ProtectionDecision;
 import codes.castled.allium.protection.ProtectionService;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.ServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.teleport.DestinationSafety;
 import codes.castled.allium.teleport.TeleportSettings;
+import org.bukkit.Chunk;
 import org.bukkit.HeightMap;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.World;
+import org.bukkit.WorldBorder;
 import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.command.ConsoleCommandSender;
@@ -27,9 +32,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,6 +51,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -157,12 +167,61 @@ class RtpTest {
         when(safety.safe(any(), any())).thenReturn(true);
         ProtectionService protection = mock(ProtectionService.class);
         when(protection.checkBlockBreak(any(), any(), anyString(), isNull())).thenReturn(ProtectionDecision.allow());
-        RtpSearch search = new RtpSearch(mock(TaskScheduler.class), safety, () -> protection);
+        PluginStart plugin = mock(PluginStart.class);
+        when(plugin.getScheduler()).thenReturn(mock(TaskScheduler.class));
+        RtpSearch search = new RtpSearch(plugin, safety, () -> protection);
         return new Column(world, floor, safety, protection, search);
     }
 
     private static RtpSettings settings() throws Exception {
         return RtpSettings.read(bundled());
+    }
+
+    @Test
+    void regionalSearchWaitsForTheChunkOwnerAndSkipsChecksWhenCancelled() throws Exception {
+        Column terrain = column(World.Environment.NORMAL, 70, Material.GRASS_BLOCK, Biome.PLAINS);
+        World world = terrain.world();
+        WorldBorder border = mock(WorldBorder.class);
+        when(world.getWorldBorder()).thenReturn(border);
+        when(border.getCenter()).thenReturn(new Location(world, 0, 0, 0));
+        when(border.getSize()).thenReturn(1000.0);
+        var area = new RtpSettings.Area("world", 160.5, 160.5, 0, .25, RtpSettings.Shape.SQUARE, null, null, null);
+        var scheduler = mock(TaskScheduler.class);
+        var plugin = mock(PluginStart.class);
+        when(plugin.getScheduler()).thenReturn(scheduler);
+        var search = new RtpSearch(plugin, terrain.safety(), terrain::protection);
+        var owner = mock(ServerThread.class);
+        var callbacks = new ArrayDeque<Runnable>();
+        when(scheduler.runOn(eq(owner), any(), any(), eq(0L))).thenAnswer(call -> {
+            callbacks.add(call.getArgument(1));
+            return mock(TaskHandle.class);
+        });
+        var rules = mock(TeleportSettings.class);
+        var player = mock(Player.class);
+        var loading = new CompletableFuture<Chunk>();
+        try (var platform = mockStatic(BukkitServerThread.class)) {
+            platform.when(BukkitServerThread::isFolia).thenReturn(true);
+            platform.when(() -> BukkitServerThread.loadRegionalChunk(world, 10, 10, true)).thenReturn(loading);
+            platform.when(() -> BukkitServerThread.region(plugin, world, 10, 10)).thenReturn(owner);
+            var result = search.find(world, area, settings(), player, rules, 2, Set.of("plains"), () -> true);
+            assertTrue(callbacks.isEmpty());
+            loading.complete(mock(Chunk.class));
+            assertFalse(result.isDone());
+            verify(world, never()).getHighestBlockYAt(anyInt(), anyInt(), any(HeightMap.class));
+            callbacks.remove().run();
+            var spot = result.join();
+            assertEquals(160.5, spot.getX());
+            assertEquals(71, spot.getBlockY());
+            verify(terrain.protection()).checkBlockBreak(player, spot, "rtp", null);
+
+            var active = new AtomicBoolean(true);
+            var cancelled = search.inLoadedColumn(world, 160, 160, active::get, () -> {
+                throw new AssertionError("Cancelled RTP must not evaluate the cached column");
+            });
+            active.set(false);
+            callbacks.remove().run();
+            assertNull(cancelled.join());
+        }
     }
 
     @Test

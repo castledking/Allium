@@ -70,22 +70,22 @@ public final class PlayerUtilityCommand implements SpecCommandHandler {
                         : height < 0 ? Messages.DEPTH_BELOW : Messages.DEPTH_LEVEL;
                 UtilitySupport.send(plugin, target, message, "{blocks}", Integer.toString(Math.abs(height)));
             }
-            case ICE -> {
+            case ICE -> UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
                 target.setFreezeTicks(target.getMaxFreezeTicks());
                 UtilitySupport.send(plugin, target, Messages.ICE_SELF);
                 if (target != context.sender()) {
                     UtilitySupport.send(plugin, context.sender(), Messages.ICE_OTHER, "{player}", target.getName());
                     UtilitySupport.audit(plugin, context.sender(), "ice", "target=" + target.getName());
                 }
-            }
-            case REST -> {
+            });
+            case REST -> UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
                 target.setStatistic(Statistic.TIME_SINCE_REST, 0);
                 UtilitySupport.send(plugin, target, Messages.REST_SELF);
                 if (target != context.sender()) {
                     UtilitySupport.send(plugin, context.sender(), Messages.REST_OTHER, "{player}", target.getName());
                     UtilitySupport.audit(plugin, context.sender(), "rest", "target=" + target.getName());
                 }
-            }
+            });
         }
     }
 }

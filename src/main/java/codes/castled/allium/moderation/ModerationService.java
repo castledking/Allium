@@ -2,6 +2,7 @@ package codes.castled.allium.moderation;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.CommandMapBridge;
+import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.MessagingService;
@@ -11,6 +12,7 @@ import codes.castled.allium.module.TeleportModule;
 import codes.castled.allium.naming.NameCache;
 import codes.castled.allium.naming.PlayerNameService;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -377,10 +379,38 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         abandonedLoginTimes.clear();
         localMuteMutations.clear();
         java.util.function.Predicate<Player> extraSleep = additionalSleepIgnoreCheck;
-        for (Player online : plugin.getServer().getOnlinePlayers()) {
+        List<Player> onlinePlayers = new ArrayList<>();
+        var rawOnline = plugin.getServer().getOnlinePlayers();
+        if (rawOnline != null) {
+            for (Player p : rawOnline) {
+                if (p != null) {
+                    onlinePlayers.add(p);
+                }
+            }
+        }
+        if (BukkitServerThread.isFolia()) {
+            boolean canSchedule = plugin.isEnabled();
+            for (Player online : onlinePlayers) {
+                online.removeMetadata(METADATA_VANISHED, plugin);
+                if (canSchedule) {
+                    UtilitySupport.onOwner(plugin, online, () -> {
+                        if (!online.isOnline()) return;
+                        online.setSleepingIgnored(extraSleep != null && extraSleep.test(online));
+                        if (!plugin.isEnabled()) return;
+                        for (Player target : onlinePlayers) {
+                            if (!online.equals(target) && target.isOnline()) {
+                                online.showPlayer(plugin, target);
+                            }
+                        }
+                    });
+                }
+            }
+            return;
+        }
+        for (Player online : onlinePlayers) {
             online.removeMetadata(METADATA_VANISHED, plugin);
             online.setSleepingIgnored(extraSleep != null && extraSleep.test(online));
-            for (Player viewer : plugin.getServer().getOnlinePlayers()) {
+            for (Player viewer : onlinePlayers) {
                 if (!viewer.equals(online)) {
                     viewer.showPlayer(plugin, online);
                 }
@@ -404,6 +434,10 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         if (player == null) {
             return;
         }
+        UtilitySupport.onOwner(plugin, player, () -> refreshSleepingIgnoredOnOwner(player));
+    }
+
+    private void refreshSleepingIgnoredOnOwner(Player player) {
         java.util.function.Predicate<Player> extra = additionalSleepIgnoreCheck;
         boolean ignored = isVanished(player) || (extra != null && extra.test(player));
         player.setSleepingIgnored(ignored);
@@ -542,6 +576,9 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             return false;
         }
         syncPairVisibility(viewer, target);
+        if (BukkitServerThread.isFolia() && !BukkitServerThread.entity(plugin, viewer).isServerThread()) {
+            return isVanished(target);
+        }
         return !viewer.canSee(target) || isVanished(target);
     }
 
@@ -572,7 +609,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         syncAllOnlineVisibility();
         BiConsumer<Player, Boolean> transition = vanishTransitionListener;
         if (transition != null && previous != next) {
-            transition.accept(target, next);
+            UtilitySupport.onOwner(plugin, target, () -> transition.accept(target, next));
         }
         if (next && plugin.getModuleManager() != null
                 && plugin.getModuleManager().getModule("teleport") instanceof TeleportModule teleportModule
@@ -582,14 +619,15 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         }
 
         if (target.equals(actor)) {
-            plugin.getMessageManager().send(actor, next ? Messages.VANISH_ON : Messages.VANISH_OFF);
+            UtilitySupport.send(plugin, actor, next ? Messages.VANISH_ON : Messages.VANISH_OFF);
         } else {
-            plugin.getMessageManager().send(
+            UtilitySupport.send(
+                    plugin,
                     actor,
                     next ? Messages.VANISH_OTHER_ON : Messages.VANISH_OTHER_OFF,
                     "{player}", target.getName()
             );
-            plugin.getMessageManager().send(target, next ? Messages.VANISH_ON : Messages.VANISH_OFF);
+            UtilitySupport.send(plugin, target, next ? Messages.VANISH_ON : Messages.VANISH_OFF);
         }
 
         String action = next ? "VANISH_ON" : "VANISH_OFF";
@@ -616,7 +654,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                         applyPlayerVanishState(target);
                     }
                     syncAllOnlineVisibility();
-                    plugin.getMessageManager().send(actor, Messages.MODERATION_STORAGE_FAILED);
+                    UtilitySupport.send(plugin, actor, Messages.MODERATION_STORAGE_FAILED);
                 });
             }
         });
@@ -626,6 +664,13 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         if (player == null) {
             return;
         }
+        UtilitySupport.onOwner(plugin, player, () -> applyPlayerVanishStateOnOwner(player));
+    }
+
+    private void applyPlayerVanishStateOnOwner(Player player) {
+        if (closed) {
+            return;
+        }
         boolean vanished = vanishedPlayers.contains(player.getUniqueId());
         if (vanished) {
             player.setMetadata(METADATA_VANISHED, new FixedMetadataValue(plugin, true));
@@ -633,7 +678,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         } else {
             player.removeMetadata(METADATA_VANISHED, plugin);
         }
-        refreshSleepingIgnored(player);
+        refreshSleepingIgnoredOnOwner(player);
     }
 
     private void clearMobTargetsOn(Player vanishedPlayer) {
@@ -655,14 +700,54 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
     }
 
     public void syncAllOnlineVisibility() {
-        var onlinePlayers = plugin.getServer().getOnlinePlayers();
-        if (onlinePlayers == null) {
+        var rawOnline = plugin.getServer().getOnlinePlayers();
+        if (rawOnline == null) {
+            return;
+        }
+        List<Player> onlinePlayers = new ArrayList<>();
+        for (Player p : rawOnline) {
+            if (p != null) {
+                onlinePlayers.add(p);
+            }
+        }
+        if (BukkitServerThread.isFolia()) {
+            for (Player target : onlinePlayers) {
+                boolean targetVanished = vanishedPlayers.contains(target.getUniqueId());
+                if (targetVanished) {
+                    if (target.getName() != null) {
+                        vanishedLowerNames.put(target.getUniqueId(), target.getName().toLowerCase(Locale.ROOT));
+                    }
+                    UtilitySupport.onOwner(plugin, target, () -> {
+                        if (!closed && target.isOnline() && vanishedPlayers.contains(target.getUniqueId())) {
+                            target.setMetadata(METADATA_VANISHED, new FixedMetadataValue(plugin, true));
+                            refreshSleepingIgnoredOnOwner(target);
+                        }
+                    });
+                } else {
+                    vanishedLowerNames.remove(target.getUniqueId());
+                }
+            }
+            for (Player viewer : onlinePlayers) {
+                UtilitySupport.onOwner(plugin, viewer, () -> {
+                    if (closed || !viewer.isOnline() || !plugin.isEnabled()) {
+                        return;
+                    }
+                    for (Player target : onlinePlayers) {
+                        if (viewer.equals(target) || !target.isOnline()) {
+                            continue;
+                        }
+                        boolean targetVanished = vanishedPlayers.contains(target.getUniqueId());
+                        if (targetVanished && !viewer.hasPermission(PERMISSION_VANISH_SEE)) {
+                            viewer.hidePlayer(plugin, target);
+                        } else {
+                            viewer.showPlayer(plugin, target);
+                        }
+                    }
+                });
+            }
             return;
         }
         for (Player target : onlinePlayers) {
-            if (target == null) {
-                continue;
-            }
             boolean targetVanished = vanishedPlayers.contains(target.getUniqueId());
             if (targetVanished) {
                 target.setMetadata(METADATA_VANISHED, new FixedMetadataValue(plugin, true));
@@ -674,7 +759,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                 vanishedLowerNames.remove(target.getUniqueId());
             }
             for (Player viewer : onlinePlayers) {
-                if (viewer == null || viewer.equals(target)) {
+                if (viewer.equals(target)) {
                     continue;
                 }
                 if (targetVanished && !viewer.hasPermission(PERMISSION_VANISH_SEE)) {
@@ -691,11 +776,19 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             return;
         }
         if (vanishedPlayers.contains(target.getUniqueId())) {
-            if (viewer.hasPermission(PERMISSION_VANISH_SEE)) {
-                viewer.showPlayer(plugin, target);
-            } else {
-                viewer.hidePlayer(plugin, target);
-            }
+            UtilitySupport.onOwner(plugin, viewer, () -> {
+                if (closed || !vanishedPlayers.contains(target.getUniqueId())) {
+                    return;
+                }
+                if (BukkitServerThread.isFolia() && (!viewer.isOnline() || !target.isOnline() || !plugin.isEnabled())) {
+                    return;
+                }
+                if (viewer.hasPermission(PERMISSION_VANISH_SEE)) {
+                    viewer.showPlayer(plugin, target);
+                } else {
+                    viewer.hidePlayer(plugin, target);
+                }
+            });
         }
     }
 
@@ -789,14 +882,16 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
 
         String remainingText = record.formattedRemaining(now);
         if (record.isPermanent()) {
-            plugin.getMessageManager().send(
+            UtilitySupport.send(
+                    plugin,
                     actor,
                     Messages.MUTE,
                     "{player}", record.playerName(),
                     "{reason}", record.reason()
             );
         } else {
-            plugin.getMessageManager().send(
+            UtilitySupport.send(
+                    plugin,
                     actor,
                     Messages.MUTE_TEMP,
                     "{player}", record.playerName(),
@@ -807,7 +902,8 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
 
         Player onlineTarget = plugin.getServer().getPlayer(targetUuid);
         if (onlineTarget != null && onlineTarget.isOnline()) {
-            plugin.getMessageManager().send(
+            UtilitySupport.send(
+                    plugin,
                     onlineTarget,
                     Messages.MUTE_TARGET_NOTICE,
                     "{remaining}", remainingText,
@@ -832,7 +928,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                     } else {
                         activeMutes.put(targetUuid, previous);
                     }
-                    plugin.getMessageManager().send(actor, Messages.MODERATION_STORAGE_FAILED);
+                    UtilitySupport.send(plugin, actor, Messages.MODERATION_STORAGE_FAILED);
                 });
             }
         });
@@ -853,7 +949,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
 
         Optional<MuteRecord> currentOpt = activeMute(targetUuid);
         if (currentOpt.isEmpty()) {
-            plugin.getMessageManager().send(actor, Messages.UNMUTE_NOT_MUTED, "{player}", targetName);
+            UtilitySupport.send(plugin, actor, Messages.UNMUTE_NOT_MUTED, "{player}", targetName);
             return;
         }
 
@@ -865,10 +961,10 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         String actorName = actorName(actor);
         String reason = (rawReason == null || rawReason.isBlank()) ? "Unmuted by staff." : MuteRecord.normalizeReason(rawReason);
 
-        plugin.getMessageManager().send(actor, Messages.UNMUTE, "{player}", removed.playerName());
+        UtilitySupport.send(plugin, actor, Messages.UNMUTE, "{player}", removed.playerName());
         Player onlineTarget = plugin.getServer().getPlayer(targetUuid);
         if (onlineTarget != null && onlineTarget.isOnline()) {
-            plugin.getMessageManager().send(onlineTarget, Messages.UNMUTE_TARGET_NOTICE);
+            UtilitySupport.send(plugin, onlineTarget, Messages.UNMUTE_TARGET_NOTICE);
         }
 
         String detail = "reason=" + reason;
@@ -884,7 +980,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                 plugin.logger().warning("Failed to persist unmute for " + removed.playerName() + ": " + ex.getMessage());
                 runOnServer(() -> {
                     activeMutes.putIfAbsent(targetUuid, removed);
-                    plugin.getMessageManager().send(actor, Messages.MODERATION_STORAGE_FAILED);
+                    UtilitySupport.send(plugin, actor, Messages.MODERATION_STORAGE_FAILED);
                 });
             }
         });
@@ -1273,7 +1369,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         if (!isMuteStateReady(senderId)) {
             event.setCancelled(true);
             if (notifyPlayer) {
-                plugin.getMessageManager().send(sender, Messages.MUTE_UNAVAILABLE);
+                UtilitySupport.send(plugin, sender, Messages.MUTE_UNAVAILABLE);
             }
             return;
         }
@@ -1283,7 +1379,8 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             if (notifyPlayer) {
                 MuteRecord record = active.get();
                 String remaining = record.formattedRemaining(clock.getAsLong());
-                plugin.getMessageManager().send(
+                UtilitySupport.send(
+                        plugin,
                         sender,
                         Messages.MUTE_BLOCKED,
                         "{remaining}", remaining,
@@ -1295,7 +1392,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         if (!settings.allowVanishPublicChat() && isVanished(sender)) {
             event.setCancelled(true);
             if (notifyPlayer) {
-                plugin.getMessageManager().send(sender, Messages.VANISH_CHAT_BLOCKED);
+                UtilitySupport.send(plugin, sender, Messages.VANISH_CHAT_BLOCKED);
             }
         }
     }
@@ -1405,8 +1502,10 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                 out.add(lower);
             }
         }
-        // Include any metadata-only vanished players visible on the current server thread.
-        if (plugin.getServer() != null && plugin.getServer().isPrimaryThread() && plugin.getServer().getOnlinePlayers() != null) {
+        // Include any metadata-only vanished players visible on the current server/region thread.
+        boolean onOwningThread = plugin.getServer() != null && (plugin.getServer().isPrimaryThread()
+                || (BukkitServerThread.isFolia() && BukkitServerThread.entity(plugin, viewer).isServerThread()));
+        if (onOwningThread && plugin.getServer().getOnlinePlayers() != null) {
             for (Player online : plugin.getServer().getOnlinePlayers()) {
                 if (online != null && !online.equals(viewer) && isVanished(online) && online.getName() != null) {
                     out.add(online.getName().toLowerCase(Locale.ROOT));
@@ -1502,8 +1601,8 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                         }
                     }
                 }
-            } catch (IllegalArgumentException | UnsupportedOperationException ignored) {
-                // Invalid selector or no selector permission: let vanilla emit its own normal error.
+            } catch (RuntimeException ignored) {
+                // Invalid selector, cross-region selector, or no selector permission: let vanilla emit its own normal error.
             }
         }
         return false;
@@ -1520,7 +1619,10 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
     private void sendFilteredVanillaList(Player viewer) {
         List<String> visible = new ArrayList<>();
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            if (online != null && PlayerNameVisibility.canSee(viewer, online) && online.getName() != null) {
+            boolean canSee = BukkitServerThread.isFolia()
+                    ? PlayerNameVisibility.canSeeTarget(viewer, online)
+                    : PlayerNameVisibility.canSee(viewer, online);
+            if (online != null && canSee && online.getName() != null) {
                 visible.add(online.getName());
             }
         }

@@ -34,7 +34,7 @@ final class Kitchen implements Listener {
     private final Map<String, Pie> pies = new LinkedHashMap<>();
     private final Set<NamespacedKey> recipes = new HashSet<>();
     private final Map<String, Material> stoves = new LinkedHashMap<>();
-    private final Map<UUID, Long> coolingDrops = new HashMap<>();
+    private final Map<UUID, Long> coolingDrops = new java.util.concurrent.ConcurrentHashMap<>();
     private final String standardCrust;
     private final String standardModel;
     private final List<Step> steps;
@@ -47,7 +47,7 @@ final class Kitchen implements Listener {
     private final long hologramCycle;
     private final List<String> stepLines;
     private final List<String> doneLines;
-    private final Map<String, String> names = new HashMap<>();
+    private final Map<String, String> names = new java.util.concurrent.ConcurrentHashMap<>();
 
     Kitchen(CropsPlugin plugin, ModelWorld world, ConfigurationSection config) {
         this.plugin = plugin;
@@ -392,7 +392,8 @@ final class Kitchen implements Listener {
         if (attack != null && attack.getTimestamp() > placed.lastAttack) {
             placed.lastAttack = attack.getTimestamp();
             Player player = attack.getPlayer().getPlayer();
-            if (player != null && canUse(player, placed, null)) take(player, placed);
+            if (player != null && (!plugin.connection().isFolia() || plugin.connection().ownsEntity(player))
+                    && canUse(player, placed, null)) take(player, placed);
         }
         if (!placed.hitbox.isValid()) return;
         if (!placed.cell().getRelative(BlockFace.DOWN).getType().isSolid()) {
@@ -438,18 +439,19 @@ final class Kitchen implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void breakStove(BlockBreakEvent event) {
-        var placed = world.at(event.getBlock());
+        Block block = event.getBlock();
+        var placed = world.at(block);
         if (placed == null || !placed.kind.equals("stove")) return;
         boolean drop = event.isDropItems() && event.getPlayer().getGameMode() != GameMode.CREATIVE;
         event.setDropItems(false);
-        plugin.connection().scheduler().runOnServer(() -> {
-            if (event.isCancelled() || stoves.get(placed.type) == event.getBlock().getType()) return;
+        plugin.connection().runForRegion(block.getWorld(), block.getX() >> 4, block.getZ() >> 4, () -> {
+            if (event.isCancelled() || stoves.get(placed.type) == block.getType()) return;
             world.remove(placed);
             if (drop) {
                 ItemStack item = plugin.item(placed.type, 1);
-                if (item != null) event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), item);
+                if (item != null) block.getWorld().dropItemNaturally(block.getLocation(), item);
             }
-        });
+        }, 0L);
     }
 
     private boolean canUse(Player player, ModelWorld.Placed placed, org.bukkit.event.Event source) {
@@ -528,7 +530,21 @@ final class Kitchen implements Listener {
     @EventHandler
     public void dropped(ItemSpawnEvent event) {
         if (config.getBoolean("pies.cooling.dropped-items", true) && baked(event.getEntity().getItemStack()) != null) {
-            coolingDrops.put(event.getEntity().getUniqueId(), System.currentTimeMillis() + cooling);
+            Item drop = event.getEntity();
+            if (plugin.connection().isFolia()) {
+                plugin.connection().runForEntity(drop, () -> coolDrop(drop), () -> {}, Math.max(50L, cooling));
+            } else {
+                coolingDrops.put(drop.getUniqueId(), System.currentTimeMillis() + cooling);
+            }
+        }
+    }
+
+    private void coolDrop(Item drop) {
+        if (!drop.isValid()) return;
+        Pie pie = baked(drop.getItemStack());
+        if (pie != null) {
+            ItemStack cold = plugin.item(pie.coldItem(), drop.getItemStack().getAmount());
+            if (cold != null) drop.setItemStack(cold);
         }
     }
 

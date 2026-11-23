@@ -1,6 +1,10 @@
 package codes.castled.allium.sign;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskScheduler;
+import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.mail.MailCommand;
@@ -27,12 +31,12 @@ public final class SignService implements Listener,AutoCloseable {
     public static final String ESSENTIALS_SIGN_MARKER = "import/essentials-signs-adopted";
     private final PluginStart plugin;
     private final Set<SignIdentity.Type> enabled=EnumSet.noneOf(SignIdentity.Type.class);
-    private final Set<UUID> pending=new HashSet<>();
+    private final Map<UUID, Object> pending = new java.util.concurrent.ConcurrentHashMap<>();
     private final SignClickBudget clicks=new SignClickBudget();
     private final int limit;
     private final boolean shortSignPrices;
     private final boolean unsafeSignPrices;
-    private boolean closed;
+    private volatile boolean closed;
     private SignEditorGuard editorGuard;
     private final PaidRepairService paidRepairs;
     private final PaidSignService paidSigns;
@@ -65,13 +69,17 @@ public final class SignService implements Listener,AutoCloseable {
         if(!(event.getBlock().getState() instanceof Sign sign))return;
         Side side=event.getSide();var old=identity(sign,side);var type=header(event.getLine(0));
         if(old.isPresent()&&!permission(event.getPlayer(),"break",old.get().type())){event.setCancelled(true);return;}
-        if(type!=null&&!enabled.contains(type)){
-            plugin.getScheduler().runOnServerLater(()->{if(closed||event.isCancelled())return;if(event.getBlock().getState() instanceof Sign current&&old.isPresent()&&identity(current,side).filter(old.get()::equals).isPresent()){current.getPersistentDataContainer().remove(key(side));current.update(false,false);}disabled(event.getPlayer(),type);},50);
-            return;
-        }
-        if(type==null){
-            // Remove the old face authority only when the actual text edit survives protection.
-            plugin.getScheduler().runOnServerLater(()->{if(!closed&&!event.isCancelled()&&event.getBlock().getState() instanceof Sign current){current.getPersistentDataContainer().remove(key(side));current.update(false,false);}},50);
+        if (type == null || !enabled.contains(type)) {
+            if (old.isPresent() || type != null) afterEdit(event, () -> {
+                if (closed || event.isCancelled()) return;
+                if (event.getBlock().getState() instanceof Sign current
+                        && Arrays.equals(current.getSide(side).getLines(), event.getLines())
+                        && old.isPresent() && identity(current, side).filter(old.get()::equals).isPresent()) {
+                    current.getPersistentDataContainer().remove(key(side));
+                    current.update(false, false);
+                }
+                if (type != null) disabled(event.getPlayer(), type);
+            });
             return;
         }
         boolean publicWarp=type==SignIdentity.Type.WARP&&"public".equalsIgnoreCase(plain(event.getLine(2)));
@@ -205,12 +213,29 @@ public final class SignService implements Listener,AutoCloseable {
             event.setLine(priceLine,display.formatSign(price,shortSignPrices));
         }
         // Bukkit applies text after the event. Re-read then update PDC without overwriting either face.
-        plugin.getScheduler().runOnServerLater(()->{
+        afterEdit(event, () -> {
             if(closed||event.isCancelled()||!(event.getBlock().getState() instanceof Sign current))return;
             if(!Arrays.equals(current.getSide(side).getLines(),event.getLines()))return;
             current.getPersistentDataContainer().set(key(side),PersistentDataType.STRING,created.encode());current.update(false,false);
-        },50);
+        });
     }
+
+    private void afterEdit(SignChangeEvent event, Runnable edit) {
+        Block block = event.getBlock();
+        var scheduler = plugin.getScheduler();
+        long delay = TaskScheduler.MILLIS_PER_TICK;
+        if (BukkitServerThread.isFolia()) {
+            int chunkX = block.getX() >> 4;
+            int chunkZ = block.getZ() >> 4;
+            World world = block.getWorld();
+            scheduler.runOn(BukkitServerThread.region(plugin, world, chunkX, chunkZ), () -> {
+                if (!closed && world.isChunkLoaded(chunkX, chunkZ)) edit.run();
+            }, () -> {}, delay);
+        } else {
+            scheduler.runOnServerLater(edit, delay);
+        }
+    }
+
     /** A sign line without color codes (null stays null). */
     static String plain(String line){return line==null?null:ChatColor.stripColor(line).trim();}
     private static String displayHeader(SignIdentity.Type type){
@@ -239,15 +264,15 @@ public final class SignService implements Listener,AutoCloseable {
         event.setLine(0,ChatColor.RED+displayHeader(type));
         event.setLine(line-1,ChatColor.RED+hint);
         Side side=event.getSide();
-        plugin.getScheduler().runOnServerLater(()->{
+        afterEdit(event, () -> {
             if(closed||event.isCancelled()||!(event.getBlock().getState() instanceof Sign current))return;
             if(!Arrays.equals(current.getSide(side).getLines(),event.getLines()))return;
             current.getPersistentDataContainer().remove(key(side));
             current.update(false,false);
-        },50);
+        });
     }
     public boolean blocksEditor(Sign sign,Side side,String cause){return !closed&&"INTERACT".equals(cause)&&identity(sign,side).filter(id->id.type()!=SignIdentity.Type.COLOR&&enabled.contains(id.type())).isPresent();}
-    private void disabled(Player player,SignIdentity.Type type){plugin.getMessageManager().send(player,codes.castled.allium.message.Messages.SIGN_DISABLED,"{type}",type.key());}
+    private void disabled(Player player,SignIdentity.Type type){UtilitySupport.send(plugin,player,Messages.SIGN_DISABLED,"{type}",type.key());}
     private Side clickedSide(Sign sign,Player player){
         org.bukkit.util.Vector normal;
         var data=sign.getBlockData();
@@ -277,20 +302,38 @@ public final class SignService implements Listener,AutoCloseable {
         if(found.isEmpty())return;
         var identity=found.get();Player player=event.getPlayer();
         if(!enabled.contains(identity.type())){if(clicks.admit(player.getUniqueId(),System.nanoTime(),limit))disabled(player,identity.type());return;}
-        if(pending.contains(player.getUniqueId())||!permission(player,"use",identity.type())||!clicks.admit(player.getUniqueId(),System.nanoTime(),limit))return;
-        pending.add(player.getUniqueId());
+        UUID playerId = player.getUniqueId();
+        if (pending.containsKey(playerId) || !permission(player, "use", identity.type())
+                || !clicks.admit(playerId, System.nanoTime(), limit)) return;
+        Object activation = new Object();
+        if (pending.putIfAbsent(playerId, activation) != null) return;
+        Block clicked = event.getClickedBlock();
+        World world = clicked.getWorld();
+        int chunkX = clicked.getX() >> 4;
+        int chunkZ = clicked.getZ() >> 4;
+        var region = BukkitServerThread.isFolia() ? BukkitServerThread.region(plugin, world, chunkX, chunkZ) : null;
+        Runnable cleanup = () -> pending.remove(playerId, activation);
+
         // Let all protection handlers finish before any service can mutate state.
-        plugin.getScheduler().runOnServerLater(()->{
-            try{
-            if(closed||event.isCancelled()||event.useInteractedBlock()==Event.Result.DENY||!player.isOnline()||!(event.getClickedBlock().getState() instanceof Sign current)
-                ||!identity(current,side).filter(identity::equals).isPresent()||!permission(player,"use",identity.type()))return;
-            Block clicked = event.getClickedBlock();
-            execute(player, identity, () -> !closed && !event.isCancelled() && event.useInteractedBlock() != Event.Result.DENY
-                    && clicked.getWorld().isChunkLoaded(clicked.getX() >> 4, clicked.getZ() >> 4)
-                    && clicked.getState() instanceof Sign live && identity(live, side).filter(identity::equals).isPresent()
-                    && permission(player, "use", identity.type()));
-            }finally{pending.remove(player.getUniqueId());}
-        },50);
+        TaskHandle task = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+            try {
+                if (closed || pending.get(playerId) != activation || event.isCancelled()
+                        || event.useInteractedBlock() == Event.Result.DENY || !player.isOnline()
+                        || region != null && (!region.isServerThread() || !world.isChunkLoaded(chunkX, chunkZ))
+                        || !(clicked.getState() instanceof Sign current)
+                        || identity(current, side).filter(identity::equals).isEmpty()
+                        || !permission(player, "use", identity.type())) return;
+                execute(player, identity, () -> !closed && !event.isCancelled()
+                        && event.useInteractedBlock() != Event.Result.DENY
+                        && (region == null || region.isServerThread())
+                        && world.isChunkLoaded(chunkX, chunkZ)
+                        && clicked.getState() instanceof Sign live && identity(live, side).filter(identity::equals).isPresent()
+                        && permission(player, "use", identity.type()));
+            } finally {
+                cleanup.run();
+            }
+        }, cleanup, TaskScheduler.MILLIS_PER_TICK);
+        if (region != null && task == TaskHandle.NONE) cleanup.run();
     }
     private void execute(Player p,SignIdentity identity,BooleanSupplier faceValid){
         String command=switch(identity.type()){
@@ -305,6 +348,13 @@ public final class SignService implements Listener,AutoCloseable {
             default->"essentials";
         };
         var owner=plugin.getModuleManager().getModule(module);if(owner==null||!owner.isEnabled()||!plugin.getConfig().getBoolean("modules."+module,true)||identity.type()==SignIdentity.Type.WARP&&!plugin.getConfig().getBoolean("modules.warps",true))return;
+        if (BukkitServerThread.isFolia() && !supportsPaidFolia(identity.type()) && (identity.price().minor() > 0
+                || identity.type() == SignIdentity.Type.KIT && !identity.priceOverride()
+                    && configuredCost(identity.type(), identity.argument()).minor() > 0)) {
+            // Paid work revalidates the sign after reserving funds and needs its own region handoff.
+            plugin.getMessageManager().send(p, Messages.SIGN_PAID_FOLIA_UNAVAILABLE);
+            return;
+        }
         BooleanSupplier valid = () -> faceValid.getAsBoolean()
                 && p.isOnline() && plugin.getServer().getPlayer(p.getUniqueId()) == p
                 && owner.isEnabled() && plugin.getConfig().getBoolean("modules.signs", true)
@@ -333,9 +383,15 @@ public final class SignService implements Listener,AutoCloseable {
             }
             travel.useSign(p,identity.argument(),identity.publicWarp());return;
         }
-        if(identity.type()==SignIdentity.Type.KIT&&identity.priceOverride()){
-            ((KitsModule)owner).kits().claimFromSign(p,identity.argument(),identity.price());
-            return;
+        if(identity.type()==SignIdentity.Type.KIT){
+            if(identity.priceOverride()){
+                ((KitsModule)owner).kits().claimFromSign(p,identity.argument(),identity.price(),valid);
+                return;
+            }
+            if(configuredCost(identity.type(),identity.argument()).minor()>0){
+                ((KitsModule)owner).kits().claimFromSign(p,identity.argument(),null,valid);
+                return;
+            }
         }
         if(identity.type()==SignIdentity.Type.RANDOMTELEPORT&&identity.price().minor()>0){
             ((RtpModule) owner).rtp().useSign(p, identity.argument().isEmpty() ? null : identity.argument(),
@@ -347,7 +403,7 @@ public final class SignService implements Listener,AutoCloseable {
         if(identity.type()==SignIdentity.Type.REPAIR&&identity.price().minor()>0){
             // Reserve, repair and save with a receipt, then capture: see PaidRepairService.
             if(paidRepairs==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_REPAIR_DISABLED);
-            else paidRepairs.start(p,identity.argument(),identity.price());
+            else paidRepairs.start(p,identity.argument(),identity.price(),valid);
             return;
         }
         String[] args=switch(identity.type()){
@@ -367,7 +423,13 @@ public final class SignService implements Listener,AutoCloseable {
                 return;
             }
             BooleanSupplier canDeliver = () -> valid.getAsBoolean() && allowed.getAsBoolean();
-            if (handler instanceof SpecCommandHandler.Immediate immediate) {
+            if (handler instanceof codes.castled.allium.command.essentials.TimeCommand time) {
+                var context = new BukkitCommandContext(plugin, spec, p, command, args);
+                charge(p, identity, canDeliver, (active, done) -> time.executeForSign(context, done));
+            } else if (handler instanceof codes.castled.allium.command.essentials.WeatherCommand weather) {
+                var context = new BukkitCommandContext(plugin, spec, p, command, args);
+                charge(p, identity, canDeliver, (active, done) -> weather.executeForSign(context, done));
+            } else if (handler instanceof SpecCommandHandler.Immediate immediate) {
                 var context = new BukkitCommandContext(plugin, spec, p, command, args);
                 charge(p, identity, canDeliver, (active, done) -> done.accept(immediate.executeWithResult(context)));
             } else if (handler instanceof MailCommand mail) {
@@ -379,6 +441,15 @@ public final class SignService implements Listener,AutoCloseable {
             return;
         }
         renderer.onCommand(p,registered,command,args);
+    }
+
+    private static boolean supportsPaidFolia(SignIdentity.Type type) {
+        return switch (type) {
+            case ANVIL, BALANCE, CARTOGRAPHY, DISPOSAL, ENCHANT, FREE, GAMEMODE, GRINDSTONE, HEAL,
+                    INFO, KIT, LOOM, MAIL, RANDOMTELEPORT, REPAIR, SMITHING, SPAWNMOB, TIME, WARP,
+                    WEATHER, WORKBENCH -> true;
+            default -> false;
+        };
     }
 
     private void charge(Player player, SignIdentity identity, BooleanSupplier valid, PaidSignService.Action action) {
@@ -548,14 +619,29 @@ public final class SignService implements Listener,AutoCloseable {
         int adopted=0;
         var server=plugin.getServer();
         if(server==null)return 0;
+        boolean folia = BukkitServerThread.isFolia();
         for(World world:server.getWorlds()){
             for(Chunk chunk:world.getLoadedChunks()){
-                for(BlockState state:chunk.getTileEntities()){
-                    if(state instanceof Sign sign){
-                        for(Side side:Side.values()){
-                            if(adoptEssentialsSign(sign,side))adopted++;
-                        }
-                    }
+                int cx = chunk.getX(), cz = chunk.getZ();
+                if (folia && !BukkitServerThread.region(plugin, world, cx, cz).isServerThread()) {
+                    UtilitySupport.onRegion(plugin, world, cx, cz, () -> {
+                        if (closed || !world.isChunkLoaded(cx, cz)) return;
+                        adoptChunk(world.getChunkAt(cx, cz));
+                    });
+                    continue;
+                }
+                adopted += adoptChunk(chunk);
+            }
+        }
+        return adopted;
+    }
+
+    private int adoptChunk(Chunk chunk) {
+        int adopted = 0;
+        for (BlockState state : chunk.getTileEntities()) {
+            if (state instanceof Sign sign) {
+                for (Side side : Side.values()) {
+                    if (adoptEssentialsSign(sign, side)) adopted++;
                 }
             }
         }
@@ -567,8 +653,12 @@ public final class SignService implements Listener,AutoCloseable {
         int count=0;
         var server=plugin.getServer();
         if(server==null)return 0;
+        boolean folia = BukkitServerThread.isFolia();
         for(World world:server.getWorlds()){
             for(Chunk chunk:world.getLoadedChunks()){
+                if (folia && !BukkitServerThread.region(plugin, world, chunk.getX(), chunk.getZ()).isServerThread()) {
+                    continue;
+                }
                 for(BlockState state:chunk.getTileEntities()){
                     if(state instanceof Sign sign){
                         for(Side side:Side.values()){

@@ -11,6 +11,8 @@ import codes.castled.allium.economy.Money;
 import codes.castled.allium.message.MessageManager;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.module.EconomyModule;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.ServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.scheduler.TaskScheduler;
 import org.bukkit.Server;
@@ -44,6 +46,8 @@ class PaidSignServiceTest {
             "market", true, new Money(300));
     private PaidSignService signs;
     private EconomyEngine engine;
+    private PluginStart plugin;
+    private TaskScheduler scheduler;
 
     @BeforeEach void setUp() throws Exception {
         engine = new EconomyEngine(() -> DriverManager.getConnection("jdbc:sqlite:" + data.resolve("economy.db")),
@@ -52,8 +56,8 @@ class PaidSignServiceTest {
                 null, new Money(10000));
         assertInstanceOf(EconomyResult.Committed.class, engine.execute(open));
 
-        var plugin = mock(PluginStart.class);
-        var scheduler = mock(TaskScheduler.class);
+        plugin = mock(PluginStart.class);
+        scheduler = mock(TaskScheduler.class);
         var pool = mock(ThreadPoolExecutor.class);
         var modules = mock(ModuleManager.class);
         var economy = mock(EconomyModule.class);
@@ -118,6 +122,35 @@ class PaidSignServiceTest {
         settle();
         assertBalance(10000, 0);
         verifyNoInteractions(messages);
+    }
+
+    @Test void foliaRetirementBeforeDeliveryReleasesTheReservation() {
+        ServerThread region = mock(ServerThread.class);
+        var retire = new ArrayDeque<Runnable>();
+        when(scheduler.runOn(eq(region), any(Runnable.class), any(Runnable.class), eq(0L))).thenAnswer(call -> {
+            retire.add(call.getArgument(2));
+            return mock(TaskHandle.class);
+        });
+
+        try (var platform = mockStatic(BukkitServerThread.class, CALLS_REAL_METHODS)) {
+            platform.when(BukkitServerThread::isFolia).thenReturn(true);
+            platform.when(() -> BukkitServerThread.entity(plugin, player)).thenReturn(region);
+            signs.start(player, sign, () -> true, (valid, complete) -> fail("delivered after the player retired"));
+            worker.remove().run();
+            assertBalance(10000, 300);
+
+            Runnable ownerRetired = retire.remove();
+            ownerRetired.run();
+            ownerRetired.run();
+            assertEquals(1, worker.size(), "the reservation is released once");
+            worker.remove().run();
+            retire.remove().run();
+
+            assertBalance(10000, 0);
+            assertFalse(signs.busy(player));
+            assertTrue(main.isEmpty(), "Folia player work bypasses the global scheduler");
+            verifyNoInteractions(messages);
+        }
     }
 
     private void settle() {

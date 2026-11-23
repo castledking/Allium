@@ -1,6 +1,8 @@
 package codes.castled.allium.creative.manage;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.gui.GuiIcons;
 import codes.castled.allium.item.library.SkullProfiles;
 import codes.castled.allium.message.Messages;
@@ -71,6 +73,7 @@ public final class CreativeManageMenus implements Listener {
     private final PluginStart plugin;
     private final CreativeAccess access;
     private final Supplier<SkullProfiles> skulls;
+    private volatile boolean closed;
 
     public CreativeManageMenus(PluginStart plugin, CreativeAccess access) {
         this(plugin, access, () -> null);
@@ -88,11 +91,13 @@ public final class CreativeManageMenus implements Listener {
     }
 
     public void disable() {
+        closed = true;
         HandlerList.unregisterAll(this);
+        if (BukkitServerThread.isFolia() && !plugin.isEnabled()) return;
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            if (online.getOpenInventory().getTopInventory().getHolder() instanceof Menu) {
-                online.closeInventory();
-            }
+            UtilitySupport.onOwner(plugin, online, () -> {
+                if (online.getOpenInventory().getTopInventory().getHolder() instanceof Menu) online.closeInventory();
+            });
         }
     }
 
@@ -214,7 +219,7 @@ public final class CreativeManageMenus implements Listener {
             paintSkins(viewer, menu, profiles, slots, index + 1);
             return;
         }
-        lookup.whenComplete((resolved, error) -> plugin.getScheduler().runOnServer(() -> {
+        lookup.whenComplete((resolved, error) -> nextTick(viewer, () -> {
             ItemStack head = menu.inventory.getItem(slot);
             if (error == null && resolved != null && !resolved.degraded() && head != null
                     && head.getType() == Material.PLAYER_HEAD && head.getItemMeta() instanceof SkullMeta skull) {
@@ -298,8 +303,8 @@ public final class CreativeManageMenus implements Listener {
      */
     public void openFlags(Player viewer, CreativeHolder holder, @Nullable Filter backFilter, int backPage) {
         FlagMenu menu = new FlagMenu(holder, backFilter, backPage);
-        access.read(holder, (values, error) -> {
-            if (!viewer.isOnline()) {
+        access.read(viewer, holder, (values, error) -> {
+            if (closed || !viewer.isOnline()) {
                 return;
             }
             if (error != null) {
@@ -410,7 +415,7 @@ public final class CreativeManageMenus implements Listener {
             return;
         }
         if (!viewer.hasPermission(CreativeAccess.PERMISSION_MANAGE)) {
-            plugin.getScheduler().runOnServer(viewer::closeInventory);
+            nextTick(viewer, viewer::closeInventory);
             plugin.getMessageManager().send(viewer, Messages.NO_PERMISSION);
             return;
         }
@@ -420,16 +425,16 @@ public final class CreativeManageMenus implements Listener {
             if (raw < list.shown.size()) {
                 Entry entry = list.shown.get(raw);
                 if (event.isShiftClick() && !entry.holder().isGroup()) {
-                    plugin.getScheduler().runOnServer(() -> openInvsee(viewer, entry.holder(), list.filter, list.page));
+                    nextTick(viewer, () -> openInvsee(viewer, entry.holder(), list.filter, list.page));
                 } else {
-                    plugin.getScheduler().runOnServer(() -> openFlags(viewer, entry.holder(), list.filter, list.page));
+                    nextTick(viewer, () -> openFlags(viewer, entry.holder(), list.filter, list.page));
                 }
             } else if (raw == PREVIOUS && list.page > 0) {
-                plugin.getScheduler().runOnServer(() -> openList(viewer, list.filter, list.page - 1));
+                nextTick(viewer, () -> openList(viewer, list.filter, list.page - 1));
             } else if (raw == NEXT) {
-                plugin.getScheduler().runOnServer(() -> openList(viewer, list.filter, list.page + 1));
+                nextTick(viewer, () -> openList(viewer, list.filter, list.page + 1));
             } else if (raw == FILTER) {
-                plugin.getScheduler().runOnServer(() -> openList(viewer, list.filter.next(right), 0));
+                nextTick(viewer, () -> openList(viewer, list.filter.next(right), 0));
             }
             return;
         }
@@ -440,7 +445,7 @@ public final class CreativeManageMenus implements Listener {
 
     private void flagClick(Player viewer, FlagMenu menu, int raw) {
         if (raw == BACK) {
-            plugin.getScheduler().runOnServer(() -> {
+            nextTick(viewer, () -> {
                 if (menu.backFilter == null) {
                     viewer.closeInventory();
                 } else {
@@ -450,7 +455,7 @@ public final class CreativeManageMenus implements Listener {
             return;
         }
         if (raw == CLOSE) {
-            plugin.getScheduler().runOnServer(viewer::closeInventory);
+            nextTick(viewer, viewer::closeInventory);
             return;
         }
         if (raw == REFRESH) {
@@ -512,7 +517,8 @@ public final class CreativeManageMenus implements Listener {
     }
 
     private void reload(Player viewer, FlagMenu menu) {
-        access.read(menu.holder, (values, error) -> {
+        access.read(viewer, menu.holder, (values, error) -> {
+            if (closed) return;
             if (error != null) {
                 failed(viewer, menu.holder, error);
                 return;
@@ -521,6 +527,12 @@ public final class CreativeManageMenus implements Listener {
             menu.backend = access.backend();
             paint(menu);
         });
+    }
+
+    private void nextTick(Player viewer, Runnable action) {
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), viewer, () -> {
+            if (!closed && viewer.isOnline()) action.run();
+        }, () -> {}, 0L);
     }
 
     private void failed(Player viewer, CreativeHolder holder, Throwable error) {

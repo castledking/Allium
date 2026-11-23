@@ -77,7 +77,7 @@ public final class ToolsModule extends AbstractModule {
     private final List<String> registeredPermissions = new ArrayList<>();
     private final List<String> modelSelectors = new ArrayList<>();
     /** Powertools whose items show a restraining state (the handcuffs). */
-    private final java.util.Set<String> restrainingTools = new java.util.HashSet<>();
+    private final java.util.Set<String> restrainingTools = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private DisarmListener disarmListener;
     private DisarmBehavior disarm;
     private ObliterateListener obliterateListener;
@@ -123,6 +123,7 @@ public final class ToolsModule extends AbstractModule {
     private void initPowerToolsRuntime(ItemService items, java.io.File toolsDir, Set<String> coreItems) {
         PowerToolSettings ptSettings = PowerToolSettings.fromConfig(plugin.getConfig().getConfigurationSection("powertools"));
         powerTools = new PowerToolBehavior(
+                plugin,
                 items,
                 plugin.getProtectionService(),
                 plugin.getScheduler(),
@@ -136,6 +137,7 @@ public final class ToolsModule extends AbstractModule {
         );
         powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_GRANT,
                 new codes.castled.allium.tool.powertool.PermissionGrantAction(
+                        plugin,
                         () -> codes.castled.allium.creative.manage.CreativeAccess.current(plugin.getServer()),
                         plugin.getScheduler(), plugin.getMessageManager()::send, plugin.logger()::info, plugin.logger()::warning,
                         new Random(), this::singleUseCopy));
@@ -146,16 +148,20 @@ public final class ToolsModule extends AbstractModule {
         var claims = new codes.castled.allium.ride.GpExpansionClaims(() -> plugin.getServer().getPluginManager());
         var rideActions = new codes.castled.allium.ride.RideActions(rides, plugin.getProtectionService(),
                 plugin.getMessageManager()::send, this::title, org.bukkit.entity.Entity::getName, claims);
-        claimBans = new codes.castled.allium.ride.ClaimBans(rides, claims, plugin.getScheduler(), plugin.getServer()::getPlayer,
+        claimBans = new codes.castled.allium.ride.ClaimBans(plugin, rides, claims, plugin.getScheduler(), plugin.getServer()::getPlayer,
                 plugin.getMessageManager()::send, this::title, plugin.logger()::info);
         powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_CLAIM_BAN, claimBans.action());
         rides.addListener(new codes.castled.allium.ride.Rides.RideListener() {
             @Override
             public void restraintsChanged(java.util.UUID carrier) {
-                showRestraining(carrier);
+                org.bukkit.entity.Player player = plugin.getServer().getPlayer(carrier);
+                if (player == null) return;
+                codes.castled.allium.scheduler.BukkitServerThread.onOwner(plugin, plugin.getScheduler(), player,
+                        () -> showRestraining(carrier));
                 // Q lets go while the handcuffs are out of the inventory; they come back when the
                 // drop is cancelled, so look again once the event is over.
-                plugin.getScheduler().runOnServer(() -> showRestraining(carrier));
+                codes.castled.allium.scheduler.BukkitServerThread.runFor(plugin, plugin.getScheduler(), player,
+                        () -> showRestraining(carrier), () -> {}, 0L);
             }
         });
         powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_RIDE, rideActions.ride());
@@ -318,7 +324,7 @@ public final class ToolsModule extends AbstractModule {
         if (tools.isEmpty()) {
             return;
         }
-        fellTree = new FellTreeBehavior(items, plugin.getProtectionService(), plugin.getScheduler(),
+        fellTree = new FellTreeBehavior(plugin, items, plugin.getProtectionService(), plugin.getScheduler(),
                 plugin.getMessageManager()::send, plugin.logger()::warning, System::currentTimeMillis,
                 new Random(), tools);
         fellTreeListener = new FellTreeListener(fellTree);

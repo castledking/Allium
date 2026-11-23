@@ -14,6 +14,7 @@ import codes.castled.allium.module.MessagingModule;
 import codes.castled.allium.module.PreferencesModule;
 import codes.castled.allium.preference.PreferenceKey;
 import codes.castled.allium.item.delivery.ItemDeliveryService;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.naming.NameCache;
 import codes.castled.allium.naming.PlayerNameService;
@@ -43,6 +44,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
@@ -110,20 +113,20 @@ public final class MailService implements Listener {
     private final NamespacedKey receiptKey;
     private final java.nio.file.Path playerDataDirectory;
     private final Map<UUID, Long> generations = new ConcurrentHashMap<>();
-    private final Map<Player, Long> connections = new java.util.IdentityHashMap<>();
+    private final Map<Player, Long> connections = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
     private final AtomicLong generationCounter = new AtomicLong();
     /** Mail IDs a send or claim in this JVM is working on: recovery never touches them. */
     private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
     private volatile CostPolicy cost = CostPolicy.FREE;
     private final ItemDeliveryService delivery;
-    private final Map<Player, List<MailRecord>> mailboxCache = new java.util.IdentityHashMap<>();
-    private final Set<Player> recovering = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-    private final Set<Player> recoveryBusy = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-    private final Set<Player> quarantined = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-    private final Map<Player, Integer> recoveryFailures = new java.util.IdentityHashMap<>();
+    private final Map<Player, List<MailRecord>> mailboxCache = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
+    private final Set<Player> recovering = java.util.Collections.synchronizedSet(java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
+    private final Set<Player> recoveryBusy = java.util.Collections.synchronizedSet(java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
+    private final Set<Player> quarantined = java.util.Collections.synchronizedSet(java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
+    private final Map<Player, Integer> recoveryFailures = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
     private TaskHandle recoveryTimer;
     private TaskHandle purgeTimer;
-    private boolean closed;
+    private volatile boolean closed;
 
     public MailService(PluginStart plugin, MailRepository repository, IgnoreRepository ignoreStorage, PlayerNameService names,
                        NotificationService notifications, Executor io, String serverId, Supplier<MailLimits> limits) {
@@ -144,15 +147,16 @@ public final class MailService implements Listener {
         this.limits = limits;
         this.receiptKey = new NamespacedKey(plugin, "mail_receipts");
         this.locks = new MailInventoryLock();
-        this.delivery = new ItemDeliveryService(plugin.getScheduler().serverExecutor(), plugin.getScheduler()::isServerThread,
-                plugin.getServer()::getPlayer, plugin.getServer().getPluginManager());
+        this.delivery = new ItemDeliveryService(ItemDeliveryService.targetThread(plugin, plugin.getScheduler()),
+                plugin.getServer()::getPlayer, plugin.getServer().getPluginManager(),
+                () -> codes.castled.allium.item.delivery.SkullFallback.UNTEXTURED);
     }
 
     public void enable() {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         plugin.getServer().getPluginManager().registerEvents(locks, plugin);
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            joined(online);
+            onPlayerNow(online, () -> joined(online), () -> {});
         }
         // Expired text mail and old send-log rows, every 10 minutes.
         purgeTimer = plugin.getScheduler().repeatOnServer(() -> {
@@ -168,8 +172,17 @@ public final class MailService implements Listener {
             return true;
         }, 60_000L, 600_000L);
         recoveryTimer = plugin.getScheduler().repeatOnServer(() -> {
-            for (Player player : List.copyOf(recovering)) {
-                if (same(player) && !quarantined.contains(player) && !recoveryBusy.contains(player)) joined(player);
+            List<Player> pending;
+            synchronized (recovering) {
+                pending = List.copyOf(recovering);
+            }
+            for (Player player : pending) {
+                onPlayer(player, () -> {
+                    if (same(player) && !quarantined.contains(player) && !recoveryBusy.contains(player)) joined(player);
+                }, () -> {
+                    recovering.remove(player);
+                    recoveryBusy.remove(player);
+                });
             }
             return true;
         }, 2_000L, 2_000L);
@@ -265,7 +278,7 @@ public final class MailService implements Listener {
         Money price=price(sender,MailKind.TEXT);if(price==null)return;
         decide(sender, senderId, muted, target).thenAcceptAsync(decision -> {
             if (decision.outcome() != MailPolicy.Outcome.DELIVER) {
-                onServer(() -> {
+                onSender(sender, () -> {
                     refuse(sender, decision.outcome(), target);
                 });
                 return;
@@ -279,13 +292,13 @@ public final class MailService implements Listener {
                 result = sendPriced(mail,rules,bypass,price,null,null);
             } catch (SQLException e) {
                 plugin.logger().warning("Mail to " + target + " could not be stored: " + e.getMessage());
-                onServer(() -> {
+                onSender(sender, () -> {
                     if(e instanceof PaidWorkflowSupport.UnknownCommit unknown)send(sender,Messages.MAIL_COST_UNKNOWN,"{id}",unknown.operationId().toString());
                     else send(sender, Messages.MAIL_FAILED);
                 });
                 return;
             }
-            onServer(() -> {
+            onSender(sender, () -> {
                 if (result != MailRepository.SendResult.SAVED) {
                     limited(sender, result, decision.recipient().name());
                     return;
@@ -294,7 +307,7 @@ public final class MailService implements Listener {
                 notifyNew(decision.recipient().uuid(), senderName, MailKind.TEXT);
             });
         }, io).exceptionally(error -> {
-            onServer(() -> send(sender, Messages.MAIL_FAILED));
+            onSender(sender, () -> send(sender, Messages.MAIL_FAILED));
             return null;
         });
     }
@@ -312,7 +325,7 @@ public final class MailService implements Listener {
             io.execute(() -> {
                 try {
                     if (repository.send(mail, rules, true) == MailRepository.SendResult.SAVED) {
-                        onServer(() -> notifyNew(recipientUuid, from, MailKind.TEXT));
+                        notifyNew(recipientUuid, from, MailKind.TEXT);
                     }
                 } catch (SQLException e) {
                     plugin.logger().warning("System mail to " + recipientUuid + " could not be stored: " + e.getMessage());
@@ -376,10 +389,10 @@ public final class MailService implements Listener {
         inFlight.add(mailId);
         decide(sender, senderId, muted, target).thenAcceptAsync(decision -> {
             if (decision.outcome() != MailPolicy.Outcome.DELIVER) {
-                onServer(() -> {
+                onPlayer(sender, () -> {
                     finishSend(sender, mailId);
                     refuse(sender, decision.outcome(), target);
-                });
+                }, () -> finishSend(sender, mailId));
                 return;
             }
             MailRecord pending = MailRecord.pendingGift(mailId, decision.recipient().uuid(), senderId, sender.getName(), note,
@@ -393,27 +406,41 @@ public final class MailService implements Listener {
                 result = sendPriced(pending,rules,bypass,price,baselineFile,baseline);
             } catch (SQLException e) {
                 plugin.logger().warning("A gift to " + target + " could not be stored; nothing left " + sender.getName() + ": " + e.getMessage());
-                onServer(() -> {
+                onPlayer(sender, () -> {
                     finishSend(sender, mailId);
                     deferRecovery(sender);
                     send(sender, Messages.MAIL_FAILED);
-                });
+                }, () -> finishSend(sender, mailId));
                 return;
             }
-            onServer(() -> {
+            onPlayer(sender, () -> {
                 if (result != MailRepository.SendResult.SAVED) {
                     finishSend(sender, mailId);
                     limited(sender, result, decision.recipient().name());
                     return;
                 }
                 takeAndActivate(sender, generation, slot, gift, mailId, decision.recipient(),price.minor()>0);
+            }, () -> {
+                if (result != MailRepository.SendResult.SAVED) {
+                    finishSend(sender, mailId);
+                    return;
+                }
+                locks.unlock(sender);
+                submitCritical(sender, mailId, () -> {
+                    try {
+                        cancelPending(mailId, baselineFile, baseline);
+                    } catch (SQLException e) {
+                        plugin.logger().warning("Gift " + mailId + " stays PENDING (cancel failed, retried at the sender's next join): " + e.getMessage());
+                    } finally {
+                        inFlight.remove(mailId);
+                    }
+                });
             });
         }, io).exceptionally(error -> {
-            onServer(() -> {
+            onPlayer(sender, () -> {
                 finishSend(sender, mailId);
-
                 send(sender, Messages.MAIL_FAILED);
-            });
+            }, () -> finishSend(sender, mailId));
             return null;
         });
     }
@@ -498,22 +525,22 @@ public final class MailService implements Listener {
                 failIfArmed();
                 activated = activate(mailId,playerFile,expectedReceipt);
             } catch (IOException e) {
-                onServer(() -> {
+                onPlayer(sender, () -> {
                     finishSend(sender, mailId);
                     quarantine(sender, "Gift " + mailId + " has no confirmed saved escrow receipt", e);
-                });
+                }, () -> finishSend(sender, mailId));
                 return;
             } catch (SQLException e) {
                 plugin.logger().warning("Gift " + mailId + " is safe but not active yet (retried at " + sender.getName()
                         + "'s next join): " + e.getMessage());
-                onServer(() -> {
+                onPlayer(sender, () -> {
                     finishSend(sender, mailId);
                     deferRecovery(sender);
                     send(sender, Messages.MAIL_GIFT_DELAYED, "{player}", recipient.name());
-                });
+                }, () -> finishSend(sender, mailId));
                 return;
             }
-            onServer(() -> {
+            onPlayer(sender, () -> {
                 finishSend(sender, mailId);
                 if (!activated) {
                     deferRecovery(sender);
@@ -524,6 +551,9 @@ public final class MailService implements Listener {
                 }
                 send(sender, Messages.MAIL_GIFT_SENT, "{player}", recipient.name(), "{amount}", Integer.toString(gift.getAmount()));
                 notifyNew(recipient.uuid(), sender.getName(), MailKind.GIFT);
+            }, () -> {
+                finishSend(sender, mailId);
+                if (activated) notifyNew(recipient.uuid(), sender.getName(), MailKind.GIFT);
             });
         }, true);
     }
@@ -543,43 +573,73 @@ public final class MailService implements Listener {
     public void read(Player player, java.util.function.BooleanSupplier valid, java.util.function.Consumer<Boolean> outcome) {
         UUID id = player.getUniqueId();
         long now = System.currentTimeMillis();
-        io.execute(() -> {
-            List<MailRecord> box;
-            try {
-                box = repository.mailbox(id, now);
-            } catch (SQLException e) {
-                plugin.getScheduler().runOnServer(() -> {
-                    send(player, Messages.MAIL_FAILED);
-                    outcome.accept(false);
-                });
-                return;
-            }
-            plugin.getScheduler().runOnServer(() -> {
-                if (!same(player) || !valid.getAsBoolean()) { outcome.accept(false); return; }
-                mailboxCache.put(player, List.copyOf(box));
-                if (box.isEmpty()) {
-                    send(player, Messages.MAIL_EMPTY);
-                    outcome.accept(true);
+        try {
+            io.execute(() -> {
+                List<MailRecord> box;
+                try {
+                    box = repository.mailbox(id, now);
+                } catch (SQLException | RuntimeException failure) {
+                    mailboxReply(player, () -> {
+                        if (same(player)) send(player, Messages.MAIL_FAILED);
+                        outcome.accept(false);
+                    }, () -> outcome.accept(false));
                     return;
                 }
-                send(player, Messages.MAIL_HEADER, "{count}", Integer.toString(box.size()));
-                List<UUID> seen = new ArrayList<>();
-                for (MailRecord mail : box) {
-                    line(player, mail, now);
-                    if (mail.unread()) {
-                        seen.add(mail.id());
+                mailboxReply(player, () -> {
+                    if (!same(player) || !valid.getAsBoolean()) {
+                        outcome.accept(false);
+                        return;
                     }
-                }
-                outcome.accept(true);
-                io.execute(() -> {
-                    try {
-                        repository.markRead(id, seen);
-                    } catch (SQLException e) {
-                        plugin.logger().warning("Could not mark mail read for " + player.getName() + ": " + e.getMessage());
+                    mailboxCache.put(player, List.copyOf(box));
+                    if (box.isEmpty()) {
+                        send(player, Messages.MAIL_EMPTY);
+                        outcome.accept(true);
+                        return;
                     }
-                });
+                    send(player, Messages.MAIL_HEADER, "{count}", Integer.toString(box.size()));
+                    List<UUID> seen = new ArrayList<>();
+                    for (MailRecord mail : box) {
+                        line(player, mail, now);
+                        if (mail.unread()) seen.add(mail.id());
+                    }
+                    outcome.accept(true);
+                    if (!seen.isEmpty()) markRead(player, id, seen);
+                }, () -> outcome.accept(false));
             });
-        });
+        } catch (RejectedExecutionException full) {
+            if (same(player)) send(player, Messages.MAIL_FAILED);
+            outcome.accept(false);
+        }
+    }
+
+    private void mailboxReply(Player player, Runnable reply, Runnable retired) {
+        var started = new AtomicBoolean();
+        Runnable unavailable = () -> {
+            if (started.compareAndSet(false, true)) retired.run();
+        };
+        try {
+            TaskHandle task = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+                if (started.compareAndSet(false, true)) reply.run();
+            }, unavailable, 0L);
+            if (BukkitServerThread.isFolia() && task == TaskHandle.NONE) unavailable.run();
+        } catch (RuntimeException failure) {
+            plugin.logger().warning("Could not schedule mailbox reply: " + failure.getMessage());
+            unavailable.run();
+        }
+    }
+
+    private void markRead(Player player, UUID id, List<UUID> seen) {
+        try {
+            io.execute(() -> {
+                try {
+                    repository.markRead(id, seen);
+                } catch (SQLException e) {
+                    plugin.logger().warning("Could not mark mail read for " + player.getName() + ": " + e.getMessage());
+                }
+            });
+        } catch (RejectedExecutionException full) {
+            plugin.logger().warning("Could not queue the mailbox read acknowledgements for " + player.getName());
+        }
     }
 
     private void line(Player player, MailRecord mail, long now) {
@@ -606,10 +666,10 @@ public final class MailService implements Listener {
                 try {
                     deleted = repository.deleteText(id, mail.id());
                 } catch (SQLException e) {
-                    onServer(() -> send(player, Messages.MAIL_FAILED));
+                    onPlayer(player, () -> send(player, Messages.MAIL_FAILED), () -> {});
                     return;
                 }
-                onServer(() -> send(player, deleted ? Messages.MAIL_DELETED : Messages.MAIL_NOT_FOUND, "{id}", mail.label()));
+                onPlayer(player, () -> send(player, deleted ? Messages.MAIL_DELETED : Messages.MAIL_NOT_FOUND, "{id}", mail.label()), () -> {});
             });
         });
     }
@@ -621,10 +681,10 @@ public final class MailService implements Listener {
             try {
                 n = repository.clearRead(id);
             } catch (SQLException e) {
-                onServer(() -> send(player, Messages.MAIL_FAILED));
+                onPlayer(player, () -> send(player, Messages.MAIL_FAILED), () -> {});
                 return;
             }
-            onServer(() -> send(player, Messages.MAIL_CLEARED, "{count}", Integer.toString(n)));
+            onPlayer(player, () -> send(player, Messages.MAIL_CLEARED, "{count}", Integer.toString(n)), () -> {});
         });
     }
 
@@ -642,12 +702,12 @@ public final class MailService implements Listener {
                 try {
                     List<MailRecord> gifts = repository.mailbox(id, System.currentTimeMillis()).stream()
                             .filter(m -> m.kind() == MailKind.GIFT && m.state() == MailState.READY).toList();
-                    onServer(() -> {
+                    onPlayer(player, () -> {
                         if (!same(player)) return;
                         if (gifts.isEmpty()) send(player, Messages.MAIL_NO_GIFTS);
                         else claimNext(player, gifts, 0);
-                    });
-                } catch (SQLException e) { onServer(() -> send(player, Messages.MAIL_FAILED)); }
+                    }, () -> {});
+                } catch (SQLException e) { onPlayer(player, () -> send(player, Messages.MAIL_FAILED), () -> {}); }
             });
         } else {
             find(player, idPrefix, MailKind.GIFT, mail -> {
@@ -677,24 +737,25 @@ public final class MailService implements Listener {
             try {
                 failIfArmed();
                 if (!repository.beginClaim(mail.id(), id, token, serverId, System.currentTimeMillis())) {
-                    onServer(() -> {
+                    onPlayer(player, () -> {
                         finishSend(player, mail.id());
                         send(player, Messages.MAIL_CLAIM_TAKEN, "{id}", mail.label());
                         if (same(player)) after.run();
-                    });
+                    }, () -> finishSend(player, mail.id()));
                     return;
                 }
                 // The caller's mailbox snapshot may predate another partial claim. Read only our won token's row.
                 MailRecord current = repository.find(mail.id()).filter(m -> token.equals(m.claimToken())).orElseThrow(
                         () -> new SQLException("won claim vanished: " + mail.id()));
                 if (FaultInjection.trip(FAULT_CLAIM_SLOW)) sleep(SLOW_MILLIS);
-                onServer(() -> deliverClaim(player, generation, current, token, after));
+                onPlayer(player, () -> deliverClaim(player, generation, current, token, after),
+                        () -> release(player, current, token, () -> {}));
             } catch (SQLException e) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishSend(player, mail.id());
                     deferRecovery(player);
                     send(player, Messages.MAIL_FAILED);
-                });
+                }, () -> finishSend(player, mail.id()));
             }
         });
     }
@@ -745,7 +806,7 @@ public final class MailService implements Listener {
                 PlayerDataReceiptProof.verify(playerFile, expectedReceipt);
                 failIfArmed();
                 boolean finished = repository.finishClaim(mail.id(), token, rest, plan.remaining().size());
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishSend(player, mail.id());
                     if (!same(player) || generation(player.getUniqueId()) != generation) return;
                     if (!finished) { deferRecovery(player); return; }
@@ -755,15 +816,16 @@ public final class MailService implements Listener {
                     send(player, kept > 0 ? Messages.MAIL_CLAIMED_PART : Messages.MAIL_CLAIMED,
                             "{id}", mail.label(), "{given}", Integer.toString(plan.given()), "{kept}", Integer.toString(kept));
                     after.run();
-                });
+                }, () -> finishSend(player, mail.id()));
             } catch (IOException e) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     finishSend(player, mail.id());
                     quarantine(player, "Claim " + mail.id() + " has no confirmed saved delivery receipt", e);
-                });
+                }, () -> finishSend(player, mail.id()));
             } catch (SQLException e) {
                 plugin.logger().warning("Claim " + mail.id() + " awaits receipt recovery: " + e.getMessage());
-                onServer(() -> { finishSend(player, mail.id()); deferRecovery(player); });
+                onPlayer(player, () -> { finishSend(player, mail.id()); deferRecovery(player); },
+                        () -> finishSend(player, mail.id()));
             }
         }, true);
     }
@@ -772,9 +834,11 @@ public final class MailService implements Listener {
         submitCritical(player, mail.id(), () -> {
             try {
                 repository.releaseClaim(mail.id(), token);
-                onServer(() -> { finishSend(player, mail.id()); if (same(player)) after.run(); });
+                onPlayer(player, () -> { finishSend(player, mail.id()); if (same(player)) after.run(); },
+                        () -> finishSend(player, mail.id()));
             } catch (SQLException e) {
-                onServer(() -> { finishSend(player, mail.id()); deferRecovery(player); });
+                onPlayer(player, () -> { finishSend(player, mail.id()); deferRecovery(player); },
+                        () -> finishSend(player, mail.id()));
             }
         });
     }
@@ -827,13 +891,13 @@ public final class MailService implements Listener {
                 List<MailRecord> pending = repository.pendingFrom(player.getUniqueId(), serverId);
                 if(receipts.isEmpty())for(var row:pending)if(repository.paid(row.id()))PaidWorkflowSupport.prove(savedFile,PlayerDataReceiptProof.MAIL_RECEIPTS,expectedReceipt);
                 List<MailRecord> claiming = repository.claimingFor(player.getUniqueId(), serverId);
-                onServer(() -> recover(player, generation, receipts, pending, claiming));
+                onPlayer(player, () -> recover(player, generation, receipts, pending, claiming), () -> finishRecoveryRetired(player));
             } catch (IOException e) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     recoveryBusy.remove(player);
                     quarantine(player, "Mail recovery has no confirmed saved receipt for " + player.getUniqueId(), e);
-                });
-            } catch (SQLException e) { onServer(() -> recoveryFailed(player, generation, e)); }
+                }, () -> finishRecoveryRetired(player));
+            } catch (SQLException e) { onPlayer(player, () -> recoveryFailed(player, generation, e), () -> finishRecoveryRetired(player)); }
         });
     }
 
@@ -889,7 +953,7 @@ public final class MailService implements Listener {
         submitRecovery(player, generation, () -> {
             try {
                 for (RecoveryStep step : steps) step.run();
-                onServer(() -> {
+                onPlayer(player, () -> {
                     if (!same(player) || generation(player.getUniqueId()) != generation) return;
                     removeReceipt(player, receipts::contains);
                     player.saveData();
@@ -898,8 +962,8 @@ public final class MailService implements Listener {
                     recoveryFailures.remove(player);
                     locks.unlock(player);
                     unreadSummary(player);
-                });
-            } catch (SQLException error) { onServer(() -> recoveryFailed(player, generation, error)); }
+                }, () -> finishRecoveryRetired(player));
+            } catch (SQLException error) { onPlayer(player, () -> recoveryFailed(player, generation, error), () -> finishRecoveryRetired(player)); }
         });
     }
 
@@ -942,12 +1006,12 @@ public final class MailService implements Listener {
                 return;
             }
             if (unread > 0 && plugin.getConfig().getBoolean("mail.notify.on-join", true)) {
-                onServer(() -> {
+                onPlayer(player, () -> {
                     if (player.isOnline()) {
                         notifications.send(player, new NotificationService.Notification(Messages.MAIL_UNREAD,
                                 Map.of("{count}", Integer.toString(unread)), null, NotificationService.Sound.MESSAGE));
                     }
-                });
+                }, () -> {});
             }
         });
     }
@@ -958,8 +1022,11 @@ public final class MailService implements Listener {
         if (online == null || !plugin.getConfig().getBoolean("mail.notify.new-mail", true)) {
             return;
         }
-        notifications.send(online, new NotificationService.Notification(kind == MailKind.GIFT ? Messages.MAIL_NEW_GIFT : Messages.MAIL_NEW,
-                Map.of("{sender}", MessagingService.safeName(senderName)), null, NotificationService.Sound.MESSAGE));
+        onPlayerNow(online, () -> {
+            if (!same(online)) return;
+            notifications.send(online, new NotificationService.Notification(kind == MailKind.GIFT ? Messages.MAIL_NEW_GIFT : Messages.MAIL_NEW,
+                    Map.of("{sender}", MessagingService.safeName(senderName)), null, NotificationService.Sound.MESSAGE));
+        }, () -> {});
     }
 
     // -- Shared steps --------------------------------------------------------------------------
@@ -976,7 +1043,7 @@ public final class MailService implements Listener {
         CompletableFuture<Optional<NameCache.Entry>> resolution;
         try { resolution = names.resolve(target); }
         catch (RuntimeException error) { return CompletableFuture.completedFuture(new Decision(MailPolicy.Outcome.UNAVAILABLE, null)); }
-        resolution.whenComplete((found, error) -> onServer(() -> {
+        resolution.whenComplete((found, error) -> onSender(sender, () -> {
             NameCache.Entry recipient = error == null && found != null ? found.orElse(null) : null;
             if (error != null) { result.complete(new Decision(MailPolicy.Outcome.UNAVAILABLE, null)); return; }
             if (recipient == null || recipient.uuid().equals(senderId)) {
@@ -997,19 +1064,19 @@ public final class MailService implements Listener {
                             .orElse(codes.castled.allium.preference.StoredPreferences.empty(recipient.uuid()));
                     MailPolicy.Acceptance storedAcceptance = stored.effective(defaults).acceptMessages()
                             ? MailPolicy.Acceptance.ACCEPTS : MailPolicy.Acceptance.REFUSES;
-                    onServer(() -> {
+                    onSender(sender, () -> {
                         MailPolicy.Outcome current = localPolicy(senderId, permissions, wasMuted, recipient.uuid());
                         result.complete(new Decision(current == MailPolicy.Outcome.DELIVER
                                 ? MailPolicy.decide(senderId, permissions, false, recipient.uuid(), ignore, storedAcceptance)
                                 : current, recipient));
-                    });
+                    }, () -> result.complete(new Decision(MailPolicy.Outcome.UNAVAILABLE, recipient)));
                 } catch (SQLException | RuntimeException failure) {
                     result.complete(new Decision(MailPolicy.Outcome.UNAVAILABLE, recipient));
                 }
             }); } catch (java.util.concurrent.RejectedExecutionException rejected) {
                 result.complete(new Decision(MailPolicy.Outcome.UNAVAILABLE, recipient));
             }
-        }));
+        }, () -> result.complete(new Decision(MailPolicy.Outcome.UNAVAILABLE, null))));
         return result;
     }
 
@@ -1101,17 +1168,17 @@ public final class MailService implements Listener {
                         .filter(m -> numbered ? m.number() == number : m.id().toString().startsWith(prefix))
                         .toList();
             } catch (SQLException e) {
-                onServer(() -> send(player, Messages.MAIL_FAILED));
+                onPlayer(player, () -> send(player, Messages.MAIL_FAILED), () -> {});
                 return;
             }
-            onServer(() -> {
+            onPlayer(player, () -> {
                 if (!same(player)) return;
                 if (matches.size() == 1) {
                     found.accept(matches.get(0));
                 } else {
                     send(player, Messages.MAIL_NOT_FOUND, "{id}", MessagingService.safeName(typed));
                 }
-            });
+            }, () -> {});
         });
     }
 
@@ -1130,7 +1197,10 @@ public final class MailService implements Listener {
     private void submitCritical(Player player, UUID mailId, Runnable task, boolean pendingProof) {
         try { io.execute(() -> {
             try { task.run(); }
-            catch (RuntimeException error) { onServer(() -> rejectedCritical(player, mailId, pendingProof, error)); }
+            catch (RuntimeException error) {
+                onPlayer(player, () -> rejectedCritical(player, mailId, pendingProof, error),
+                        () -> finishSend(player, mailId));
+            }
         }); }
         catch (java.util.concurrent.RejectedExecutionException error) { rejectedCritical(player, mailId, pendingProof, error); }
     }
@@ -1150,9 +1220,17 @@ public final class MailService implements Listener {
     private void submitRecovery(Player player, long generation, Runnable task) {
         try { io.execute(() -> {
             try { task.run(); }
-            catch (RuntimeException error) { onServer(() -> recoveryFailed(player, generation, error)); }
+            catch (RuntimeException error) {
+                onPlayer(player, () -> recoveryFailed(player, generation, error),
+                        () -> finishRecoveryRetired(player));
+            }
         }); }
         catch (java.util.concurrent.RejectedExecutionException error) { recoveryFailed(player, generation, error); }
+    }
+
+    private void finishRecoveryRetired(Player player) {
+        recoveryBusy.remove(player);
+        locks.unlock(player);
     }
 
     private List<MailReceipts.Entry> receipts(Player player) {
@@ -1253,12 +1331,67 @@ public final class MailService implements Listener {
         }
     }
 
-    private void onServer(Runnable task) {
-        if (!closed) plugin.getScheduler().runOnServer(() -> { if (!closed) task.run(); });
+    private void onPlayer(Player player, Runnable action, Runnable retired) {
+        if (closed) {
+            retired.run();
+            return;
+        }
+        var started = new AtomicBoolean();
+        Runnable unavailable = () -> {
+            if (started.compareAndSet(false, true)) retired.run();
+        };
+        try {
+            TaskHandle handle = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+                if (started.compareAndSet(false, true)) {
+                    if (!closed) action.run();
+                    else retired.run();
+                }
+            }, unavailable, 0L);
+            if (BukkitServerThread.isFolia() && handle == TaskHandle.NONE) unavailable.run();
+        } catch (RuntimeException failure) {
+            plugin.logger().warning("Mail could not schedule player work for " + player.getName() + ": " + failure.getMessage());
+            unavailable.run();
+        }
+    }
+
+    private void onPlayerNow(Player player, Runnable action, Runnable retired) {
+        if (closed) {
+            retired.run();
+            return;
+        }
+        if (!BukkitServerThread.isFolia() || BukkitServerThread.entity(plugin, player).isServerThread()) {
+            action.run();
+            return;
+        }
+        onPlayer(player, action, retired);
+    }
+
+    private void onSender(CommandSender sender, Runnable task) {
+        onSender(sender, task, () -> {});
+    }
+
+    private void onSender(CommandSender sender, Runnable task, Runnable retired) {
+        if (closed) {
+            retired.run();
+            return;
+        }
+        if (sender instanceof Player player) {
+            onPlayer(player, task, retired);
+            return;
+        }
+        plugin.getScheduler().runOnServer(() -> {
+            if (!closed) task.run();
+            else retired.run();
+        });
     }
 
     private void send(CommandSender to, Messages message, String... replacements) {
-        if (!(to instanceof Player p) || same(p)) plugin.getMessageManager().send(to, message, replacements);
+        if (closed) return;
+        BukkitServerThread.onOwner(plugin, plugin.getScheduler(), to, () -> {
+            if (!closed && (!(to instanceof Player p) || same(p))) {
+                plugin.getMessageManager().send(to, message, replacements);
+            }
+        });
     }
 
     private static void sleep(long millis) {

@@ -70,6 +70,11 @@ public final class MoreCommand implements SpecCommandHandler {
             }
         }
 
+        Integer amount = requestedAmount;
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> resize(context, target, amount));
+    }
+
+    private void resize(BukkitCommandContext context, Player target, Integer requestedAmount) {
         if (!UtilitySupport.guardInventoryNotBusy(plugin, context.sender(), target)) {
             return;
         }

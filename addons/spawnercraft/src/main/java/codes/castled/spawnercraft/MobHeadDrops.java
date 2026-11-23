@@ -25,7 +25,7 @@ final class MobHeadDrops implements Listener {
 
     private final Heads heads;
     private final Supplier<ConfigurationSection> config;
-    private final Map<EntityDamageEvent, Integer> potentialStackKills = new IdentityHashMap<>();
+    private final ThreadLocal<Map<EntityDamageEvent, Integer>> potentialStackKills = ThreadLocal.withInitial(IdentityHashMap::new);
 
     MobHeadDrops(Heads heads, Supplier<ConfigurationSection> config) {
         this.heads = heads;
@@ -48,12 +48,12 @@ final class MobHeadDrops implements Listener {
     public void beforeStackKill(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof LivingEntity mob) || event.getFinalDamage() < mob.getHealth()) return;
         int before = stackAmount(mob);
-        if (before > 1) potentialStackKills.put(event, before);
+        if (before > 1) potentialStackKills.get().put(event, before);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void afterStackKill(EntityDamageEvent event) {
-        Integer before = potentialStackKills.remove(event);
+        Integer before = potentialStackKills.get().remove(event);
         if (before == null || !event.isCancelled() || !(event.getEntity() instanceof LivingEntity mob)
                 || stackAmount(mob) != before - 1) return;
         // A virtual kill cancels damage, decrements the existing stack, and emits no death event.

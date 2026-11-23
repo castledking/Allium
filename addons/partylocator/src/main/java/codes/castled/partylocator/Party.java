@@ -19,10 +19,10 @@ final class Party {
 
     String name() { return name; }
     UUID leader() { return leader; }
-    Set<UUID> members() { return Collections.unmodifiableSet(members); }
-    boolean has(UUID player) { return members.contains(player); }
-    int size() { return members.size(); }
+    synchronized Set<UUID> members() { return Collections.unmodifiableSet(new LinkedHashSet<>(members)); }
+    synchronized boolean has(UUID player) { return members.contains(player); }
+    synchronized int size() { return members.size(); }
 
-    void add(UUID player) { members.add(player); }
-    void remove(UUID player) { if (!player.equals(leader)) members.remove(player); }
+    synchronized void add(UUID player) { members.add(player); }
+    synchronized void remove(UUID player) { if (!player.equals(leader)) members.remove(player); }
 }

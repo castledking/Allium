@@ -129,11 +129,8 @@ public final class TextFileCommand implements SpecCommandHandler.Immediate {
             return false;
         }
         CustomTextDocument.Page shown = CustomTextDocument.page(lines, page);
-        send(viewer, shown.lines());
-        if (shown.pages() > 1) {
-            String name = section == null ? "" : text.primaryName(section).orElse(section) + " ";
-            HelpCommand.sendFooter(plugin, viewer, shown.page(), shown.pages(), "/" + spec.canonicalName() + " " + name);
-        }
+        String name = section == null ? "" : text.primaryName(section).orElse(section) + " ";
+        sendPage(viewer, shown, "/" + spec.canonicalName() + " " + name);
         return true;
     }
 
@@ -144,10 +141,7 @@ public final class TextFileCommand implements SpecCommandHandler.Immediate {
             return;
         }
         CustomTextDocument.Page shown = CustomTextDocument.page(text.index(), 1);
-        send(player, shown.lines());
-        if (shown.pages() > 1) {
-            HelpCommand.sendFooter(plugin, player, 1, shown.pages(), "/" + spec.canonicalName() + " ");
-        }
+        sendPage(player, shown, "/" + spec.canonicalName() + " ");
     }
 
     /** Section names and aliases for {@code /<command> <tab>}. */
@@ -176,8 +170,10 @@ public final class TextFileCommand implements SpecCommandHandler.Immediate {
         }
     }
 
-    private void send(CommandSender sender, List<String> lines) {
-        file.send(sender, lines, true);
+    private void sendPage(CommandSender sender, CustomTextDocument.Page page, String command) {
+        file.send(sender, page.lines(), true, () -> {
+            if (page.pages() > 1) HelpCommand.sendFooter(plugin, sender, page.page(), page.pages(), command);
+        });
     }
 
     private void send(CommandSender sender, List<String> lines, boolean placeholders) {

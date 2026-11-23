@@ -4,10 +4,27 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.*;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.teleport.DestinationSafety;
 import codes.castled.allium.teleport.RequestTracker;
+import codes.castled.allium.teleport.TeleportSettings;
+import codes.castled.allium.teleport.TeleportSight;
+import codes.castled.allium.teleport.TeleportTargets;
 import codes.castled.allium.teleport.TeleportService;
+import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.function.Consumer;
 
 /** Parsing only; authorization and teleport policy are rechecked by the service. */
 public final class TeleportCommand implements SpecCommandHandler {
@@ -77,83 +94,211 @@ public final class TeleportCommand implements SpecCommandHandler {
             }
         }
     }
-    private void extended(BukkitCommandContext context){
-        var actor=context.sender();String command=spec.canonicalName();String[] args=context.args();var resolver=new codes.castled.allium.teleport.TeleportTargets(plugin);
-        try{
-            var module=plugin.getModuleManager()==null?null:plugin.getModuleManager().getModule("teleport");
-            var companions=module instanceof codes.castled.allium.module.TeleportModule tm?tm.companions():null;
-            if(command.equals("tppet")||command.equals("tpent")){if(args.length>1){context.sendInvalidArgs(spec.selfUsage());return;}if(companions==null){plugin.getMessageManager().send(actor,Messages.MODULE_DISABLED);return;}Player target=args.length==0?actor instanceof Player p?p:null:target(actor,args[0]);if(target!=null)companions.toggle(actor,target,command.equals("tppet"));else plugin.getMessageManager().send(actor,Messages.PLAYER_ONLY);return;}
-            if(command.equals("tp")){
-                if(args.length<1||args.length>2||args.length==1&&!(actor instanceof Player)){context.sendInvalidArgs(spec.selfUsage());return;}
-                var destinations=resolver.resolve(actor,args[args.length-1]);if(destinations.size()!=1||!(destinations.get(0) instanceof Player anchor))throw new IllegalArgumentException("The destination must resolve to one visible player.");
-                var movers=args.length==1?java.util.List.<org.bukkit.entity.Entity>of((Player)actor):resolver.resolve(actor,args[0]);
-                if(movers.stream().anyMatch(e->!(e instanceof Player)))throw new IllegalArgumentException("/tp source selector must resolve to players.");
-                if(movers.stream().anyMatch(e->e!=actor)&&!actor.hasPermission("allium.tp.others"))throw new SecurityException("allium.tp.others");
-                for(var e:movers)service.force(actor,(Player)e,anchor,"tp");return;
-            }
-            if(!(actor instanceof Player player)){plugin.getMessageManager().send(actor,Messages.PLAYER_ONLY);return;}
-            org.bukkit.Location destination=player.getLocation();if(command.equals("there")){var hit=player.rayTraceBlocks(128,org.bukkit.FluidCollisionMode.NEVER);if(hit==null||hit.getHitBlock()==null)throw new IllegalArgumentException("No block in sight.");destination=hit.getHitBlock().getRelative(hit.getHitBlockFace()==null?org.bukkit.block.BlockFace.UP:hit.getHitBlockFace()).getLocation().add(.5,0,.5);destination.setYaw(player.getLocation().getYaw());destination.setPitch(player.getLocation().getPitch());}
-            if(args.length==0){if(companions==null||!companions.move(player,destination))service.forceLocation(actor,player,destination,command);return;}
-            var rules=service.settings()!=null?service.settings():codes.castled.allium.teleport.TeleportSettings.read(plugin.getConfig());
-            int maxTargets=rules.tphereMaxEntities();
-            var targets=new java.util.LinkedHashMap<java.util.UUID,org.bukkit.entity.Entity>();
-            boolean requiresConfirm=false;
-            for(String arg:args){
-                var res=resolver.resolveDetailed(actor,arg,maxTargets,player);
-                if(res.matchedCount()>maxTargets){
-                    plugin.getMessageManager().send(actor,Messages.TELEPORT_ENTITY_LIMIT_EXCEEDED,"{count}",Integer.toString(res.matchedCount()),"{limit}",Integer.toString(maxTargets));
-                    return;
+    private void extended(BukkitCommandContext context) {
+        var actor = context.sender();
+        String command = spec.canonicalName();
+        String[] args = context.args();
+        var resolver = new TeleportTargets(plugin);
+        try {
+            var modules = plugin.getModuleManager();
+            var module = modules == null ? null : modules.getModule("teleport");
+            var companions = module instanceof codes.castled.allium.module.TeleportModule teleport ? teleport.companions() : null;
+            if (command.equals("tppet") || command.equals("tpent")) {
+                if (args.length > 1) context.sendInvalidArgs(spec.selfUsage());
+                else if (companions == null) plugin.getMessageManager().send(actor, Messages.MODULE_DISABLED);
+                else {
+                    Player target = args.length == 0 ? actor instanceof Player player ? player : null : target(actor, args[0]);
+                    if (target != null) companions.toggle(actor, target, command.equals("tppet"));
+                    else plugin.getMessageManager().send(actor, Messages.PLAYER_ONLY);
                 }
-                if(res.entitySelector())requiresConfirm=true;
-                for(var e:res.targets()){
-                    if(e!=player){
-                        targets.put(e.getUniqueId(),e);
-                        if(res.selector()&&!(e instanceof Player))requiresConfirm=true;
-                    }
-                }
-            }
-            if(targets.size()>maxTargets){
-                plugin.getMessageManager().send(actor,Messages.TELEPORT_ENTITY_LIMIT_EXCEEDED,"{count}",Integer.toString(targets.size()),"{limit}",Integer.toString(maxTargets));
                 return;
             }
-            if(targets.isEmpty())throw new IllegalArgumentException("No visible targets found.");
-            if(requiresConfirm&&rules.selectorConfirmMillis()>0){
-                String signature=String.join(" ",args).toLowerCase(java.util.Locale.ROOT);
-                if(!service.consumeSelectorConfirmation(player.getUniqueId(),command,signature)){
-                    int count=targets.size();
-                    String label=count==1?"entity":"entities";
-                    String invoked="/"+context.label()+" "+String.join(" ",args);
-                    long seconds=Math.max(1L,(rules.selectorConfirmMillis()+999L)/1000L);
-                    plugin.getMessageManager().send(actor,Messages.TELEPORT_SELECTOR_CONFIRM,
-                            "{count}",Integer.toString(count),
-                            "{label}",label,
-                            "{command}",invoked,
-                            "{seconds}",Long.toString(seconds));
+            if (command.equals("tp")) {
+                if (args.length < 1 || args.length > 2 || (args.length == 1 && !(actor instanceof Player))) {
+                    context.sendInvalidArgs(spec.selfUsage());
                     return;
                 }
-            }
-            org.bukkit.Location safeEntityDest=null;
-            int entitiesMoved=0;
-            for(var e:targets.values()){
-                if(e instanceof Player p){
-                    if(command.equals("tphere"))service.force(actor,p,player,command);
-                    else service.forceLocation(actor,p,destination,command);
-                }else{
-                    if(safeEntityDest==null){
-                        var safe=new codes.castled.allium.teleport.DestinationSafety().resolve(destination,rules);
-                        if(safe.isEmpty())throw new IllegalArgumentException("No safe destination.");
-                        safeEntityDest=safe.get();
+                dispatch(actor, resolver.resolveAsync(actor, args[args.length - 1]), destinations -> {
+                    if (destinations.size() != 1 || !(destinations.get(0) instanceof Player anchor)) {
+                        throw new IllegalArgumentException("The destination must resolve to one visible player.");
                     }
-                    if(e.teleport(safeEntityDest))entitiesMoved++;
+                    if (args.length == 1) teleportPlayersTo(actor, args, List.of((Player) actor), anchor);
+                    else dispatch(actor, resolver.resolveAsync(actor, args[0]), movers -> teleportPlayersTo(actor, args, movers, anchor));
+                });
+                return;
+            }
+            if (!(actor instanceof Player player)) {
+                plugin.getMessageManager().send(actor, Messages.PLAYER_ONLY);
+                return;
+            }
+            var destination = command.equals("there") ? TeleportSight.destination(plugin, player)
+                    : CompletableFuture.completedFuture(player.getLocation());
+            dispatch(actor, destination, location -> {
+                if (location == null) throw new IllegalArgumentException("No block in sight.");
+                if (args.length == 0) {
+                    if (companions == null || !companions.move(player, location)) service.forceLocation(actor, player, location, command);
+                    return;
+                }
+                var rules = service.settings() != null ? service.settings() : TeleportSettings.read(plugin.getConfig());
+                dispatch(actor, collectSelections(resolver, player, args, rules.tphereMaxEntities()),
+                        selections -> teleportSelection(context, player, location, rules, selections));
+            });
+        } catch (SecurityException | IllegalArgumentException failure) {
+            reportError(actor, failure);
+        }
+    }
+
+    private void teleportPlayersTo(CommandSender actor, String[] args, List<Entity> movers, Player anchor) {
+        requireSelectionPermission(actor, args);
+        if (movers.stream().anyMatch(entity -> !(entity instanceof Player))) {
+            throw new IllegalArgumentException("/tp source selector must resolve to players.");
+        }
+        if (movers.stream().anyMatch(entity -> entity != actor) && !actor.hasPermission("allium.tp.others")) {
+            throw new SecurityException("allium.tp.others");
+        }
+        for (Entity entity : movers) service.force(actor, (Player) entity, anchor, "tp");
+    }
+
+    private CompletableFuture<List<TeleportTargets.Resolution>> collectSelections(TeleportTargets resolver, Player player,
+                                                                                 String[] args, int limit) {
+        CompletableFuture<List<TeleportTargets.Resolution>> pending = CompletableFuture.completedFuture(new ArrayList<>());
+        for (String arg : args) {
+            pending = pending.thenCompose(results -> {
+                if (!results.isEmpty() && results.get(results.size() - 1).matchedCount() > limit) {
+                    return CompletableFuture.completedFuture(results);
+                }
+                return resolver.resolveDetailedAsync(player, arg, limit, player).thenApply(resolved -> {
+                    results.add(resolved);
+                    return results;
+                });
+            });
+        }
+        return pending;
+    }
+
+    private void teleportSelection(BukkitCommandContext context, Player actor, Location destination, TeleportSettings rules,
+                                   List<TeleportTargets.Resolution> selections) {
+        String[] args = context.args();
+        String command = spec.canonicalName();
+        int limit = rules.tphereMaxEntities();
+        var targets = new LinkedHashMap<UUID, Entity>();
+        boolean confirm = false;
+        for (var result : selections) {
+            if (result.matchedCount() > limit) {
+                sendLimit(actor, result.matchedCount(), limit);
+                return;
+            }
+            confirm |= result.entitySelector();
+            for (Entity entity : result.targets()) {
+                if (entity != actor) {
+                    targets.put(entity.getUniqueId(), entity);
+                    confirm |= result.selector() && !(entity instanceof Player);
                 }
             }
-            if(entitiesMoved>0){
-                plugin.getMessageManager().send(actor,Messages.TELEPORT_ENTITIES_MOVED,
-                        "{count}",Integer.toString(entitiesMoved),
-                        "{label}",entitiesMoved==1?"entity":"entities");
+        }
+        if (targets.size() > limit) {
+            sendLimit(actor, targets.size(), limit);
+            return;
+        }
+        requireSelectionPermission(actor, args);
+        if (targets.isEmpty()) throw new IllegalArgumentException("No visible targets found.");
+        if (confirm && rules.selectorConfirmMillis() > 0) {
+            String signature = String.join(" ", args).toLowerCase(Locale.ROOT);
+            if (!service.consumeSelectorConfirmation(actor.getUniqueId(), command, signature)) {
+                int count = targets.size();
+                long seconds = Math.max(1L, (rules.selectorConfirmMillis() + 999L) / 1000L);
+                plugin.getMessageManager().send(actor, Messages.TELEPORT_SELECTOR_CONFIRM,
+                        "{count}", Integer.toString(count), "{label}", count == 1 ? "entity" : "entities",
+                        "{command}", "/" + context.label() + " " + String.join(" ", args), "{seconds}", Long.toString(seconds));
+                return;
             }
-        }catch(SecurityException denied){plugin.getMessageManager().send(actor,Messages.NO_PERMISSION);}catch(IllegalArgumentException invalid){plugin.getMessageManager().send(actor,Messages.TELEPORT_SELECTION,"{message}",invalid.getMessage());}
+        }
+
+        if (BukkitServerThread.isFolia()) {
+            List<Entity> mobs = new ArrayList<>();
+            for (Entity target : targets.values()) {
+                if (target instanceof Player player) movePlayer(actor, player, command, destination);
+                else mobs.add(target);
+            }
+            if (!mobs.isEmpty()) {
+                dispatch(actor, service.moveSelectedEntities(actor, mobs, destination, rules, () -> {
+                    requireSelectionPermission(actor, args);
+                    return true;
+                }), moved -> {
+                    if (moved.isEmpty()) throw new IllegalArgumentException("No safe destination.");
+                    reportMoved(actor, moved.getAsInt());
+                });
+            }
+            return;
+        }
+
+        Location safeEntityDestination = null;
+        int moved = 0;
+        for (Entity target : targets.values()) {
+            if (target instanceof Player player) movePlayer(actor, player, command, destination);
+            else {
+                if (safeEntityDestination == null) {
+                    safeEntityDestination = new DestinationSafety().resolve(destination, rules)
+                            .orElseThrow(() -> new IllegalArgumentException("No safe destination."));
+                }
+                if (target.teleport(safeEntityDestination)) moved++;
+            }
+        }
+        reportMoved(actor, moved);
     }
+
+    private void movePlayer(Player actor, Player target, String command, Location destination) {
+        if (command.equals("tphere")) service.force(actor, target, actor, command);
+        else service.forceLocation(actor, target, destination, command);
+    }
+
+    private void requireSelectionPermission(CommandSender actor, String[] tokens) {
+        if (BukkitServerThread.isFolia() && spec.basePermission() != null && !actor.hasPermission(spec.basePermission())) {
+            throw new SecurityException(spec.basePermission());
+        }
+        for (String token : tokens) TeleportTargets.requirePermission(actor, token);
+    }
+
+    private void sendLimit(Player actor, int count, int limit) {
+        plugin.getMessageManager().send(actor, Messages.TELEPORT_ENTITY_LIMIT_EXCEEDED,
+                "{count}", Integer.toString(count), "{limit}", Integer.toString(limit));
+    }
+
+    private void reportMoved(Player actor, int count) {
+        if (count > 0) {
+            plugin.getMessageManager().send(actor, Messages.TELEPORT_ENTITIES_MOVED,
+                    "{count}", Integer.toString(count), "{label}", count == 1 ? "entity" : "entities");
+        }
+    }
+
+    private <T> void dispatch(CommandSender sender, CompletableFuture<T> pending, Consumer<T> task) {
+        pending.whenComplete((value, error) -> {
+            if (error instanceof CancellationException) return;
+            Runnable reply = () -> {
+                if (BukkitServerThread.isFolia() && sender instanceof Player player && !player.isOnline()) return;
+                if (error != null) reportError(sender, error);
+                else {
+                    try { task.accept(value); }
+                    catch (RuntimeException failure) { reportError(sender, failure); }
+                }
+            };
+            if (BukkitServerThread.isFolia()) BukkitServerThread.runFor(plugin, plugin.getScheduler(), sender, reply, () -> {}, 0);
+            else reply.run();
+        });
+    }
+
+    private void reportError(CommandSender sender, Throwable cause) {
+        while (cause instanceof CompletionException && cause.getCause() != null) cause = cause.getCause();
+        if (cause instanceof CancellationException) return;
+        if (cause instanceof SecurityException) plugin.getMessageManager().send(sender, Messages.NO_PERMISSION);
+        else if (cause instanceof IllegalArgumentException) {
+            plugin.getMessageManager().send(sender, Messages.TELEPORT_SELECTION, "{message}", cause.getMessage());
+        } else {
+            plugin.logger().warning("Teleport selector failed: " + cause);
+            plugin.getMessageManager().send(sender, Messages.TELEPORT_SELECTION, "{message}", "Could not resolve the teleport.");
+        }
+    }
+
     /** {@code /tp <x> <y> <z> [yaw] [pitch] [world]} (needs allium.tp.position) and {@code /tppos} with the same arguments. */
     private void position(BukkitCommandContext context){
         CommandSender sender=context.sender();String command=spec.canonicalName();String[] args=context.args();
@@ -172,25 +317,44 @@ public final class TeleportCommand implements SpecCommandHandler {
         CommandSender sender=context.sender();String command=spec.canonicalName();String[] args=context.args();
         if(args.length<4||args.length>7){context.sendInvalidArgs("/"+command+" <target> <x> <y> <z> [yaw] [pitch] [world]");return;}
         if(command.equals("tp")&&!sender.hasPermission("allium.tp.position")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
-        java.util.List<Player> movers;
-        if(args[0].equalsIgnoreCase("@s")){
-            if(!(sender instanceof Player player)){plugin.getMessageManager().send(sender,Messages.PLAYER_ONLY);return;}
-            movers=java.util.List.of(player);
-        }else if(args[0].startsWith("@")){
-            try{
-                var resolved=new codes.castled.allium.teleport.TeleportTargets(plugin).resolve(sender,args[0]);
-                if(resolved.isEmpty()){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}","No visible targets found.");return;}
-                if(resolved.stream().anyMatch(e->!(e instanceof Player))){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}","/tp source selector must resolve to players.");return;}
-                movers=resolved.stream().map(e->(Player)e).toList();
-            }catch(SecurityException denied){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
-            catch(IllegalArgumentException invalid){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}",invalid.getMessage());return;}
-        }else{
-            Player mover=target(sender,args[0]);
-            if(mover==null)return;
-            movers=java.util.List.of(mover);
+        if (args[0].equalsIgnoreCase("@s")) {
+            if (!(sender instanceof Player player)) {
+                plugin.getMessageManager().send(sender, Messages.PLAYER_ONLY);
+                return;
+            }
+            positionForMovers(sender, command, args, List.of(player));
+        } else if (args[0].startsWith("@")) {
+            try {
+                dispatch(sender, new TeleportTargets(plugin).resolveAsync(sender, args[0]), resolved -> {
+                    requireSelectionPermission(sender, new String[]{args[0]});
+                    if (command.equals("tp") && !sender.hasPermission("allium.tp.position")) throw new SecurityException("allium.tp.position");
+                    if (resolved.isEmpty()) throw new IllegalArgumentException("No visible targets found.");
+                    if (resolved.stream().anyMatch(entity -> !(entity instanceof Player))) {
+                        throw new IllegalArgumentException("/tp source selector must resolve to players.");
+                    }
+                    positionForMovers(sender, command, args, resolved.stream().map(Player.class::cast).toList());
+                });
+            } catch (SecurityException | IllegalArgumentException failure) {
+                reportError(sender, failure);
+            }
+        } else {
+            Player mover = target(sender, args[0]);
+            if (mover != null) positionForMovers(sender, command, args, List.of(mover));
         }
+    }
+
+    private void positionForMovers(CommandSender sender, String command, String[] args, List<Player> movers) {
         if(command.equals("tp")&&movers.stream().anyMatch(p->p!=sender)&&!sender.hasPermission("allium.tp.others")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
-        org.bukkit.Location base=sender instanceof Player p?p.getLocation():movers.get(0).getLocation();
+        Player basePlayer=sender instanceof Player p?p:movers.get(0);
+        if(BukkitServerThread.isFolia()&&sender!=basePlayer){
+            BukkitServerThread.onOwner(plugin,plugin.getScheduler(),basePlayer,()->{
+                if(!basePlayer.isOnline())return;
+                var base=basePlayer.getLocation();
+                BukkitServerThread.onOwner(plugin,plugin.getScheduler(),sender,()->positionForTargets(sender,command,args,movers,base));
+            });
+        }else positionForTargets(sender,command,args,movers,basePlayer.getLocation());
+    }
+    private void positionForTargets(CommandSender sender,String command,String[] args,java.util.List<Player> movers,org.bukkit.Location base){
         codes.castled.allium.teleport.CoordinateArgs.Position at;
         try{at=codes.castled.allium.teleport.CoordinateArgs.parse(java.util.Arrays.asList(args).subList(1,args.length),base.getX(),base.getY(),base.getZ(),base.getYaw(),base.getPitch());}
         catch(IllegalArgumentException invalid){plugin.getMessageManager().send(sender,Messages.TELEPORT_SELECTION,"{message}",invalid.getMessage());return;}

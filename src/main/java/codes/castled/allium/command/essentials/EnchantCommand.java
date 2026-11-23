@@ -79,53 +79,63 @@ public final class EnchantCommand implements SpecCommandHandler {
         }
         Enchantment enchantment = enchantmentOpt.get();
 
-        if (!UtilitySupport.guardInventoryNotBusy(plugin, context.sender(), target)) {
-            return;
-        }
-
-        ItemStack held = target.getInventory().getItemInMainHand();
-        if (UtilitySupport.isAir(held) || held.getItemMeta() == null) {
-            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_HOLD_ITEM);
-            return;
-        }
-        var meta = held.getItemMeta();
-        String enchantName = UtilitySupport.enchantName(enchantment.getKey());
-        String itemName = UtilitySupport.itemName(held);
-
-        if (parsed.level() == 0) {
-            if (meta instanceof EnchantmentStorageMeta book) {
-                book.removeStoredEnchant(enchantment);
-            } else {
-                meta.removeEnchant(enchantment);
+        boolean unsafe = plugin.getConfig().getBoolean("allow-unsafe-enchants", false)
+                && context.sender().hasPermission("allium.enchant.unsafe");
+        UtilitySupport.onTarget(plugin, context.sender(), target, () -> {
+            if (!UtilitySupport.guardInventoryNotBusy(plugin, context.sender(), target)) {
+                return;
             }
+
+            ItemStack held = target.getInventory().getItemInMainHand();
+            if (UtilitySupport.isAir(held) || held.getItemMeta() == null) {
+                UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_HOLD_ITEM);
+                return;
+            }
+            var meta = held.getItemMeta();
+            String enchantName = UtilitySupport.enchantName(enchantment.getKey());
+            String itemName = UtilitySupport.itemName(held);
+
+            if (parsed.level() == 0) {
+                if (meta instanceof EnchantmentStorageMeta book) {
+                    book.removeStoredEnchant(enchantment);
+                } else {
+                    meta.removeEnchant(enchantment);
+                }
+                held.setItemMeta(meta);
+                UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_ENCHANT_REMOVED,
+                        "{enchant}", enchantName,
+                        "{player}", target.getName(),
+                        "{item}", itemName);
+                if (target != context.sender()) {
+                    UtilitySupport.audit(plugin, context.sender(), "enchant_remove",
+                            "target=" + target.getName() + " enchant=" + enchantName + " item=" + itemName);
+                }
+                return;
+            }
+
+            try {
+                String notice = EnchantmentAdapter.apply(held, meta, enchantment, "" + parsed.level(), unsafe);
+                if (notice != null) codes.castled.allium.item.library.EnchantFeedback.send(plugin, context.sender(), notice);
+            } catch (codes.castled.allium.item.library.ItemBuildException invalid) {
+                if (!codes.castled.allium.item.library.EnchantFeedback.send(plugin, context.sender(), invalid.getMessage())) {
+                    UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_ENCHANT_UNKNOWN, "{enchant}", parsed.enchantmentToken());
+                }
+                return;
+            }
+            int applied = unsafe ? parsed.level() : Math.min(parsed.level(), enchantment.getMaxLevel());
             held.setItemMeta(meta);
-            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_ENCHANT_REMOVED,
+
+            UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_ENCHANT_APPLIED,
                     "{enchant}", enchantName,
+                    "{level}", Integer.toString(applied),
                     "{player}", target.getName(),
                     "{item}", itemName);
-            if (target != context.sender()) {
-                UtilitySupport.audit(plugin, context.sender(), "enchant_remove",
-                        "target=" + target.getName() + " enchant=" + enchantName + " item=" + itemName);
+            if (unsafe || target != context.sender()) {
+                UtilitySupport.audit(plugin, context.sender(), "enchant",
+                        "target=" + target.getName() + " enchant=" + enchantName
+                                + " level=" + parsed.level() + " unsafe=" + unsafe + " item=" + itemName);
             }
-            return;
-        }
-
-        boolean unsafe=plugin.getConfig().getBoolean("allow-unsafe-enchants",false)&&context.sender().hasPermission("allium.enchant.unsafe");
-        try{String notice=EnchantmentAdapter.apply(held,meta,enchantment,""+parsed.level(),unsafe);if(notice!=null)codes.castled.allium.item.library.EnchantFeedback.send(plugin,context.sender(),notice);}
-        catch(codes.castled.allium.item.library.ItemBuildException invalid){if(!codes.castled.allium.item.library.EnchantFeedback.send(plugin,context.sender(),invalid.getMessage()))UtilitySupport.send(plugin,context.sender(),Messages.UTILITY_ENCHANT_UNKNOWN,"{enchant}",parsed.enchantmentToken());return;}
-        int applied=unsafe?parsed.level():Math.min(parsed.level(),enchantment.getMaxLevel());
-        held.setItemMeta(meta);
-
-        UtilitySupport.send(plugin, context.sender(), Messages.UTILITY_ENCHANT_APPLIED,
-                "{enchant}", enchantName,
-                "{level}", Integer.toString(applied),
-                "{player}", target.getName(),
-                "{item}", itemName);
-        if (unsafe || target != context.sender()) {
-            UtilitySupport.audit(plugin, context.sender(), "enchant",
-                    "target=" + target.getName() + " enchant=" + enchantName
-                            + " level=" + parsed.level() + " unsafe=" + unsafe + " item=" + itemName);
-        }
+        });
     }
 
     private boolean isVisiblePlayer(BukkitCommandContext context, String name) {

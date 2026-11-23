@@ -2,7 +2,12 @@ package codes.castled.allium.text;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.placeholder.AlliumPlaceholders;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.ServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
+import codes.castled.allium.scheduler.TaskScheduler;
 import codes.castled.allium.util.AlliumLogger;
+import net.md_5.bungee.api.chat.BaseComponent;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.permission.Permission;
 import org.bukkit.Location;
@@ -11,6 +16,7 @@ import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.ServicesManager;
@@ -22,17 +28,25 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.text.DateFormat;
+import java.util.ArrayDeque;
 import java.util.Date;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TextFileTest {
@@ -131,6 +145,86 @@ class TextFileTest {
         ConsoleCommandSender console = mock(ConsoleCommandSender.class);
         when(console.getName()).thenReturn("CONSOLE");
         assertEquals("CONSOLE|CONSOLE|CONSOLE|||||", file.fill(console, "{player}|{displayname}|{nickname}|{world}|{coords}|{balance}|{group}|{ip}"));
+    }
+
+    @Test
+    void regionalTextSharesRosterAndFiltersItWhenReturningToEachRecipient() {
+        Player alex = player("Alex", "§bAlex", "default");
+        Player moderator = player("Mod", "Mod", "mod");
+        Player vanished = player("Zed", "§7Hidden", "vip");
+        Player retired = player("Gone", "Gone", "default");
+        Player cancelled = player("Cancelled", "Cancelled", "default");
+        var players = List.of(moderator, retired, alex, vanished);
+        doReturn(players).when(server).getOnlinePlayers();
+        var vanish = mock(MetadataValue.class);
+        when(vanish.asBoolean()).thenReturn(true);
+        when(vanished.getMetadata("vanished")).thenReturn(List.of(vanish));
+        when(moderator.hasPermission("allium.vanish.see")).thenReturn(true);
+        when(moderator.canSee(alex)).thenReturn(false);
+        var tasks = new RegionalTasks();
+        var eligible = new AtomicBoolean(true);
+        try (var platform = mockStatic(BukkitServerThread.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            platform.when(BukkitServerThread::isFolia).thenReturn(true);
+            platform.when(() -> BukkitServerThread.entity(any(), any(Player.class)))
+                    .thenAnswer(call -> tasks.owners.get(call.getArgument(1)));
+            for (Player online : List.of(alex, moderator, vanished, retired, cancelled)) tasks.add(online);
+            var file = new TextFile(plugin, "info.txt");
+            var announcement = file.delivery(List.of("{ONLINE}: {playerlist} / {playerlist:VIP:none}"));
+            announcement.send(alex, () -> true);
+            announcement.send(moderator, () -> true);
+            announcement.send(cancelled, eligible::get);
+            eligible.set(false);
+
+            verify(vanished, never()).getMetadata("vanished");
+            verify(alex.spigot(), never()).sendMessage(any(BaseComponent[].class));
+            tasks.run(vanished);
+            tasks.run(alex);
+            tasks.run(moderator);
+            verify(alex.spigot(), never()).sendMessage(any(BaseComponent[].class));
+            tasks.retire(retired);
+            tasks.run(alex);
+            tasks.run(moderator);
+            tasks.run(cancelled);
+            assertEquals("2: Alex, Mod / none", sent(alex));
+            assertEquals("2: Mod, Hidden / Hidden", sent(moderator));
+            verify(cancelled.spigot(), never()).sendMessage(any(BaseComponent[].class));
+            verify(retired, never()).getDisplayName();
+            assertEquals(0, tasks.pending());
+        }
+    }
+
+    private static String sent(Player player) {
+        var lines = org.mockito.ArgumentCaptor.forClass(BaseComponent[].class);
+        verify(player.spigot()).sendMessage(lines.capture());
+        return BaseComponent.toPlainText(lines.getValue());
+    }
+
+    private final class RegionalTasks {
+        private record Scheduled(Runnable run, Runnable retire) {}
+        private final Map<Player, ServerThread> owners = new IdentityHashMap<>();
+        private final Map<ServerThread, ArrayDeque<Scheduled>> queued = new IdentityHashMap<>();
+
+        RegionalTasks() {
+            var scheduler = mock(TaskScheduler.class);
+            when(plugin.getScheduler()).thenReturn(scheduler);
+            when(scheduler.runOn(any(ServerThread.class), any(Runnable.class), any(Runnable.class), anyLong())).thenAnswer(call -> {
+                queued.get(call.getArgument(0)).add(new Scheduled(call.getArgument(1), call.getArgument(2)));
+                return TaskHandle.NONE;
+            });
+        }
+
+        void add(Player player) {
+            var owner = mock(ServerThread.class);
+            owners.put(player, owner);
+            queued.put(owner, new ArrayDeque<>());
+            when(player.isOnline()).thenReturn(true);
+            when(server.getPlayer(player.getUniqueId())).thenReturn(player);
+            when(player.spigot()).thenReturn(mock(Player.Spigot.class));
+        }
+
+        void run(Player player) { queued.get(owners.get(player)).remove().run().run(); }
+        void retire(Player player) { queued.get(owners.get(player)).remove().retire().run(); }
+        int pending() { return queued.values().stream().mapToInt(ArrayDeque::size).sum(); }
     }
 
     @Test

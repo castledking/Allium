@@ -381,18 +381,14 @@ final class CropsCommand {
         int pz = player.getLocation().getBlockZ();
         List<ModelWorld.Placed> found = new ArrayList<>();
         for (ModelWorld.Placed p : world.active()) {
-            if (!p.hitbox.isValid() || !p.hitbox.getWorld().getUID().equals(worldId)) continue;
-            Block c = p.cell();
-            if (Math.abs(c.getX() - px) <= radius && Math.abs(c.getZ() - pz) <= radius) {
+            if (!p.active || !p.cell.world().equals(worldId)) continue;
+            if (Math.abs(p.cell.x() - px) <= radius && Math.abs(p.cell.z() - pz) <= radius) {
                 found.add(p);
             }
         }
         tell(player, "&a" + found.size() + " placement(s) within " + radius + " blocks:");
-        found.stream().limit(12).forEach(p -> {
-            Block c = p.cell();
-            tell(player, "&7- " + p.kind + ": &f" + p.type + "/" + p.path + " &7stage " + (p.stage + 1)
-                    + " @ " + c.getX() + "," + c.getY() + "," + c.getZ());
-        });
+        found.stream().limit(12).forEach(p -> tell(player, "&7- " + p.kind + ": &f" + p.type + "/" + p.path + " &7stage " + (p.stage + 1)
+                + " @ " + p.cell.x() + "," + p.cell.y() + "," + p.cell.z()));
     }
 
     private void status(CommandSender sender) {

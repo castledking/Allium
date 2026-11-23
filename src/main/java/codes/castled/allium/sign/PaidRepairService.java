@@ -12,6 +12,8 @@ import codes.castled.allium.economy.RepairReceipts;
 import codes.castled.allium.mail.PlayerDataFiles;
 import codes.castled.allium.mail.PlayerDataReceiptProof;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.scheduler.BukkitServerThread;
+import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -37,8 +39,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 
 /**
  * Paid repair signs, settled so a crash never loses money and never repairs for free.
@@ -68,8 +73,8 @@ public final class PaidRepairService implements Listener {
     private final NamespacedKey receiptKey;
     private final Executor io;
     private final Path playerData;
-    /** Players with a paid repair or a recovery in flight: one at a time. Server thread only. */
-    private final Set<UUID> busy = new HashSet<>();
+    /** Players with a paid repair or a recovery in flight: one at a time across regions. */
+    private final Set<UUID> busy = ConcurrentHashMap.newKeySet();
     private volatile boolean closed;
 
     public PaidRepairService(PluginStart plugin) {
@@ -102,6 +107,11 @@ public final class PaidRepairService implements Listener {
 
     /** A paid repair sign was used with {@code mode} (hand or all) and a positive {@code price}. */
     public void start(Player player, String mode, Money price) {
+        start(player, mode, price, () -> true);
+    }
+
+    /** A paid repair sign was used with {@code mode}, positive {@code price}, and a sign-validity recheck. */
+    public void start(Player player, String mode, Money price, BooleanSupplier valid) {
         boolean all = "all".equals(mode);
         if (!player.hasPermission("allium.repair") || all && !player.hasPermission("allium.repair.all")) {
             plugin.getMessageManager().send(player, Messages.NO_PERMISSION, "{cmd}", all ? "repair all" : "repair");
@@ -133,7 +143,11 @@ public final class PaidRepairService implements Listener {
         }
         String baseline = receipt(player);
         Path file = file(account);
-        busy.add(account);
+        if (!busy.add(account)) {
+            plugin.getMessageManager().send(player, Messages.UTILITY_INVENTORY_BUSY, "{player}", player.getName());
+            return;
+        }
+        Runnable forget = () -> busy.remove(account);
         if (!submit(player, () -> {
             try {
                 PaidWorkflowSupport.prove(file, PlayerDataReceiptProof.REPAIR_RECEIPTS, baseline);
@@ -142,52 +156,52 @@ public final class PaidRepairService implements Listener {
                         EconomyReservations.fingerprint("REPAIR", workflow.toString(), account.toString(),
                                 Long.toString(price.minor()), mode), c -> true);
                 if (reserved instanceof EconomyResult.Rejected refused) {
-                    onServer(() -> {
+                    onPlayer(player, () -> {
                         busy.remove(account);
                         if (refused.reason().equals("INSUFFICIENT_FUNDS") || refused.reason().equals("MISSING_ACCOUNT")) {
                             plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_FUNDS, "{price}", display);
                         } else {
                             codes.castled.allium.economy.EconomyRuntime.sendRefusal(plugin, player, refused.reason());
                         }
-                    });
+                    }, forget);
                     return;
                 }
                 PaidWorkflowSupport.committed(reserved);
             } catch (PaidWorkflowSupport.UnknownCommit unknown) {
                 // If the hold committed, the next join releases it: no receipt was ever saved.
-                onServer(() -> {
+                onPlayer(player, () -> {
                     busy.remove(account);
                     plugin.getMessageManager().send(player, Messages.ECO_UNKNOWN, "{operation}", unknown.operationId().toString());
-                });
+                }, forget);
                 return;
             } catch (SQLException error) {
                 plugin.logger().warning("Paid repair for " + player.getName() + " was not started: " + error.getMessage());
-                onServer(() -> {
+                onPlayer(player, () -> {
                     busy.remove(account);
                     plugin.getMessageManager().send(player, Messages.ECO_STORAGE);
-                });
+                }, forget);
                 return;
             }
             if (FaultInjection.trip(FAULT_HALT_AFTER_RESERVE)) {
                 plugin.logger().warning("Fault " + FAULT_HALT_AFTER_RESERVE + ": halting with repair " + workflow + " held (simulated crash).");
                 Runtime.getRuntime().halt(77);
             }
-            onServer(() -> apply(player, workflow, plan, price, display, baseline));
+            onPlayer(player, () -> apply(player, workflow, plan, price, display, baseline, valid), forget);
         })) {
             busy.remove(account);
             plugin.getMessageManager().send(player, Messages.ECO_BUSY);
         }
     }
 
-    /** Server thread: the hold exists. Repair, record the receipt and save them together. */
-    private void apply(Player player, UUID workflow, Plan plan, Money price, String display, @Nullable String baseline) {
+    /** Owning player thread: the hold exists. Repair, record the receipt and save them together. */
+    private void apply(Player player, UUID workflow, Plan plan, Money price, String display, @Nullable String baseline, BooleanSupplier valid) {
         UUID account = player.getUniqueId();
         if (closed || plugin.getServer().getPlayer(account) != player || !player.isOnline()) {
             // The player left: the saved file has no receipt, so their next join releases the hold.
             busy.remove(account);
             return;
         }
-        if (!stillPlanned(player, plan) || !emptyCursor(player)) {
+        if (!valid.getAsBoolean() || !stillPlanned(player, plan) || !emptyCursor(player)) {
             releaseNow(player, workflow, baseline, () -> plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_CHANGED,
                     "{price}", display));
             return;
@@ -224,7 +238,7 @@ public final class PaidRepairService implements Listener {
                 captured = false;
             }
             boolean done = captured;
-            onServer(() -> {
+            onPlayer(player, () -> {
                 busy.remove(account);
                 if (!done) {
                     plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_PENDING, "{operation}", workflow.toString());
@@ -239,7 +253,7 @@ public final class PaidRepairService implements Listener {
                         "{price}", display);
                 UtilitySupport.audit(plugin, player, "paid_repair", "workflow=" + workflow + " items=" + plan.names().size()
                         + " price=" + price.minor());
-            });
+            }, () -> busy.remove(account));
         })) {
             busy.remove(account);
             plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_PENDING, "{operation}", workflow.toString());
@@ -255,14 +269,14 @@ public final class PaidRepairService implements Listener {
                 PaidWorkflowSupport.prove(file, PlayerDataReceiptProof.REPAIR_RECEIPTS, baseline);
                 PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin)
                         .release(EconomyReservations.Kind.REPAIR, workflow, c -> true));
-                onServer(() -> {
+                onPlayer(player, () -> {
                     busy.remove(account);
                     then.run();
-                });
+                }, () -> busy.remove(account));
             } catch (SQLException error) {
                 plugin.logger().warning("Paid repair hold " + workflow + " stays held until " + player.getName()
                         + "'s next join: " + error.getMessage());
-                onServer(() -> busy.remove(account));
+                onPlayer(player, () -> busy.remove(account), () -> busy.remove(account));
             }
         })) {
             busy.remove(account);
@@ -328,7 +342,7 @@ public final class PaidRepairService implements Listener {
             }
             int charged = captured;
             int refunded = released;
-            onServer(() -> {
+            onPlayer(player, () -> {
                 busy.remove(account);
                 if (plugin.getServer().getPlayer(account) != player) {
                     return;
@@ -343,7 +357,7 @@ public final class PaidRepairService implements Listener {
                     plugin.logger().info("Settled " + (charged + refunded) + " interrupted paid repair(s) for " + player.getName()
                             + ": " + charged + " captured, " + refunded + " released.");
                 }
-            });
+            }, () -> busy.remove(account));
         })) {
             busy.remove(account);
         }
@@ -418,9 +432,19 @@ public final class PaidRepairService implements Listener {
         }
     }
 
-    private void onServer(Runnable task) {
-        plugin.getScheduler().runOnServer(() -> {
-            if (!closed) task.run();
-        });
+    private void onPlayer(Player player, Runnable action, Runnable retired) {
+        var started = new AtomicBoolean();
+        Runnable unavailable = () -> {
+            if (started.compareAndSet(false, true)) retired.run();
+        };
+        try {
+            TaskHandle handle = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
+                if (started.compareAndSet(false, true) && !closed) action.run();
+            }, unavailable, 0L);
+            if (BukkitServerThread.isFolia() && handle == TaskHandle.NONE) unavailable.run();
+        } catch (RuntimeException failure) {
+            plugin.logger().warning("Paid repair could not schedule player work for " + player.getName() + ": " + failure.getMessage());
+            unavailable.run();
+        }
     }
 }

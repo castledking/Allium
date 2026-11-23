@@ -1,6 +1,8 @@
 package codes.castled.allium.creative.manage;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.essentials.UtilitySupport;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -65,28 +67,64 @@ public final class CreativeAccess {
         return ReadOnly.INSTANCE;
     }
 
-    /** Reads every flag of {@code holder}; {@code done} runs on the server thread with values or an error. */
-    public void read(CreativeHolder holder, BiConsumer<Map<CreativeFlag, FlagValue>, Throwable> done) {
+    /** Reads flags on the holder's region and returns the result on the requester's scheduler. */
+    public void read(CommandSender viewer, CreativeHolder holder, BiConsumer<Map<CreativeFlag, FlagValue>, Throwable> done) {
         PermissionBackend backend = backend();
-        CompletableFuture<Map<CreativeFlag, FlagValue>> values;
-        try {
-            values = backend.read(holder);
-        } catch (RuntimeException failure) {
-            values = CompletableFuture.failedFuture(failure);
-        }
-        values.whenComplete((read, error) -> plugin.getScheduler().runOnServer(() -> {
-            Throwable cause = error instanceof java.util.concurrent.CompletionException && error.getCause() != null
-                    ? error.getCause() : error;
-            done.accept(cause == null ? resolve(holder, read, backend) : null, cause);
-        }));
+        onHolder(viewer, holder, online -> {
+            CompletableFuture<Map<CreativeFlag, FlagValue>> values;
+            try {
+                values = backend.read(holder);
+            } catch (RuntimeException failure) {
+                values = CompletableFuture.failedFuture(failure);
+            }
+            values.whenComplete((read, error) -> {
+                Throwable cause = unwrap(error);
+                if (cause != null) {
+                    reply(viewer, () -> done.accept(null, cause));
+                } else if (!BukkitServerThread.isFolia()) {
+                    reply(viewer, () -> done.accept(resolve(holder, read, backend, onlinePlayer(holder)), null));
+                } else if (online == null) {
+                    reply(viewer, () -> done.accept(resolve(holder, read, backend, null), null));
+                } else {
+                    UtilitySupport.onTarget(plugin, viewer, online, () -> {
+                        var resolved = resolve(holder, read, backend, online);
+                        reply(viewer, () -> done.accept(resolved, null));
+                    }, () -> reply(viewer, () -> done.accept(null, disconnected())));
+                }
+            });
+        }, () -> reply(viewer, () -> done.accept(null, disconnected())));
+    }
+
+    private Player onlinePlayer(CreativeHolder holder) {
+        return holder.isGroup() ? null : plugin.getServer().getPlayer(holder.uuid());
+    }
+
+    private void onHolder(CommandSender viewer, CreativeHolder holder, Consumer<Player> action, Runnable offline) {
+        Player online = BukkitServerThread.isFolia() ? onlinePlayer(holder) : null;
+        if (online == null) action.accept(null);
+        else UtilitySupport.onTarget(plugin, viewer, online, () -> action.accept(online), offline);
+    }
+
+    private void reply(CommandSender viewer, Runnable action) {
+        BukkitServerThread.runFor(plugin, plugin.getScheduler(), viewer, () -> {
+            if (!BukkitServerThread.isFolia() || !(viewer instanceof Player player) || player.isOnline()) action.run();
+        }, () -> {}, 0L);
+    }
+
+    private static Throwable unwrap(Throwable error) {
+        return error instanceof java.util.concurrent.CompletionException && error.getCause() != null ? error.getCause() : error;
+    }
+
+    private static IllegalStateException disconnected() {
+        return new IllegalStateException("the player disconnected before their flags could be accessed");
     }
 
     /** Fills in what Bukkit decides: an online player's own permissions, else an offline player's op status. */
-    private Map<CreativeFlag, FlagValue> resolve(CreativeHolder holder, Map<CreativeFlag, FlagValue> read, PermissionBackend backend) {
+    private Map<CreativeFlag, FlagValue> resolve(CreativeHolder holder, Map<CreativeFlag, FlagValue> read,
+                                                PermissionBackend backend, @Nullable Player online) {
         if (holder.isGroup()) {
             return read;
         }
-        Player online = plugin.getServer().getPlayer(holder.uuid());
         OfflinePlayer offline = online != null ? online : plugin.getServer().getOfflinePlayer(holder.uuid());
         Map<CreativeFlag, FlagValue> out = new EnumMap<>(CreativeFlag.class);
         for (CreativeFlag flag : CreativeFlag.values()) {
@@ -121,21 +159,22 @@ public final class CreativeAccess {
         }
         PermissionBackend.Actor who = new PermissionBackend.Actor(
                 actor instanceof Player player ? player.getUniqueId() : null, actor.getName());
-        CompletableFuture<Void> change;
-        try {
-            change = backend.write(holder, flag, give, who);
-        } catch (RuntimeException failure) {
-            change = CompletableFuture.failedFuture(failure);
-        }
-        change.whenComplete((ignored, error) -> plugin.getScheduler().runOnServer(() -> {
-            Throwable cause = error instanceof java.util.concurrent.CompletionException && error.getCause() != null
-                    ? error.getCause() : error;
-            if (cause == null) {
-                plugin.logger().info("Creative manager: " + actor.getName() + (give ? " gave " : " removed ") + flag.node()
-                        + (give ? " to " : " from ") + holder.describe() + " (" + backend.name() + ").");
+        onHolder(actor, holder, online -> {
+            CompletableFuture<Void> change;
+            try {
+                change = backend.write(holder, flag, give, who);
+            } catch (RuntimeException failure) {
+                change = CompletableFuture.failedFuture(failure);
             }
-            done.accept(cause);
-        }));
+            change.whenComplete((ignored, error) -> {
+                Throwable cause = unwrap(error);
+                if (cause == null) {
+                    plugin.logger().info("Creative manager: " + who.name() + (give ? " gave " : " removed ") + flag.node()
+                            + (give ? " to " : " from ") + holder.describe() + " (" + backend.name() + ").");
+                }
+                reply(actor, () -> done.accept(cause));
+            });
+        }, () -> reply(actor, () -> done.accept(disconnected())));
     }
 
     /** Without LuckPerms or Vault: no groups, nothing writable, players read as Bukkit sees them. */

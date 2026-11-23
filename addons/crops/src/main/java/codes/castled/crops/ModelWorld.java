@@ -5,6 +5,7 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.event.world.EntitiesUnloadEvent;
 import org.bukkit.inventory.ItemStack;
@@ -14,6 +15,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /** The persistent interaction entity owns the state. Displays are rebuilt whenever its chunk loads. */
@@ -30,6 +32,7 @@ final class ModelWorld implements Listener {
 
     static final class Placed {
         final Interaction hitbox;
+        final Cell cell;
         final String kind;
         String type;
         String path;
@@ -38,6 +41,7 @@ final class ModelWorld implements Listener {
         String fertilizer = "";
         double growthSpeed = 1;
         long lastAttack;
+        volatile boolean active = true;
         ItemDisplay display;
         Catalog.Visual visual;
         List<Frame> frames = List.of();
@@ -47,6 +51,7 @@ final class ModelWorld implements Listener {
 
         Placed(Interaction hitbox, String kind, String type, String path, int stage, long due) {
             this.hitbox = hitbox;
+            this.cell = Cell.of(hitbox.getLocation());
             this.kind = kind;
             this.type = type;
             this.path = path;
@@ -61,8 +66,8 @@ final class ModelWorld implements Listener {
 
     private final CropsPlugin plugin;
     private final NamespacedKey key;
-    private final Map<Cell, Placed> cells = new HashMap<>();
-    private final Map<UUID, Placed> hitboxes = new HashMap<>();
+    private final Map<Cell, Placed> cells = new ConcurrentHashMap<>();
+    private final Map<UUID, Placed> hitboxes = new ConcurrentHashMap<>();
     private Consumer<Placed> onLoad;
 
     ModelWorld(CropsPlugin plugin) {
@@ -73,7 +78,21 @@ final class ModelWorld implements Listener {
     void start(Consumer<Placed> onLoad) {
         this.onLoad = onLoad;
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        for (World world : Bukkit.getWorlds()) world.getEntitiesByClass(Interaction.class).forEach(this::attach);
+        if (plugin.connection().isFolia()) {
+            for (World world : Bukkit.getWorlds()) {
+                for (Chunk chunk : world.getLoadedChunks()) {
+                    int cx = chunk.getX(), cz = chunk.getZ();
+                    plugin.connection().onRegion(world, cx, cz, () -> {
+                        if (!world.isChunkLoaded(cx, cz)) return;
+                        for (Entity entity : world.getChunkAt(cx, cz).getEntities()) {
+                            if (entity instanceof Interaction interaction && interaction.isValid()) attach(interaction);
+                        }
+                    });
+                }
+            }
+        } else {
+            for (World world : Bukkit.getWorlds()) world.getEntitiesByClass(Interaction.class).forEach(this::attach);
+        }
     }
 
     Placed at(Block block) { return cells.get(Cell.of(block.getLocation())); }
@@ -164,27 +183,29 @@ final class ModelWorld implements Listener {
         return true;
     }
 
-    private static TextDisplay text(TextDisplay shown, Location at, List<String> lines) {
+    private TextDisplay text(TextDisplay shown, Location at, List<String> lines) {
         if (lines.isEmpty()) {
             if (shown != null) shown.remove();
             return null;
         }
-        TextDisplay display = shown != null && shown.isValid() ? shown : at.getWorld().spawn(at, TextDisplay.class, spawned -> {
+        boolean reused = shown != null && shown.isValid();
+        TextDisplay display = reused ? shown : at.getWorld().spawn(at, TextDisplay.class, spawned -> {
             spawned.setPersistent(false);
             spawned.setBillboard(Display.Billboard.CENTER);
             spawned.setAlignment(TextDisplay.TextAlignment.CENTER);
         });
-        display.teleport(at);
+        if (reused) plugin.connection().teleport(display, at, TeleportCause.PLUGIN);
         display.setText(String.join("\n", lines));
         return display;
     }
 
-    private static ItemDisplay icon(ItemDisplay shown, Location at, ItemStack item) {
+    private ItemDisplay icon(ItemDisplay shown, Location at, ItemStack item) {
         if (item == null) {
             if (shown != null) shown.remove();
             return null;
         }
-        ItemDisplay display = shown != null && shown.isValid() ? shown : at.getWorld().spawn(at, ItemDisplay.class, spawned -> {
+        boolean reused = shown != null && shown.isValid();
+        ItemDisplay display = reused ? shown : at.getWorld().spawn(at, ItemDisplay.class, spawned -> {
             spawned.setPersistent(false);
             spawned.setBillboard(Display.Billboard.CENTER);
             // GUI: the item as it looks in an inventory, which is the icon the pack gives Kitchen models.
@@ -192,7 +213,7 @@ final class ModelWorld implements Listener {
             spawned.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
                     new Vector3f((float) ICON), new Quaternionf()));
         });
-        display.teleport(at);
+        if (reused) plugin.connection().teleport(display, at, TeleportCause.PLUGIN);
         display.setItemStack(item);
         return display;
     }
@@ -207,19 +228,36 @@ final class ModelWorld implements Listener {
 
     void remove(Placed placed) {
         forget(placed);
-        placed.hitbox.remove();
+        if (!plugin.connection().isFolia() || plugin.connection().ownsEntity(placed.hitbox)) {
+            placed.hitbox.remove();
+        }
     }
 
     private void remember(Placed placed) {
-        cells.put(Cell.of(placed.hitbox.getLocation()), placed);
+        cells.put(placed.cell, placed);
         hitboxes.put(placed.hitbox.getUniqueId(), placed);
     }
 
-    private void forget(Placed placed) {
-        cells.remove(Cell.of(placed.hitbox.getLocation()), placed);
+    void forgetRetired(Placed placed) {
+        placed.active = false;
+        cells.remove(placed.cell, placed);
         hitboxes.remove(placed.hitbox.getUniqueId());
-        if (placed.display != null) placed.display.remove();
-        clearLabel(placed);
+    }
+
+    private void forget(Placed placed) {
+        placed.active = false;
+        cells.remove(placed.cell, placed);
+        hitboxes.remove(placed.hitbox.getUniqueId());
+        if (!plugin.connection().isFolia() || plugin.connection().ownsEntity(placed.hitbox)) {
+            if (placed.display != null) placed.display.remove();
+            clearLabel(placed);
+        } else {
+            placed.display = null;
+            placed.above = placed.below = null;
+            placed.icon = null;
+            placed.frames = List.of();
+            placed.frame = -1;
+        }
     }
 
     private void attach(Interaction entity) {
@@ -245,9 +283,11 @@ final class ModelWorld implements Listener {
     @EventHandler
     public void onLoad(EntitiesLoadEvent event) {
         // The world finishes adding the restored interaction entities before spawning their views.
-        plugin.connection().scheduler().runOnServer(() -> {
-            for (Entity entity : event.getEntities()) if (entity instanceof Interaction interaction && interaction.isValid()) attach(interaction);
-        });
+        Chunk chunk = event.getChunk();
+        List<Entity> entities = List.copyOf(event.getEntities());
+        plugin.connection().runForRegion(chunk.getWorld(), chunk.getX(), chunk.getZ(), () -> {
+            for (Entity entity : entities) if (entity instanceof Interaction interaction && interaction.isValid()) attach(interaction);
+        }, 0L);
     }
 
     @EventHandler

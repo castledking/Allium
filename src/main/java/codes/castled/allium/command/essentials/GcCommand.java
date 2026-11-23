@@ -7,6 +7,7 @@ import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.naming.PlayerNameVisibility;
+import codes.castled.allium.scheduler.BukkitServerThread;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -54,7 +55,10 @@ public final class GcCommand implements SpecCommandHandler {
         if (server != null) {
             maxPlayers = server.getMaxPlayers();
             visiblePlayers = server.getOnlinePlayers().stream()
-                    .filter(p -> !(context.sender() instanceof Player viewer) || PlayerNameVisibility.canSee(viewer, p))
+                    .filter(p -> !(context.sender() instanceof Player viewer)
+                            || (BukkitServerThread.isFolia()
+                            ? PlayerNameVisibility.canSeeTarget(viewer, p)
+                            : PlayerNameVisibility.canSee(viewer, p)))
                     .count();
             if (server.getWorlds() != null) {
                 worlds = server.getWorlds();
@@ -117,9 +121,13 @@ public final class GcCommand implements SpecCommandHandler {
                 }
                 return sb.toString();
             }
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        } catch (java.lang.reflect.InvocationTargetException invoked) {
+            if (invoked.getCause() instanceof UnsupportedOperationException && BukkitServerThread.isFolia()) {
+                return "N/A (Folia regional)";
+            }
+        } catch (ReflectiveOperationException | LinkageError | UnsupportedOperationException ignored) {
         }
-        return "N/A (Spigot)";
+        return BukkitServerThread.isFolia() ? "N/A (Folia regional)" : "N/A (Spigot)";
     }
 
     public static String formatDuration(long millis) {

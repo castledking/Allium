@@ -11,7 +11,7 @@ import org.bukkit.World;
 
 import java.util.List;
 
-public final class WeatherCommand implements SpecCommandHandler {
+public final class WeatherCommand implements SpecCommandHandler.Immediate {
 
     private final PluginStart plugin;
 
@@ -25,16 +25,16 @@ public final class WeatherCommand implements SpecCommandHandler {
     }
 
     @Override
-    public void execute(BukkitCommandContext context) {
+    public boolean executeWithResult(BukkitCommandContext context) {
         var parsedOpt = WeatherState.parse(context.args());
         if (parsedOpt.isEmpty()) {
             context.sendInvalidArgs(spec().selfUsage());
-            return;
+            return false;
         }
         var parsed = parsedOpt.get();
         List<World> worlds = UtilitySupport.resolveWorlds(plugin, context.sender(), parsed.worldSelector());
         if (worlds == null) {
-            return;
+            return false;
         }
         var condition = parsed.condition();
         Integer duration = parsed.durationSeconds();
@@ -55,5 +55,7 @@ public final class WeatherCommand implements SpecCommandHandler {
                     "world=" + world.getName() + " condition=" + condition.displayName()
                             + (duration == null ? "" : " duration=" + duration + "s"));
         }
+        return !worlds.isEmpty() && worlds.stream().allMatch(world ->
+                world.hasStorm() == condition.storm() && world.isThundering() == condition.thunder());
     }
 }

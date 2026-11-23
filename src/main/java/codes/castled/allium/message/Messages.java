@@ -252,6 +252,7 @@ public enum Messages {
     SIGN_PAID("signs.paid", "{prefix} &aPaid &e{price} &afor &f[{type}]&a."),
     SIGN_INSUFFICIENT_FUNDS("signs.insufficient-funds", "{prefix} &cYou need &e{price} &cto use this sign."),
     SIGN_PAID_UNAVAILABLE("signs.paid-unavailable", "{prefix} &cPaid signs are unavailable right now (the economy is not ready)."),
+    SIGN_ENCHANT_CHANGED("signs.enchant-changed", "{prefix} &cKeep the same item in your hand until the sign finishes."),
     SIGN_UNSAFE_PRICE("signs.unsafe-price", "{prefix} &cSign price &e{price} &cis below the configured cost &e{cost}&c. Enable &funsafe-sign-prices &cto allow discounted signs."),
     SIGN_INVALID_LINE("signs.invalid-line", "{prefix} &cLine {line} on the sign is invalid. {options}"),
     SIGN_DISABLED("signs.disabled", "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."),

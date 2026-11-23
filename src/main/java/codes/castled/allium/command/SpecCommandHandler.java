@@ -16,4 +16,14 @@ public interface SpecCommandHandler {
      * Executes the command after base permission and disabled-family checks have passed.
      */
     void execute(BukkitCommandContext context);
+
+    /** A command whose synchronous effect can be confirmed by a paid sign. */
+    interface Immediate extends SpecCommandHandler {
+        boolean executeWithResult(BukkitCommandContext context);
+
+        @Override
+        default void execute(BukkitCommandContext context) {
+            executeWithResult(context);
+        }
+    }
 }

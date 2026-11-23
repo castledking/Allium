@@ -250,12 +250,16 @@ class SignServiceMatrixTest {
         when(f.travel.canUseSign(f.player,"market",true)).thenReturn(true);
         service.using(f.click());
         f.drain();
-        verify(paidSigns).start(eq(f.player),eq(stored),any(Runnable.class));
+        verify(paidSigns).start(eq(f.player),eq(stored),any(),any());
     }
 
     @org.junit.jupiter.api.Test void spawnmobSignSpawnsTamedWolfOwnedByPlayerAndSupportsShortPrices(){
         var paidSigns=mock(PaidSignService.class);
-        doAnswer(call->{call.<Runnable>getArgument(2).run();return null;}).when(paidSigns).start(any(),any(),any());
+        List<Boolean> outcomes = new ArrayList<>();
+        doAnswer(call -> {
+            call.<PaidSignService.Action>getArgument(3).deliver(() -> true, outcomes::add);
+            return null;
+        }).when(paidSigns).start(any(),any(),any(),any());
         var f=new Fixture(SignIdentity.Type.SPAWNMOB,false);
         var svc=new SignService(f.plugin,null,paidSigns);
         var edit=f.edit();
@@ -274,14 +278,73 @@ class SignServiceMatrixTest {
         // Survival player only needs allium.signs.use.spawnmob, NOT allium.spawnmob.wolf.
         when(f.player.hasPermission(anyString())).thenAnswer(inv->"allium.signs.use.spawnmob".equals(inv.getArgument(0)));
         var wolf=mock(org.bukkit.entity.Wolf.class);
+        when(wolf.isValid()).thenReturn(true);
         when(f.world.spawn(any(Location.class),eq(org.bukkit.entity.Wolf.class))).thenReturn(wolf);
         svc.using(f.click());
         f.drain();
-        verify(paidSigns).start(eq(f.player),eq(stored),any());
+        verify(paidSigns).start(eq(f.player),eq(stored),any(),any());
+        assertEquals(List.of(true), outcomes);
         verify(wolf).setTamed(true);
         verify(wolf).setOwner(f.player);
         verify(f.plugin.getMessageManager()).send(eq(f.player),eq(codes.castled.allium.message.Messages.SPAWNMOB_SPAWNED),
                 eq("{count}"),eq("1"),eq("{mob}"),eq("wolf"));
+    }
+
+    @org.junit.jupiter.api.Test void paidSpawnRollsBackEarlierMobsWhenAnotherSpawnIsCanceled() {
+        var f = new Fixture(SignIdentity.Type.SPAWNMOB, false);
+        var paidSigns = mock(PaidSignService.class);
+        var outcomes = new ArrayList<Boolean>();
+        doAnswer(call -> {
+            call.<PaidSignService.Action>getArgument(3).deliver(() -> true, outcomes::add);
+            return null;
+        }).when(paidSigns).start(any(), any(), any(), any());
+        var service = new SignService(f.plugin, null, paidSigns);
+        var edit = f.edit();
+        edit.setLine(1, "2");
+        edit.setLine(2, "wolf");
+        edit.setLine(3, "$1");
+        service.changing(edit);
+        f.drain();
+
+        var first = mock(org.bukkit.entity.Wolf.class);
+        var canceled = mock(org.bukkit.entity.Wolf.class);
+        when(first.isValid()).thenReturn(true);
+        when(f.world.spawn(any(Location.class), eq(org.bukkit.entity.Wolf.class))).thenReturn(first, canceled);
+        service.using(f.click());
+        f.drain();
+
+        assertEquals(List.of(false), outcomes);
+        verify(first).remove();
+    }
+
+    @org.junit.jupiter.api.Test void paidEnchantDeclinesWhenThePlayerSwitchesHandsBeforeDelivery() {
+        var f = new Fixture(SignIdentity.Type.ENCHANT, false);
+        var paidSigns = mock(PaidSignService.class);
+        var service = new SignService(f.plugin, null, paidSigns);
+        var enchant = mock(org.bukkit.enchantments.Enchantment.class);
+        when(enchant.getMaxLevel()).thenReturn(5);
+        when(enchant.canEnchantItem(f.handItem)).thenReturn(true);
+        when(f.handItem.clone()).thenReturn(f.handItem);
+        var sign = new SignIdentity(UUID.randomUUID(), SignIdentity.Type.ENCHANT, "*|sharpness:1", false,
+                new codes.castled.allium.economy.Money(100));
+        f.data.put(new NamespacedKey("allium", "sign_front"), sign.encode());
+
+        try (var adapter = mockStatic(codes.castled.allium.item.library.EnchantmentAdapter.class)) {
+            adapter.when(() -> codes.castled.allium.item.library.EnchantmentAdapter.find("sharpness"))
+                    .thenReturn(Optional.of(enchant));
+            service.using(f.click());
+            f.drain();
+        }
+        var action = org.mockito.ArgumentCaptor.forClass(PaidSignService.Action.class);
+        verify(paidSigns).start(eq(f.player), eq(sign), any(), action.capture());
+        var replacement = mock(org.bukkit.inventory.ItemStack.class);
+        when(f.playerInventory.getItemInMainHand()).thenReturn(replacement);
+        var outcomes = new ArrayList<Boolean>();
+        action.getValue().deliver(() -> true, outcomes::add);
+
+        assertEquals(List.of(false), outcomes);
+        verifyNoInteractions(replacement);
+        verify(f.handItem, never()).addEnchantment(any(), anyInt());
     }
 
     @org.junit.jupiter.api.Test void shortPriceFormattingRespectsConfigFlag(){

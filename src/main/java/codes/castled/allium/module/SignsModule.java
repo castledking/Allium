@@ -13,7 +13,7 @@ public final class SignsModule extends AbstractModule {
     @Override public void onEnable(){
         try{paidRepairs=new codes.castled.allium.sign.PaidRepairService(plugin);paidRepairs.enable();}
         catch(IllegalStateException unavailable){paidRepairs=null;plugin.logger().warning("Paid repair signs are unavailable: "+unavailable.getMessage());}
-        paidSigns=new PaidSignService(plugin);paidSigns.enable();
+        paidSigns=new PaidSignService(plugin);
         signs=new SignService(plugin,paidRepairs,paidSigns);signs.enable();
     }
     public void reloadSettings(){var replacement=new SignService(plugin,paidRepairs,paidSigns);if(signs!=null)signs.close();signs=replacement;signs.enable();}

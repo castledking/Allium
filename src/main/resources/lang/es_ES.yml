@@ -2510,6 +2510,8 @@ give:
     - "{prefix} &cEnchantment &f{enchant} &ccannot be combined with &f{enchant2} &con &f{item}&c!"
 
 signs:
+  enchant-changed:
+    - "{prefix} &cMantén el mismo objeto en la mano hasta que el cartel termine."
   paid-repair-disabled:
     - "{prefix} &cLas reparaciones de pago no estan disponibles ahora (la economia no esta lista)."
   invalid-line:

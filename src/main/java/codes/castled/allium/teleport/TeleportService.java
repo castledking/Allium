@@ -520,11 +520,8 @@ public final class TeleportService implements Listener {
      * capture or release their charge on it.
      */
     public boolean teleport(Player mover,Location destination,String command,java.util.function.Consumer<Boolean> outcome) {
-        if(!command.matches("[a-z]+"))throw new IllegalArgumentException("canonical teleport command required");
         Location snapshot=destination.clone();
-        boolean begun=begin(mover,mover,command,()->snapshot.clone(),null,null,false,()->true,Objects.requireNonNull(outcome));
-        if(!begun)outcome.accept(false);
-        return begun;
+        return teleport(mover, () -> snapshot.clone(), command, () -> true, Objects.requireNonNull(outcome));
     }
     /** Sets (or with null, removes) the per-player cooldown for {@code command}, in milliseconds; negative keeps the configured one. */
     public void cooldownProvider(String command,@Nullable java.util.function.ToLongFunction<Player> provider){
@@ -532,8 +529,14 @@ public final class TeleportService implements Listener {
     }
     /** Homes/warps supply a server-thread policy and destination rechecked at physical commit. */
     public boolean teleport(Player mover,Supplier<Location> destination,String command,BooleanSupplier policy) {
+        return teleport(mover, destination, command, policy, null);
+    }
+    public boolean teleport(Player mover,Supplier<Location> destination,String command,BooleanSupplier policy,
+                            @Nullable java.util.function.Consumer<Boolean> outcome) {
         if(!command.matches("[a-z]+"))throw new IllegalArgumentException("canonical teleport command required");
-        return begin(mover,mover,command,destination,null,null,false,Objects.requireNonNull(policy));
+        boolean begun=begin(mover,mover,command,destination,null,null,false,Objects.requireNonNull(policy),outcome);
+        if(!begun&&outcome!=null)outcome.accept(false);
+        return begun;
     }
     private boolean begin(Player mover,CommandSender actor,String command,Supplier<Location> destination,@Nullable Player anchor,
                           @Nullable RequestTracker.Request request,boolean force) {
@@ -624,6 +627,7 @@ public final class TeleportService implements Listener {
         // Bukkit will not teleport a player who carries riders; Allium's ride action takes them along.
         var rides=codes.castled.allium.ride.Rides.current();
         try{success=rides!=null?rides.teleport(mover,destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN):mover.teleport(destination.get(),PlayerTeleportEvent.TeleportCause.PLUGIN);}
+        catch (RuntimeException failure) { finish(operation, false); throw failure; }
         finally{committing.remove(id);}
         if(!success){finish(operation,false);send(operation.actor(),Messages.TELEPORT_INTERRUPTED,"{reason}","cancelled by another plugin");return;}
         finish(operation,true);

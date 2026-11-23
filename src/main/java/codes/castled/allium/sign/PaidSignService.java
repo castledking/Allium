@@ -3,17 +3,13 @@ package codes.castled.allium.sign;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.economy.EconomyDisplay;
+import codes.castled.allium.economy.EconomyRequest;
 import codes.castled.allium.economy.EconomyReservations;
 import codes.castled.allium.economy.EconomyResult;
-import codes.castled.allium.economy.Money;
+import codes.castled.allium.economy.EconomyRuntime;
 import codes.castled.allium.economy.PaidWorkflowSupport;
 import codes.castled.allium.message.Messages;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.sql.SQLException;
 import java.util.HashSet;
@@ -21,14 +17,17 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
-/**
- * Journalled atomic charging for priced service signs ({@code [Warp]}, {@code [Heal]},
- * {@code [Disposal]}, {@code [Workbench]}, {@code [Anvil]}, {@code [Balance]}, {@code [Mail]},
- * {@code [Info]}). Priced {@code [Repair]} and {@code [Kit]} signs use their own receipt-backed
- * reservation services.
- */
-public final class PaidSignService implements Listener {
+/** Reserves before delivery and captures only after the action confirms success. */
+public final class PaidSignService {
+    @FunctionalInterface
+    interface Action {
+        /** Reports actual delivery, once. Deferred actions check validity again before delivering. */
+        void deliver(BooleanSupplier valid, Consumer<Boolean> complete);
+    }
 
     private final PluginStart plugin;
     private final Executor io;
@@ -40,92 +39,139 @@ public final class PaidSignService implements Listener {
         this.io = plugin.getScheduler().boundedPool("Allium-PaidSign", 1, 128);
     }
 
-    public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
-    }
-
     public void close() {
         closed = true;
-        HandlerList.unregisterAll(this);
     }
 
     public boolean busy(Player player) {
         return player != null && busy.contains(player.getUniqueId());
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onQuit(PlayerQuitEvent event) {
-        busy.remove(event.getPlayer().getUniqueId());
-    }
-
-    public void start(Player player, SignIdentity identity, Runnable action) {
+    void start(Player player, SignIdentity identity, BooleanSupplier allowed, Action action) {
         if (closed || !PaidWorkflowSupport.ready(plugin)) {
             plugin.getMessageManager().send(player, Messages.SIGN_PAID_UNAVAILABLE);
             return;
         }
         UUID account = player.getUniqueId();
-        if (busy.contains(account)) {
+        if (!busy.add(account)) {
             plugin.getMessageManager().send(player, Messages.ECO_BUSY);
             return;
         }
-        Money price = identity.price();
-        String formatted = EconomyDisplay.read(plugin.getConfig()).format(price);
-        String typeLabel = Character.toUpperCase(identity.type().key().charAt(0)) + identity.type().key().substring(1);
-        UUID workflow = UUID.randomUUID();
-        busy.add(account);
+        var purchase = new Purchase(player, account, UUID.randomUUID(), identity,
+                EconomyDisplay.read(plugin.getConfig()).format(identity.price()));
         try {
-            io.execute(() -> {
-                EconomyResult.Mutation result;
-                try {
-                    result = PaidWorkflowSupport.reservations(plugin).spend(
-                            EconomyReservations.Kind.SIGN,
-                            workflow,
-                            account,
-                            price,
-                            EconomyReservations.fingerprint("SIGN", workflow.toString(), identity.id().toString(),
-                                    identity.type().key(), identity.argument(), Long.toString(price.minor())),
-                            c -> true);
-                } catch (SQLException error) {
-                    plugin.logger().warning("Paid sign [" + typeLabel + "] for " + player.getName()
-                            + " failed: " + error.getMessage());
-                    onServer(() -> {
-                        busy.remove(account);
-                        plugin.getMessageManager().send(player, Messages.ECO_STORAGE);
-                    });
-                    return;
-                }
-                onServer(() -> {
-                    busy.remove(account);
-                    if (closed || plugin.getServer().getPlayer(account) != player || !player.isOnline()) return;
-                    if (result instanceof EconomyResult.Committed done) {
-                        plugin.getMessageManager().send(player, Messages.SIGN_PAID,
-                                "{price}", formatted, "{type}", typeLabel);
-                        UtilitySupport.audit(plugin, player, "paid_sign",
-                                "type=" + identity.type().key() + " arg=" + identity.argument()
-                                        + " price=" + price.minor() + " op=" + done.operationId());
-                        action.run();
-                    } else if (result instanceof EconomyResult.Rejected refused) {
-                        if ("INSUFFICIENT_FUNDS".equals(refused.reason()) || "MISSING_ACCOUNT".equals(refused.reason())) {
-                            plugin.getMessageManager().send(player, Messages.SIGN_INSUFFICIENT_FUNDS, "{price}", formatted);
-                        } else {
-                            codes.castled.allium.economy.EconomyRuntime.sendRefusal(plugin, player, refused.reason());
-                        }
-                    } else if (result instanceof EconomyResult.Unknown unknown) {
-                        plugin.getMessageManager().send(player, Messages.ECO_UNKNOWN, "{operation}", unknown.operationId().toString());
-                    } else {
-                        plugin.getMessageManager().send(player, Messages.ECO_STORAGE);
-                    }
-                });
-            });
+            io.execute(() -> reserve(purchase, allowed, action));
         } catch (RejectedExecutionException full) {
             busy.remove(account);
             plugin.getMessageManager().send(player, Messages.ECO_BUSY);
         }
     }
 
-    private void onServer(Runnable task) {
+    private record Purchase(Player player, UUID account, UUID workflow, SignIdentity sign, String price) {}
+
+    private void reserve(Purchase purchase, BooleanSupplier allowed, Action action) {
+        if (closed) return;
+        EconomyResult.Mutation result;
+        try {
+            var sign = purchase.sign();
+            result = PaidWorkflowSupport.reservations(plugin).reserve(EconomyReservations.Kind.SIGN,
+                    purchase.workflow(), purchase.account(), sign.price(),
+                    EconomyReservations.fingerprint("SIGN", sign.id().toString(), sign.type().key(),
+                            sign.argument(), Long.toString(sign.price().minor())), c -> true);
+        } catch (SQLException | RuntimeException failure) {
+            warn(purchase, "could not reserve the price", failure);
+            plugin.getScheduler().runOnServer(() -> finish(purchase, Messages.ECO_STORAGE));
+            return;
+        }
+        if (result instanceof EconomyResult.Committed && closed) {
+            settleOnWorker(purchase, false);
+        } else {
+            plugin.getScheduler().runOnServer(() -> {
+                if (result instanceof EconomyResult.Committed) {
+                    deliver(purchase, allowed, action);
+                } else if (result instanceof EconomyResult.Rejected refused) {
+                    busy.remove(purchase.account());
+                    if (!current(purchase)) return;
+                    if ("INSUFFICIENT_FUNDS".equals(refused.reason()) || "MISSING_ACCOUNT".equals(refused.reason())) {
+                        plugin.getMessageManager().send(purchase.player(), Messages.SIGN_INSUFFICIENT_FUNDS,
+                                "{price}", purchase.price());
+                    } else EconomyRuntime.sendRefusal(plugin, purchase.player(), refused.reason());
+                } else if (result instanceof EconomyResult.Unknown unknown) {
+                    // Delivery never started, so even an uncertain reserve may be released safely.
+                    if (current(purchase)) plugin.getMessageManager().send(purchase.player(), Messages.ECO_UNKNOWN,
+                            "{operation}", unknown.operationId().toString());
+                    settle(purchase, false);
+                } else finish(purchase, Messages.ECO_STORAGE);
+            });
+        }
+    }
+
+    private void deliver(Purchase purchase, BooleanSupplier allowed, Action action) {
+        var completed = new AtomicBoolean();
+        BooleanSupplier valid = () -> !completed.get() && current(purchase) && allowed.getAsBoolean();
+        Consumer<Boolean> outcome = delivered -> {
+            if (completed.compareAndSet(false, true)) settle(purchase, delivered);
+        };
+        try {
+            if (valid.getAsBoolean()) action.deliver(valid, outcome);
+            else outcome.accept(false);
+        } catch (RuntimeException failure) {
+            warn(purchase, "action failed", failure);
+            outcome.accept(false);
+        }
+    }
+
+    private void settle(Purchase purchase, boolean delivered) {
+        try {
+            io.execute(() -> settleOnWorker(purchase, delivered));
+        } catch (RejectedExecutionException full) {
+            warn(purchase, "could not queue settlement; restart recovery will release any outstanding hold", full);
+            finish(purchase, Messages.ECO_STORAGE);
+        }
+    }
+
+    private void settleOnWorker(Purchase purchase, boolean delivered) {
+        boolean settled = false;
+        try {
+            var holds = PaidWorkflowSupport.reservations(plugin);
+            var result = delivered ? holds.capture(EconomyReservations.Kind.SIGN, purchase.workflow(), c -> true)
+                    : holds.release(EconomyReservations.Kind.SIGN, purchase.workflow(), c -> true);
+            settled = result instanceof EconomyResult.Committed
+                    || !delivered && result instanceof EconomyResult.Rejected refused
+                    && "MISSING_RESERVATION".equals(refused.reason());
+            if (!settled) warn(purchase, "settlement unconfirmed; restart recovery will release any outstanding hold", null);
+        } catch (SQLException | RuntimeException failure) {
+            warn(purchase, "settlement failed; restart recovery will release any outstanding hold", failure);
+        }
+        boolean confirmed = settled;
         plugin.getScheduler().runOnServer(() -> {
-            if (!closed) task.run();
+            finish(purchase, confirmed ? null : Messages.ECO_STORAGE);
+            if (confirmed && delivered && current(purchase)) {
+                String key = purchase.sign().type().key();
+                String type = Character.toUpperCase(key.charAt(0)) + key.substring(1);
+                plugin.getMessageManager().send(purchase.player(), Messages.SIGN_PAID,
+                        "{price}", purchase.price(), "{type}", type);
+                UUID operation = EconomyReservations.operation(EconomyReservations.Kind.SIGN, purchase.workflow(),
+                        EconomyRequest.Kind.CAPTURE);
+                UtilitySupport.audit(plugin, purchase.player(), "paid_sign",
+                        "type=" + key + " arg=" + purchase.sign().argument() + " price=" + purchase.sign().price().minor()
+                                + " op=" + operation + " workflow=" + purchase.workflow());
+            }
         });
+    }
+
+    private void finish(Purchase purchase, Messages message) {
+        busy.remove(purchase.account());
+        if (message != null && current(purchase)) plugin.getMessageManager().send(purchase.player(), message);
+    }
+
+    private boolean current(Purchase purchase) {
+        return !closed && purchase.player().isOnline()
+                && plugin.getServer().getPlayer(purchase.account()) == purchase.player();
+    }
+
+    private void warn(Purchase purchase, String message, Throwable cause) {
+        plugin.logger().warning("Paid sign " + purchase.workflow() + ": " + message
+                + (cause == null ? "" : ": " + cause.getMessage()));
     }
 }

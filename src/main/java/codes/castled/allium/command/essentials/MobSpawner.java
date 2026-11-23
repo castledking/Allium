@@ -144,6 +144,12 @@ public final class MobSpawner {
 
     /** Spawns one stack (1 or more entities mounted in order, matching Essentials). */
     public static Entity spawnStack(Location location, List<MobEntry> entries, List<String> rawDatas, Player owner) {
+        return spawnStack(location, entries, rawDatas, owner, null);
+    }
+
+    /** Records spawned entities so a priced sign can undo a partially delivered batch. */
+    public static Entity spawnStack(Location location, List<MobEntry> entries, List<String> rawDatas, Player owner,
+                                    List<Entity> created) {
         World world = location.getWorld();
         if (world == null || entries.isEmpty()) return null;
         Entity previous = null;
@@ -152,6 +158,10 @@ public final class MobSpawner {
             MobEntry entry = entries.get(i);
             Entity spawned = spawnOne(world, location, entry.type());
             if (spawned == null) return null;
+            if (created != null) {
+                created.add(spawned);
+                if (!spawned.isValid()) return null;
+            }
             applyDefaults(entry.type(), spawned);
             String data = i < rawDatas.size() ? rawDatas.get(i) : null;
             if (data != null && !data.isEmpty()) {
@@ -161,7 +171,8 @@ public final class MobSpawner {
                 root = spawned;
             }
             if (previous != null) {
-                previous.addPassenger(spawned);
+                boolean mounted = previous.addPassenger(spawned);
+                if (created != null && !mounted) return null;
             }
             previous = spawned;
         }

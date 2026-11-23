@@ -46,6 +46,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -143,6 +144,16 @@ public final class RtpService implements Listener {
      * those biomes ({@code /rtp biome}).
      */
     public void random(CommandSender actor, Player target, @Nullable String requested, @Nullable Set<String> biomes) {
+        random(actor, target, requested, biomes, null, null);
+    }
+
+    /** A priced sign settles its fee and any location cost together when the teleport arrives. */
+    public void useSign(Player player, @Nullable String requested, Money price, BooleanSupplier valid) {
+        random(player, player, requested, null, price, valid);
+    }
+
+    private void random(CommandSender actor, Player target, @Nullable String requested, @Nullable Set<String> biomes,
+                        @Nullable Money signPrice, @Nullable BooleanSupplier valid) {
         TeleportService tp = teleports.get();
         if (closed || tp == null) {
             send(actor, Messages.MODULE_DISABLED);
@@ -191,14 +202,25 @@ public final class RtpService implements Listener {
             send(actor, Messages.COOLDOWN_ACTIVE, "{time}", cooldown + "s");
             return;
         }
+        // Staff, first-join and death teleports do not pay the location cost.
+        Money price = self && !actor.hasPermission(PERMISSION_FREE) ? current.costOf(where.area()) : new Money(0);
+        if (signPrice != null) {
+            if (signPrice.minor() > Money.HARD - price.minor()) {
+                send(actor, Messages.RTP_COST_UNAVAILABLE);
+                return;
+            }
+            price = price.plus(signPrice);
+        }
         UUID id = target.getUniqueId();
         if (!searching.add(id)) {
             send(actor, Messages.RTP_BUSY);
             return;
         }
-        // Only a player's own /rtp is paid: staff, first-join and death teleports never spend their money.
-        Money price = self && !actor.hasPermission(PERMISSION_FREE) ? current.costOf(where.area()) : new Money(0);
-        Run run = new Run(actor, target, self, where, world, current, biomes, price);
+        String locationPermission = PERMISSION_LOCATION + where.name();
+        BooleanSupplier canUseSign = valid == null ? null : () -> !closed && settings == current
+                && valid.getAsBoolean() && actor.hasPermission(PERMISSION)
+                && (!current.perLocationPermission() || actor.hasPermission(locationPermission));
+        Run run = new Run(actor, target, self, where, world, current, biomes, price, canUseSign);
         if (price.minor() <= 0) {
             start(run, null);
             return;
@@ -213,7 +235,7 @@ public final class RtpService implements Listener {
 
     /** One random teleport in progress. */
     private record Run(CommandSender actor, Player target, boolean self, RtpSettings.Resolved where, World world,
-                       RtpSettings settings, @Nullable Set<String> biomes, Money price) {
+                       RtpSettings settings, @Nullable Set<String> biomes, Money price, @Nullable BooleanSupplier valid) {
     }
 
     /** Holds the price before the search; the hold is captured only when the player arrives. */
@@ -233,7 +255,7 @@ public final class RtpService implements Listener {
                 }
                 onServer(() -> {
                     if (result instanceof EconomyResult.Committed) {
-                        if (closed || !run.target().isOnline()) {
+                        if (closed || !run.target().isOnline() || run.valid() != null && !run.valid().getAsBoolean()) {
                             settle(workflow, false, run);
                             searching.remove(account);
                             return;
@@ -246,6 +268,7 @@ public final class RtpService implements Listener {
                     } else if (result instanceof EconomyResult.Unknown unknown) {
                         searching.remove(account);
                         send(run.actor(), Messages.ECO_UNKNOWN, "{operation}", unknown.operationId().toString());
+                        settle(workflow, false, run);
                     } else {
                         abandon(run, Messages.ECO_STORAGE);
                     }
@@ -270,7 +293,8 @@ public final class RtpService implements Listener {
                     EconomyResult.Mutation result = arrived
                             ? reservations.capture(EconomyReservations.Kind.RTP, workflow, c -> true)
                             : reservations.release(EconomyReservations.Kind.RTP, workflow, c -> true);
-                    if (!(result instanceof EconomyResult.Committed)) {
+                    if (!(result instanceof EconomyResult.Committed) && (arrived
+                            || !(result instanceof EconomyResult.Rejected refused) || !"MISSING_RESERVATION".equals(refused.reason()))) {
                         plugin.logger().warning("Random teleport hold " + workflow + " for " + run.target().getName()
                                 + " was not " + (arrived ? "captured" : "released") + " (" + result.getClass().getSimpleName()
                                 + "); it stays held until /eco resolve or the next restart refunds it.");
@@ -314,7 +338,8 @@ public final class RtpService implements Listener {
                 .whenComplete((spot, error) -> onServer(() -> {
                     searching.remove(id);
                     TeleportService now = teleports.get();
-                    if (closed || now == null || !target.isOnline() || error != null || spot == null) {
+                    if (closed || now == null || !target.isOnline() || error != null || spot == null
+                            || run.valid() != null && !run.valid().getAsBoolean()) {
                         if (workflow != null) settle(workflow, false, run);
                         if (!closed && target.isOnline() && (error != null || spot == null)) {
                             send(actor, Messages.RTP_NOT_FOUND, "{attempts}", Integer.toString(current.findAttempts()));
@@ -323,10 +348,12 @@ public final class RtpService implements Listener {
                         return;
                     }
                     hold(spot);
-                    java.util.function.Consumer<Boolean> outcome = arrived -> {
+                    Consumer<Boolean> outcome = arrived -> {
                         if (workflow != null) settle(workflow, arrived, run);
                     };
-                    if (run.self()) {
+                    if (run.self() && run.valid() != null) {
+                        now.teleport(target, spot::clone, COMMAND, run.valid(), outcome);
+                    } else if (run.self()) {
                         now.teleport(target, spot, COMMAND, outcome);
                     } else {
                         now.forceLocation(actor, target, spot, COMMAND, outcome);

@@ -33,6 +33,11 @@ public final class MailCommand implements SpecCommandHandler {
         return CoreCommandSpecs.MAIL;
     }
 
+    public void readSign(Player player, java.util.function.BooleanSupplier valid,
+                         java.util.function.Consumer<Boolean> outcome) {
+        mail.read(player, valid, outcome);
+    }
+
     @Override
     public void execute(BukkitCommandContext context) {
         CommandSender sender = context.sender();

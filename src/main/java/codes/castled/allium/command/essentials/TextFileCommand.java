@@ -25,7 +25,7 @@ import java.util.Locale;
  * section are shown, or the list of sections when there are none. A file is read again whenever it
  * changes on disk, so edits show without a reload.
  */
-public final class TextFileCommand implements SpecCommandHandler {
+public final class TextFileCommand implements SpecCommandHandler.Immediate {
 
     private final PluginStart plugin;
     private final CommandSpec spec;
@@ -77,12 +77,12 @@ public final class TextFileCommand implements SpecCommandHandler {
     }
 
     @Override
-    public void execute(BukkitCommandContext context) {
+    public boolean executeWithResult(BukkitCommandContext context) {
         if (context.args().length > 2) {
             context.sendInvalidArgs(spec.selfUsage());
-            return;
+            return false;
         }
-        show(context.sender(), context.sender(), context.args(), () -> context.sendInvalidArgs(spec.selfUsage()));
+        return show(context.sender(), context.sender(), context.args(), () -> context.sendInvalidArgs(spec.selfUsage()));
     }
 
     /**

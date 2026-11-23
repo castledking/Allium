@@ -12,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 
-public final class GamemodeCommand implements SpecCommandHandler {
+public final class GamemodeCommand implements SpecCommandHandler.Immediate {
 
     private final PluginStart plugin;
 
@@ -26,11 +26,11 @@ public final class GamemodeCommand implements SpecCommandHandler {
     }
 
     @Override
-    public void execute(BukkitCommandContext context) {
+    public boolean executeWithResult(BukkitCommandContext context) {
         String[] args = context.args();
         if (args.length == 0) {
             context.sendInvalidArgs(spec().selfUsage());
-            return;
+            return false;
         }
 
         GameMode mode;
@@ -45,7 +45,7 @@ public final class GamemodeCommand implements SpecCommandHandler {
         }
         if (mode == null) {
             context.sendInvalidArgs(spec().selfUsage());
-            return;
+            return false;
         }
 
         // Shown as "Survival", like every other mode and item name in messages.
@@ -53,19 +53,21 @@ public final class GamemodeCommand implements SpecCommandHandler {
         // Each mode has its own node (legacy Allium): /gamemode alone grants none of them.
         if (!context.sender().hasPermission(modePermission(mode))) {
             plugin.getMessageManager().send(context.sender(), Messages.GAMEMODE_MODE_DENIED, "{mode}", modeName);
-            return;
+            return false;
         }
 
         Player target = context.resolveSelfOrTarget(1);
         if (target == null) {
-            return;
+            return false;
         }
 
         target.setGameMode(mode);
+        if (target.getGameMode() != mode) return false;
         if (target != context.sender()) {
             context.sendOutcome(context.sender(), "other", "{player}", target.getName(), "{mode}", modeName);
         }
         context.sendOutcome(target, "self", "{mode}", modeName);
+        return true;
     }
 
     /** {@code allium.gamemode.<mode>}, required to switch anyone (yourself or, with .others, another player) to that mode. */

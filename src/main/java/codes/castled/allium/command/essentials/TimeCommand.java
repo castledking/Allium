@@ -11,7 +11,7 @@ import org.bukkit.World;
 import java.util.List;
 
 /** Shared executor for {@code /time}, {@code /day}, and {@code /night}. */
-public final class TimeCommand implements SpecCommandHandler {
+public final class TimeCommand implements SpecCommandHandler.Immediate {
 
     public static final long DAY_TICKS = 1000L;
     public static final long NIGHT_TICKS = 13_000L;
@@ -32,50 +32,49 @@ public final class TimeCommand implements SpecCommandHandler {
     }
 
     @Override
-    public void execute(BukkitCommandContext context) {
+    public boolean executeWithResult(BukkitCommandContext context) {
         String name = spec.canonicalName();
         if ("day".equals(name) || "night".equals(name)) {
-            executeFixedShortcut(context, "day".equals(name) ? DAY_TICKS : NIGHT_TICKS);
-            return;
+            return executeFixedShortcut(context, "day".equals(name) ? DAY_TICKS : NIGHT_TICKS);
         }
 
         var parsedOpt = WorldTimeParser.parseTimeCommand(context.args());
         if (parsedOpt.isEmpty()) {
             context.sendInvalidArgs(spec.selfUsage());
-            return;
+            return false;
         }
         var parsed = parsedOpt.get();
-        switch (parsed.action()) {
+        return switch (parsed.action()) {
             case QUERY -> handleQuery(context, parsed.worldSelector());
             case SET -> {
-                if (!checkPerm(context, "allium.time.set", "time set")) return;
-                handleSet(context, parsed.ticks(), parsed.worldSelector());
+                yield checkPerm(context, "allium.time.set", "time set")
+                        && handleSet(context, parsed.ticks(), parsed.worldSelector());
             }
             case ADD -> {
-                if (!checkPerm(context, "allium.time.add", "time add")) return;
-                handleAdd(context, parsed.ticks(), parsed.worldSelector());
+                yield checkPerm(context, "allium.time.add", "time add")
+                        && handleAdd(context, parsed.ticks(), parsed.worldSelector());
             }
             case PAUSE -> {
-                if (!checkPerm(context, "allium.time.pause", "time pause")) return;
-                handlePause(context, parsed.pauseState(), parsed.worldSelector());
+                yield checkPerm(context, "allium.time.pause", "time pause")
+                        && handlePause(context, parsed.pauseState(), parsed.worldSelector());
             }
-        }
+        };
     }
 
-    private void executeFixedShortcut(BukkitCommandContext context, long ticks) {
+    private boolean executeFixedShortcut(BukkitCommandContext context, long ticks) {
         String[] args = context.args();
         if (args.length > 1) {
             context.sendInvalidArgs(spec.selfUsage());
-            return;
+            return false;
         }
         String worldSelector = args.length == 1 ? args[0] : null;
-        handleSet(context, ticks, worldSelector);
+        return handleSet(context, ticks, worldSelector);
     }
 
-    private void handleQuery(BukkitCommandContext context, String worldSelector) {
+    private boolean handleQuery(BukkitCommandContext context, String worldSelector) {
         List<World> worlds = UtilitySupport.resolveWorlds(plugin, context.sender(), worldSelector);
         if (worlds == null) {
-            return;
+            return false;
         }
         for (World world : worlds) {
             String status = pauseCoordinator != null && pauseCoordinator.isPaused(world) ? " &7[paused]" : "";
@@ -84,15 +83,19 @@ public final class TimeCommand implements SpecCommandHandler {
                     "{time}", WorldTimeParser.formatTime(world.getTime()),
                     "{status}", status);
         }
+        return !worlds.isEmpty();
     }
 
-    private void handleSet(BukkitCommandContext context, long ticks, String worldSelector) {
+    private boolean handleSet(BukkitCommandContext context, long ticks, String worldSelector) {
         List<World> worlds = UtilitySupport.resolveWorlds(plugin, context.sender(), worldSelector);
         if (worlds == null) {
-            return;
+            return false;
         }
+        boolean changed = false;
         for (World world : worlds) {
             world.setTime(ticks);
+            if (world.getTime() != Math.floorMod(ticks, 24000L)) continue;
+            changed = true;
             if (pauseCoordinator != null) {
                 pauseCoordinator.updatePinnedTime(world, ticks);
             }
@@ -102,12 +105,13 @@ public final class TimeCommand implements SpecCommandHandler {
             UtilitySupport.audit(plugin, context.sender(), "time_set",
                     "world=" + world.getName() + " ticks=" + ticks);
         }
+        return changed;
     }
 
-    private void handleAdd(BukkitCommandContext context, long delta, String worldSelector) {
+    private boolean handleAdd(BukkitCommandContext context, long delta, String worldSelector) {
         List<World> worlds = UtilitySupport.resolveWorlds(plugin, context.sender(), worldSelector);
         if (worlds == null) {
-            return;
+            return false;
         }
         for (World world : worlds) {
             long updated = world.getTime() + delta;
@@ -122,12 +126,13 @@ public final class TimeCommand implements SpecCommandHandler {
             UtilitySupport.audit(plugin, context.sender(), "time_add",
                     "world=" + world.getName() + " delta=" + delta + " now=" + updated);
         }
+        return !worlds.isEmpty();
     }
 
-    private void handlePause(BukkitCommandContext context, Boolean desired, String worldSelector) {
+    private boolean handlePause(BukkitCommandContext context, Boolean desired, String worldSelector) {
         List<World> worlds = UtilitySupport.resolveWorlds(plugin, context.sender(), worldSelector);
         if (worlds == null || pauseCoordinator == null) {
-            return;
+            return false;
         }
         for (World world : worlds) {
             boolean nowPaused;
@@ -147,6 +152,7 @@ public final class TimeCommand implements SpecCommandHandler {
             UtilitySupport.audit(plugin, context.sender(), "time_pause",
                     "world=" + world.getName() + " paused=" + nowPaused);
         }
+        return !worlds.isEmpty();
     }
 
     private boolean checkPerm(BukkitCommandContext context, String perm, String label) {

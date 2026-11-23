@@ -346,10 +346,31 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             resolve(sender,args[0],id->show(sender,id));
         }
     }
-    private void show(CommandSender sender,UUID id){submit(sender,()->{
-        Balance result=engine.balance(id);
-        if(result instanceof Found found)tell(sender,Messages.BALANCE,"{amount}",display.format(found.available()));else tell(sender,result instanceof Missing?Messages.ECO_MISSING:Messages.ECO_STORAGE);
-    });}
+    private void show(CommandSender sender, UUID id) {
+        show(sender, id, () -> !(sender instanceof Player player) || player.isOnline(), ignored -> {});
+    }
+    /** Shares the balance lookup with a sign and reports whether the viewer received it. */
+    public void showSignBalance(Player player, java.util.function.BooleanSupplier valid,
+                                java.util.function.Consumer<Boolean> outcome) {
+        show(player, player.getUniqueId(), valid, outcome);
+    }
+
+    private void show(CommandSender sender, UUID id, java.util.function.BooleanSupplier valid,
+                      java.util.function.Consumer<Boolean> outcome) {
+        if (!submit(sender, () -> {
+            Balance result = engine.balance(id);
+            plugin.getScheduler().runOnServer(() -> {
+                if (closed || !valid.getAsBoolean()) { outcome.accept(false); return; }
+                if (result instanceof Found found) {
+                    plugin.getMessageManager().send(sender, Messages.BALANCE, "{amount}", display.format(found.available()));
+                    outcome.accept(true);
+                } else {
+                    plugin.getMessageManager().send(sender, result instanceof Missing ? Messages.ECO_MISSING : Messages.ECO_STORAGE);
+                    outcome.accept(false);
+                }
+            });
+        })) outcome.accept(false);
+    }
     private void toggle(CommandSender sender,String[] args){
         if(args.length>2)throw new IllegalArgumentException("paytoggle");
         Boolean parsed=args.length==0?null:args[0].equalsIgnoreCase("on")?true:args[0].equalsIgnoreCase("off")?false:null;

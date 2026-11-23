@@ -20,7 +20,7 @@ import org.bukkit.inventory.meta.Damageable;
 import java.util.Locale;
 
 /** Shared command/sign entry point for self-service inventory utilities. */
-public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements SpecCommandHandler {
+public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements SpecCommandHandler.Immediate {
 
     public static final class DisposalHolder implements InventoryHolder {
         private Inventory inventory;
@@ -45,50 +45,49 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
     }
 
     @Override
-    public void execute(BukkitCommandContext context) {
+    public boolean executeWithResult(BukkitCommandContext context) {
         if (!(context.sender() instanceof Player player)) {
             UtilitySupport.send(plugin, context.sender(), Messages.PLAYER_ONLY);
-            return;
+            return false;
         }
 
         if ("repair".equals(spec.canonicalName())) {
             if (context.args().length > 1) {
                 context.sendInvalidArgs(spec.selfUsage());
-                return;
+                return false;
             }
             String mode = context.args().length == 0 ? "hand" : context.args()[0].toLowerCase(Locale.ROOT);
             if (!"hand".equals(mode) && !"all".equals(mode)) {
                 context.sendInvalidArgs(spec.selfUsage());
-                return;
+                return false;
             }
-            repair(plugin,player,mode);
-            return;
+            return repair(plugin,player,mode);
         }
 
         if (context.args().length != 0) {
             context.sendInvalidArgs(spec.selfUsage());
-            return;
+            return false;
         }
         if (UtilitySupport.isInventoryBusy(plugin, player)) {
             UtilitySupport.send(plugin,player,Messages.UTILITY_INVENTORY_BUSY,"{player}",player.getName());
-            return;
+            return false;
         }
 
-        switch (spec.canonicalName()) {
+        return switch (spec.canonicalName()) {
             case "disposal" -> {
                 DisposalHolder holder = new DisposalHolder();
                 Inventory disposal = plugin.getServer().createInventory(holder, 27, "Disposal");
                 holder.setInventory(disposal);
-                player.openInventory(disposal);
+                yield player.openInventory(disposal) != null;
             }
-            case "workbench" -> player.openWorkbench(null, true);
-            case "anvil" -> player.openInventory(plugin.getServer().createInventory(null, InventoryType.ANVIL, "Anvil"));
+            case "workbench" -> player.openWorkbench(null, true) != null;
+            case "anvil" -> player.openInventory(plugin.getServer().createInventory(null, InventoryType.ANVIL, "Anvil")) != null;
             case "grindstone", "cartographytable", "stonecutter", "loom", "smithing" -> openWorkstation(player);
             default -> throw new IllegalArgumentException("unknown utility");
-        }
+        };
     }
 
-    private void openWorkstation(Player player) {
+    private boolean openWorkstation(Player player) {
         String name = spec.canonicalName();
         String field = name.equals("cartographytable") ? "CARTOGRAPHY_TABLE" : name.toUpperCase(Locale.ROOT);
         try {
@@ -99,8 +98,10 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
             Object view = typed.getMethod("create", org.bukkit.entity.HumanEntity.class).invoke(type, player);
             org.bukkit.entity.HumanEntity.class.getMethod("openInventory", org.bukkit.inventory.InventoryView.class)
                     .invoke(player, view);
+            return player.getOpenInventory() == view;
         } catch (ReflectiveOperationException | LinkageError | UnsupportedOperationException unavailable) {
             UtilitySupport.send(plugin, player, Messages.WORKSTATION_UNAVAILABLE, "{workstation}", name);
+            return false;
         }
     }
 

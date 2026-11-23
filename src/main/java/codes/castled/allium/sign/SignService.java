@@ -1,6 +1,10 @@
 package codes.castled.allium.sign;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.BukkitCommandContext;
+import codes.castled.allium.command.SpecCommandHandler;
+import codes.castled.allium.command.mail.MailCommand;
+import codes.castled.allium.command.spec.CommandFamilyPolicy;
 import codes.castled.allium.module.*;
 import codes.castled.allium.economy.*;
 import codes.castled.allium.message.Messages;
@@ -16,6 +20,7 @@ import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.persistence.PersistentDataType;
 import java.util.*;
+import java.util.function.BooleanSupplier;
 
 /** Face PDC is the sole action authority, with no location cache to survive destruction. */
 public final class SignService implements Listener,AutoCloseable {
@@ -279,11 +284,15 @@ public final class SignService implements Listener,AutoCloseable {
             try{
             if(closed||event.isCancelled()||event.useInteractedBlock()==Event.Result.DENY||!player.isOnline()||!(event.getClickedBlock().getState() instanceof Sign current)
                 ||!identity(current,side).filter(identity::equals).isPresent()||!permission(player,"use",identity.type()))return;
-            execute(player,identity);
+            Block clicked = event.getClickedBlock();
+            execute(player, identity, () -> !closed && !event.isCancelled() && event.useInteractedBlock() != Event.Result.DENY
+                    && clicked.getWorld().isChunkLoaded(clicked.getX() >> 4, clicked.getZ() >> 4)
+                    && clicked.getState() instanceof Sign live && identity(live, side).filter(identity::equals).isPresent()
+                    && permission(player, "use", identity.type()));
             }finally{pending.remove(player.getUniqueId());}
         },50);
     }
-    private void execute(Player p,SignIdentity identity){
+    private void execute(Player p,SignIdentity identity,BooleanSupplier faceValid){
         String command=switch(identity.type()){
             case COLOR->null;case WARP->"warp";case KIT->"kit";case BALANCE->"balance";case MAIL->"mail";case INFO->"info";
             case CARTOGRAPHY->"cartographytable";case RANDOMTELEPORT->"rtp";case FREE->"free";
@@ -296,30 +305,41 @@ public final class SignService implements Listener,AutoCloseable {
             default->"essentials";
         };
         var owner=plugin.getModuleManager().getModule(module);if(owner==null||!owner.isEnabled()||!plugin.getConfig().getBoolean("modules."+module,true)||identity.type()==SignIdentity.Type.WARP&&!plugin.getConfig().getBoolean("modules.warps",true))return;
+        BooleanSupplier valid = () -> faceValid.getAsBoolean()
+                && p.isOnline() && plugin.getServer().getPlayer(p.getUniqueId()) == p
+                && owner.isEnabled() && plugin.getConfig().getBoolean("modules.signs", true)
+                && plugin.getConfig().getBoolean("modules." + module, true)
+                && (identity.type() != SignIdentity.Type.WARP || plugin.getConfig().getBoolean("modules.warps", true))
+                && !plugin.getCommandManager().getFamilyPolicy().isDisabled(command);
         if(identity.type()==SignIdentity.Type.FREE){
-            runFree(p,identity);
+            runFree(p,identity,valid);
             return;
         }
         if(identity.type()==SignIdentity.Type.ENCHANT){
-            runEnchant(p,identity);
+            runEnchant(p,identity,valid);
             return;
         }
         if(identity.type()==SignIdentity.Type.SPAWNMOB){
-            runSpawnMob(p,identity);
+            runSpawnMob(p,identity,valid);
             return;
         }
         if(identity.type()==SignIdentity.Type.WARP){
             var travel=((TravelModule)owner).travel();
             if(identity.price().minor()>0){
                 if(!travel.canUseSign(p,identity.argument(),identity.publicWarp()))return;
-                if(paidSigns==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
-                else paidSigns.start(p,identity,()->travel.useSign(p,identity.argument(),identity.publicWarp()));
+                charge(p, identity, valid, (active, done) ->
+                        travel.useSign(p, identity.argument(), identity.publicWarp(), active, done));
                 return;
             }
             travel.useSign(p,identity.argument(),identity.publicWarp());return;
         }
         if(identity.type()==SignIdentity.Type.KIT&&identity.priceOverride()){
             ((KitsModule)owner).kits().claimFromSign(p,identity.argument(),identity.price());
+            return;
+        }
+        if(identity.type()==SignIdentity.Type.RANDOMTELEPORT&&identity.price().minor()>0){
+            ((RtpModule) owner).rtp().useSign(p, identity.argument().isEmpty() ? null : identity.argument(),
+                    identity.price(), valid);
             return;
         }
         var renderer=plugin.getCommandManager().getRenderedCommands().get(command);var registered=plugin.getCommand(command);
@@ -338,22 +358,40 @@ public final class SignService implements Listener,AutoCloseable {
             default->new String[0];
         };
         if(identity.price().minor()>0){
-            if(!p.hasPermission("allium."+command)){
+            var handler = renderer.handler();
+            var spec = handler.spec();
+            BooleanSupplier allowed = () -> plugin.getCommandManager().getFamilyPolicy()
+                    .admission(spec, command, p::hasPermission) == CommandFamilyPolicy.Admission.ALLOWED;
+            if(!allowed.getAsBoolean()){
                 plugin.getMessageManager().send(p,Messages.NO_PERMISSION,"{cmd}",command);
                 return;
             }
-            if(paidSigns==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
-            else paidSigns.start(p,identity,()->renderer.onCommand(p,registered,command,args));
+            BooleanSupplier canDeliver = () -> valid.getAsBoolean() && allowed.getAsBoolean();
+            if (handler instanceof SpecCommandHandler.Immediate immediate) {
+                var context = new BukkitCommandContext(plugin, spec, p, command, args);
+                charge(p, identity, canDeliver, (active, done) -> done.accept(immediate.executeWithResult(context)));
+            } else if (handler instanceof MailCommand mail) {
+                charge(p, identity, canDeliver, (active, done) -> mail.readSign(p, active, done));
+            } else if (identity.type() == SignIdentity.Type.BALANCE) {
+                var economy = ((EconomyModule) owner).runtime();
+                charge(p, identity, canDeliver, (active, done) -> economy.showSignBalance(p, active, done));
+            } else plugin.getMessageManager().send(p, Messages.SIGN_PAID_UNAVAILABLE);
             return;
         }
         renderer.onCommand(p,registered,command,args);
     }
 
-    private void runFree(Player p,SignIdentity identity){
+    private void charge(Player player, SignIdentity identity, BooleanSupplier valid, PaidSignService.Action action) {
+        if (paidSigns == null) plugin.getMessageManager().send(player, Messages.SIGN_PAID_UNAVAILABLE);
+        else paidSigns.start(player, identity, valid, action);
+    }
+
+    private void runFree(Player p,SignIdentity identity,BooleanSupplier valid){
         if(codes.castled.allium.command.essentials.UtilitySupport.isInventoryBusy(plugin,p))return;
         org.bukkit.inventory.ItemStack resolved=resolveFreeItem(identity.argument());
         if(resolved==null||resolved.getType().isAir())return;
-        Runnable open=()->{
+        BooleanSupplier open=()->{
+            if(codes.castled.allium.command.essentials.UtilitySupport.isInventoryBusy(plugin,p))return false;
             org.bukkit.inventory.ItemStack stack=resolved.clone();
             stack.setAmount(Math.max(1,stack.getMaxStackSize()));
             String title=stack.getType().name();
@@ -363,17 +401,16 @@ public final class SignService implements Listener,AutoCloseable {
             }
             org.bukkit.inventory.Inventory inv=plugin.getServer().createInventory(p,36,title);
             for(int i=0;i<36;i++)inv.setItem(i,stack.clone());
-            p.openInventory(inv);
+            return p.openInventory(inv) != null;
         };
         if(identity.price().minor()>0){
-            if(paidSigns==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
-            else paidSigns.start(p,identity,open);
+            charge(p, identity, valid, (active, done) -> done.accept(open.getAsBoolean()));
             return;
         }
-        open.run();
+        open.getAsBoolean();
     }
 
-    private void runEnchant(Player p,SignIdentity identity){
+    private void runEnchant(Player p,SignIdentity identity,BooleanSupplier valid){
         int sep=identity.argument().indexOf('|');
         if(sep<=0||sep>=identity.argument().length()-1)return;
         String itemToken=identity.argument().substring(0,sep);
@@ -394,36 +431,45 @@ public final class SignService implements Listener,AutoCloseable {
                 return;
             }
         }
-        if(level>0&&hand.containsEnchantment(ench)&&hand.getEnchantmentLevel(ench)==level)return;
+        if((level==0&&!hand.containsEnchantment(ench))||(level>0&&hand.getEnchantmentLevel(ench)==level))return;
         boolean allowUnsafe=plugin.getConfig().getBoolean("allow-unsafe-enchants",false)
                 &&p.hasPermission("allium.signs.enchant.allowunsafe");
         if(level>0&&!allowUnsafe&&(level>ench.getMaxLevel()||!ench.canEnchantItem(hand))){
             plugin.getMessageManager().send(p,Messages.ENCHANT_INCOMPATIBLE,"{enchant}",enchParts[0],"{item}",itemLabel);
             return;
         }
-        Runnable apply=()->{
+        var expected = hand.clone();
+        int slot = p.getInventory().getHeldItemSlot();
+        BooleanSupplier apply=()->{
             org.bukkit.inventory.ItemStack current=p.getInventory().getItemInMainHand();
-            if(current==null||current.getType().isAir()||current.getAmount()!=1)return;
+            if(current==null||p.getInventory().getHeldItemSlot()!=slot||!expected.equals(current)
+                    ||codes.castled.allium.command.essentials.UtilitySupport.isInventoryBusy(plugin,p)){
+                plugin.getMessageManager().send(p,Messages.SIGN_ENCHANT_CHANGED);
+                return false;
+            }
+            boolean unsafeNow = allowUnsafe && plugin.getConfig().getBoolean("allow-unsafe-enchants",false)
+                    && p.hasPermission("allium.signs.enchant.allowunsafe");
+            if(level>0&&!unsafeNow&&(level>ench.getMaxLevel()||!ench.canEnchantItem(current)))return false;
             String currentLabel=current.getType().name().toLowerCase(Locale.ROOT);
             if(level==0){
                 current.removeEnchantment(ench);
                 plugin.getMessageManager().send(p,Messages.UTILITY_ENCHANT_REMOVED,"{enchant}",enchParts[0],"{player}",p.getName(),"{item}",currentLabel);
             } else {
-                if(allowUnsafe)current.addUnsafeEnchantment(ench,level);
+                if(unsafeNow)current.addUnsafeEnchantment(ench,level);
                 else current.addEnchantment(ench,level);
                 plugin.getMessageManager().send(p,Messages.UTILITY_ENCHANT_APPLIED,"{enchant}",enchParts[0],"{level}",Integer.toString(level),"{player}",p.getName(),"{item}",currentLabel);
             }
             p.updateInventory();
+            return true;
         };
         if(identity.price().minor()>0){
-            if(paidSigns==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
-            else paidSigns.start(p,identity,apply);
+            charge(p, identity, valid, (active, done) -> done.accept(apply.getAsBoolean()));
             return;
         }
-        apply.run();
+        apply.getAsBoolean();
     }
 
-    private void runSpawnMob(Player p,SignIdentity identity){
+    private void runSpawnMob(Player p,SignIdentity identity,BooleanSupplier valid){
         int sep=identity.argument().indexOf('|');
         if(sep<=0||sep>=identity.argument().length()-1)return;
         int requested;
@@ -451,28 +497,33 @@ public final class SignService implements Listener,AutoCloseable {
         int count=Math.min(requested,Math.max(1,serverLimit/entries.size()));
         List<codes.castled.allium.command.essentials.MobSpawner.MobEntry> finalEntries=List.copyOf(entries);
         List<String> finalDatas=Collections.unmodifiableList(new ArrayList<>(datas));
-        Runnable spawn=()->{
+        BooleanSupplier spawn=()->{
             Location loc=p.getLocation();
-            int spawnedStacks=0;
-            for(int i=0;i<count;i++){
-                if(codes.castled.allium.command.essentials.MobSpawner.spawnStack(loc,finalEntries,finalDatas,p)==null){
-                    plugin.getMessageManager().send(p,Messages.SPAWNMOB_UNABLE);
-                    return;
+            boolean paid = identity.price().minor() > 0;
+            List<org.bukkit.entity.Entity> spawned = paid ? new ArrayList<>() : null;
+            int spawnedStacks = 0;
+            try {
+                for(;spawnedStacks<count;spawnedStacks++){
+                    if(codes.castled.allium.command.essentials.MobSpawner.spawnStack(loc,finalEntries,finalDatas,p,spawned)==null){
+                        plugin.getMessageManager().send(p,Messages.SPAWNMOB_UNABLE);
+                        return false;
+                    }
                 }
-                spawnedStacks++;
+            } finally {
+                if(paid && spawnedStacks<count)spawned.forEach(org.bukkit.entity.Entity::remove);
             }
             int total=spawnedStacks*finalEntries.size();
             String label=finalEntries.size()==1?finalEntries.get(0).canonicalName()
                     :finalEntries.stream().map(codes.castled.allium.command.essentials.MobSpawner.MobEntry::canonicalName)
                     .collect(java.util.stream.Collectors.joining(","));
             plugin.getMessageManager().send(p,Messages.SPAWNMOB_SPAWNED,"{count}",Integer.toString(total),"{mob}",label);
+            return true;
         };
         if(identity.price().minor()>0){
-            if(paidSigns==null)plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
-            else paidSigns.start(p,identity,spawn);
+            charge(p, identity, valid, (active, done) -> done.accept(spawn.getAsBoolean()));
             return;
         }
-        spawn.run();
+        spawn.getAsBoolean();
     }
 
     private static boolean validMobSpec(String spec){

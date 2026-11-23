@@ -19,13 +19,16 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /** Server-thread caches and admission; JDBC runs only on the bounded storage worker. */
 public final class TravelService implements Listener {
@@ -506,6 +509,11 @@ public final class TravelService implements Listener {
     public void use(Player p,String raw,boolean warp) {use(p,raw,warp,false);}
     /** Public access is frozen only in a server-owned sign whose creator has the extra permission. */
     public void useSign(Player p,String raw,boolean publicAccess){use(p,raw,true,publicAccess);}
+    /** A paid warp checks the sign again and reports the result of the physical teleport. */
+    public void useSign(Player p, String raw, boolean publicAccess, java.util.function.BooleanSupplier valid,
+                        Consumer<Boolean> outcome) {
+        use(p, raw, true, publicAccess, valid, outcome);
+    }
     /** Non-mutating readiness and access precheck for priced {@code [Warp]} signs before charging. */
     public boolean canUseSign(Player p,String raw,boolean publicAccess){
         if(!permission(p,"warp"))return false;
@@ -517,23 +525,34 @@ public final class TravelService implements Listener {
         return true;
     }
     private void use(Player p,String raw,boolean warp,boolean publicAccess) {
-        if(!permission(p,warp?"warp":"home"))return;
+        use(p, raw, warp, publicAccess, () -> true, null);
+    }
+    private void use(Player p,String raw,boolean warp,boolean publicAccess,
+                     BooleanSupplier valid, @Nullable Consumer<Boolean> outcome) {
+        Runnable failed = () -> { if (outcome != null) outcome.accept(false); };
+        if(!permission(p,warp?"warp":"home")){failed.run();return;}
         if(!warp&&BED.equalsIgnoreCase(raw)&&p.hasPermission(PERMISSION_BED)){bed(p);return;}
-        String name=name(p,raw);if(name==null)return;
-        Session s=session(p);if(s==null)return;
+        String name=name(p,raw);if(name==null){failed.run();return;}
+        Session s=session(p);if(s==null){failed.run();return;}
         // Like Essentials, a plain /home with no homes set goes to the bed when there is one.
         if(!warp&&name.equals("home")&&s.homes.isEmpty()&&!s.busy&&p.hasPermission(PERMISSION_BED)&&RespawnPoints.of(p)!=null){bed(p);return;}
-        if(!admit(s))return;
-        if(warp&&!warpsLoaded){s.busy=false;send(p,Messages.TRAVEL_LOADING);return;}
-        if(warp&&!publicAccess&&!access(p,name)){s.busy=false;notFound(p,name,true);return;}
+        if(!admit(s)){failed.run();return;}
+        if(warp&&!warpsLoaded){s.busy=false;send(p,Messages.TRAVEL_LOADING);failed.run();return;}
+        if(warp&&!publicAccess&&!access(p,name)){s.busy=false;notFound(p,name,true);failed.run();return;}
         readEntry(s,name,warp,found->{
-            if(found.isEmpty()){forget(s,name,warp);notFound(p,name,warp);return;}
+            if(!valid.getAsBoolean()){failed.run();return;}
+            if(found.isEmpty()){forget(s,name,warp);notFound(p,name,warp);failed.run();return;}
             StoredDestination entry=found.get();remember(s,entry,warp);
-            if(warp&&!publicAccess&&!access(p,name)){notFound(p,name,true);return;}
-            teleports.teleport(p,()->location(entry.location()),warp?"warp":"home",()->same(s)&&s.loaded
+            if(warp&&!publicAccess&&!access(p,name)){notFound(p,name,true);failed.run();return;}
+            Supplier<Location> destination = () -> location(entry.location());
+            String command = warp ? "warp" : "home";
+            BooleanSupplier canTravel = () -> same(s)&&s.loaded
+                    &&(outcome == null || p.hasPermission("allium." + command))
                     &&(!warp||warpsLoaded&&(publicAccess||access(p,name)))&&Objects.equals((warp?warpRevisions:s.revisions).get(name),entry.revision())
-                    &&Objects.equals((warp?warps:s.homes).get(name),entry.location()));
-        });
+                    &&Objects.equals((warp?warps:s.homes).get(name),entry.location())&&valid.getAsBoolean();
+            if (outcome == null) teleports.teleport(p, destination, command, canTravel);
+            else teleports.teleport(p, destination, command, canTravel, outcome);
+        },failed);
     }
     public void set(Player p,String raw,boolean warp,boolean confirm) {
         if(!permission(p,warp?"setwarp":"sethome"))return;
@@ -595,11 +614,14 @@ public final class TravelService implements Listener {
         if(warp){warpEpochs.merge(name,1L,Long::sum);warpRevisions.remove(name);}else s.revisions.remove(name);
     }
     private void readEntry(Session s,String name,boolean warp,Consumer<Optional<StoredDestination>> done){
+        readEntry(s, name, warp, done, () -> {});
+    }
+    private void readEntry(Session s,String name,boolean warp,Consumer<Optional<StoredDestination>> done,Runnable failed){
         long epoch=warpEpochs.getOrDefault(name,0L);
-        query(s,()->warp?repository.warp(name):repository.home(s.player.getUniqueId(),name),entry->{
-            if(warp&&epoch!=warpEpochs.getOrDefault(name,0L)){send(s.player,Messages.TRAVEL_CHANGED);return;}
+        query(s,false,()->warp?repository.warp(name):repository.home(s.player.getUniqueId(),name),entry->{
+            if(warp&&epoch!=warpEpochs.getOrDefault(name,0L)){send(s.player,Messages.TRAVEL_CHANGED);failed.run();return;}
             done.accept(entry);
-        });
+        },failed);
     }
     private void remember(Session s,StoredDestination e,boolean warp) {
         if(warp){Map<String,SavedLocation> copy=new HashMap<>(warps);copy.put(e.name(),e.location());ensurePermission(e.name());warps=Map.copyOf(copy);warpRevisions.put(e.name(),e.revision());}
@@ -639,10 +661,16 @@ public final class TravelService implements Listener {
         query(s,false,work,done);
     }
     private <T> void query(Session s,boolean warpMutation,Read<T> work,Consumer<T> done){
-        try{io.execute(()->{try{T result=work.get();server(()->{if(same(s)){s.busy=false;done.accept(result);}else if(warpMutation)loadWarps(0);});}
+        query(s, warpMutation, work, done, () -> {});
+    }
+    private <T> void query(Session s,boolean warpMutation,Read<T> work,Consumer<T> done,Runnable failed){
+        try{io.execute(()->{try{T result=work.get();plugin.getScheduler().runOnServer(()->{
+                    if(same(s)){s.busy=false;done.accept(result);}
+                    else {if(warpMutation&&!closed)loadWarps(0);failed.run();}
+                });}
             catch(SQLException|RuntimeException e){plugin.logger().warning("Travel storage failed for "+s.player.getUniqueId()+": "+e.getMessage());
-                server(()->{if(warpMutation){warpsLoaded=false;loadWarps(0);}if(same(s)){s.busy=false;s.loaded=false;s.confirmation=null;send(s.player,Messages.TRAVEL_STORAGE_FAILED);load(s,0);}});}});}
-        catch(RejectedExecutionException e){s.busy=false;send(s.player,Messages.TRAVEL_STORAGE_FAILED);}
+                plugin.getScheduler().runOnServer(()->{if(warpMutation&&!closed){warpsLoaded=false;loadWarps(0);}if(same(s)){s.busy=false;s.loaded=false;s.confirmation=null;send(s.player,Messages.TRAVEL_STORAGE_FAILED);load(s,0);}failed.run();});}});}
+        catch(RejectedExecutionException e){s.busy=false;send(s.player,Messages.TRAVEL_STORAGE_FAILED);failed.run();}
     }
     private void join(Player p){Session s=new Session(p);sessions.put(p.getUniqueId(),s);load(s,0);}
     private void load(Session s,int attempt){

@@ -130,6 +130,15 @@ class EconomyReservationsTest {
         }
     }
     void sweep()throws Exception{EconomyRecovery.sweep(source,holds,path,id->false,s->{});}
+    @Test void offlineStartupReleasesAnInterruptedSignWithoutPlayerData() throws Exception {
+        UUID id = UUID.randomUUID();
+        assertInstanceOf(Committed.class, holds.reserve(SIGN, id, payer, new Money(300), c -> true));
+        sweep();
+        sweep();
+        assertEquals("RELEASED", holds.find(SIGN, id).orElseThrow().state());
+        assertEquals(10000, balance().available().minor());
+        invariant();
+    }
     @Test void offlineStartupCapturesSavedSenderReceiptExactlyOnce()throws Exception{
         UUID id=UUID.randomUUID();reserve(id,300);snapshot(PlayerDataReceiptProof.MAIL_RECEIPTS,"S/"+id);sweep();sweep();
         assertEquals("CAPTURED",holds.find(MAIL,id).orElseThrow().state());assertEquals(MailState.READY,mail.find(id).orElseThrow().state());assertEquals(9700,balance().book().minor());invariant();

@@ -9,7 +9,7 @@ import codes.castled.allium.compat.EntityCompatProvider;
 import codes.castled.allium.compat.HealthCompatProvider;
 import org.bukkit.entity.Player;
 
-public final class HealCommand implements SpecCommandHandler {
+public final class HealCommand implements SpecCommandHandler.Immediate {
 
     private final PluginStart plugin;
 
@@ -23,10 +23,10 @@ public final class HealCommand implements SpecCommandHandler {
     }
 
     @Override
-    public void execute(BukkitCommandContext context) {
+    public boolean executeWithResult(BukkitCommandContext context) {
         Player target = context.resolveSelfOrTarget(0);
         if (target == null) {
-            return;
+            return false;
         }
 
         double maxHealth = HealthCompatProvider.current().getMaxHealth(target);
@@ -43,5 +43,6 @@ public final class HealCommand implements SpecCommandHandler {
             context.sendOutcome(context.sender(), "other", "{player}", target.getName());
         }
         context.sendOutcome(target, "self");
+        return true;
     }
 }

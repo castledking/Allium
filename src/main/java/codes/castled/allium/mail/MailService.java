@@ -536,6 +536,11 @@ public final class MailService implements Listener {
     // -- Reading, deleting ---------------------------------------------------------------------
 
     public void read(Player player) {
+        read(player, () -> true, ignored -> {});
+    }
+
+    /** Reports whether a live viewer received the mailbox result, including an empty mailbox. */
+    public void read(Player player, java.util.function.BooleanSupplier valid, java.util.function.Consumer<Boolean> outcome) {
         UUID id = player.getUniqueId();
         long now = System.currentTimeMillis();
         io.execute(() -> {
@@ -543,14 +548,18 @@ public final class MailService implements Listener {
             try {
                 box = repository.mailbox(id, now);
             } catch (SQLException e) {
-                onServer(() -> send(player, Messages.MAIL_FAILED));
+                plugin.getScheduler().runOnServer(() -> {
+                    send(player, Messages.MAIL_FAILED);
+                    outcome.accept(false);
+                });
                 return;
             }
-            onServer(() -> {
-                if (!same(player)) return;
+            plugin.getScheduler().runOnServer(() -> {
+                if (!same(player) || !valid.getAsBoolean()) { outcome.accept(false); return; }
                 mailboxCache.put(player, List.copyOf(box));
                 if (box.isEmpty()) {
                     send(player, Messages.MAIL_EMPTY);
+                    outcome.accept(true);
                     return;
                 }
                 send(player, Messages.MAIL_HEADER, "{count}", Integer.toString(box.size()));
@@ -561,6 +570,7 @@ public final class MailService implements Listener {
                         seen.add(mail.id());
                     }
                 }
+                outcome.accept(true);
                 io.execute(() -> {
                     try {
                         repository.markRead(id, seen);

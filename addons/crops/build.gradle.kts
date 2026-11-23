@@ -14,11 +14,14 @@ repositories {
     maven("https://oss.sonatype.org/content/repositories/snapshots/")
 }
 
+val packTool by sourceSets.creating
+
 dependencies {
     compileOnly(project(":allium-api"))
     compileOnly("org.joml:joml:1.10.5")
     compileOnly("org.spigotmc:spigot-api:$spigotApiVersion")
     compileOnly("org.jetbrains:annotations:26.0.2")
+    "packToolImplementation"("org.spigotmc:spigot-api:$spigotApiVersion")
     testImplementation(project(":allium-api"))
     testImplementation("org.spigotmc:spigot-api:$spigotApiVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
@@ -32,15 +35,19 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.test { useJUnitPlatform() }
 
 val packOutput = layout.buildDirectory.file("Crops-resource-pack.zip")
-val resourcePack = tasks.register<Exec>("resourcePack") {
+val resourcePack = tasks.register<JavaExec>("resourcePack") {
     group = "build"
-    inputs.file("pack/build.py")
+    description = "Builds the Crops resource pack"
+    dependsOn(tasks.named("packToolClasses"))
+    classpath = packTool.runtimeClasspath
+    mainClass.set("codes.castled.crops.pack.CropsPackBuilder")
     inputs.dir("pack/assets")
     inputs.file("pack/pack.png")
     inputs.file("src/main/resources/items.yml")
     inputs.file("src/main/resources/crops.yml")
+    inputs.file("src/main/resources/kitchen.yml")
     outputs.file(packOutput)
-    commandLine("python3", "pack/build.py", packOutput.get().asFile)
+    args(file("pack").absolutePath, file("src/main/resources").absolutePath, packOutput.get().asFile.absolutePath)
 }
 
 // A copy beside Allium.jar, in the root build/libs/addons/, so every jar transfers from one place.

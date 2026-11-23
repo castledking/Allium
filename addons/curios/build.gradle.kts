@@ -16,12 +16,15 @@ repositories {
     maven("https://repo.codemc.io/repository/maven-releases/")
 }
 
+val packTool by sourceSets.creating
+
 dependencies {
     compileOnly(project(":allium-api"))
     compileOnly("org.spigotmc:spigot-api:$spigotApiVersion")
     compileOnly("org.jetbrains:annotations:26.0.2")
     compileOnly("com.github.retrooper:packetevents-api:2.12.1") { isTransitive = false }
     compileOnly("net.kyori:adventure-api:4.17.0")
+    "packToolImplementation"("org.spigotmc:spigot-api:$spigotApiVersion")
     testImplementation(project(":allium-api"))
     testImplementation("org.spigotmc:spigot-api:$spigotApiVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
@@ -37,18 +40,24 @@ val packOutput = layout.buildDirectory.file("Curios-resource-pack.zip")
 // card-panels.json, the resizable panel layout the pack builder writes for the plugin to read.
 val generatedResources = layout.buildDirectory.dir("generated/curios-resources")
 
-val resourcePack = tasks.register<Exec>("resourcePack") {
+val resourcePack = tasks.register<JavaExec>("resourcePack") {
     group = "build"
-    description = "Builds the Curios resource pack (requires Python and PyYAML)"
-    inputs.file("pack/build.py")
-    inputs.file("pack/pack.png")
+    description = "Builds the Curios resource pack"
+    dependsOn(tasks.named("packToolClasses"))
+    classpath = packTool.runtimeClasspath
+    mainClass.set("codes.castled.curios.pack.CuriosPackBuilder")
     inputs.dir("pack/assets")
+    inputs.file("pack/pack.png")
     inputs.file("src/main/resources/config.yml")
     inputs.file("src/main/resources/frame-glyphs.json")
     outputs.file(packOutput)
     outputs.dir(generatedResources)
-    commandLine("python3", "pack/build.py", packOutput.get().asFile,
-        "--panel-layout", generatedResources.get().file("card-panels.json").asFile)
+    args(
+        file("pack").absolutePath,
+        file("src/main/resources").absolutePath,
+        packOutput.get().asFile.absolutePath,
+        "--panel-layout", generatedResources.get().file("card-panels.json").asFile.absolutePath
+    )
 }
 
 sourceSets.main { resources.srcDir(generatedResources) }

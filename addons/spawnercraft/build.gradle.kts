@@ -14,11 +14,14 @@ repositories {
     maven("https://oss.sonatype.org/content/repositories/snapshots/")
 }
 
+val packTool by sourceSets.creating
+
 dependencies {
     compileOnly(project(":allium-api"))
     compileOnly(project(":addons:curios"))
     compileOnly("org.spigotmc:spigot-api:$spigotApiVersion")
     compileOnly("org.jetbrains:annotations:26.0.2")
+    "packToolImplementation"("org.spigotmc:spigot-api:$spigotApiVersion")
     testImplementation(project(":allium-api"))
     testImplementation("org.spigotmc:spigot-api:$spigotApiVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
@@ -34,9 +37,12 @@ tasks.test { useJUnitPlatform() }
 
 val sfPlugins = providers.environmentVariable("SF").filter { it.isNotBlank() }
 val packOutput = layout.buildDirectory.file("SpawnerCraft-resource-pack.zip")
-val resourcePack = tasks.register<Exec>("resourcePack") {
+val resourcePack = tasks.register<JavaExec>("resourcePack") {
     group = "build"
-    inputs.file("pack/build.py")
+    description = "Builds the SpawnerCraft resource pack"
+    dependsOn(tasks.named("packToolClasses"))
+    classpath = packTool.runtimeClasspath
+    mainClass.set("codes.castled.spawnercraft.pack.SpawnerCraftPackBuilder")
     inputs.file("pack/pack.png")
     inputs.property("sfPlugins", sfPlugins.orElse(""))
     sfPlugins.orNull?.let { source ->
@@ -46,7 +52,7 @@ val resourcePack = tasks.register<Exec>("resourcePack") {
     }
     inputs.file("src/main/resources/spawner_changer.yml")
     outputs.file(packOutput)
-    commandLine("python3", "pack/build.py", packOutput.get().asFile)
+    args(file("pack").absolutePath, file("src/main/resources").absolutePath, packOutput.get().asFile.absolutePath)
     sfPlugins.orNull?.let { args("--sf", file(it).absolutePath) }
 }
 

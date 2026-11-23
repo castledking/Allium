@@ -26,9 +26,6 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Install Python pack dependencies
-        run: python3 -m pip install --disable-pip-version-check pyyaml pillow
-
       - name: Build and test Allium and all addons
         run: |
           chmod +x gradlew

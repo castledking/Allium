@@ -115,7 +115,7 @@ Also available on [Modrinth](https://modrinth.com/plugin/allium-essentials) (wit
 For full setup, configuration, commands, permissions, and addon guides, see the [Allium Wiki](https://github.com/castledking/Allium/wiki).
 
 ## Building from Source
-Requires JDK 17, JDK 21, and Python 3 with `pyyaml`:
+Requires JDK 17 and JDK 21:
 ```bash
 ./gradlew check shadowJar :addons:crops:build :addons:curios:build :addons:ores:build :addons:partylocator:build :addons:spawnercraft:build -PdistributablePack=true
 ```

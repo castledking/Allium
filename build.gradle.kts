@@ -186,15 +186,18 @@ val vanillaClientCandidate: File? = if (distributablePack) null else listOfNotNu
     providers.gradleProperty("vanillaClient").orNull?.let(::File),
     File(System.getProperty("user.home"), ".minecraft/versions/26.4-snapshot-6/26.4-snapshot-6.jar")
 ).firstOrNull { it.isFile }
+val sfExportScriptCandidate: File? = if (distributablePack) null else listOfNotNull(
+    providers.gradleProperty("alliumToolsDir").orNull?.let { File(it, "pack/tools/sf_export.py") },
+    File(rootProject.projectDir.parentFile, "AlliumTools/pack/tools/sf_export.py")
+).firstOrNull { it.isFile }
 val standalonePackDir = layout.buildDirectory.dir("standalone-pack")
 val standalonePack = tasks.register<Exec>("standalonePack") {
     group = "build"
-    description = "Builds the local SF + invsee merged pack for standalone delivery (skipped if SF art is absent or -PdistributablePack=true)."
+    description = "Builds the local SF + invsee merged pack for standalone delivery (skipped if SF art, AlliumTools, or -PdistributablePack=true)."
     dependsOn(":allium-core:jar")
-    onlyIf { sfPluginsCandidate != null }
+    onlyIf { sfPluginsCandidate != null && sfExportScriptCandidate != null }
     inputs.file("pack/manifest.json")
     inputs.file("pack/pack.png")
-    inputs.file("pack/tools/sf_export.py")
     inputs.dir("pack/assets")
     outputs.dir(standalonePackDir)
     doFirst {
@@ -202,7 +205,7 @@ val standalonePack = tasks.register<Exec>("standalonePack") {
         val coreJar = coreProject.tasks.named<Jar>("jar").get().archiveFile.get().asFile
         val cmd = mutableListOf(
             "python3",
-            file("pack/tools/sf_export.py").absolutePath,
+            sfExportScriptCandidate!!.absolutePath,
             "--plugins", sfPluginsCandidate!!.absolutePath,
             "--allium-jar", coreJar.absolutePath,
             "--out", standalonePackDir.get().asFile.absolutePath,

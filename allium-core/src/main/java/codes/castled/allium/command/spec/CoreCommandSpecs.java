@@ -968,7 +968,7 @@ public final class CoreCommandSpecs {
             case "tpaccept" -> List.of("tpyes");
             case "tpdeny" -> List.of("tpno");
             case "jump" -> List.of("j", "jumpto");
-            case "tpoffline" -> List.of("otp", "offlinetp");
+            case "tpoffline" -> List.of("otp", "offlinetp", "tpoff");
             case "tphere" -> List.of("here", "s");
             case "there" -> List.of("tpthere");
             case "tpent" -> List.of("tpentity", "tpmob", "teleportmob", "tpm", "tpe");

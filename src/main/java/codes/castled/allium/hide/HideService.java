@@ -229,6 +229,9 @@ public final class HideService implements Listener,AutoCloseable {
         var out=new TreeMap<String,HelpEntry>();
         for(var entry:commands.entrySet()){
             String root=entry.getKey();if(root.contains(":"))continue;Command command=entry.getValue();
+            if(plugin!=null&&plugin.getCommandManager()!=null&&command instanceof PluginIdentifiableCommand pc
+                    &&pc.getPlugin().getName().equalsIgnoreCase(plugin.getName())
+                    &&plugin.getCommandManager().getFamilyPolicy().isDisabled(root))continue;
             var candidates=new LinkedHashSet<String>();candidates.add(root);
             if(v!=null&&v.settings().enabled())for(var group:v.groups())for(String rule:group.completions()){
                 if(rule.contains(" ")&&!rule.contains("*")&&variants(root).stream().anyMatch(label->HidePolicy.root(rule).equals(label)||HidePolicy.root(rule).equals(root)))candidates.add(root+rule.substring(rule.indexOf(' ')));

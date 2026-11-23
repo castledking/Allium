@@ -30,6 +30,7 @@ public final class CommandFamilyPolicy {
     private final Map<String, CommandSpec> specsByCanonical = new LinkedHashMap<>();
     private final Map<String, String> labelToCanonical = new LinkedHashMap<>();
 
+    private List<String> startupRawDisabled = List.of();
     private Set<String> startupDisabledFamilies = Set.of();
     private volatile Set<String> activeDisabledFamilies = Set.of();
     private boolean startupInitialized = false;
@@ -75,7 +76,8 @@ public final class CommandFamilyPolicy {
      * Families disabled at startup yield their {@code CommandMap} labels so other plugins can own them.
      */
     public PolicyEvaluation initializeStartup(Collection<String> rawDisabledCommands) {
-        ParsedConfig parsed = parseDisabledConfig(rawDisabledCommands);
+        this.startupRawDisabled = rawDisabledCommands == null ? List.of() : List.copyOf(rawDisabledCommands);
+        ParsedConfig parsed = parseDisabledConfig(this.startupRawDisabled);
         this.startupDisabledFamilies = parsed.disabledCanonicalFamilies();
         this.activeDisabledFamilies = parsed.disabledCanonicalFamilies();
         this.startupInitialized = true;
@@ -85,6 +87,31 @@ public final class CommandFamilyPolicy {
                 Set.of(),
                 parsed.unknownEntries()
         );
+    }
+
+    /**
+     * Re-checks startup {@code disabled-commands} for a command spec registered after startup
+     * initialization so late-registered families and aliases are still disabled on boot.
+     */
+    public boolean registerSpecAndApplyStartup(CommandSpec spec) {
+        registerSpec(spec);
+        if (!startupInitialized || startupRawDisabled.isEmpty()) {
+            return isDisabled(spec.canonicalName());
+        }
+        String canonical = spec.canonicalName().toLowerCase(Locale.ROOT);
+        for (String raw : startupRawDisabled) {
+            if (raw == null || raw.isBlank()) continue;
+            if (resolveCanonicalFamily(raw).map(canonical::equals).orElse(false)) {
+                Set<String> nextStartup = new LinkedHashSet<>(this.startupDisabledFamilies);
+                nextStartup.add(canonical);
+                this.startupDisabledFamilies = Collections.unmodifiableSet(nextStartup);
+                Set<String> nextActive = new LinkedHashSet<>(this.activeDisabledFamilies);
+                nextActive.add(canonical);
+                this.activeDisabledFamilies = Collections.unmodifiableSet(nextActive);
+                return true;
+            }
+        }
+        return isDisabled(canonical);
     }
 
     /**

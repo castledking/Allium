@@ -47,6 +47,7 @@ public final class CommandManager {
         this.familyPolicy.registerSpecs(CoreCommandSpecs.EXPLOSION_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.ECONOMY_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.CHAT_SPECS);
+        this.familyPolicy.registerSpec(CoreCommandSpecs.CLEAR_CHAT);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.MAIL_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.TELEPORT_SPECS);
         this.familyPolicy.registerSpecs(CoreCommandSpecs.TRAVEL_SPECS);
@@ -74,9 +75,7 @@ public final class CommandManager {
      */
     public void register(SpecCommandHandler handler) {
         CommandSpec spec = handler.spec();
-        familyPolicy.registerSpec(spec);
-
-        if (familyPolicy.isDisabled(spec.canonicalName())) {
+        if (familyPolicy.registerSpecAndApplyStartup(spec)) {
             boolean yielded = CommandMapBridge.yieldCommandFamily(plugin.getServer(), plugin, spec);
             plugin.logger().info("Command family '" + spec.canonicalName()
                     + "' is disabled via disabled-commands; yielded labels " + spec.allOwnedLabels()
@@ -152,6 +151,7 @@ public final class CommandManager {
     }
 
     private CommandFamilyPolicy.PolicyEvaluation applyReloadList(List<String> rawDisabled) {
+        java.util.Set<String> previous = familyPolicy.activeDisabledFamilies();
         CommandFamilyPolicy.PolicyEvaluation eval = familyPolicy.applyReload(rawDisabled);
         logUnknownDisabledEntries(eval.unknownEntries());
 
@@ -165,7 +165,24 @@ public final class CommandManager {
                     + eval.newlyEnabledRequiringRestartToClaim()
                     + ". A server restart is required to re-register their CommandMap labels.");
         }
+        if (!previous.equals(eval.activeDisabledFamilies())) {
+            refreshOnlineCommandTrees();
+        }
         return eval;
+    }
+
+    private void refreshOnlineCommandTrees() {
+        var server = plugin.getServer();
+        if (server == null) return;
+        var scheduler = plugin.getScheduler();
+        for (org.bukkit.entity.Player player : List.copyOf(server.getOnlinePlayers())) {
+            if (codes.castled.allium.scheduler.BukkitServerThread.isFolia() && scheduler != null) {
+                var owner = codes.castled.allium.scheduler.BukkitServerThread.entity(plugin, player);
+                scheduler.runOn(owner, () -> { if (player.isOnline()) player.updateCommands(); }, () -> {}, 0L);
+            } else {
+                player.updateCommands();
+            }
+        }
     }
 
     private void logUnknownDisabledEntries(List<String> unknownEntries) {

@@ -49,45 +49,49 @@ public final class PaperBrigadierGive {
             return;
         }
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
-            LiteralCommandNode<CommandSourceStack> node = Commands.literal("give")
-                    .requires(source -> {
-                        GiveCommand current = CURRENT.get();
-                        return current != null && current.canUse(source.getSender());
-                    })
-                    .then(Commands.argument("targets", ArgumentTypes.players())
-                            .then(Commands.argument("item", StringArgumentType.greedyString())
-                                    .suggests((context, builder) -> {
-                                        GiveCommand current = CURRENT.get();
-                                        if (current != null && current.canUse(context.getSource().getSender())) {
-                                            for (String value : current.completeItems(builder.getRemaining())) builder.suggest(value);
-                                        }
-                                        return builder.buildFuture();
-                                    })
-                                    .executes(context -> {
-                                        GiveCommand current = CURRENT.get();
-                                        if (current == null || !current.canUse(context.getSource().getSender())) {
-                                            return 0;
-                                        }
-                                        List<Player> targets;
-                                        try {
-                                            targets = context.getArgument("targets", PlayerSelectorArgumentResolver.class)
-                                                    .resolve(context.getSource());
-                                        } catch (CommandSyntaxException e) {
-                                            current.reportTargetError(context.getSource().getSender(), e.getRawMessage().getString());
-                                            return 0;
-                                        }
-                                        if (targets.isEmpty()) {
-                                            // Paper's resolver returns an empty list where vanilla /give fails with this text.
-                                            current.reportTargetError(context.getSource().getSender(), "No player was found");
-                                            return 0;
-                                        }
-                                        current.give(context.getSource().getSender(), targets,
-                                                StringArgumentType.getString(context, "item"));
-                                        return Command.SINGLE_SUCCESS;
-                                    })))
-                    .build();
-            registered.accept(event.registrar().register(node, description, List.of()));
+            registered.accept(event.registrar().register(buildNode(), description, List.of()));
         });
+    }
+
+    /** Builds the Paper Brigadier {@code /give} node sharing Allium's live runtime command admission. */
+    static LiteralCommandNode<CommandSourceStack> buildNode() {
+        return Commands.literal("give")
+                .requires(source -> {
+                    GiveCommand current = CURRENT.get();
+                    return current != null && current.canUse(source.getSender());
+                })
+                .then(Commands.argument("targets", ArgumentTypes.players())
+                        .then(Commands.argument("item", StringArgumentType.greedyString())
+                                .suggests((context, builder) -> {
+                                    GiveCommand current = CURRENT.get();
+                                    if (current != null && current.canUse(context.getSource().getSender())) {
+                                        for (String value : current.completeItems(builder.getRemaining())) builder.suggest(value);
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> {
+                                    GiveCommand current = CURRENT.get();
+                                    if (current == null || !current.admitExecution(context.getSource().getSender(), "give")) {
+                                        return 0;
+                                    }
+                                    List<Player> targets;
+                                    try {
+                                        targets = context.getArgument("targets", PlayerSelectorArgumentResolver.class)
+                                                .resolve(context.getSource());
+                                    } catch (CommandSyntaxException e) {
+                                        current.reportTargetError(context.getSource().getSender(), e.getRawMessage().getString());
+                                        return 0;
+                                    }
+                                    if (targets.isEmpty()) {
+                                        // Paper's resolver returns an empty list where vanilla /give fails with this text.
+                                        current.reportTargetError(context.getSource().getSender(), "No player was found");
+                                        return 0;
+                                    }
+                                    current.give(context.getSource().getSender(), targets,
+                                            StringArgumentType.getString(context, "item"));
+                                    return Command.SINGLE_SUCCESS;
+                                })))
+                .build();
     }
 
     /** Stops the registered command from acting (module disabled); Paper keeps the node until restart. */

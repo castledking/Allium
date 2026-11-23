@@ -59,10 +59,18 @@ public final class HelpCommand implements SpecCommandHandler {
             return List.of();
         }
         return access.knownCommands().entrySet().stream()
-                .filter(e -> !e.getKey().contains(":") && e.getValue().testPermissionSilent(sender))
+                .filter(e -> !e.getKey().contains(":") && !isDisabledAlliumCommand(e.getKey(), e.getValue())
+                        && e.getValue().testPermissionSilent(sender))
                 .map(e -> HideService.HelpEntry.of(plugin, e.getKey(), e.getValue(), null))
                 .sorted(Comparator.comparing(HideService.HelpEntry::path, String.CASE_INSENSITIVE_ORDER))
                 .toList();
+    }
+
+    private boolean isDisabledAlliumCommand(String label, org.bukkit.command.Command command) {
+        if (plugin.getCommandManager() == null) return false;
+        if (!(command instanceof org.bukkit.command.PluginIdentifiableCommand owned)) return false;
+        if (!owned.getPlugin().getName().equalsIgnoreCase(plugin.getName())) return false;
+        return plugin.getCommandManager().getFamilyPolicy().isDisabled(label);
     }
 
     public List<String> complete(CommandSender sender, String[] args) {

@@ -62,11 +62,41 @@ public final class GiveCommand implements SpecCommandHandler {
         return CoreCommandSpecs.GIVE;
     }
 
+    /** Shared runtime admission check used by both Bukkit and Paper Brigadier adapters. */
+    public codes.castled.allium.command.spec.CommandFamilyPolicy.Admission admission(CommandSender sender, String label) {
+        var cm = plugin.getCommandManager();
+        if (cm == null) {
+            String perm = spec().basePermission();
+            return perm == null || perm.isEmpty() || sender.hasPermission(perm)
+                    ? codes.castled.allium.command.spec.CommandFamilyPolicy.Admission.ALLOWED
+                    : codes.castled.allium.command.spec.CommandFamilyPolicy.Admission.NO_PERMISSION;
+        }
+        return cm.getFamilyPolicy().admission(spec(), label, sender::hasPermission);
+    }
+
     /** Also used by Paper's native command adapter, which resolves vanilla selectors itself. */
     public boolean canUse(CommandSender sender) {
-        var policy = plugin.getCommandManager().getFamilyPolicy();
-        return policy.admission(spec(), spec().canonicalName(), sender::hasPermission)
+        return admission(sender, spec().canonicalName())
                 == codes.castled.allium.command.spec.CommandFamilyPolicy.Admission.ALLOWED;
+    }
+
+    /**
+     * Enforces runtime command-family policy and permission before Paper Brigadier executes
+     * {@code /give}, sending the same disabled/no-permission feedback as the Bukkit renderer.
+     */
+    public boolean admitExecution(CommandSender sender, String label) {
+        var decision = admission(sender, label);
+        if (decision == codes.castled.allium.command.spec.CommandFamilyPolicy.Admission.ALLOWED) {
+            return true;
+        }
+        if (plugin.getMessageManager() != null) {
+            if (decision == codes.castled.allium.command.spec.CommandFamilyPolicy.Admission.DISABLED) {
+                plugin.getMessageManager().sendByKey(sender, spec().messageKeys().moduleDisabledKey());
+            } else {
+                plugin.getMessageManager().sendByKey(sender, spec().messageKeys().noPermissionKey(), "{cmd}", spec().canonicalName());
+            }
+        }
+        return false;
     }
 
     @Override
@@ -89,6 +119,9 @@ public final class GiveCommand implements SpecCommandHandler {
      * targets from the full execution context.
      */
     public void give(CommandSender sender, List<Player> targets, String specText) {
+        if (!admitExecution(sender, spec().canonicalName())) {
+            return;
+        }
         GiveSpec spec;
         try {
             spec = parser.get().parse(specText);

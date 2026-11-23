@@ -3,11 +3,8 @@ package codes.castled.allium.restart;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
-import codes.castled.allium.command.spec.CommandArgSpec;
-import codes.castled.allium.command.spec.CommandMessageKeys;
-import codes.castled.allium.command.spec.CommandNodeSpec;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.command.spec.CommandSpec;
-import codes.castled.allium.command.spec.SuggestionSpec;
 import codes.castled.allium.config.YamlFiles;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.scheduler.TaskHandle;
@@ -36,20 +33,6 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
     private static final String PERMISSION = "allium.autorestart.";
     private static final List<String> VOTES = List.of("start", "yes", "no");
     private static final String USAGE = "/ar <help|time|now|stop|reload|vote>";
-    private static final CommandSpec SPEC = new CommandSpec("autorestart", CommandSpec.DEFAULT_NAMESPACE, "core",
-            List.of("ar"), "Schedule or manage server restarts", USAGE, USAGE, null, null,
-            List.of(), List.of(node("help", "help"), node("time", "time", "status"),
-            node("now", "now", List.of(CommandArgSpec.optional("time", null,
-                    SuggestionSpec.literals(List.of("30s", "5m", "--dry-run"), null)),
-                    CommandArgSpec.optional("mode", null, SuggestionSpec.literals(List.of("--dry-run"), null))), "delay"),
-            node("stop", "stop"), node("reload", "reload"),
-            new CommandNodeSpec("vote", List.of(), PERMISSION + "vote.yes", "/ar vote [start|yes|no]",
-                    List.of(CommandArgSpec.optional("choice", null, SuggestionSpec.literals(VOTES, null))), List.of())),
-            CommandMessageKeys.ofOutcomes(Map.of()));
-    private static final CommandSpec VOTE_SPEC = new CommandSpec("voterestart", CommandSpec.DEFAULT_NAMESPACE,
-            "core", List.of(), "Vote for a server restart", "/voterestart [yes|no|start]", "/voterestart [yes|no|start]",
-            PERMISSION + "vote.yes", null, List.of(CommandArgSpec.optional("choice", null,
-            SuggestionSpec.literals(VOTES, null))), List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
     private static final Pattern DELAY = Pattern.compile("(\\d+)([smhd]?)", Pattern.CASE_INSENSITIVE);
     private static final Pattern CLOCK_DELAY = Pattern.compile("(\\d{1,2}):([0-5]\\d)");
 
@@ -70,22 +53,14 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
         this.plugin = plugin;
     }
 
-    private static CommandNodeSpec node(String name, String permission, String... aliases) {
-        return node(name, permission, List.of(), aliases);
-    }
-
-    private static CommandNodeSpec node(String name, String permission, List<CommandArgSpec> args, String... aliases) {
-        return new CommandNodeSpec(name, List.of(aliases), PERMISSION + permission, "/ar " + name, args, List.of());
-    }
-
     @Override
     public CommandSpec spec() {
-        return SPEC;
+        return CoreCommandSpecs.AUTORESTART;
     }
 
     public SpecCommandHandler voteCommand() {
         return new SpecCommandHandler() {
-            @Override public CommandSpec spec() { return VOTE_SPEC; }
+            @Override public CommandSpec spec() { return CoreCommandSpecs.VOTERESTART; }
             @Override public void execute(BukkitCommandContext context) {
                 String[] args = context.args();
                 if (args.length == 0 && !allowed(context.sender(), "vote")) {

@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Platform-neutral command family ownership and {@code disabled-commands: []} policy engine.
@@ -30,7 +31,7 @@ public final class CommandFamilyPolicy {
     private final Map<String, String> labelToCanonical = new LinkedHashMap<>();
 
     private Set<String> startupDisabledFamilies = Set.of();
-    private Set<String> activeDisabledFamilies = Set.of();
+    private volatile Set<String> activeDisabledFamilies = Set.of();
     private boolean startupInitialized = false;
 
     public void registerSpec(CommandSpec spec) {
@@ -122,6 +123,16 @@ public final class CommandFamilyPolicy {
         return resolveCanonicalFamily(labelOrAlias)
                 .map(activeDisabledFamilies::contains)
                 .orElse(false);
+    }
+
+    public enum Admission { ALLOWED, DISABLED, NO_PERMISSION }
+
+    /** Checks the live policy for an owned command before a platform adapter admits it. */
+    public Admission admission(CommandSpec spec, String label, Predicate<String> hasPermission) {
+        if (isDisabled(spec.canonicalName()) || isDisabled(label)) return Admission.DISABLED;
+        String permission = spec.basePermission();
+        return permission == null || permission.isEmpty() || hasPermission.test(permission)
+                ? Admission.ALLOWED : Admission.NO_PERMISSION;
     }
 
     /**

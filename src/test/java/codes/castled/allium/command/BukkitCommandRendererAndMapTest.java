@@ -1,11 +1,14 @@
 package codes.castled.allium.command;
 
+import codes.castled.allium.PluginStart;
+import codes.castled.allium.command.items.GiveCommand;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.SimpleCommandMap;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
@@ -26,8 +29,37 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class BukkitCommandRendererAndMapTest {
+
+    @Test
+    void policyRecognizesStartupAliasesAndNativeGiveUsesLiveAdmission() {
+        PluginStart plugin = mock(PluginStart.class);
+        YamlConfiguration config = new YamlConfiguration();
+        when(plugin.getConfig()).thenReturn(config);
+        config.set("disabled-commands", List.of("/allium:claimrank", "ar", "voterestart"));
+        CommandManager manager = new CommandManager(plugin);
+        when(plugin.getCommandManager()).thenReturn(manager);
+
+        var policy = manager.getFamilyPolicy();
+        assertTrue(policy.isDisabledAtStartup("redeem"));
+        assertTrue(policy.isDisabledAtStartup("autorestart"));
+        assertTrue(policy.isDisabledAtStartup("voterestart"));
+
+        GiveCommand give = new GiveCommand(plugin, null, null, null, null);
+        CommandSender sender = mock(CommandSender.class);
+        assertFalse(give.canUse(sender));
+        when(sender.hasPermission("allium.give")).thenReturn(true);
+        assertTrue(give.canUse(sender));
+
+        policy.applyReload(List.of("allium:give"));
+        assertFalse(give.canUse(sender));
+        assertFalse(policy.isDisabled("minecraft:give"));
+        policy.applyReload(List.of());
+        assertTrue(give.canUse(sender));
+    }
 
     public interface TestServerWithCommandMap extends Server {
         CommandMap getCommandMap();

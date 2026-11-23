@@ -59,13 +59,13 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             @NotNull String[] args
     ) {
         CommandSpec spec = handler.spec();
-        if (policy.isDisabled(spec.canonicalName()) || policy.isDisabled(label)) {
+        var admission = policy.admission(spec, label, sender::hasPermission);
+        if (admission == CommandFamilyPolicy.Admission.DISABLED) {
             plugin.getMessageManager().sendByKey(sender, spec.messageKeys().moduleDisabledKey());
             return true;
         }
 
-        String basePerm = spec.basePermission();
-        if (basePerm != null && !basePerm.isEmpty() && !sender.hasPermission(basePerm)) {
+        if (admission == CommandFamilyPolicy.Admission.NO_PERMISSION) {
             plugin.getMessageManager().sendByKey(
                     sender,
                     spec.messageKeys().noPermissionKey(),
@@ -122,7 +122,7 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             @NotNull String[] args
     ) {
         CommandSpec spec = handler.spec();
-        if (policy.isDisabled(spec.canonicalName()) || policy.isDisabled(alias)) {
+        if (policy.admission(spec, alias, sender::hasPermission) != CommandFamilyPolicy.Admission.ALLOWED) {
             return List.of();
         }
 

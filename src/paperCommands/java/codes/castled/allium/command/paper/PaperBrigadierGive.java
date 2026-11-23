@@ -42,7 +42,7 @@ public final class PaperBrigadierGive {
      *
      * @param registered receives the labels Paper registered
      */
-    public static void register(JavaPlugin plugin, GiveCommand command, String permission, String description,
+    public static void register(JavaPlugin plugin, GiveCommand command, String description,
                                 Consumer<Set<String>> registered) {
         CURRENT.set(command);
         if (!REGISTERED.compareAndSet(false, true)) {
@@ -50,13 +50,22 @@ public final class PaperBrigadierGive {
         }
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             LiteralCommandNode<CommandSourceStack> node = Commands.literal("give")
-                    .requires(source -> source.getSender().hasPermission(permission))
+                    .requires(source -> {
+                        GiveCommand current = CURRENT.get();
+                        return current != null && current.canUse(source.getSender());
+                    })
                     .then(Commands.argument("targets", ArgumentTypes.players())
                             .then(Commands.argument("item", StringArgumentType.greedyString())
-                                    .suggests((context,builder)->{GiveCommand current=CURRENT.get();if(current!=null)for(String value:current.completeItems(builder.getRemaining()))builder.suggest(value);return builder.buildFuture();})
+                                    .suggests((context, builder) -> {
+                                        GiveCommand current = CURRENT.get();
+                                        if (current != null && current.canUse(context.getSource().getSender())) {
+                                            for (String value : current.completeItems(builder.getRemaining())) builder.suggest(value);
+                                        }
+                                        return builder.buildFuture();
+                                    })
                                     .executes(context -> {
                                         GiveCommand current = CURRENT.get();
-                                        if (current == null) {
+                                        if (current == null || !current.canUse(context.getSource().getSender())) {
                                             return 0;
                                         }
                                         List<Player> targets;

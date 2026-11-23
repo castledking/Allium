@@ -367,7 +367,35 @@ public final class CoreCommandSpecs {
     );
 
     public static final CommandSpec HELP = new CommandSpec("help",CommandSpec.DEFAULT_NAMESPACE,"core",List.of(),"Browse commands available to you","/help [page|command|plugin] [page]","/help [page|command|plugin] [page]","allium.help",null,List.of(),List.of(),CommandMessageKeys.ofOutcomes(Map.of()));
-    public static final List<CommandSpec> CORE_SPECS = List.of(ALLIUM,HELP);
+    public static final CommandSpec REDEEM = new CommandSpec("redeem", CommandSpec.DEFAULT_NAMESPACE, "core", List.of("claimrank"),
+            "Claim configured rank rewards", "/redeem", "/redeem", "allium.redeem", null, List.of(), List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec AUTORESTART = new CommandSpec("autorestart", CommandSpec.DEFAULT_NAMESPACE, "core",
+            List.of("ar"), "Schedule or manage server restarts",
+            "/ar <help|time|now|stop|reload|vote>", "/ar <help|time|now|stop|reload|vote>", null, null,
+            List.of(), List.of(restartNode("help", "help"), restartNode("time", "time", "status"),
+            restartNode("now", "now", List.of(CommandArgSpec.optional("time", null,
+                    SuggestionSpec.literals(List.of("30s", "5m", "--dry-run"), null)),
+                    CommandArgSpec.optional("mode", null, SuggestionSpec.literals(List.of("--dry-run"), null))), "delay"),
+            restartNode("stop", "stop"), restartNode("reload", "reload"),
+            new CommandNodeSpec("vote", List.of(), "allium.autorestart.vote.yes", "/ar vote [start|yes|no]",
+                    List.of(CommandArgSpec.optional("choice", null, SuggestionSpec.literals(List.of("start", "yes", "no"), null))), List.of())),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+    public static final CommandSpec VOTERESTART = new CommandSpec("voterestart", CommandSpec.DEFAULT_NAMESPACE,
+            "core", List.of(), "Vote for a server restart", "/voterestart [yes|no|start]", "/voterestart [yes|no|start]",
+            "allium.autorestart.vote.yes", null, List.of(CommandArgSpec.optional("choice", null,
+            SuggestionSpec.literals(List.of("start", "yes", "no"), null))), List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    private static CommandNodeSpec restartNode(String name, String permission, String... aliases) {
+        return restartNode(name, permission, List.of(), aliases);
+    }
+
+    private static CommandNodeSpec restartNode(String name, String permission, List<CommandArgSpec> args, String... aliases) {
+        return new CommandNodeSpec(name, List.of(aliases), "allium.autorestart." + permission, "/ar " + name, args, List.of());
+    }
+
+    public static final List<CommandSpec> CORE_SPECS = List.of(ALLIUM, HELP, REDEEM, AUTORESTART, VOTERESTART);
 
     /** {@code /msg} with Essentials' aliases. */
     public static final CommandSpec MSG = new CommandSpec(

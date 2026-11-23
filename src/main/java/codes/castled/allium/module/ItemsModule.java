@@ -185,8 +185,8 @@ public final class ItemsModule extends AbstractModule {
             try {
                 codes.castled.allium.command.CommandMapBridge.yieldCommandFamily(plugin.getServer(), plugin, give.spec());
                 Class.forName(PAPER_GIVE).getMethod("register", org.bukkit.plugin.java.JavaPlugin.class, GiveCommand.class,
-                                String.class, String.class, java.util.function.Consumer.class)
-                        .invoke(null, plugin, give, give.spec().basePermission(), give.spec().description(),
+                                String.class, java.util.function.Consumer.class)
+                        .invoke(null, plugin, give, give.spec().description(),
                                 (java.util.function.Consumer<java.util.Set<String>>) labels ->
                                         plugin.logger().info("/give registered through Paper's command API as " + labels + "."));
                 paperGive = true;

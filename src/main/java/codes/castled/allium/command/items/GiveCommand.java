@@ -61,6 +61,13 @@ public final class GiveCommand implements SpecCommandHandler {
         return CoreCommandSpecs.GIVE;
     }
 
+    /** Also used by Paper's native command adapter, which resolves vanilla selectors itself. */
+    public boolean canUse(CommandSender sender) {
+        var policy = plugin.getCommandManager().getFamilyPolicy();
+        return policy.admission(spec(), spec().canonicalName(), sender::hasPermission)
+                == codes.castled.allium.command.spec.CommandFamilyPolicy.Admission.ALLOWED;
+    }
+
     @Override
     public void execute(BukkitCommandContext context) {
         String[] args = context.args();

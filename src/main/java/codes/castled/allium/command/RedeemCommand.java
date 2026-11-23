@@ -1,7 +1,7 @@
 package codes.castled.allium.command;
 
 import codes.castled.allium.PluginStart;
-import codes.castled.allium.command.spec.CommandMessageKeys;
+import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.config.YamlFiles;
 import codes.castled.allium.message.Messages;
@@ -17,16 +17,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 public final class RedeemCommand implements SpecCommandHandler, Listener {
     private static final String PENDING = "redeem-settings.players-to-redeem";
     private static final String CLAIMED = "redeem-settings.claimed";
-    private static final CommandSpec SPEC = new CommandSpec("redeem", CommandSpec.DEFAULT_NAMESPACE, "core", List.of("claimrank"),
-            "Claim configured rank rewards", "/redeem", "/redeem", "allium.redeem", null, List.of(), List.of(),
-            CommandMessageKeys.ofOutcomes(Map.of()));
 
     private final PluginStart plugin;
 
@@ -36,7 +32,7 @@ public final class RedeemCommand implements SpecCommandHandler, Listener {
 
     @Override
     public CommandSpec spec() {
-        return SPEC;
+        return CoreCommandSpecs.REDEEM;
     }
 
     @Override

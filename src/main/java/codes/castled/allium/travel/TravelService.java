@@ -761,6 +761,19 @@ public final class TravelService implements Listener {
     }
     /** Reloads warps from storage (after an import wrote them). Server thread. */
     public void refreshWarps(){loadWarps(0);}
+    /** Publishes warps already loaded on the import worker directly on the server thread before lifting the import fence. */
+    public void publishWarps(Map<String,StoredDestination> loaded){
+        if(closed||loaded==null)return;
+        loaded.keySet().forEach(this::ensurePermission);
+        Map<String,SavedLocation> locations=new HashMap<>();
+        warpRevisions.clear();
+        for(var entry:loaded.entrySet()){
+            locations.put(entry.getKey(),entry.getValue().location());
+            warpRevisions.put(entry.getKey(),entry.getValue().revision());
+        }
+        warps=Map.copyOf(locations);
+        warpsLoaded=true;
+    }
     private void loadWarps(int attempt){
         if(closed)return;
         Map<String,Long> admittedEpochs=Map.copyOf(warpEpochs);

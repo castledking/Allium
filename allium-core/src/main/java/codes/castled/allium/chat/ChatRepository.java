@@ -19,16 +19,22 @@ public final class ChatRepository {
     }
     public State load(UUID id)throws SQLException{
         try(var c=source.connection()){
-            String nick=null,write="";Set<String> reads=Set.of();long version=0;
-            try(var q=c.prepareStatement("SELECT raw_text,format_version,version FROM allium_nicknames WHERE uuid=?")){q.setString(1,id.toString());try(var r=q.executeQuery()){if(r.next()){if(r.getInt(2)!=1)throw new SQLException("unsupported nickname format");nick=r.getString(1);version=r.getLong(3);}}}
-            try(var q=c.prepareStatement("SELECT write_channel,read_channels FROM allium_chat_preferences WHERE uuid=?")){q.setString(1,id.toString());try(var r=q.executeQuery()){if(r.next()){write=r.getString(1);reads=decodeReads(r.getString(2));}}}
-            return new State(id,nick,write,reads,version);
+            return load(c,id);
         }
     }
+    public State load(Connection c,UUID id)throws SQLException{
+        String nick=null,write="";Set<String> reads=Set.of();long version=0;
+        try(var q=c.prepareStatement("SELECT raw_text,format_version,version FROM allium_nicknames WHERE uuid=?")){q.setString(1,id.toString());try(var r=q.executeQuery()){if(r.next()){if(r.getInt(2)!=1)throw new SQLException("unsupported nickname format");nick=r.getString(1);version=r.getLong(3);}}}
+        try(var q=c.prepareStatement("SELECT write_channel,read_channels FROM allium_chat_preferences WHERE uuid=?")){q.setString(1,id.toString());try(var r=q.executeQuery()){if(r.next()){write=r.getString(1);reads=decodeReads(r.getString(2));}}}
+        return new State(id,nick,write,reads,version);
+    }
     public void nickname(UUID id,String raw)throws SQLException{
+        try(var c=source.connection()){nickname(c,id,raw);}
+    }
+    public void nickname(Connection c,UUID id,String raw)throws SQLException{
         if(raw!=null&&raw.length()>512)throw new IllegalArgumentException("nickname too long");
         String sql=dialect==SqlDialect.SQLITE?"INSERT INTO allium_nicknames VALUES(?,?,1,1,?) ON CONFLICT(uuid) DO UPDATE SET raw_text=excluded.raw_text,version=allium_nicknames.version+1,updated_at=excluded.updated_at":"INSERT INTO allium_nicknames VALUES(?,?,1,1,?) ON DUPLICATE KEY UPDATE raw_text=VALUES(raw_text),version=version+1,updated_at=VALUES(updated_at)";
-        try(var c=source.connection();var q=c.prepareStatement(sql)){q.setString(1,id.toString());q.setString(2,raw);q.setLong(3,System.currentTimeMillis());q.executeUpdate();}
+        try(var q=c.prepareStatement(sql)){q.setString(1,id.toString());q.setString(2,raw);q.setLong(3,System.currentTimeMillis());q.executeUpdate();}
     }
     public void channels(UUID id,String write,Set<String> reads)throws SQLException{
         channel(write);String csv=encodeReads(reads);

@@ -61,9 +61,16 @@ public final class IgnoreRepository {
         return coordinator==null?addDirect(owner, ignored):coordinator.call(()->addDirect(owner, ignored));
     }
     private boolean addDirect(UUID owner, UUID ignored) throws SQLException {
+        try (Connection c = source.connection()) {
+            return add(c, owner, ignored);
+        }
+    }
+
+    /** Inserts one ignore row on the caller's active transaction connection. */
+    public boolean add(Connection c, UUID owner, UUID ignored) throws SQLException {
         String sql = (dialect == SqlDialect.MYSQL ? "INSERT IGNORE INTO " : "INSERT OR IGNORE INTO ") + TABLE
                 + " (owner, ignored, created_at) VALUES (?, ?, ?)";
-        try (Connection c = source.connection(); PreparedStatement s = c.prepareStatement(sql)) {
+        try (PreparedStatement s = c.prepareStatement(sql)) {
             s.setString(1, owner.toString());
             s.setString(2, ignored.toString());
             s.setLong(3, clock.getAsLong());

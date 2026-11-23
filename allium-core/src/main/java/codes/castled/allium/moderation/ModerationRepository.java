@@ -202,12 +202,18 @@ public final class ModerationRepository {
     }
 
     public Optional<MuteRecord> loadActiveMute(UUID playerUuid) throws SQLException {
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        try (Connection c = source.connection()) {
+            return loadActiveMute(c, playerUuid);
+        }
+    }
+
+    public Optional<MuteRecord> loadActiveMute(Connection c, UUID playerUuid) throws SQLException {
         long now = clock.getAsLong();
         MuteRecord record;
-        try (Connection c = source.connection();
-             PreparedStatement ps = c.prepareStatement(
-                     "SELECT player_uuid, player_name, actor_name, reason, created_at, expires_at FROM "
-                             + MUTES_TABLE + " WHERE player_uuid = ?")) {
+        try (PreparedStatement ps = c.prepareStatement(
+                "SELECT player_uuid, player_name, actor_name, reason, created_at, expires_at FROM "
+                        + MUTES_TABLE + " WHERE player_uuid = ?")) {
             ps.setString(1, playerUuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
@@ -217,13 +223,23 @@ public final class ModerationRepository {
             }
         }
         if (record.isExpired(now)) {
-            removeMute(playerUuid);
+            try (PreparedStatement ps = c.prepareStatement("DELETE FROM " + MUTES_TABLE + " WHERE player_uuid = ?")) {
+                ps.setString(1, playerUuid.toString());
+                ps.executeUpdate();
+            }
             return Optional.empty();
         }
         return Optional.of(record);
     }
 
     public void saveMute(MuteRecord record) throws SQLException {
+        Objects.requireNonNull(record, "record");
+        try (Connection c = source.connection()) {
+            saveMute(c, record);
+        }
+    }
+
+    public void saveMute(Connection c, MuteRecord record) throws SQLException {
         String sql = dialect == SqlDialect.MYSQL
                 ? "INSERT INTO " + MUTES_TABLE
                   + " (player_uuid, player_name, actor_name, reason, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?) "
@@ -233,8 +249,7 @@ public final class ModerationRepository {
                   + " (player_uuid, player_name, actor_name, reason, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?) "
                   + "ON CONFLICT(player_uuid) DO UPDATE SET player_name = excluded.player_name, actor_name = excluded.actor_name, "
                   + "reason = excluded.reason, created_at = excluded.created_at, expires_at = excluded.expires_at";
-        try (Connection c = source.connection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, record.playerUuid().toString());
             ps.setString(2, record.playerName());
             ps.setString(3, record.actorName());
@@ -370,23 +385,38 @@ public final class ModerationRepository {
 
     public Optional<JailRecord> loadJail(String name) throws SQLException {
         String key = jailName(name);
-        return query("SELECT name, " + LOCATION_COLUMNS + " FROM " + JAILS_TABLE + " WHERE name = ?",
-                ps -> ps.setString(1, key), rs -> new JailRecord(rs.getString(1), readLocation(rs, 2)))
-                .stream().findFirst();
+        try (Connection c = source.connection()) {
+            return loadJail(c, key);
+        }
+    }
+
+    public Optional<JailRecord> loadJail(Connection c, String name) throws SQLException {
+        String key = jailName(name);
+        try (PreparedStatement ps = c.prepareStatement("SELECT name, " + LOCATION_COLUMNS + " FROM " + JAILS_TABLE + " WHERE name = ?")) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(new JailRecord(rs.getString(1), readLocation(rs, 2))) : Optional.empty();
+            }
+        }
     }
 
     public void saveJail(JailRecord record, String actorName) throws SQLException {
         Objects.requireNonNull(record, "record");
-        String actor = actorName(actorName);
         transaction(c -> {
-            try (PreparedStatement ps = c.prepareStatement(upsert(JAILS_TABLE, "name, " + LOCATION_COLUMNS, "name", true))) {
-                ps.setString(1, record.name());
-                bindLocation(ps, 2, record.location());
-                ps.executeUpdate();
-            }
-            writeAudit(c, "SETJAIL", actor, null, null, "jail=" + record.name());
+            saveJail(c, record, actorName);
             return null;
         });
+    }
+
+    public void saveJail(Connection c, JailRecord record, String actorName) throws SQLException {
+        Objects.requireNonNull(record, "record");
+        String actor = actorName(actorName);
+        try (PreparedStatement ps = c.prepareStatement(upsert(JAILS_TABLE, "name, " + LOCATION_COLUMNS, "name", true))) {
+            ps.setString(1, record.name());
+            bindLocation(ps, 2, record.location());
+            ps.executeUpdate();
+        }
+        writeAudit(c, "SETJAIL", actor, null, null, "jail=" + record.name());
     }
 
     /** Returns false when absent or in use. Assignment and deletion serialize on the jail row. */
@@ -417,27 +447,42 @@ public final class ModerationRepository {
 
     public Optional<JailAssignment> loadJailed(UUID playerUuid) throws SQLException {
         Objects.requireNonNull(playerUuid, "playerUuid");
-        return query("SELECT " + ASSIGNMENT_COLUMNS + " FROM " + JAILED_TABLE + " WHERE player_uuid = ?",
-                ps -> ps.setString(1, playerUuid.toString()), ModerationRepository::readAssignment).stream().findFirst();
+        try (Connection c = source.connection()) {
+            return loadJailed(c, playerUuid);
+        }
+    }
+
+    public Optional<JailAssignment> loadJailed(Connection c, UUID playerUuid) throws SQLException {
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        try (PreparedStatement ps = c.prepareStatement("SELECT " + ASSIGNMENT_COLUMNS + " FROM " + JAILED_TABLE + " WHERE player_uuid = ?")) {
+            ps.setString(1, playerUuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(readAssignment(rs)) : Optional.empty();
+            }
+        }
     }
 
     /** Returns false when the named jail is absent; a re-jail retains the original return location. */
     public boolean setJailed(JailAssignment record) throws SQLException {
         Objects.requireNonNull(record, "record");
-        return transaction(c -> {
-            if (!lockJail(c, record.jailName())) return false;
-            // Only identity/reason/jail change on conflict. The seven origin columns are insert-only.
-            try (PreparedStatement ps = c.prepareStatement(upsert(JAILED_TABLE, ASSIGNMENT_COLUMNS, "player_uuid", false))) {
-                bindPlayer(ps, record.playerUuid(), record.playerName(), record.actorName(), record.reason(), record.createdAt());
-                ps.setString(6, record.jailName());
-                bindLocation(ps, 7, record.returnLocation());
-                if (record.expiresAt() == null) ps.setNull(14, Types.BIGINT); else ps.setLong(14, record.expiresAt());
-                ps.executeUpdate();
-            }
-            writeAudit(c, "JAIL", record.actorName(), record.playerUuid(), record.playerName(),
-                    "jail=" + record.jailName() + " expires_at=" + record.expiresAt() + " reason=" + record.reason());
-            return true;
-        });
+        return transaction(c -> setJailed(c, record));
+    }
+
+    /** Assigns a player to an existing jail on the caller's active transaction connection. */
+    public boolean setJailed(Connection c, JailAssignment record) throws SQLException {
+        Objects.requireNonNull(record, "record");
+        if (!lockJail(c, record.jailName())) return false;
+        // Only identity/reason/jail change on conflict. The seven origin columns are insert-only.
+        try (PreparedStatement ps = c.prepareStatement(upsert(JAILED_TABLE, ASSIGNMENT_COLUMNS, "player_uuid", false))) {
+            bindPlayer(ps, record.playerUuid(), record.playerName(), record.actorName(), record.reason(), record.createdAt());
+            ps.setString(6, record.jailName());
+            bindLocation(ps, 7, record.returnLocation());
+            if (record.expiresAt() == null) ps.setNull(14, Types.BIGINT); else ps.setLong(14, record.expiresAt());
+            ps.executeUpdate();
+        }
+        writeAudit(c, "JAIL", record.actorName(), record.playerUuid(), record.playerName(),
+                "jail=" + record.jailName() + " expires_at=" + record.expiresAt() + " reason=" + record.reason());
+        return true;
     }
 
     public boolean removeJailed(UUID playerUuid, String actorName) throws SQLException {

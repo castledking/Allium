@@ -62,40 +62,44 @@ public final class EssentialsImportApplier {
             PlayerNameRepository names
     ) {}
 
+    @FunctionalInterface
+    interface BeforeLedgerRecord {
+        void beforeRecord(Connection c, Record record, Result result) throws SQLException;
+    }
+
     private EssentialsImportApplier() {}
 
     public static List<Outcome> apply(EssentialsImportPlan plan, String runId, ImportLedger ledger, Targets targets) throws SQLException {
+        return apply(plan, runId, ledger, targets, null);
+    }
+
+    static List<Outcome> apply(EssentialsImportPlan plan, String runId, ImportLedger ledger, Targets targets,
+                               @Nullable BeforeLedgerRecord beforeLedger) throws SQLException {
         Objects.requireNonNull(runId, "runId");
         List<Record> work = plan.records().stream()
                 .filter(r -> r.status() == Status.IMPORT || r.status() == Status.PRESENT || r.status() == Status.REPLAYED)
                 .toList();
         List<Outcome> out = new ArrayList<>();
 
-        // Transactional SQL domains (HOME, WARP, LOGOUT, MAIL) share a single ledger transaction per chunk.
+        // All shared-database SQL domains share one atomic transaction with their ImportLedger receipts.
+        // Preserve plan ordering (JAIL precedes JAILED) and apply in bounded transactional chunks.
         List<Record> transactional = work.stream()
-                .filter(r -> switch (r.domain()) {
-                    case HOME, WARP, SPAWN, LOGOUT, MAIL -> true;
-                    default -> false;
-                })
+                .filter(r -> r.domain() != Domain.BALANCE)
                 .toList();
         for (int start = 0; start < transactional.size(); start += CHUNK) {
             List<Record> chunk = transactional.subList(start, Math.min(transactional.size(), start + CHUNK));
             out.addAll(ledger.transaction(c -> {
                 List<Outcome> done = new ArrayList<>();
-                for (Record r : chunk) done.add(new Outcome(r, applyTransactional(c, r, runId, ledger, targets)));
+                for (Record r : chunk) done.add(new Outcome(r, applyTransactional(c, r, runId, ledger, targets, beforeLedger)));
                 return done;
             }));
         }
 
-        // Repository-managed domains (JAIL before JAILED, BALANCE, NICKNAME, IGNORE, PREFERENCE, MUTE, NAME).
-        List<Record> repoWork = work.stream()
-                .filter(r -> switch (r.domain()) {
-                    case HOME, WARP, SPAWN, LOGOUT, MAIL -> false;
-                    default -> true;
-                })
-                .toList();
-        for (Record r : repoWork) {
-            out.add(new Outcome(r, applyRepository(r, runId, ledger, targets)));
+        // Balance imports use EconomyEngine's atomic transaction callback (account + operation journal + ledger receipt).
+        for (Record r : work) {
+            if (r.domain() == Domain.BALANCE) {
+                out.add(new Outcome(r, applyBalanceRecord(r, runId, ledger, targets.economy(), beforeLedger)));
+            }
         }
         return out;
     }
@@ -107,7 +111,8 @@ public final class EssentialsImportApplier {
         return out;
     }
 
-    private static Result applyTransactional(Connection c, Record r, String runId, ImportLedger ledger, Targets targets) throws SQLException {
+    private static Result applyTransactional(Connection c, Record r, String runId, ImportLedger ledger, Targets targets,
+                                             @Nullable BeforeLedgerRecord beforeLedger) throws SQLException {
         String source = EssentialsImportPlan.SOURCE;
         var ledgered = ledger.hash(c, source, r.domain().id(), r.key());
         if (ledgered.isPresent()) return ledgered.get().equals(r.payloadHash()) ? Result.REPLAYED : Result.CONFLICT;
@@ -148,15 +153,75 @@ public final class EssentialsImportApplier {
                 targets.mail().send(c, mailRecord, MailLimits.DEFAULTS, true);
                 yield Result.APPLIED;
             }
+            case NICKNAME -> {
+                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
+                var state = targets.chat().load(c, r.owner());
+                if (state.nickname() != null && !state.nickname().isBlank()) {
+                    yield state.nickname().equals(r.textValue()) ? Result.ADOPTED : Result.CONFLICT;
+                }
+                targets.chat().nickname(c, r.owner(), r.textValue());
+                yield Result.APPLIED;
+            }
+            case IGNORE -> {
+                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
+                boolean added = targets.ignores().add(c, r.owner(), r.targetUuid());
+                yield added ? Result.APPLIED : Result.ADOPTED;
+            }
+            case PREFERENCE -> {
+                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
+                targets.preferences().apply(c, r.owner(), PreferenceChange.set(r.preferenceKey(), r.preferenceBool()));
+                yield Result.APPLIED;
+            }
+            case JAIL -> {
+                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
+                var existing = targets.moderation().loadJail(c, r.name());
+                if (existing.isPresent()) {
+                    yield EssentialsImportPlan.sameCoords(existing.get().location(), r.location()) ? Result.ADOPTED : Result.CONFLICT;
+                }
+                targets.moderation().saveJail(c, new JailRecord(r.name(), r.location()), "import:essentials");
+                yield Result.APPLIED;
+            }
+            case MUTE -> {
+                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
+                var m = r.mute();
+                var existing = targets.moderation().loadActiveMute(c, r.owner());
+                if (existing.isPresent()) {
+                    yield Objects.equals(existing.get().expiresAt(), m.expiresAt())
+                            && existing.get().reason().equals(m.reason()) ? Result.ADOPTED : Result.CONFLICT;
+                }
+                targets.moderation().saveMute(c, new MuteRecord(r.owner(), m.playerName(), "import:essentials", m.reason(), m.createdAt(), m.expiresAt()));
+                yield Result.APPLIED;
+            }
+            case JAILED -> {
+                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
+                var j = r.jailed();
+                var existing = targets.moderation().loadJailed(c, r.owner());
+                if (existing.isPresent()) {
+                    yield existing.get().jailName().equalsIgnoreCase(j.jailName())
+                            && Objects.equals(existing.get().expiresAt(), j.expiresAt()) ? Result.ADOPTED : Result.CONFLICT;
+                }
+                boolean saved = targets.moderation().setJailed(c, new JailAssignment(
+                        r.owner(), j.playerName(), "import:essentials", "Imported from Essentials",
+                        j.createdAt(), j.jailName(), j.returnLocation(), j.expiresAt()));
+                yield saved ? Result.APPLIED : Result.CONFLICT;
+            }
+            case NAME -> {
+                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
+                if (targets.names().byUuid(c, r.owner()).isPresent()) yield Result.ADOPTED;
+                targets.names().record(c, r.owner(), r.textValue(), System.currentTimeMillis());
+                yield Result.APPLIED;
+            }
             default -> Result.SKIPPED;
         };
         if (result == Result.APPLIED || result == Result.ADOPTED) {
+            if (beforeLedger != null) beforeLedger.beforeRecord(c, r, result);
             ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), result.name(), runId);
         }
         return result;
     }
 
-    private static Result applyRepository(Record r, String runId, ImportLedger ledger, Targets targets) throws SQLException {
+    private static Result applyBalanceRecord(Record r, String runId, ImportLedger ledger, @Nullable EconomyEngine engine,
+                                             @Nullable BeforeLedgerRecord beforeLedger) throws SQLException {
         String source = EssentialsImportPlan.SOURCE;
         Result precheck = ledger.transaction(c -> {
             var ledgered = ledger.hash(c, source, r.domain().id(), r.key());
@@ -165,86 +230,14 @@ public final class EssentialsImportApplier {
             return null;
         });
         if (precheck != null) return precheck;
-        if (r.domain() == Domain.BALANCE) return applyBalance(r, runId, ledger, targets.economy());
-
-        Result result = switch (r.domain()) {
-            case NICKNAME -> {
-                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
-                var state = targets.chat().load(r.owner());
-                if (state.nickname() != null && !state.nickname().isBlank()) {
-                    yield state.nickname().equals(r.textValue()) ? Result.ADOPTED : Result.CONFLICT;
-                }
-                targets.chat().nickname(r.owner(), r.textValue());
-                yield Result.APPLIED;
-            }
-            case IGNORE -> {
-                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
-                boolean added = targets.ignores().add(r.owner(), r.targetUuid());
-                yield added ? Result.APPLIED : Result.ADOPTED;
-            }
-            case PREFERENCE -> {
-                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
-                targets.preferences().apply(r.owner(), PreferenceChange.set(r.preferenceKey(), r.preferenceBool()));
-                yield Result.APPLIED;
-            }
-            case JAIL -> {
-                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
-                var existing = targets.moderation().loadJail(r.name());
-                if (existing.isPresent()) {
-                    yield EssentialsImportPlan.sameCoords(existing.get().location(), r.location()) ? Result.ADOPTED : Result.CONFLICT;
-                }
-                targets.moderation().saveJail(new JailRecord(r.name(), r.location()), "import:essentials");
-                yield Result.APPLIED;
-            }
-            case MUTE -> {
-                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
-                var m = r.mute();
-                var existing = targets.moderation().loadActiveMute(r.owner());
-                if (existing.isPresent()) {
-                    yield Objects.equals(existing.get().expiresAt(), m.expiresAt())
-                            && existing.get().reason().equals(m.reason()) ? Result.ADOPTED : Result.CONFLICT;
-                }
-                targets.moderation().saveMute(new MuteRecord(r.owner(), m.playerName(), "import:essentials", m.reason(), m.createdAt(), m.expiresAt()));
-                yield Result.APPLIED;
-            }
-            case JAILED -> {
-                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
-                var j = r.jailed();
-                var existing = targets.moderation().loadJailed(r.owner());
-                if (existing.isPresent()) {
-                    yield existing.get().jailName().equalsIgnoreCase(j.jailName())
-                            && Objects.equals(existing.get().expiresAt(), j.expiresAt()) ? Result.ADOPTED : Result.CONFLICT;
-                }
-                boolean saved = targets.moderation().setJailed(new JailAssignment(
-                        r.owner(), j.playerName(), "import:essentials", "Imported from Essentials",
-                        j.createdAt(), j.jailName(), j.returnLocation(), j.expiresAt()));
-                yield saved ? Result.APPLIED : Result.CONFLICT;
-            }
-            case NAME -> {
-                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
-                if (targets.names().byUuid(r.owner()).isPresent()) yield Result.ADOPTED;
-                targets.names().record(r.owner(), r.textValue(), System.currentTimeMillis());
-                yield Result.APPLIED;
-            }
-            default -> Result.SKIPPED;
-        };
-
-        if (result == Result.APPLIED || result == Result.ADOPTED) {
-            Result finalResult = result;
-            ledger.transaction(c -> {
-                if (ledger.hash(c, source, r.domain().id(), r.key()).isEmpty()) {
-                    ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), finalResult.name(), runId);
-                }
-                return null;
-            });
-        }
-        return result;
+        return applyBalance(r, runId, ledger, engine, beforeLedger);
     }
 
-    private static Result applyBalance(Record r, String runId, ImportLedger ledger, @Nullable EconomyEngine engine)
+    private static Result applyBalance(Record r, String runId, ImportLedger ledger, @Nullable EconomyEngine engine,
+                                       @Nullable BeforeLedgerRecord beforeLedger)
             throws SQLException {
         if (engine == null) throw new SQLException("Allium economy became unavailable during import");
-        if (r.status() == Status.PRESENT) return adoptBalance(r, runId, ledger, engine.dialect());
+        if (r.status() == Status.PRESENT) return adoptBalance(r, runId, ledger, engine.dialect(), beforeLedger);
 
         // The import receipt identifies the payload across attempts. Each attempt gets its own economy request.
         String source = EssentialsImportPlan.SOURCE;
@@ -253,12 +246,13 @@ public final class EssentialsImportApplier {
                 EconomyRequest.Kind.OPEN_IMPORTED, "import:essentials", r.owner(), null, r.money());
         var mutation = engine.execute(request, c -> {
             if (ledger.hash(c, source, r.domain().id(), r.key()).isPresent()) return false;
+            if (beforeLedger != null) beforeLedger.beforeRecord(c, r, Result.APPLIED);
             ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), Result.APPLIED.name(), runId);
             return true;
         });
         if (mutation instanceof EconomyResult.Committed) return Result.APPLIED;
         if (mutation instanceof EconomyResult.Rejected rejected) {
-            if ("ACCOUNT_EXISTS".equals(rejected.reason())) return adoptBalance(r, runId, ledger, engine.dialect());
+            if ("ACCOUNT_EXISTS".equals(rejected.reason())) return adoptBalance(r, runId, ledger, engine.dialect(), beforeLedger);
             if ("SETTINGS_CHANGED".equals(rejected.reason())) throw new SQLException("Economy settings changed during import");
             if (!"WORKFLOW_REFUSED".equals(rejected.reason())) return Result.CONFLICT;
         }
@@ -274,7 +268,8 @@ public final class EssentialsImportApplier {
         });
     }
 
-    private static Result adoptBalance(Record r, String runId, ImportLedger ledger, SqlDialect dialect) throws SQLException {
+    private static Result adoptBalance(Record r, String runId, ImportLedger ledger, SqlDialect dialect,
+                                       @Nullable BeforeLedgerRecord beforeLedger) throws SQLException {
         return ledger.transaction(c -> {
             String source = EssentialsImportPlan.SOURCE;
             var recorded = ledger.hash(c, source, r.domain().id(), r.key());
@@ -289,6 +284,7 @@ public final class EssentialsImportApplier {
                     }
                 }
             }
+            if (beforeLedger != null) beforeLedger.beforeRecord(c, r, Result.ADOPTED);
             ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), Result.ADOPTED.name(), runId);
             return Result.ADOPTED;
         });

@@ -1046,6 +1046,14 @@ public final class TeleportService implements Listener {
         if(attempt<3)plugin.getScheduler().runOnServerLater(()->loadSpawn(attempt+1),250L*(attempt+1));
         else plugin.logger().warning("Teleport spawn unavailable after bounded retries");
     }
+    /** Publishes refreshed server and group spawns loaded by an importer before the login fence drops. */
+    public void publishImportedSpawns(@Nullable SavedLocation loadedSpawn, Map<String, SavedLocation> loadedGroupSpawns) {
+        if (closed) return;
+        spawn = loadedSpawn;
+        groupSpawns.clear();
+        if (loadedGroupSpawns != null) groupSpawns.putAll(loadedGroupSpawns);
+        spawnReady = true;
+    }
     private void submit(Runnable work,Runnable rejected) {
         try{io.execute(work);}catch(RejectedExecutionException e){rejected.run();}
     }

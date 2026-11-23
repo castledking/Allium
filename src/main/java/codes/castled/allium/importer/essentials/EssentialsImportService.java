@@ -4,6 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.chat.ChatRepository;
 import codes.castled.allium.economy.EconomyEngine;
 import codes.castled.allium.economy.EconomySchema;
+import codes.castled.allium.importer.ImportApplyCoordinator;
 import codes.castled.allium.importer.ImportLedger;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Destination;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Domain;
@@ -18,22 +19,19 @@ import codes.castled.allium.moderation.JailRecord;
 import codes.castled.allium.moderation.ModerationRepository;
 import codes.castled.allium.moderation.MuteRecord;
 import codes.castled.allium.module.EconomyModule;
+import codes.castled.allium.module.ModerationModule;
 import codes.castled.allium.module.TravelModule;
 import codes.castled.allium.naming.PlayerNameRepository;
 import codes.castled.allium.pack.Json;
 import codes.castled.allium.preference.PreferenceRepository;
 import codes.castled.allium.preference.StoredPreferences;
+import codes.castled.allium.scheduler.AlliumScheduler;
+import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.travel.TravelRepository;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -70,31 +68,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Apply needs that run's ID, an empty server (logins are refused while it runs), the exact same
  * source hash and the exact same plan hash.
  */
-public final class EssentialsImportService implements Listener {
+public final class EssentialsImportService {
 
     static final String SETTINGS = "import/essentials.yml";
     private static final DateTimeFormatter RUN_ID = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
 
     private final PluginStart plugin;
     private final Executor io;
+    private final ImportApplyCoordinator coordinator;
     private final AtomicBoolean running = new AtomicBoolean();
-    private volatile boolean fenced;
 
     public EssentialsImportService(PluginStart plugin, Executor io) {
+        this(plugin, io, plugin.getImportApplyCoordinator());
+    }
+
+    public EssentialsImportService(PluginStart plugin, Executor io, ImportApplyCoordinator coordinator) {
         this.plugin = plugin;
         this.io = io;
+        this.coordinator = coordinator != null ? coordinator : new ImportApplyCoordinator(plugin);
     }
 
     public boolean running() {
         return running.get();
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void fence(AsyncPlayerPreLoginEvent event) {
-        if (fenced) {
-            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
-                    ChatColor.translateAlternateColorCodes('&', plugin.getMessageManager().resolve(Messages.IMPORT_LEGACY_FENCE)));
-        }
     }
 
     public void dryRun(CommandSender sender) {
@@ -106,14 +101,14 @@ public final class EssentialsImportService implements Listener {
             refuse(sender, "unknown run '" + runId + "'");
             return;
         }
-        if (!plugin.getServer().getOnlinePlayers().isEmpty()) {
-            refuse(sender, "players are online; apply runs on an empty server (logins are refused while it runs)");
-            return;
-        }
         start(sender, runId);
     }
 
     private void start(CommandSender sender, String applyRun) {
+        if (applyRun == null && coordinator.isApplying()) {
+            refuse(sender, "an import apply (" + coordinator.activeDescription() + ") is already running");
+            return;
+        }
         if (!running.compareAndSet(false, true)) {
             refuse(sender, "another Essentials import is running");
             return;
@@ -126,6 +121,16 @@ public final class EssentialsImportService implements Listener {
             refuse(sender, SETTINGS + ": " + invalid.getMessage());
             return;
         }
+        ImportApplyCoordinator.Lease lease = null;
+        if (applyRun != null) {
+            var acquisition = coordinator.tryAcquireApply(EssentialsImportPlan.SOURCE, applyRun);
+            if (acquisition instanceof ImportApplyCoordinator.Refused refused) {
+                running.set(false);
+                refuse(sender, refused.reason());
+                return;
+            }
+            lease = ((ImportApplyCoordinator.Acquired) acquisition).lease();
+        }
         Map<String, ResolvedWorld> byName = new LinkedHashMap<>();
         Map<UUID, ResolvedWorld> byUuid = new LinkedHashMap<>();
         for (World world : plugin.getServer().getWorlds()) {
@@ -135,38 +140,33 @@ public final class EssentialsImportService implements Listener {
         }
         int loadedSigns = (plugin.getModuleManager().getModule("signs") instanceof codes.castled.allium.module.SignsModule sm
                 && sm.isEnabled() && sm.signs() != null) ? sm.signs().countLoadedEssentialsSigns() : 0;
-        if (applyRun != null) {
-            fenced = true;
-            plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        }
         plugin.getMessageManager().send(sender, Messages.IMPORT_ESSENTIALS_STARTED,
                 "{mode}", applyRun == null ? "a dry run" : "apply " + applyRun);
+        final ImportApplyCoordinator.Lease acquiredLease = lease;
         try {
             io.execute(() -> {
+                boolean handedOff = false;
                 try {
                     if (applyRun == null) runDry(sender, settings, byName, byUuid, loadedSigns);
-                    else runApply(sender, settings, byName, byUuid, applyRun);
+                    else handedOff = runApply(sender, settings, byName, byUuid, applyRun, acquiredLease);
                 } catch (Exception | LinkageError failure) {
                     String reason = failure.getMessage() == null ? failure.getClass().getSimpleName()
                             : failure.getMessage().lines().findFirst().orElse("");
                     plugin.logger().warning("Essentials import failed: " + reason);
                     tell(sender, Messages.IMPORT_ESSENTIALS_FAILED, "{reason}", reason);
                 } finally {
-                    finish();
+                    if (!handedOff) finish(acquiredLease);
                 }
             });
         } catch (RejectedExecutionException busy) {
-            finish();
+            finish(acquiredLease);
             refuse(sender, "the import worker is busy");
         }
     }
 
-    private void finish() {
+    private void finish(ImportApplyCoordinator.Lease lease) {
+        if (lease != null) lease.close();
         running.set(false);
-        if (fenced) {
-            fenced = false;
-            plugin.getScheduler().runOnServer(() -> HandlerList.unregisterAll(this));
-        }
     }
 
     private void runDry(CommandSender sender, Settings settings, Map<String, ResolvedWorld> byName,
@@ -194,13 +194,13 @@ public final class EssentialsImportService implements Listener {
                 "{summary}", relative(dir.resolve("summary.txt")));
     }
 
-    private void runApply(CommandSender sender, Settings settings, Map<String, ResolvedWorld> byName,
-                          Map<UUID, ResolvedWorld> byUuid, String runId) throws Exception {
+    private boolean runApply(CommandSender sender, Settings settings, Map<String, ResolvedWorld> byName,
+                             Map<UUID, ResolvedWorld> byUuid, String runId, ImportApplyCoordinator.Lease lease) throws Exception {
         Path dir = runDir(runId);
         Path planFile = dir.resolve("plan.json");
         if (!Files.isRegularFile(planFile)) {
             tell(sender, Messages.IMPORT_ESSENTIALS_REFUSED, "{reason}", "no dry run " + runId + " (expected " + relative(planFile) + ")");
-            return;
+            return false;
         }
         Map<String, Object> reviewed = Json.parseObject(Files.readString(planFile, StandardCharsets.UTF_8));
         long reviewedAt = reviewed.get("plannedAt") instanceof Number n ? n.longValue() : System.currentTimeMillis();
@@ -225,19 +225,19 @@ public final class EssentialsImportService implements Listener {
         ledger.migrate();
         if (ledger.ran(runId)) {
             tell(sender, Messages.IMPORT_ESSENTIALS_REFUSED, "{reason}", runId + " was already applied; run a new dry run");
-            return;
+            return false;
         }
         EssentialsSnapshot snapshot = EssentialsSnapshot.read(settings.source());
         if (!snapshot.sourceSha256().equals(reviewed.get("sourceSha256"))) {
             tell(sender, Messages.IMPORT_ESSENTIALS_REFUSED, "{reason}", "Essentials files changed since " + runId + "; run a new dry run");
-            return;
+            return false;
         }
         EconomyEngine econ = economyEngine();
         EssentialsImportPlan plan = EssentialsImportPlan.build(snapshot, worlds(settings, byName, byUuid),
                 destination(false, econ != null), reviewedAt, econ != null ? econ.settings() : null);
         if (!plan.planSha256().equals(reviewed.get("planSha256"))) {
             tell(sender, Messages.IMPORT_ESSENTIALS_REFUSED, "{reason}", "the plan differs from " + runId + "; run a new dry run");
-            return;
+            return false;
         }
         ledger.startRun(runId, EssentialsImportPlan.SOURCE, plan.sourceSha256(), plan.planSha256());
         List<EssentialsImportApplier.Outcome> outcomes;
@@ -273,27 +273,51 @@ public final class EssentialsImportService implements Listener {
                 }
             }
         }
-        plugin.getScheduler().runOnServer(() -> {
-            if (plugin.getModuleManager().getModule("travel") instanceof TravelModule module && module.isEnabled() && module.travel() != null) {
-                module.travel().refreshWarps();
+        var freshWarps = travel.warpEntries();
+        var freshSpawn = teleports.load(EssentialsImportPlan.SERVER_SPAWN_OWNER, "spawn").orElse(null);
+        var freshGroupSpawns = teleports.loadGroupSpawns();
+        var freshMutes = moderation.loadActiveMutes();
+        var freshJails = moderation.loadJails();
+        var freshPrisoners = moderation.loadJailedPlayers();
+        String summaryPath = relative(dir.resolve("apply-summary.txt"));
+        var scheduler = plugin.getScheduler();
+        TaskHandle handle = scheduler.runOnServer(() -> {
+            try {
+                if (plugin.getModuleManager().getModule("travel") instanceof TravelModule module && module.isEnabled() && module.travel() != null) {
+                    module.travel().publishWarps(freshWarps);
+                }
+                if (plugin.getModuleManager().getModule("teleport") instanceof codes.castled.allium.module.TeleportModule tp
+                        && tp.isEnabled() && tp.teleports() != null) {
+                    tp.teleports().publishImportedSpawns(freshSpawn, freshGroupSpawns);
+                }
+                if (plugin.getModuleManager().getModule("moderation") instanceof ModerationModule mod && mod.isEnabled()) {
+                    if (mod.moderation() != null) mod.moderation().publishImportedMutes(freshMutes);
+                    if (mod.discipline() != null) mod.discipline().publishImportedJails(freshJails, freshPrisoners);
+                }
+                if (!plan.supportedSigns().isEmpty()) {
+                    mergeEnabledSigns(plan.supportedSigns());
+                }
+                if (plugin.getModuleManager().getModule("signs") instanceof codes.castled.allium.module.SignsModule sm
+                        && sm.isEnabled() && sm.signs() != null) {
+                    if (!plan.supportedSigns().isEmpty()) sm.reloadSettings();
+                    int migratedSigns = sm.signs().adoptLoadedChunks();
+                    plugin.logger().info("Essentials sign migration enabled: adopted " + migratedSigns
+                            + " sign(s) in loaded chunks (unloaded chunks migrate automatically on load or use).");
+                }
+            } finally {
+                finish(lease);
             }
-            if (!plan.supportedSigns().isEmpty()) {
-                mergeEnabledSigns(plan.supportedSigns());
-            }
-            if (plugin.getModuleManager().getModule("signs") instanceof codes.castled.allium.module.SignsModule sm
-                    && sm.isEnabled() && sm.signs() != null) {
-                if (!plan.supportedSigns().isEmpty()) sm.reloadSettings();
-                int migratedSigns = sm.signs().adoptLoadedChunks();
-                plugin.logger().info("Essentials sign migration enabled: adopted " + migratedSigns
-                        + " sign(s) in loaded chunks (unloaded chunks migrate automatically on load or use).");
-            }
+            tell(sender, Messages.IMPORT_ESSENTIALS_APPLIED,
+                    "{run}", runId,
+                    "{applied}", Long.toString(applied),
+                    "{adopted}", Long.toString(adopted),
+                    "{conflicts}", Long.toString(conflicts),
+                    "{summary}", summaryPath);
         });
-        tell(sender, Messages.IMPORT_ESSENTIALS_APPLIED,
-                "{run}", runId,
-                "{applied}", Long.toString(applied),
-                "{adopted}", Long.toString(adopted),
-                "{conflicts}", Long.toString(conflicts),
-                "{summary}", relative(dir.resolve("apply-summary.txt")));
+        if (scheduler instanceof AlliumScheduler && handle == TaskHandle.NONE) {
+            return false;
+        }
+        return true;
     }
 
     private EssentialsImportPlan.Worlds worlds(Settings settings, Map<String, ResolvedWorld> byName,

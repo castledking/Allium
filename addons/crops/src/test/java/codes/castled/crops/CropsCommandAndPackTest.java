@@ -141,11 +141,11 @@ class CropsCommandAndPackTest {
     @Test
     void builtPackEmitsBothSeedAndStageJadeIconsForCropStages(@TempDir Path tempDir) throws Exception {
         Path zipPath = tempDir.resolve("crops-pack.zip");
-        Process process = new ProcessBuilder("python3", "pack/build.py", zipPath.toString())
-                .redirectErrorStream(true)
-                .start();
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertEquals(0, process.waitFor(), "pack/build.py failed: " + output);
+        codes.castled.crops.pack.CropsPackBuilder.main(new String[]{
+                Path.of("pack").toAbsolutePath().toString(),
+                Path.of("src/main/resources").toAbsolutePath().toString(),
+                zipPath.toString()
+        });
 
         YamlConfiguration itemsYml;
         try (var in = getClass().getClassLoader().getResourceAsStream("items.yml")) {

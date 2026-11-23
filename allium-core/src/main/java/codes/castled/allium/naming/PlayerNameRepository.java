@@ -66,6 +66,13 @@ public final class PlayerNameRepository {
     }
 
     public void record(UUID uuid, String name, long seen) throws SQLException {
+        try (Connection c = connections.connection()) {
+            record(c, uuid, name, seen);
+        }
+    }
+
+    /** Records the player's name and history entry on the caller's active transaction connection. */
+    public void record(Connection c, UUID uuid, String name, long seen) throws SQLException {
         new NameCache.Entry(uuid, name, seen); // Validate before persisting an entry used in completion.
         String lower = name.toLowerCase(Locale.ROOT);
         String insert = "INSERT INTO " + TABLE + " (uuid, name, name_lower, last_seen) VALUES (?, ?, ?, ?)";
@@ -87,22 +94,20 @@ public final class PlayerNameRepository {
                   + "first_seen = MIN(" + HISTORY_TABLE + ".first_seen, excluded.first_seen), "
                   + "last_seen = MAX(" + HISTORY_TABLE + ".last_seen, excluded.last_seen)";
 
-        try (Connection c = connections.connection()) {
-            try (PreparedStatement s = c.prepareStatement(insert + upsert)) {
-                s.setString(1, uuid.toString());
-                s.setString(2, name);
-                s.setString(3, lower);
-                s.setLong(4, seen);
-                s.executeUpdate();
-            }
-            try (PreparedStatement h = c.prepareStatement(histInsert + histUpsert)) {
-                h.setString(1, uuid.toString());
-                h.setString(2, name);
-                h.setString(3, lower);
-                h.setLong(4, seen);
-                h.setLong(5, seen);
-                h.executeUpdate();
-            }
+        try (PreparedStatement s = c.prepareStatement(insert + upsert)) {
+            s.setString(1, uuid.toString());
+            s.setString(2, name);
+            s.setString(3, lower);
+            s.setLong(4, seen);
+            s.executeUpdate();
+        }
+        try (PreparedStatement h = c.prepareStatement(histInsert + histUpsert)) {
+            h.setString(1, uuid.toString());
+            h.setString(2, name);
+            h.setString(3, lower);
+            h.setLong(4, seen);
+            h.setLong(5, seen);
+            h.executeUpdate();
         }
     }
 
@@ -120,8 +125,13 @@ public final class PlayerNameRepository {
     }
 
     public Optional<NameCache.Entry> byUuid(UUID uuid) throws SQLException {
-        try (Connection c = connections.connection();
-             PreparedStatement s = c.prepareStatement("SELECT uuid, name, last_seen FROM " + TABLE + " WHERE uuid = ?")) {
+        try (Connection c = connections.connection()) {
+            return byUuid(c, uuid);
+        }
+    }
+
+    public Optional<NameCache.Entry> byUuid(Connection c, UUID uuid) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("SELECT uuid, name, last_seen FROM " + TABLE + " WHERE uuid = ?")) {
             s.setString(1, uuid.toString());
             try (ResultSet r = s.executeQuery()) {
                 return r.next() ? Optional.of(new NameCache.Entry(UUID.fromString(r.getString(1)), r.getString(2), r.getLong(3)))

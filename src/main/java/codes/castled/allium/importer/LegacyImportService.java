@@ -13,17 +13,13 @@ import codes.castled.allium.importer.legacy.LegacyH2Source;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.module.TravelModule;
 import codes.castled.allium.pack.Json;
+import codes.castled.allium.scheduler.AlliumScheduler;
+import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.travel.TravelRepository;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -56,32 +52,28 @@ import java.util.stream.Stream;
  * plan; it then writes each destination row and its ledger row in one transaction. Legacy
  * max-homes values are written as a {@code homes.staff-overrides} snippet, never applied.
  */
-public final class LegacyImportService implements Listener {
+public final class LegacyImportService {
 
     static final String SETTINGS = "import/legacy-allium.yml";
     private static final DateTimeFormatter RUN_ID = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
 
     private final PluginStart plugin;
     private final Executor io;
+    private final ImportApplyCoordinator coordinator;
     private final AtomicBoolean running = new AtomicBoolean();
-    private volatile boolean fenced;
 
     public LegacyImportService(PluginStart plugin, Executor io) {
+        this(plugin, io, plugin.getImportApplyCoordinator());
+    }
+
+    public LegacyImportService(PluginStart plugin, Executor io, ImportApplyCoordinator coordinator) {
         this.plugin = plugin;
         this.io = io;
+        this.coordinator = coordinator != null ? coordinator : new ImportApplyCoordinator(plugin);
     }
 
     public boolean running() {
         return running.get();
-    }
-
-    /** Refuses logins while an apply runs: players must not change homes or warps under it. */
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void fence(AsyncPlayerPreLoginEvent event) {
-        if (fenced) {
-            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
-                    ChatColor.translateAlternateColorCodes('&', plugin.getMessageManager().resolve(Messages.IMPORT_LEGACY_FENCE)));
-        }
     }
 
     public void dryRun(CommandSender sender) {
@@ -93,14 +85,14 @@ public final class LegacyImportService implements Listener {
             refuse(sender, "unknown run '" + runId + "'");
             return;
         }
-        if (!plugin.getServer().getOnlinePlayers().isEmpty()) {
-            refuse(sender, "players are online; apply runs on an empty server (logins are refused while it runs)");
-            return;
-        }
         start(sender, runId);
     }
 
     private void start(CommandSender sender, String applyRun) {
+        if (applyRun == null && coordinator.isApplying()) {
+            refuse(sender, "an import apply (" + coordinator.activeDescription() + ") is already running");
+            return;
+        }
         if (!running.compareAndSet(false, true)) {
             refuse(sender, "another legacy import is running");
             return;
@@ -113,19 +105,27 @@ public final class LegacyImportService implements Listener {
             refuse(sender, SETTINGS + ": " + invalid.getMessage());
             return;
         }
+        ImportApplyCoordinator.Lease lease = null;
+        if (applyRun != null) {
+            var acquisition = coordinator.tryAcquireApply(LegacyDestinationPlan.SOURCE, applyRun);
+            if (acquisition instanceof ImportApplyCoordinator.Refused refused) {
+                running.set(false);
+                refuse(sender, refused.reason());
+                return;
+            }
+            lease = ((ImportApplyCoordinator.Acquired) acquisition).lease();
+        }
         // Worlds are read here, on the server thread, and handed to the worker.
         Map<String, ResolvedWorld> loaded = new LinkedHashMap<>();
         for (World world : plugin.getServer().getWorlds()) loaded.put(world.getName(), new ResolvedWorld(world.getUID(), world.getName()));
-        if (applyRun != null) {
-            fenced = true;
-            plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        }
         plugin.getMessageManager().send(sender, Messages.IMPORT_LEGACY_STARTED, "{mode}", applyRun == null ? "a dry run" : "apply " + applyRun);
+        final ImportApplyCoordinator.Lease acquiredLease = lease;
         try {
             io.execute(() -> {
+                boolean handedOff = false;
                 try {
                     if (applyRun == null) runDry(sender, settings, loaded);
-                    else runApply(sender, settings, loaded, applyRun);
+                    else handedOff = runApply(sender, settings, loaded, applyRun, acquiredLease);
                 } catch (Exception | LinkageError failure) {
                     String reason = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage().lines().findFirst().orElse("");
                     // Missing or unreadable inputs are the operator's to fix: their message is enough.
@@ -133,21 +133,18 @@ public final class LegacyImportService implements Listener {
                     plugin.logger().warning("Legacy import failed: " + (expected ? reason : failure.toString()));
                     tell(sender, Messages.IMPORT_LEGACY_FAILED, "{reason}", reason);
                 } finally {
-                    finish();
+                    if (!handedOff) finish(acquiredLease);
                 }
             });
         } catch (RejectedExecutionException busy) {
-            finish();
+            finish(acquiredLease);
             refuse(sender, "the import worker is busy");
         }
     }
 
-    private void finish() {
+    private void finish(ImportApplyCoordinator.Lease lease) {
+        if (lease != null) lease.close();
         running.set(false);
-        if (fenced) {
-            fenced = false;
-            plugin.getScheduler().runOnServer(() -> HandlerList.unregisterAll(this));
-        }
     }
 
     // -- Dry run and apply (worker thread) ---------------------------------------------------------
@@ -189,12 +186,13 @@ public final class LegacyImportService implements Listener {
                 "{summary}", relative(dir.resolve("summary.txt")));
     }
 
-    private void runApply(CommandSender sender, Settings settings, Map<String, ResolvedWorld> loaded, String runId) throws Exception {
+    private boolean runApply(CommandSender sender, Settings settings, Map<String, ResolvedWorld> loaded, String runId,
+                             ImportApplyCoordinator.Lease lease) throws Exception {
         Path dir = runDir(runId);
         Path planFile = dir.resolve("plan.json");
         if (!Files.isRegularFile(planFile)) {
             tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", "no dry run " + runId + " (expected " + relative(planFile) + ")");
-            return;
+            return false;
         }
         Map<String, Object> reviewed = Json.parseObject(Files.readString(planFile, StandardCharsets.UTF_8));
         var db = plugin.getDatabaseManager();
@@ -206,16 +204,16 @@ public final class LegacyImportService implements Listener {
         ledger.migrate();
         if (ledger.ran(runId)) {
             tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", runId + " was already applied; run a new dry run");
-            return;
+            return false;
         }
         Read read = read(settings, loaded, dir.resolve("apply-source.mv.db"), false);
         if (!read.snapshot().sha256().equals(reviewed.get("sourceSha256"))) {
             tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", "the legacy database changed since " + runId + "; run a new dry run");
-            return;
+            return false;
         }
         if (!read.plan().sha256().equals(reviewed.get("planSha256"))) {
             tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", "the plan differs from " + runId + " (this server's homes, warps or the world map changed); run a new dry run");
-            return;
+            return false;
         }
         ledger.startRun(runId, LegacyDestinationPlan.SOURCE, read.snapshot().sha256(), read.plan().sha256());
         List<LegacyDestinationApplier.Outcome> outcomes;
@@ -229,15 +227,26 @@ public final class LegacyImportService implements Listener {
         ledger.finishRun(runId, "applied " + counts);
         writeOutcomes(dir.resolve("apply.jsonl"), outcomes);
         writeSummary(dir.resolve("apply-summary.txt"), runId, settings, read, outcomes);
+        var freshWarps = travel.warpEntries();
         String homes = applied(outcomes, Domain.HOME), warps = applied(outcomes, Domain.WARP), logouts = applied(outcomes, Domain.LOGOUT);
         plugin.logger().info("Legacy import " + runId + " applied: " + homes + " homes; " + warps + " warps; " + logouts + " logout positions.");
-        plugin.getScheduler().runOnServer(() -> {
-            if (plugin.getModuleManager().getModule("travel") instanceof TravelModule module && module.isEnabled() && module.travel() != null) {
-                module.travel().refreshWarps();
+        String summaryPath = relative(dir.resolve("apply-summary.txt"));
+        var scheduler = plugin.getScheduler();
+        TaskHandle handle = scheduler.runOnServer(() -> {
+            try {
+                if (plugin.getModuleManager().getModule("travel") instanceof TravelModule module && module.isEnabled() && module.travel() != null) {
+                    module.travel().publishWarps(freshWarps);
+                }
+            } finally {
+                finish(lease);
             }
+            tell(sender, Messages.IMPORT_LEGACY_APPLIED, "{run}", runId, "{homes}", homes, "{warps}", warps, "{logouts}", logouts,
+                    "{summary}", summaryPath);
         });
-        tell(sender, Messages.IMPORT_LEGACY_APPLIED, "{run}", runId, "{homes}", homes, "{warps}", warps, "{logouts}", logouts,
-                "{summary}", relative(dir.resolve("apply-summary.txt")));
+        if (scheduler instanceof AlliumScheduler && handle == TaskHandle.NONE) {
+            return false;
+        }
+        return true;
     }
 
     /** What this server holds. A dry run never creates tables: missing ones read as empty. */

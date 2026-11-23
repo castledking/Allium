@@ -1223,6 +1223,15 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         syncAllOnlineVisibility();
     }
 
+    /** Publishes mutes loaded on an import worker directly on the server thread before lifting the import fence. */
+    public void publishImportedMutes(List<MuteRecord> loaded) {
+        if (closed || loaded == null) return;
+        activeMutes.clear();
+        for (MuteRecord record : loaded) {
+            activeMutes.put(record.playerUuid(), record);
+        }
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player quitting = event.getPlayer();

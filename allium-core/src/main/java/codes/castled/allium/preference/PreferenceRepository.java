@@ -95,6 +95,18 @@ public final class PreferenceRepository {
         }
     }
 
+    /** Applies a patch on the caller's active transaction connection without committing or rolling back. */
+    public StoredPreferences apply(Connection connection, UUID uuid, PreferenceChange change) throws SQLException {
+        if (change.isEmpty()) {
+            return load(connection, uuid).orElse(StoredPreferences.empty(uuid));
+        }
+        List<Map.Entry<PreferenceKey, Optional<Object>>> entries = new ArrayList<>(change.entries().entrySet());
+        if (update(connection, uuid, entries) == 0) {
+            insert(connection, uuid, entries);
+        }
+        return load(connection, uuid).orElseThrow(() -> new SQLException("row vanished after write"));
+    }
+
     /** Applies a patch and returns the row as stored afterwards. */
     public StoredPreferences apply(UUID uuid, PreferenceChange change) throws SQLException {
         var coordinator=economyCoordinator;

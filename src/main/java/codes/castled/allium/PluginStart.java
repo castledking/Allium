@@ -52,6 +52,7 @@ public final class PluginStart extends JavaPlugin {
     private ResourcePackSettings.Owner startupPackOwner = ResourcePackSettings.Owner.NONE;
     private codes.castled.allium.addon.AlliumApiService addonApi;
     private codes.castled.allium.addon.AddonManager addonManager;
+    private codes.castled.allium.importer.ImportApplyCoordinator importApplyCoordinator;
 
     @Override
     public void onEnable() {
@@ -132,6 +133,8 @@ public final class PluginStart extends JavaPlugin {
 
         commandManager = new CommandManager(this);
         listenerManager = new ListenerManager(this);
+        importApplyCoordinator = new codes.castled.allium.importer.ImportApplyCoordinator(this);
+        listenerManager.register(importApplyCoordinator);
 
         moduleManager = new ModuleManager(this);
         moduleManager.loadModules();
@@ -517,5 +520,10 @@ public final class PluginStart extends JavaPlugin {
     @org.jetbrains.annotations.Nullable
     public codes.castled.allium.addon.AddonManager getAddonManager() {
         return addonManager;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public codes.castled.allium.importer.ImportApplyCoordinator getImportApplyCoordinator() {
+        return importApplyCoordinator;
     }
 }

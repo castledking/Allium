@@ -342,6 +342,20 @@ public final class DisciplineService implements Listener {
         });
     }
 
+    /** Publishes jails and jailed assignments loaded on an import worker before lifting the import fence. */
+    public void publishImportedJails(List<JailRecord> loadedJails, List<JailAssignment> loadedPrisoners) {
+        synchronized (stateLock) {
+            if (closed) return;
+            if (loadedJails != null) {
+                jails = jailMap(loadedJails);
+            }
+            if (loadedPrisoners != null) {
+                prisoners.clear();
+                for (JailAssignment j : loadedPrisoners) prisoners.put(j.playerUuid(), j);
+            }
+        }
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onAsyncPreLogin(AsyncPlayerPreLoginEvent event) {
         if (closed || event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED) return;

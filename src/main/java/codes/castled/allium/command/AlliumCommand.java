@@ -265,21 +265,26 @@ public final class AlliumCommand implements SpecCommandHandler {
     /** One worker for legacy imports, created on first use; the scheduler stops it at shutdown. */
     private synchronized codes.castled.allium.importer.LegacyImportService legacyImport() {
         if (legacyImport == null) {
-            legacyImport = new codes.castled.allium.importer.LegacyImportService(plugin, plugin.getScheduler().boundedPool("Allium-Import", 1, 2));
+            legacyImport = new codes.castled.allium.importer.LegacyImportService(
+                    plugin, plugin.getScheduler().boundedPool("Allium-Import", 1, 2), plugin.getImportApplyCoordinator());
         }
         return legacyImport;
     }
 
     private synchronized codes.castled.allium.importer.essentials.EssentialsImportService essentialsImport() {
         if (essentialsImport == null) {
-            essentialsImport = new codes.castled.allium.importer.essentials.EssentialsImportService(plugin, plugin.getScheduler().boundedPool("Allium-Essentials-Import", 1, 2));
+            essentialsImport = new codes.castled.allium.importer.essentials.EssentialsImportService(
+                    plugin, plugin.getScheduler().boundedPool("Allium-Essentials-Import", 1, 2), plugin.getImportApplyCoordinator());
         }
         return essentialsImport;
     }
 
     private void tidy(CommandSender sender, boolean apply) {
         var base = plugin.getDataFolder().toPath();
-        if ((legacyImport != null && legacyImport.running()) || (essentialsImport != null && essentialsImport.running())) {
+        var coordinator = plugin.getImportApplyCoordinator();
+        if ((coordinator != null && coordinator.isApplying())
+                || (legacyImport != null && legacyImport.running())
+                || (essentialsImport != null && essentialsImport.running())) {
             TextSender.send(sender, "&cWait for the active legacy data import before tidying.");
             return;
         }
@@ -374,6 +379,11 @@ public final class AlliumCommand implements SpecCommandHandler {
      * reloads the tools.
      */
     private void importVouchers(CommandSender sender, boolean apply) {
+        if (apply && plugin.getImportApplyCoordinator().isApplying()) {
+            plugin.getMessageManager().send(sender, Messages.IMPORT_VOUCHERS_FAILED,
+                    "{reason}", "another import apply (" + plugin.getImportApplyCoordinator().activeDescription() + ") is already running");
+            return;
+        }
         String sourceName = "plugins/" + plugin.getDataFolder().getName() + "/" + codes.castled.allium.importer.VoucherImport.SOURCE;
         if (!(plugin.getModuleManager().getModule("tools") instanceof codes.castled.allium.module.ToolsModule tools)
                 || !tools.isEnabled() || tools.powerTools() == null) {

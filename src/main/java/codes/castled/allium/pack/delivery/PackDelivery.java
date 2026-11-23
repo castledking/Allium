@@ -63,6 +63,11 @@ public final class PackDelivery implements Listener {
         UNREACHABLE
     }
 
+    @FunctionalInterface
+    interface HostedHasher {
+        String sha1OfUrl(String url) throws IOException;
+    }
+
     private final PluginStart plugin;
     private volatile ResourcePackSettings settings;
     private volatile PackSource pack;
@@ -71,10 +76,13 @@ public final class PackDelivery implements Listener {
     private volatile PackOffer offer;
     private volatile long checkGeneration;
     private final TaskScheduler scheduler;
+    private final HostedHasher hostedHasher;
+    private final @Nullable java.util.concurrent.Executor checkExecutorOverride;
     private final @Nullable Method addResourcePack;
     private final @Nullable Method statusId;
     private volatile Hosted hosted = Hosted.OFF;
     private volatile String hostedDetail = "";
+    private volatile boolean closed;
     private final Set<UUID> waiting = ConcurrentHashMap.newKeySet();
     private final Map<UUID, PackOffer> sentTo = new ConcurrentHashMap<>();
     private final Map<UUID, String> lastStatus = new ConcurrentHashMap<>();
@@ -84,12 +92,19 @@ public final class PackDelivery implements Listener {
     private record PackOffer(ResourcePackSettings settings, String url, String sha1, byte[] hash) {}
 
     public PackDelivery(PluginStart plugin, ResourcePackSettings settings, PackSource pack) {
+        this(plugin, settings, pack, PackDelivery::download, null);
+    }
+
+    PackDelivery(PluginStart plugin, ResourcePackSettings settings, PackSource pack,
+                 HostedHasher hostedHasher, @Nullable java.util.concurrent.Executor checkExecutorOverride) {
         this.plugin = plugin;
         this.settings = settings;
         this.pack = pack;
         this.sha1 = pack.sha1();
         this.activeUrl = settings.url();
         this.scheduler = plugin.getScheduler();
+        this.hostedHasher = Objects.requireNonNull(hostedHasher, "hostedHasher");
+        this.checkExecutorOverride = checkExecutorOverride;
         this.addResourcePack = method(Player.class, "addResourcePack", UUID.class, String.class, byte[].class, String.class, boolean.class);
         this.statusId = method(PlayerResourcePackStatusEvent.class, "getID");
     }
@@ -142,13 +157,24 @@ public final class PackDelivery implements Listener {
 
     private void startCheck(java.util.function.Consumer<String> reply) {
         hosted = Hosted.VERIFYING;
-        if (checkPool == null) {
-            checkPool = scheduler.boundedPool("Allium-PackCheck", 1, 2);
+        java.util.concurrent.Executor executor = checkExecutorOverride;
+        if (executor == null) {
+            if (checkPool == null) {
+                checkPool = scheduler.boundedPool("Allium-PackCheck", 1, 8);
+            }
+            executor = checkPool;
         }
         long generation = ++checkGeneration;
         String url = activeUrl;
         String expectedHash = sha1;
-        checkPool.execute(() -> verifyHostedFile(generation, url, expectedHash, reply));
+        try {
+            executor.execute(() -> verifyHostedFile(generation, url, expectedHash, reply));
+        } catch (java.util.concurrent.RejectedExecutionException busy) {
+            hosted = Hosted.UNREACHABLE;
+            hostedDetail = "resource pack verification queue is busy; retry /allium reload";
+            plugin.logger().warning("Not sending Allium's resource pack: " + hostedDetail + ".");
+            reply.accept("Not sending the resource pack: " + hostedDetail + ".");
+        }
     }
 
     /**
@@ -206,6 +232,7 @@ public final class PackDelivery implements Listener {
 
     private void applySelfHost(ResourcePackSettings currentSettings, PackSource currentPack,
                                java.util.function.Consumer<String> reply) {
+        ++checkGeneration;
         ResourcePackSettings.SelfHost sh = currentSettings.selfHost();
         try {
             if (httpServer != null && httpServer.isRunning() && httpServer.matchesBinding(sh.bindHost(), sh.port())) {
@@ -279,10 +306,12 @@ public final class PackDelivery implements Listener {
     }
 
     private void verifyHostedFile(long generation, String url, String sha1, java.util.function.Consumer<String> reply) {
+        if (closed || generation != checkGeneration) return;
         Hosted result;
         String detail;
         try {
-            String found = download(url);
+            String found = hostedHasher.sha1OfUrl(url);
+            if (closed || generation != checkGeneration) return;
             if (found.equals(sha1)) {
                 result = Hosted.VERIFIED;
                 detail = "the hosted file matches (SHA-1 " + sha1 + ")";
@@ -292,13 +321,14 @@ public final class PackDelivery implements Listener {
                         + ". Upload plugins/Allium/pack/" + PackExport.STANDALONE_FILE + " there again; until then Allium sends nothing";
             }
         } catch (IOException | RuntimeException e) {
+            if (closed || generation != checkGeneration) return;
             result = Hosted.UNREACHABLE;
             detail = "could not download " + url + " (" + e + "); Allium sends nothing until a restart finds it";
         }
         Hosted finalResult = result;
         String finalDetail = detail;
         scheduler.runOnServer(() -> {
-            if (generation != checkGeneration) return;
+            if (closed || generation != checkGeneration) return;
             if (finalResult == Hosted.VERIFIED) publishOffer();
             hosted = finalResult;
             hostedDetail = finalDetail;
@@ -319,6 +349,8 @@ public final class PackDelivery implements Listener {
         connection.setConnectTimeout(5_000);
         connection.setReadTimeout(15_000);
         connection.setInstanceFollowRedirects(true);
+        connection.setUseCaches(false);
+        connection.setRequestProperty("Cache-Control", "no-cache");
         connection.setRequestProperty("User-Agent", "Allium resource pack check");
         try {
             int code = connection.getResponseCode();
@@ -443,6 +475,7 @@ public final class PackDelivery implements Listener {
     }
 
     public void disable() {
+        closed = true;
         ++checkGeneration;
         offer = null;
         HandlerList.unregisterAll(this);

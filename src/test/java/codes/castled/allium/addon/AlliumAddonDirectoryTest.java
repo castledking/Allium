@@ -150,6 +150,37 @@ class AlliumAddonDirectoryTest {
     }
 
     @Test
+    void refusesShadedApiJarInAddonsDirectoryDuringPreflightWithoutCallingLoadPlugin() throws Exception {
+        Path dataFolder = tempDir.resolve("Allium");
+        Path addonsDir = dataFolder.resolve("addons");
+        Path shadedJar = addonsDir.resolve("Addon-Shaded.jar");
+        Files.createDirectories(addonsDir);
+        try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(shadedJar))) {
+            out.putNextEntry(new JarEntry("plugin.yml"));
+            out.write("""
+                    name: ShadedAddon
+                    main: example.ShadedAddon
+                    version: '1.0.0'
+                    allium-api: '^1.1'
+                    """.getBytes(StandardCharsets.UTF_8));
+            out.closeEntry();
+            out.putNextEntry(new JarEntry("codes/castled/allium/api/AlliumApi.class"));
+            out.write(new byte[]{(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE});
+            out.closeEntry();
+        }
+
+        PluginManager pm = mock(PluginManager.class);
+        PluginStart allium = mockAllium(dataFolder, pm);
+
+        AlliumApiService service = new AlliumApiService(allium);
+        service.install();
+
+        verify(pm, never()).loadPlugin(any(File.class));
+        assertNotNull(service.verdicts().get("ShadedAddon"));
+        assertEquals(AddonVerdict.Status.SHADED_API, service.verdicts().get("ShadedAddon").status());
+    }
+
+    @Test
     void curiosPluginYmlRequiresAlliumAndAddonsDirectory() throws Exception {
         Path pluginYml = Path.of("addons/curios/src/main/resources/plugin.yml");
         String content = Files.readString(pluginYml);

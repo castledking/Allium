@@ -49,9 +49,12 @@ jobs:
           cp "addons/ores/build/libs/Addon-Ores-${VERSION}.jar" dist/
           cp "addons/partylocator/build/libs/Addon-PartyLocator-${VERSION}.jar" dist/
           cp "addons/spawnercraft/build/libs/Addon-SpawnerCraft-${VERSION}.jar" dist/
+          (cd dist && sha256sum Addon-*-"${VERSION}".jar "Allium-${VERSION}.jar" | LC_ALL=C sort -k2 > SHA256SUMS.txt)
 
       - name: Upload Allium and Addon jars
         uses: actions/upload-artifact@v4
         with:
           name: Allium-jars
-          path: dist/*.jar
+          path: |
+            dist/*.jar
+            dist/SHA256SUMS.txt

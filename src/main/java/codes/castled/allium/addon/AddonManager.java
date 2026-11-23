@@ -53,16 +53,43 @@ public final class AddonManager {
     private final PluginStart plugin;
     private final Downloader downloader;
     private final java.util.concurrent.Executor io;
+    private final Map<String, String> bundledChecksums;
     private final Set<String> inFlight = ConcurrentHashMap.newKeySet();
 
     public AddonManager(PluginStart plugin) {
-        this(plugin, defaultDownloader(), plugin.getScheduler().boundedPool("Allium-Addons", 1, 16));
+        this(plugin, defaultDownloader(), plugin.getScheduler().boundedPool("Allium-Addons", 1, 16), AddonChecksums.loadBundled());
     }
 
     AddonManager(PluginStart plugin, Downloader downloader, java.util.concurrent.Executor io) {
+        this(plugin, downloader, io, AddonChecksums.loadBundled());
+    }
+
+    AddonManager(PluginStart plugin, Downloader downloader, java.util.concurrent.Executor io, Map<String, String> bundledChecksums) {
         this.plugin = plugin;
         this.downloader = downloader;
         this.io = io;
+        this.bundledChecksums = bundledChecksums == null ? Map.of() : Map.copyOf(bundledChecksums);
+    }
+
+    /** Validates that an addon download URL is a well-formed HTTPS URL with a non-blank host. */
+    public static URI validateHttpsUrl(@Nullable String url) throws IOException {
+        if (url == null || url.isBlank()) {
+            throw new IOException("Addon download URL is blank");
+        }
+        URI uri;
+        try {
+            uri = URI.create(url.trim());
+        } catch (IllegalArgumentException badUri) {
+            throw new IOException("Invalid addon download URL: " + badUri.getMessage(), badUri);
+        }
+        String scheme = uri.getScheme();
+        if (scheme == null || !scheme.equalsIgnoreCase("https")) {
+            throw new IOException("Addon download URL must use HTTPS (got '" + scheme + "'): " + url);
+        }
+        if (uri.getHost() == null || uri.getHost().isBlank()) {
+            throw new IOException("Addon download URL has no host: " + url);
+        }
+        return uri;
     }
 
     public static Downloader defaultDownloader() {
@@ -71,11 +98,7 @@ public final class AddonManager {
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
         return (url, targetFile) -> {
-            URI uri = URI.create(url);
-            String scheme = uri.getScheme();
-            if (scheme == null || (!scheme.equalsIgnoreCase("https") && !scheme.equalsIgnoreCase("http"))) {
-                throw new IOException("Unsupported download URL scheme: " + scheme);
-            }
+            URI uri = validateHttpsUrl(url);
             HttpRequest request = HttpRequest.newBuilder(uri)
                     .GET()
                     .timeout(Duration.ofSeconds(60))
@@ -88,6 +111,16 @@ public final class AddonManager {
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
                 throw new IOException("Download interrupted", interrupted);
+            }
+            if (response.uri() != null) {
+                try {
+                    validateHttpsUrl(response.uri().toString());
+                } catch (IOException downgrade) {
+                    try (InputStream ignored = response.body()) {
+                        // drain/close body
+                    }
+                    throw new IOException("Redirect left HTTPS: " + downgrade.getMessage(), downgrade);
+                }
             }
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 try (InputStream ignored = response.body()) {
@@ -192,6 +225,18 @@ public final class AddonManager {
             Consumer<String> infoLog,
             Consumer<String> warnLog
     ) {
+        return ensureAutoDownloaded(dataFolder, config, pluginVersion, downloader, AddonChecksums.loadBundled(), infoLog, warnLog);
+    }
+
+    static int ensureAutoDownloaded(
+            Path dataFolder,
+            @Nullable FileConfiguration config,
+            String pluginVersion,
+            Downloader downloader,
+            Map<String, String> bundledChecksums,
+            Consumer<String> infoLog,
+            Consumer<String> warnLog
+    ) {
         if (dataFolder == null || config == null || !config.getBoolean("addons.auto-download", false)) {
             return 0;
         }
@@ -205,7 +250,13 @@ public final class AddonManager {
             if (present.containsKey(entry.key())) continue;
             String url = AddonCatalog.downloadUrl(baseUrl, version, entry);
             infoLog.accept("Auto-downloading official addon " + entry.displayName() + " from " + url + "...");
-            DownloadOutcome outcome = downloadAndInstallSync(addonsDir, entry, version, url, downloader);
+            DownloadOutcome outcome;
+            try {
+                String pinnedSha256 = AddonChecksums.configuredPin(config, entry, version).orElse(null);
+                outcome = downloadAndInstallSync(addonsDir, entry, version, baseUrl, url, pinnedSha256, bundledChecksums, downloader);
+            } catch (IOException badPin) {
+                outcome = new DownloadOutcome(false, null, badPin.getMessage());
+            }
             if (outcome.success()) {
                 downloaded++;
                 infoLog.accept("Installed " + entry.displayName() + " -> " + addonsDir.getFileName() + "/" + outcome.jarPath().getFileName());
@@ -222,19 +273,31 @@ public final class AddonManager {
                 plugin.getConfig(),
                 plugin.getDescription().getVersion(),
                 downloader,
+                bundledChecksums,
                 msg -> plugin.logger().info(msg),
                 msg -> plugin.logger().warning(msg)
         );
     }
 
-    /** Downloads, validates as a compatible Allium addon jar, and atomically installs into {@code addonsDir}. */
+    /**
+     * Downloads, verifies SHA-256 digest and release identity, runs shared runtime preflight, and
+     * atomically installs into {@code addonsDir}. On any failure, any existing jar is preserved.
+     */
     static DownloadOutcome downloadAndInstallSync(
             Path addonsDir,
             AddonCatalog.Entry entry,
             String version,
+            @Nullable String baseUrl,
             String url,
+            @Nullable String pinnedSha256,
+            Map<String, String> bundledChecksums,
             Downloader downloader
     ) {
+        try {
+            validateHttpsUrl(url);
+        } catch (IOException insecure) {
+            return new DownloadOutcome(false, null, insecure.getMessage());
+        }
         try {
             Files.createDirectories(addonsDir);
         } catch (IOException e) {
@@ -242,25 +305,35 @@ public final class AddonManager {
         }
         Path temp = null;
         try {
+            String expectedSha256 = resolveExpectedDigest(addonsDir, entry, version, baseUrl, pinnedSha256, bundledChecksums, downloader);
             temp = Files.createTempFile(addonsDir, ".addon-download-", ".tmp");
             downloader.download(url, temp);
-            YamlConfiguration meta = readPluginYml(temp);
-            if (meta == null) {
-                return new DownloadOutcome(false, null, "downloaded file is not a valid plugin jar (missing plugin.yml)");
+
+            String actualSha256 = AddonChecksums.sha256Hex(temp);
+            if (!AddonChecksums.digestsEqual(expectedSha256, actualSha256)) {
+                return new DownloadOutcome(false, null, "SHA-256 checksum mismatch for " + entry.jarFileName(version)
+                        + " (expected " + expectedSha256 + ", got " + actualSha256 + ")");
             }
-            String foundName = trimToNull(meta.getString("name"));
-            if (foundName == null || !foundName.equalsIgnoreCase(entry.displayName())) {
-                return new DownloadOutcome(false, null, "downloaded jar declares plugin '" + foundName
+
+            AlliumApiService.JarPreflight preflight = AlliumApiService.preflightJar(temp);
+            if (!preflight.accepted()) {
+                return new DownloadOutcome(false, null, preflight.error() != null
+                        ? preflight.error()
+                        : "downloaded jar failed addon preflight");
+            }
+            if (preflight.name() == null || !preflight.name().equalsIgnoreCase(entry.displayName())) {
+                return new DownloadOutcome(false, null, "downloaded jar declares plugin '" + preflight.name()
                         + "', expected '" + entry.displayName() + "'");
             }
-            String declaredApi = trimToNull(meta.getString("allium-api"));
-            if (declaredApi == null) {
-                return new DownloadOutcome(false, null, "downloaded jar is missing allium-api in plugin.yml");
+            if (preflight.version() == null || !normalizeReleaseVersion(preflight.version()).equals(normalizeReleaseVersion(version))) {
+                return new DownloadOutcome(false, null, "downloaded jar declares version '" + preflight.version()
+                        + "', expected '" + version + "'");
             }
-            AddonVerdict verdict = AddonVerdict.evaluate(foundName, declaredApi, AlliumApiService.API_VERSION, List.of(), false);
-            if (verdict.refused()) {
-                return new DownloadOutcome(false, null, verdict.message());
+            if (preflight.mainClass() == null) {
+                return new DownloadOutcome(false, null, "downloaded jar plugin.yml is missing main class");
             }
+            verifyJarContents(temp, preflight.mainClass());
+
             Path target = addonsDir.resolve(entry.jarFileName(version));
             try {
                 Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
@@ -277,6 +350,76 @@ public final class AddonManager {
                 try { Files.deleteIfExists(temp); } catch (IOException ignored) {}
             }
         }
+    }
+
+    private static String resolveExpectedDigest(
+            Path addonsDir,
+            AddonCatalog.Entry entry,
+            String version,
+            @Nullable String baseUrl,
+            @Nullable String pinnedSha256,
+            Map<String, String> bundledChecksums,
+            Downloader downloader
+    ) throws IOException {
+        if (pinnedSha256 != null && !pinnedSha256.isBlank()) {
+            if (!AddonChecksums.isValidSha256(pinnedSha256)) {
+                throw new IOException("pinned SHA-256 digest for " + entry.key() + " is not a valid 64-character hex string");
+            }
+            return AddonChecksums.normalizeSha256(pinnedSha256);
+        }
+        String jarName = entry.jarFileName(version);
+        if (bundledChecksums != null) {
+            String bundled = bundledChecksums.get(jarName);
+            if (bundled != null && AddonChecksums.isValidSha256(bundled)) {
+                return AddonChecksums.normalizeSha256(bundled);
+            }
+        }
+        if (!AddonCatalog.isOfficialReleaseBase(baseUrl)) {
+            throw new IOException("custom release mirror requires a pinned SHA-256 digest in addons.checksums." + entry.key());
+        }
+        String manifestUrl = AddonCatalog.checksumsUrl(baseUrl, version);
+        validateHttpsUrl(manifestUrl);
+        Path manifestTemp = Files.createTempFile(addonsDir, ".addon-checksums-", ".tmp");
+        try {
+            downloader.download(manifestUrl, manifestTemp);
+            if (Files.size(manifestTemp) > AddonChecksums.MAX_MANIFEST_BYTES) {
+                throw new IOException(AddonCatalog.CHECKSUMS_FILE + " exceeded maximum size");
+            }
+            Map<String, String> manifest = AddonChecksums.parseManifest(Files.readString(manifestTemp, StandardCharsets.UTF_8));
+            String expected = manifest.get(jarName);
+            if (expected == null) {
+                throw new IOException("release " + AddonCatalog.CHECKSUMS_FILE + " has no SHA-256 digest for " + jarName);
+            }
+            return expected;
+        } finally {
+            try { Files.deleteIfExists(manifestTemp); } catch (IOException ignored) {}
+        }
+    }
+
+    private static void verifyJarContents(Path jarPath, String mainClass) throws IOException {
+        String mainEntryName = mainClass.replace('.', '/') + ".class";
+        try (JarFile jar = new JarFile(jarPath.toFile())) {
+            JarEntry mainEntry = jar.getJarEntry(mainEntryName);
+            if (mainEntry == null || mainEntry.isDirectory()) {
+                throw new IOException("downloaded jar is missing declared main class " + mainClass);
+            }
+            byte[] buffer = new byte[8192];
+            var entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (entry.isDirectory()) continue;
+                try (InputStream in = jar.getInputStream(entry)) {
+                    while (in.read(buffer) != -1) {
+                        // Validate ZIP stream integrity and CRCs for every entry before install.
+                    }
+                }
+            }
+        }
+    }
+
+    private static String normalizeReleaseVersion(String version) {
+        String trimmed = version.trim();
+        return (trimmed.startsWith("v") || trimmed.startsWith("V")) ? trimmed.substring(1) : trimmed;
     }
 
     /** Handles {@code /allium addon download <addon>} asynchronously off the server thread. */
@@ -304,12 +447,22 @@ public final class AddonManager {
             plugin.getMessageManager().send(sender, Messages.ADDON_DOWNLOAD_IN_PROGRESS, "{addon}", entry.displayName());
             return;
         }
-        String baseUrl = plugin.getConfig().getString("addons.release-base-url", AddonCatalog.DEFAULT_RELEASE_BASE_URL);
+        FileConfiguration config = plugin.getConfig();
+        String baseUrl = config.getString("addons.release-base-url", AddonCatalog.DEFAULT_RELEASE_BASE_URL);
         String version = AddonCatalog.releaseVersion(
                 plugin.getDescription().getVersion(),
-                plugin.getConfig().getString("addons.release-version")
+                config.getString("addons.release-version")
         );
         String url = AddonCatalog.downloadUrl(baseUrl, version, entry);
+        String pinnedSha256;
+        try {
+            pinnedSha256 = AddonChecksums.configuredPin(config, entry, version).orElse(null);
+        } catch (IOException badPin) {
+            inFlight.remove(entry.key());
+            plugin.getMessageManager().send(sender, Messages.ADDON_DOWNLOAD_FAILED,
+                    "{addon}", entry.displayName(), "{reason}", badPin.getMessage());
+            return;
+        }
         Path dir = addonsDir();
         plugin.getMessageManager().send(sender, Messages.ADDON_DOWNLOAD_STARTED,
                 "{addon}", entry.displayName(), "{version}", version);
@@ -317,7 +470,7 @@ public final class AddonManager {
             io.execute(() -> {
                 DownloadOutcome outcome;
                 try {
-                    outcome = downloadAndInstallSync(dir, entry, version, url, downloader);
+                    outcome = downloadAndInstallSync(dir, entry, version, baseUrl, url, pinnedSha256, bundledChecksums, downloader);
                 } finally {
                     inFlight.remove(entry.key());
                 }

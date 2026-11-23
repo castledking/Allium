@@ -60,6 +60,81 @@ public final class AlliumApiService implements AlliumApi, Listener {
     /** Classes whose presence in an addon's own jar means it shaded the API. */
     static final List<Class<?>> API_PROBES = List.of(AlliumApi.class, CommandSpec.class, TaskScheduler.class);
 
+    /**
+     * Static preflight result for an addon jar before Bukkit loads it or {@link AddonManager} installs it.
+     */
+    public record JarPreflight(
+            @Nullable YamlConfiguration meta,
+            @Nullable String name,
+            @Nullable String version,
+            @Nullable String mainClass,
+            @Nullable AddonVerdict verdict,
+            @Nullable String error
+    ) {
+        public boolean accepted() {
+            return error == null && verdict != null && verdict.status() == AddonVerdict.Status.ACCEPTED;
+        }
+    }
+
+    /**
+     * Validates a candidate addon jar on disk using the same compatibility, shading, and descriptor
+     * checks enforced at runtime before loading or installing it.
+     */
+    public static JarPreflight preflightJar(Path jarPath) {
+        try (JarFile jar = new JarFile(jarPath.toFile())) {
+            JarEntry pluginEntry = jar.getJarEntry("plugin.yml");
+            if (pluginEntry == null) {
+                return new JarPreflight(null, null, null, null, null, "missing plugin.yml");
+            }
+            YamlConfiguration meta = new YamlConfiguration();
+            try (InputStream in = jar.getInputStream(pluginEntry);
+                 InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                meta.load(reader);
+            } catch (Exception badYaml) {
+                return new JarPreflight(null, null, null, null, null, "invalid plugin.yml (" + badYaml.getMessage() + ")");
+            }
+            String name = trimToNull(meta.getString("name"));
+            if (name == null) {
+                return new JarPreflight(meta, null, null, null, null, "plugin.yml has no name");
+            }
+            String version = trimToNull(meta.getString("version"));
+            String mainClass = trimToNull(meta.getString("main"));
+            String declared = trimToNull(meta.getString("allium-api"));
+            List<String> shaded = shadedApiClassesInJar(jar);
+            AddonVerdict verdict = AddonVerdict.evaluate(name, declared, API_VERSION, shaded, false);
+            if (verdict.refused()) {
+                return new JarPreflight(meta, name, version, mainClass, verdict, verdict.message());
+            }
+            if (verdict.status() == AddonVerdict.Status.NOT_AN_ADDON) {
+                return new JarPreflight(meta, name, version, mainClass, verdict, "missing allium-api declaration in plugin.yml");
+            }
+            String packEntry = trimToNull(meta.getString("allium-pack"));
+            if (packEntry != null) {
+                JarEntry pack = jar.getJarEntry(packEntry);
+                if (pack == null || pack.isDirectory()) {
+                    return new JarPreflight(meta, name, version, mainClass, verdict,
+                            "plugin.yml declares allium-pack '" + packEntry + "' which is missing from the jar");
+                }
+            }
+            return new JarPreflight(meta, name, version, mainClass, verdict, null);
+        } catch (IOException | RuntimeException corrupt) {
+            String reason = corrupt.getMessage() == null ? corrupt.getClass().getSimpleName() : corrupt.getMessage();
+            return new JarPreflight(null, null, null, null, null, "corrupt or unreadable jar (" + reason + ")");
+        }
+    }
+
+    /** API probe classes physically bundled inside a jar before a classloader is ever created. */
+    static List<String> shadedApiClassesInJar(JarFile jar) {
+        List<String> shaded = new ArrayList<>();
+        for (Class<?> probe : API_PROBES) {
+            String entryName = probe.getName().replace('.', '/') + ".class";
+            if (jar.getJarEntry(entryName) != null) {
+                shaded.add(probe.getName());
+            }
+        }
+        return shaded;
+    }
+
     private final PluginStart allium;
     private final Map<String, AddonVerdict> verdicts = new ConcurrentHashMap<>();
     private final Map<String, AddonSession> sessions = new ConcurrentHashMap<>();
@@ -123,17 +198,23 @@ public final class AlliumApiService implements AlliumApi, Listener {
             return;
         }
 
+        var preflights = new java.util.LinkedHashMap<Path, JarPreflight>();
         var metadata = new java.util.LinkedHashMap<Path, YamlConfiguration>();
-        jars.forEach(jar -> metadata.put(jar, readJarPluginYml(jar)));
+        for (Path jar : jars) {
+            JarPreflight preflight = preflightJar(jar);
+            preflights.put(jar, preflight);
+            metadata.put(jar, preflight.meta());
+        }
         PluginManager pm = allium.getServer().getPluginManager();
         for (Path jarPath : orderAddons(metadata)) {
             String fileName = jarPath.getFileName().toString();
-            YamlConfiguration meta = metadata.get(jarPath);
-            if (meta == null) {
-                allium.logger().warning("Ignoring " + fileName + " in plugins/Allium/addons/: missing a valid plugin.yml.");
+            JarPreflight preflight = preflights.get(jarPath);
+            if (preflight == null || preflight.meta() == null) {
+                allium.logger().warning("Ignoring " + fileName + " in plugins/Allium/addons/: "
+                        + (preflight == null ? "missing a valid plugin.yml." : preflight.error() + "."));
                 continue;
             }
-            String name = trimToNull(meta.getString("name"));
+            String name = preflight.name();
             if (name == null) {
                 allium.logger().warning("Ignoring " + fileName + " in plugins/Allium/addons/: plugin.yml has no name.");
                 continue;
@@ -144,16 +225,19 @@ public final class AlliumApiService implements AlliumApi, Listener {
                         + " is false in config.yml (run /allium addon enable " + AddonCatalog.configKey(name) + " and restart to enable).");
                 continue;
             }
-            String declared = trimToNull(meta.getString("allium-api"));
-            if (declared == null) {
+            AddonVerdict preCheck = preflight.verdict();
+            if (preCheck != null && preCheck.refused()) {
+                verdicts.putIfAbsent(name, preCheck);
+                allium.logger().severe("Refusing addon " + name + " (" + fileName + "): " + preCheck.message());
+                continue;
+            }
+            if (preCheck == null || preCheck.status() == AddonVerdict.Status.NOT_AN_ADDON) {
                 allium.logger().warning("Ignoring " + name + " (" + fileName + ") in plugins/Allium/addons/: "
                         + "missing allium-api declaration in plugin.yml.");
                 continue;
             }
-            AddonVerdict preCheck = AddonVerdict.evaluate(name, declared, API_VERSION, List.of(), false);
-            if (preCheck.refused()) {
-                verdicts.putIfAbsent(name, preCheck);
-                allium.logger().severe("Refusing addon " + name + " (" + fileName + "): " + preCheck.message());
+            if (!preflight.accepted()) {
+                allium.logger().severe("Refusing addon " + name + " (" + fileName + "): " + preflight.error());
                 continue;
             }
             if (pm.getPlugin(name) != null) {
@@ -227,20 +311,6 @@ public final class AlliumApiService implements AlliumApi, Listener {
             }
         }
         ordered.add(path);
-    }
-
-    private static YamlConfiguration readJarPluginYml(Path jarPath) {
-        try (JarFile jar = new JarFile(jarPath.toFile())) {
-            JarEntry entry = jar.getJarEntry("plugin.yml");
-            if (entry == null) {
-                return null;
-            }
-            try (InputStream in = jar.getInputStream(entry)) {
-                return YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
-            }
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     @Nullable

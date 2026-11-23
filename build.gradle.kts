@@ -1,5 +1,8 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.attributes.java.TargetJvmVersion
+import org.gradle.jvm.tasks.Jar
+import java.security.MessageDigest
+import java.util.HexFormat
 
 plugins {
     java
@@ -270,10 +273,51 @@ tasks {
         from("pack/manifest.json") { into("pack") }
     }
 
+    val addonChecksumOutput = layout.buildDirectory.file("generated/addon-checksums/addon-checksums.txt")
+    val officialAddonProjects = listOf(
+        ":addons:crops",
+        ":addons:curios",
+        ":addons:ores",
+        ":addons:partylocator",
+        ":addons:spawnercraft"
+    )
+    officialAddonProjects.forEach { evaluationDependsOn(it) }
+    val addonChecksums by registering {
+        group = "build"
+        description = "Generates SHA-256 checksums for official addon jars embedded in Allium.jar"
+        val jarTasks = officialAddonProjects.map { project(it).tasks.named<Jar>("jar") }
+        dependsOn(jarTasks)
+        val jarFiles = jarTasks.map { it.flatMap { jarTask -> jarTask.archiveFile } }
+        inputs.files(jarFiles)
+        outputs.file(addonChecksumOutput)
+        doLast {
+            val outFile = addonChecksumOutput.get().asFile
+            outFile.parentFile.mkdirs()
+            val lines = jarFiles.map { it.get().asFile }.sortedBy { it.name }.map { jar ->
+                val md = MessageDigest.getInstance("SHA-256")
+                jar.inputStream().use { input ->
+                    val buf = ByteArray(16384)
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n <= 0) break
+                        md.update(buf, 0, n)
+                    }
+                }
+                val hex = HexFormat.of().formatHex(md.digest())
+                "$hex  ${jar.name}"
+            }
+            outFile.writeText(lines.joinToString("\n", postfix = "\n"), Charsets.UTF_8)
+        }
+    }
+
     shadowJar {
         archiveBaseName.set("Allium")
         archiveClassifier.set("")
         archiveVersion.set("")
+        dependsOn(addonChecksums)
+        from(addonChecksumOutput) {
+            into("META-INF/allium")
+        }
         providerSources.forEach { from(sourceSets[it].output) }
         hookSources.forEach { from(sourceSets[it].output) }
         paperSources.forEach { from(sourceSets[it].output) }

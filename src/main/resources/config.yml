@@ -230,9 +230,13 @@ resource-pack:
 # downloaded automatically from GitHub Releases on startup.
 addons:
   auto-download: false
+  # Must use HTTPS. Custom mirrors require pinned SHA-256 digests under addons.checksums
+  # unless the requested release is already pinned in Allium's bundled checksum manifest.
   release-base-url: 'https://github.com/castledking/Allium/releases/download'
   # Leave empty to match this Allium plugin version (e.g. 1.0.0 -> tag v1.0.0).
   release-version: ''
+  # Optional trusted SHA-256 hex digests keyed by addon key (e.g. curios: '<64-hex>').
+  checksums: {}
   enabled:
     crops: false
     curios: false

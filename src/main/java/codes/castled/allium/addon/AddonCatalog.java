@@ -16,6 +16,7 @@ import java.util.Optional;
 public final class AddonCatalog {
 
     public static final String DEFAULT_RELEASE_BASE_URL = "https://github.com/castledking/Allium/releases/download";
+    public static final String CHECKSUMS_FILE = "SHA256SUMS.txt";
 
     public record Entry(String key, String displayName, String description, List<String> aliases) {
         public String jarFileName(String version) {
@@ -74,16 +75,37 @@ public final class AddonCatalog {
         return clean.isEmpty() ? "1.0.0" : clean;
     }
 
+    /** Normalizes a release base URL, falling back to {@link #DEFAULT_RELEASE_BASE_URL} when blank. */
+    public static String normalizeBaseUrl(@Nullable String baseUrl) {
+        String base = (baseUrl == null || baseUrl.isBlank()) ? DEFAULT_RELEASE_BASE_URL : baseUrl.trim();
+        while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        return base;
+    }
+
+    /** Returns whether {@code baseUrl} points to the official GitHub Releases origin. */
+    public static boolean isOfficialReleaseBase(@Nullable String baseUrl) {
+        return normalizeBaseUrl(baseUrl).equalsIgnoreCase(normalizeBaseUrl(DEFAULT_RELEASE_BASE_URL));
+    }
+
     /**
      * Builds the GitHub Releases download URL, e.g.
      * {@code https://github.com/castledking/Allium/releases/download/v1.0.0/Addon-Curios-1.0.0.jar}.
      */
     public static String downloadUrl(@Nullable String baseUrl, String version, Entry entry) {
-        String base = (baseUrl == null || baseUrl.isBlank()) ? DEFAULT_RELEASE_BASE_URL : baseUrl.trim();
-        while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        String base = normalizeBaseUrl(baseUrl);
         String tag = version.startsWith("v") || version.startsWith("V") ? version : "v" + version;
         String cleanVersion = version.startsWith("v") || version.startsWith("V") ? version.substring(1) : version;
         return base + "/" + tag + "/" + entry.jarFileName(cleanVersion);
+    }
+
+    /**
+     * Builds the release SHA-256 manifest URL, e.g.
+     * {@code https://github.com/castledking/Allium/releases/download/v1.0.0/SHA256SUMS.txt}.
+     */
+    public static String checksumsUrl(@Nullable String baseUrl, String version) {
+        String base = normalizeBaseUrl(baseUrl);
+        String tag = version.startsWith("v") || version.startsWith("V") ? version : "v" + version;
+        return base + "/" + tag + "/" + CHECKSUMS_FILE;
     }
 
     /**

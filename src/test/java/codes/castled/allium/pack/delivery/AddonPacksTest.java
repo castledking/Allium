@@ -133,4 +133,87 @@ class AddonPacksTest {
         assertEquals(1, warns.size());
         assertTrue(warns.get(0).contains("invalid resource-pack.delivery"));
     }
+
+    @Test
+    void reconcilesStaleAddonMixerExportsAcrossModeSwitchesAndRemovalWhilePreservingForeignZips() throws Exception {
+        Path plugins = tempDir.resolve("plugins-reconcile");
+        Path dataFolder = plugins.resolve("Allium");
+        Path addons = dataFolder.resolve("addons");
+        Path mixer = plugins.resolve("ResourcePackManager/mixer");
+        Files.createDirectories(mixer);
+
+        Path foreignZip = mixer.resolve("Foreign_resource_pack.zip");
+        byte[] foreignBytes = miniPack("Foreign", "assets/foreign/a.json", "{}");
+        Files.write(foreignZip, foreignBytes);
+
+        byte[] curiosPack = miniPack("Curios", "assets/curios/models/item/c.json", "{}");
+        Path curiosJar = addons.resolve("Addon-Curios.jar");
+        writeAddonJar(curiosJar,
+                "name: Curios\nallium-api: '^1.1'\nallium-pack: curios-pack.zip\n",
+                "resource-pack:\n  delivery: rspm\n",
+                "curios-pack.zip", curiosPack);
+
+        YamlConfiguration cfg = new YamlConfiguration();
+        cfg.set("owner", "none");
+        cfg.set("rpm-export.mixer-directory", "ResourcePackManager/mixer");
+        cfg.set("rpm-export.dry-run", false);
+        ResourcePackSettings settings = ResourcePackSettings.parse(cfg);
+
+        List<String> infos = new ArrayList<>();
+        List<String> warns = new ArrayList<>();
+        PackExport.Logs logs = new PackExport.Logs(infos::add, warns::add);
+
+        // 1. Export Curios to RPM mixer -> WRITTEN.
+        var first = AddonPacks.exportRspm(dataFolder, plugins, settings, AddonPacks.discover(dataFolder, logs), logs);
+        assertEquals(PackExport.ExportStatus.WRITTEN, first.status());
+        Path exportedCurios = mixer.resolve("Curios_resource_pack.zip");
+        assertTrue(Files.isRegularFile(exportedCurios));
+        assertArrayEquals(curiosPack, Files.readAllBytes(exportedCurios));
+
+        // 2. Re-running with identical pack -> UNCHANGED.
+        var unchanged = AddonPacks.exportRspm(dataFolder, plugins, settings, AddonPacks.discover(dataFolder, logs), logs);
+        assertEquals(PackExport.ExportStatus.UNCHANGED, unchanged.status());
+        assertTrue(unchanged.removedStale().isEmpty());
+
+        // 3. Switch Curios delivery from rspm -> allium: stale Curios_resource_pack.zip is removed, foreign ZIP preserved.
+        Files.createDirectories(plugins.resolve("Curios"));
+        Files.writeString(plugins.resolve("Curios/config.yml"), "resource-pack:\n  delivery: allium\n");
+        var switchedToAllium = AddonPacks.exportRspm(dataFolder, plugins, settings, AddonPacks.discover(dataFolder, logs), logs);
+        assertFalse(Files.exists(exportedCurios), "stale Curios mixer ZIP must be removed when switched to allium");
+        assertEquals(1, switchedToAllium.removedStale().size());
+        assertArrayEquals(foreignBytes, Files.readAllBytes(foreignZip), "foreign ZIP must be preserved");
+
+        // 4. Switch back to rspm, then switch to none -> removed again.
+        Files.writeString(plugins.resolve("Curios/config.yml"), "resource-pack:\n  delivery: rspm\n");
+        assertEquals(PackExport.ExportStatus.WRITTEN,
+                AddonPacks.exportRspm(dataFolder, plugins, settings, AddonPacks.discover(dataFolder, logs), logs).status());
+        assertTrue(Files.isRegularFile(exportedCurios));
+
+        Files.writeString(plugins.resolve("Curios/config.yml"), "resource-pack:\n  delivery: none\n");
+        var switchedToNone = AddonPacks.exportRspm(dataFolder, plugins, settings, AddonPacks.discover(dataFolder, logs), logs);
+        assertFalse(Files.exists(exportedCurios), "stale Curios mixer ZIP must be removed when switched to none");
+        assertEquals(1, switchedToNone.removedStale().size());
+
+        // 5. Re-export, then remove the addon jar completely -> removed on reconciliation.
+        Files.writeString(plugins.resolve("Curios/config.yml"), "resource-pack:\n  delivery: rspm\n");
+        assertEquals(PackExport.ExportStatus.WRITTEN,
+                AddonPacks.exportRspm(dataFolder, plugins, settings, AddonPacks.discover(dataFolder, logs), logs).status());
+        assertTrue(Files.isRegularFile(exportedCurios));
+
+        Files.delete(curiosJar);
+        var removedAddon = AddonPacks.exportRspm(dataFolder, plugins, settings, AddonPacks.discover(dataFolder, logs), logs);
+        assertFalse(Files.exists(exportedCurios), "stale Curios mixer ZIP must be removed when addon jar is removed");
+        assertEquals(1, removedAddon.removedStale().size());
+        assertArrayEquals(foreignBytes, Files.readAllBytes(foreignZip), "foreign ZIP must still be preserved");
+
+        // 6. Missing mixer directory returns MISSING_DIRECTORY when RSPM packs exist.
+        Path missingPlugins = tempDir.resolve("plugins-missing");
+        Path missingData = missingPlugins.resolve("Allium");
+        writeAddonJar(missingData.resolve("addons/Addon-Curios.jar"),
+                "name: Curios\nallium-api: '^1.1'\nallium-pack: curios-pack.zip\n",
+                "resource-pack:\n  delivery: rspm\n",
+                "curios-pack.zip", curiosPack);
+        var missingResult = AddonPacks.exportRspm(missingData, missingPlugins, settings, AddonPacks.discover(missingData, logs), logs);
+        assertEquals(PackExport.ExportStatus.MISSING_DIRECTORY, missingResult.status());
+    }
 }

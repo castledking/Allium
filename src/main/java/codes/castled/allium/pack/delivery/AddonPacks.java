@@ -61,6 +61,17 @@ public final class AddonPacks {
     public record Discovered(String addonName, Mode mode, byte[] zipBytes) {
     }
 
+    public record RspmExportResult(
+            PackExport.ExportStatus status,
+            java.util.Map<Path, String> exported,
+            List<Path> removedStale
+    ) {
+        public RspmExportResult {
+            exported = exported == null ? java.util.Map.of() : java.util.Map.copyOf(exported);
+            removedStale = removedStale == null ? List.of() : List.copyOf(removedStale);
+        }
+    }
+
     private AddonPacks() {
     }
 
@@ -164,11 +175,18 @@ public final class AddonPacks {
         }
     }
 
-    /** Exports every {@link Mode#RSPM} contribution into ResourcePackManager's mixer directory. */
-    public static void exportRspm(Path pluginsFolder, ResourcePackSettings settings, List<Discovered> discovered, PackExport.Logs logs) {
+    /** Exports every {@link Mode#RSPM} contribution into ResourcePackManager's mixer directory and reconciles stale addon exports. */
+    public static RspmExportResult exportRspm(Path pluginsFolder, ResourcePackSettings settings, List<Discovered> discovered, PackExport.Logs logs) {
+        return exportRspm(pluginsFolder.resolve("Allium"), pluginsFolder, settings, discovered, logs);
+    }
+
+    public static RspmExportResult exportRspm(Path dataFolder, Path pluginsFolder, ResourcePackSettings settings,
+                                              List<Discovered> discovered, PackExport.Logs logs) {
         List<Discovered> rspmPacks = discovered.stream().filter(d -> d.mode() == Mode.RSPM).toList();
         if (rspmPacks.isEmpty()) {
-            return;
+            List<Path> removed = PackExportLedger.reconcile(dataFolder, PackExportLedger.SCOPE_ADDON, java.util.Map.of(), settings.dryRun(), logs);
+            return new RspmExportResult(settings.dryRun() ? PackExport.ExportStatus.DRY_RUN : PackExport.ExportStatus.UNCHANGED,
+                    java.util.Map.of(), removed);
         }
         Path configured = Path.of(settings.mixerDirectory());
         Path mixer = configured.isAbsolute() ? configured : pluginsFolder.resolve(configured);
@@ -176,8 +194,11 @@ public final class AddonPacks {
         if (!Files.isDirectory(mixer)) {
             logs.warning().accept(prefix + "ResourcePackManager's mixer directory " + mixer
                     + " does not exist; could not export addon pack(s). Install ResourcePackManager or set resource-pack.rpm-export.mixer-directory.");
-            return;
+            return new RspmExportResult(PackExport.ExportStatus.MISSING_DIRECTORY, java.util.Map.of(), List.of());
         }
+        java.util.Map<Path, String> exported = new java.util.LinkedHashMap<>();
+        boolean anyWritten = false;
+        boolean anyFailed = false;
         for (Discovered d : rspmPacks) {
             String safeName = d.addonName().replaceAll("[^A-Za-z0-9._-]", "_");
             Path target = mixer.resolve(safeName + "_resource_pack.zip");
@@ -186,16 +207,28 @@ public final class AddonPacks {
                 if (settings.dryRun()) {
                     logs.info().accept(prefix + "Would write addon " + d.addonName() + " pack to " + target
                             + " (" + d.zipBytes().length + " bytes, SHA-1 " + sha1 + "). Nothing was written.");
+                    exported.put(target, sha1);
                     continue;
                 }
                 boolean changed = PackExport.writeIfDifferent(target, d.zipBytes());
+                if (changed) anyWritten = true;
+                exported.put(target, sha1);
                 logs.info().accept((changed ? "Wrote" : "Kept") + " addon " + d.addonName()
                         + " resource pack in ResourcePackManager's mixer: " + target
                         + " (" + d.zipBytes().length + " bytes, SHA-1 " + sha1 + ").");
             } catch (IOException e) {
+                anyFailed = true;
                 logs.warning().accept("Could not write addon " + d.addonName() + " pack to " + target + ": " + e.getMessage());
             }
         }
+        if (settings.dryRun()) {
+            PackExportLedger.reconcile(dataFolder, PackExportLedger.SCOPE_ADDON, exported, true, logs);
+            return new RspmExportResult(PackExport.ExportStatus.DRY_RUN, exported, List.of());
+        }
+        List<Path> removed = anyFailed
+                ? List.of()
+                : PackExportLedger.reconcile(dataFolder, PackExportLedger.SCOPE_ADDON, exported, false, logs);
+        return new RspmExportResult(anyWritten ? PackExport.ExportStatus.WRITTEN : PackExport.ExportStatus.UNCHANGED, exported, removed);
     }
 
     private static Mode readDeliveryMode(@Nullable Path pluginsDir, Path addonsDir, JarFile jar, String addonName,

@@ -235,11 +235,20 @@ public final class PluginStart extends JavaPlugin {
         }
     }
 
-    private codes.castled.allium.pack.delivery.PackSource exportPack(ResourcePackSettings settings,
-                                                                     codes.castled.allium.pack.delivery.PackExport.Logs logs) {
-        var addonPacks = codes.castled.allium.pack.delivery.AddonPacks.discover(getDataFolder().toPath(), getConfig(), logs);
-        codes.castled.allium.pack.delivery.AddonPacks.exportRspm(getDataFolder().toPath().getParent(), settings, addonPacks, logs);
+    private record ExportPackOutcome(
+            @org.jetbrains.annotations.Nullable codes.castled.allium.pack.delivery.PackSource source,
+            @org.jetbrains.annotations.Nullable codes.castled.allium.pack.delivery.PackExport.ExportResult coreMixer,
+            codes.castled.allium.pack.delivery.AddonPacks.RspmExportResult addonMixer
+    ) {}
+
+    private ExportPackOutcome exportPack(ResourcePackSettings settings,
+                                         codes.castled.allium.pack.delivery.PackExport.Logs logs) {
+        Path dataFolder = getDataFolder().toPath();
+        Path pluginsFolder = dataFolder.getParent();
+        var addonPacks = codes.castled.allium.pack.delivery.AddonPacks.discover(dataFolder, getConfig(), logs);
+        var addonResult = codes.castled.allium.pack.delivery.AddonPacks.exportRspm(dataFolder, pluginsFolder, settings, addonPacks, logs);
         if (settings.owner() == ResourcePackSettings.Owner.NONE) {
+            codes.castled.allium.pack.delivery.PackExport.reconcileUnusedCoreMixerExports(dataFolder, settings.dryRun(), logs);
             cleanupHintPack(settings, logs);
             var waiting = addonPacks.stream()
                     .filter(d -> d.mode() == codes.castled.allium.pack.delivery.AddonPacks.Mode.ALLIUM)
@@ -249,28 +258,30 @@ public final class PluginStart extends JavaPlugin {
                 logs.warning().accept("Addon pack(s) " + waiting + " requested resource-pack.delivery: allium, "
                         + "but Allium's resource-pack.owner is none. Set Allium's owner to standalone/rpm-export or set the addon's delivery to rspm.");
             }
-            return null;
+            return new ExportPackOutcome(null, null, addonResult);
         }
         codes.castled.allium.pack.delivery.PackSource source = packSource(settings, logs, addonPacks);
         if (source == null) {
-            return null;
+            return new ExportPackOutcome(null, null, addonResult);
         }
         if (source.override()) {
             logs.info().accept("Delivering " + source.source() + " (SHA-1 " + source.sha1() + ") instead of the bundled core pack.");
         }
+        codes.castled.allium.pack.delivery.PackExport.ExportResult coreMixer = null;
         try {
             if (settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
-                codes.castled.allium.pack.delivery.PackExport.exportStandalone(getDataFolder().toPath(), source.bytes(), logs);
+                codes.castled.allium.pack.delivery.PackExport.exportStandalone(dataFolder, source.bytes(), logs);
+                codes.castled.allium.pack.delivery.PackExport.reconcileUnusedCoreMixerExports(dataFolder, settings.dryRun(), logs);
             } else {
                 AssetManifest manifest = CoreItems.loadManifest(getClassLoader());
-                codes.castled.allium.pack.delivery.PackExport.exportToMixer(getDataFolder().toPath().getParent(), settings, source.bytes(),
+                coreMixer = codes.castled.allium.pack.delivery.PackExport.exportToMixer(dataFolder, pluginsFolder, settings, source.bytes(),
                         manifest.tools(), logs);
             }
             if (settings.owner() != ResourcePackSettings.Owner.RPM_EXPORT || !settings.dryRun()) cleanupHintPack(settings, logs);
         } catch (IOException | RuntimeException e) {
             logs.warning().accept("Could not export the core resource pack for " + settings.owner().configName() + ": " + e);
         }
-        return source;
+        return new ExportPackOutcome(source, coreMixer, addonResult);
     }
 
     private void cleanupHintPack(ResourcePackSettings settings, codes.castled.allium.pack.delivery.PackExport.Logs logs) {
@@ -503,14 +514,14 @@ public final class PluginStart extends JavaPlugin {
             reply.accept(message);
             return;
         }
-        var source = exportPack(settings, new codes.castled.allium.pack.delivery.PackExport.Logs(logger::info, logger::warning));
+        var outcome = exportPack(settings, new codes.castled.allium.pack.delivery.PackExport.Logs(logger::info, logger::warning));
         if (settings.owner() == ResourcePackSettings.Owner.RPM_EXPORT) {
-            reply.accept("Re-exported the core resource pack to ResourcePackManager's mixer; reload ResourcePackManager to merge it.");
-        } else if (source != null && settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
+            reply.accept(codes.castled.allium.pack.delivery.PackExport.formatRpmReloadReply(outcome.coreMixer(), outcome.addonMixer()));
+        } else if (outcome.source() != null && settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
             if (packDelivery == null) {
-                packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, source);
+                packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, outcome.source());
                 packDelivery.enable();
-            } else packDelivery.reload(settings, source, reply);
+            } else packDelivery.reload(settings, outcome.source(), reply);
         }
     }
 

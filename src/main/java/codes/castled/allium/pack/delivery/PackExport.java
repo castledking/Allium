@@ -3,6 +3,7 @@ package codes.castled.allium.pack.delivery;
 import codes.castled.allium.pack.AssetManifest;
 import codes.castled.allium.pack.MixerAudit;
 import codes.castled.allium.pack.ResourcePackSettings;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,6 +13,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -28,6 +30,24 @@ public final class PackExport {
     }
 
     public record Logs(Consumer<String> info, Consumer<String> warning) {
+    }
+
+    public enum ExportStatus {
+        MISSING_DIRECTORY,
+        DRY_RUN,
+        UNCHANGED,
+        WRITTEN
+    }
+
+    public record ExportResult(
+            ExportStatus status,
+            @Nullable Path target,
+            @Nullable String sha1,
+            List<Path> removedStale
+    ) {
+        public ExportResult {
+            removedStale = removedStale == null ? List.of() : List.copyOf(removedStale);
+        }
     }
 
     public static String sha1(byte[] data) {
@@ -52,17 +72,22 @@ public final class PackExport {
 
     /**
      * rpm-export: audits the mixer for packs that share Allium's carrier files, then writes
-     * {@code settings.mixerFileName()} (unless it is a dry run).
+     * {@code settings.mixerFileName()} (unless it is a dry run) and reconciles stale core exports.
      */
-    public static void exportToMixer(Path pluginsFolder, ResourcePackSettings settings, byte[] pack, List<AssetManifest.Tool> tools,
-                                     Logs logs) throws IOException {
+    public static ExportResult exportToMixer(Path pluginsFolder, ResourcePackSettings settings, byte[] pack, List<AssetManifest.Tool> tools,
+                                             Logs logs) throws IOException {
+        return exportToMixer(pluginsFolder.resolve("Allium"), pluginsFolder, settings, pack, tools, logs);
+    }
+
+    public static ExportResult exportToMixer(Path dataFolder, Path pluginsFolder, ResourcePackSettings settings, byte[] pack,
+                                             List<AssetManifest.Tool> tools, Logs logs) throws IOException {
         Path configured = Path.of(settings.mixerDirectory());
         Path mixer = configured.isAbsolute() ? configured : pluginsFolder.resolve(configured);
         String prefix = settings.dryRun() ? "[rpm-export dry run] " : "";
         if (!Files.isDirectory(mixer)) {
             logs.warning().accept(prefix + "ResourcePackManager's mixer directory " + mixer + " does not exist; nothing was exported. "
                     + "Install ResourcePackManager or set resource-pack.rpm-export.mixer-directory.");
-            return;
+            return new ExportResult(ExportStatus.MISSING_DIRECTORY, mixer, null, List.of());
         }
         MixerAudit.Report report = MixerAudit.audit(mixer, settings.mixerFileName(), tools);
         logs.info().accept(prefix + "Checked " + report.scanned().size() + " pack(s) in " + mixer + " for Allium's carrier files.");
@@ -86,11 +111,40 @@ public final class PackExport {
             logs.info().accept(prefix + "Would write " + target + " (" + pack.length + " bytes, SHA-1 " + sha1 + "); "
                     + (existing == null ? "no such file exists yet" : existing.equals(sha1) ? "the existing file is identical"
                     : "it would replace an existing file with SHA-1 " + existing) + ". Nothing was written.");
-            return;
+            PackExportLedger.reconcile(dataFolder, PackExportLedger.SCOPE_CORE, Map.of(target, sha1), true, logs);
+            return new ExportResult(ExportStatus.DRY_RUN, target, sha1, List.of());
         }
         boolean changed = writeIfDifferent(target, pack);
         logs.info().accept((changed ? "Wrote" : "Kept") + " the core resource pack in ResourcePackManager's mixer: " + target + " ("
                 + pack.length + " bytes, SHA-1 " + sha1 + "). ResourcePackManager merges and sends it; Allium does not send it itself.");
+        List<Path> removed = PackExportLedger.reconcile(dataFolder, PackExportLedger.SCOPE_CORE, Map.of(target, sha1), false, logs);
+        return new ExportResult(changed ? ExportStatus.WRITTEN : ExportStatus.UNCHANGED, target, sha1, removed);
+    }
+
+    /** Removes any previously exported Allium core mixer ZIP when Allium is no longer in {@code rpm-export} mode. */
+    public static List<Path> reconcileUnusedCoreMixerExports(Path dataFolder, boolean dryRun, Logs logs) {
+        return PackExportLedger.reconcile(dataFolder, PackExportLedger.SCOPE_CORE, Map.of(), dryRun, logs);
+    }
+
+    /** Formats a truthful operator reload reply for {@code rpm-export} based on explicit export results. */
+    public static String formatRpmReloadReply(
+            @Nullable ExportResult coreMixer,
+            @Nullable AddonPacks.RspmExportResult addonMixer
+    ) {
+        if (coreMixer == null) {
+            return "Could not export the core resource pack to ResourcePackManager's mixer; check the server log.";
+        }
+        int removed = coreMixer.removedStale().size() + (addonMixer == null ? 0 : addonMixer.removedStale().size());
+        String removedSuffix = removed == 0 ? "" : " Removed " + removed + " stale Allium export(s).";
+        return switch (coreMixer.status()) {
+            case MISSING_DIRECTORY -> "ResourcePackManager's mixer directory " + coreMixer.target()
+                    + " does not exist; nothing was exported.";
+            case DRY_RUN -> "Dry run only: audited ResourcePackManager's mixer; nothing was written.";
+            case UNCHANGED -> "Core resource pack in ResourcePackManager's mixer is already up to date." + removedSuffix
+                    + (removed > 0 ? " Reload ResourcePackManager to merge it." : "");
+            case WRITTEN -> "Re-exported the core resource pack to ResourcePackManager's mixer; reload ResourcePackManager to merge it."
+                    + removedSuffix;
+        };
     }
 
     /** Atomically replaces {@code target} with {@code data} unless it already holds exactly that. */
@@ -99,8 +153,16 @@ public final class PackExport {
             return false;
         }
         Path tmp = target.resolveSibling(target.getFileName() + ".allium-tmp");
-        Files.write(tmp, data);
-        Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        return true;
+        try {
+            Files.write(tmp, data);
+            try {
+                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException atomicUnsupported) {
+                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return true;
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
     }
 }

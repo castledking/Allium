@@ -1,4 +1,4 @@
-[![Allium](https://castled.codes/assets/alliumv2-banner.png?v=3)](https://github.com/castledking/Allium/wiki)
+[![Allium](https://repository-images.githubusercontent.com/1241676082/584be25a-5a5a-4322-a1f8-5d595b62bd59)](https://github.com/castledking/Allium/wiki)
 
 <h1 align="center">The modular essentials, economy, moderation &amp; addon suite for modern Minecraft servers</h1>
 

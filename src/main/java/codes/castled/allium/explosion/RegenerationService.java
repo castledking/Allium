@@ -210,6 +210,13 @@ public final class RegenerationService implements Listener {
     }
 
     /** Re-reads {@code explosions.yml}; on an error the previous settings stay and false is returned. */
+    /** Reads and validates {@code explosions.yml} without mutating live settings. */
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
+            throws IOException, InvalidConfigurationException {
+        ExplosionSettings next = ExplosionSettings.read(read(), plugin.logger()::warning);
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> settings = next);
+    }
+
     public boolean reload() {
         try {
             settings = ExplosionSettings.read(read(), plugin.logger()::warning);

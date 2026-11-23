@@ -63,6 +63,12 @@ public final class WorthModule extends AbstractModule {
         return sell;
     }
 
+    /** Prepares and validates {@code worth.yml} without mutating live prices or permissions. */
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
+            throws java.io.IOException, org.bukkit.configuration.InvalidConfigurationException {
+        return worth == null ? codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {}) : worth.prepareReload();
+    }
+
     /** Re-reads {@code worth.yml}; false keeps the previous prices. */
     public boolean reloadSettings() {
         return worth == null || worth.reload();

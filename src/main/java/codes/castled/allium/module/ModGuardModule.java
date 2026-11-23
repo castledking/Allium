@@ -41,6 +41,16 @@ public final class ModGuardModule extends AbstractModule {
         modGuard = null;
     }
 
+    /** Prepares and validates {@code modguard.yml} without mutating live ModGuard state. */
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
+            throws IOException, InvalidConfigurationException {
+        if (modGuard == null) return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {});
+        var files = new ModGuardFiles(plugin.getDataFolder().toPath(), plugin::getResource, plugin.logger()::info,
+                relative -> LegacyTidy.source(plugin.getDataFolder().toPath(), relative));
+        var next = files.load();
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> modGuard.reload(next));
+    }
+
     /** Re-reads modguard.yml. False while the module is off. */
     public boolean reloadSettings() throws IOException, InvalidConfigurationException {
         if (modGuard == null) return false;

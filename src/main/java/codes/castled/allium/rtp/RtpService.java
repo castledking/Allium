@@ -117,6 +117,17 @@ public final class RtpService implements Listener {
         searching.clear();
     }
 
+    /** Reads and validates {@code rtp.yml} without publishing it yet. */
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
+            throws IOException, InvalidConfigurationException {
+        Configuration next = new Configuration(RtpSettings.read(read()));
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {
+            synchronized (this) {
+                configuration = next;
+            }
+        });
+    }
+
     /** Re-reads {@code rtp.yml}; on an error the previous settings stay and false is returned. */
     public synchronized boolean reload() {
         try {

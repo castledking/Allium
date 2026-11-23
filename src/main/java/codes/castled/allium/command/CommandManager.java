@@ -121,10 +121,37 @@ public final class CommandManager {
      * Immediately blocks newly disabled families at dispatch time and logs clear diagnostics
      * when a server restart is required to yield or reclaim Bukkit {@code CommandMap} labels.
      */
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        List<String> rawDisabled = candidateRoot != null
+                ? candidateRoot.getStringList("disabled-commands")
+                : List.of();
+        return () -> {
+            CommandFamilyPolicy.PolicyEvaluation eval = applyReloadList(rawDisabled);
+            List<codes.castled.allium.config.ReloadReport.Entry> notices = new java.util.ArrayList<>();
+            if (!eval.newlyDisabledRequiringRestartToYield().isEmpty()) {
+                notices.add(new codes.castled.allium.config.ReloadReport.Entry(
+                        "commands",
+                        "newly disabled " + eval.newlyDisabledRequiringRestartToYield()
+                                + " blocked immediately; restart required to yield CommandMap labels"));
+            }
+            if (!eval.newlyEnabledRequiringRestartToClaim().isEmpty()) {
+                notices.add(new codes.castled.allium.config.ReloadReport.Entry(
+                        "commands",
+                        "re-enabled " + eval.newlyEnabledRequiringRestartToClaim()
+                                + " require a server restart to re-register CommandMap labels"));
+            }
+            return notices;
+        };
+    }
+
     public CommandFamilyPolicy.PolicyEvaluation reload() {
         List<String> rawDisabled = plugin.getConfig() != null
                 ? plugin.getConfig().getStringList("disabled-commands")
                 : List.of();
+        return applyReloadList(rawDisabled);
+    }
+
+    private CommandFamilyPolicy.PolicyEvaluation applyReloadList(List<String> rawDisabled) {
         CommandFamilyPolicy.PolicyEvaluation eval = familyPolicy.applyReload(rawDisabled);
         logUnknownDisabledEntries(eval.unknownEntries());
 

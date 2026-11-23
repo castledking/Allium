@@ -86,7 +86,12 @@ public final class ChatService implements Listener,AutoCloseable {
     public ChatHistory history(){return history;}
     public ChatSettings settings(){return settings;}
     public boolean ownsChat(){return !closed&&settings.enabled();}
-    public void reload(){ChatSettings replacement=ChatSettings.read(plugin.getConfig());settings=replacement;for(Session s:sessions.values()){s.decorationsAt=0;if(!replacement.channels().containsKey(s.write))tell(s.player,Messages.CHAT_WRITE_CHANNEL_REMOVED);}}
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        ChatSettings replacement = ChatSettings.read(candidateRoot);
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> applySettings(replacement));
+    }
+    public void reload(){applySettings(ChatSettings.read(plugin.getConfig()));}
+    private void applySettings(ChatSettings replacement){settings=replacement;for(Session s:sessions.values()){s.decorationsAt=0;if(!replacement.channels().containsKey(s.write))tell(s.player,Messages.CHAT_WRITE_CHANNEL_REMOVED);}}
     @EventHandler public void joined(PlayerJoinEvent e){join(e.getPlayer());}
     private void join(Player p){
         var session=new Session(p);sessions.put(p.getUniqueId(),session);refresh.add(session);

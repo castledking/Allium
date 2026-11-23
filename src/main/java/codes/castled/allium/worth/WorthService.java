@@ -64,6 +64,13 @@ public final class WorthService {
         unregisterMultipliers();
     }
 
+    /** Reads and validates {@code worth.yml} without publishing prices or permissions yet. */
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
+            throws IOException, InvalidConfigurationException {
+        WorthSettings next = parse(read());
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> install(next));
+    }
+
     /** Re-reads {@code worth.yml}; on an error the previous prices stay and false is returned. */
     public boolean reload() {
         try {

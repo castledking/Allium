@@ -202,6 +202,21 @@ public final class LanguageManager {
         locales = new LocaleSnapshot(locale, loaded);
     }
 
+    public void validateLocaleFiles(FileConfiguration candidateConfig) throws IOException, org.bukkit.configuration.InvalidConfigurationException {
+        String active = candidateConfig != null ? candidateConfig.getString("settings.locale", DEFAULT_LOCALE) : DEFAULT_LOCALE;
+        validateLocaleFile(DEFAULT_LOCALE);
+        if (active != null && !active.isBlank() && !DEFAULT_LOCALE.equals(active)) {
+            validateLocaleFile(active);
+        }
+    }
+
+    private void validateLocaleFile(String locale) throws IOException, org.bukkit.configuration.InvalidConfigurationException {
+        File file = new File(plugin.getDataFolder(), LANG_DIR + "/" + locale + ".yml");
+        if (!file.isFile()) return;
+        YamlConfiguration check = new YamlConfiguration();
+        check.load(file);
+    }
+
     public void reload() {
         load();
     }

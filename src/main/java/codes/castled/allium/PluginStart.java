@@ -327,73 +327,169 @@ public final class PluginStart extends JavaPlugin {
     }
 
     /**
-     * {@code /allium reload}: reloads config.yml, the lang files, disabled-commands dispatch and the
-     * preference defaults (including {@code sounds.messages.fallback-volume}), and re-applies
-     * resource-pack settings. It re-exports the pack and, for standalone, re-checks the
-     * hosted file. Owner changes and module settings take effect on restart.
+     * {@code /allium reload}: prepares and validates every candidate configuration before publishing
+     * any live changes, then returns a truthful report of what was applied, rejected, or requires a
+     * server restart.
      *
-     * @param reply receives progress lines for the command sender
+     * @param reply receives progress and summary lines for the command sender
      * @return whether the reload succeeded
      */
     public boolean reloadConfiguration(java.util.function.Consumer<String> reply) {
-        try {
-            configManager.reloadAll();
-            if (autoRestart != null && !autoRestart.reload()) throw new IllegalArgumentException("invalid autorestart.yml");
-            if(moduleManager.getModule("economy") instanceof codes.castled.allium.module.EconomyModule economy
-                    && economy.isEnabled() && economy.runtime()!=null && !economy.runtime().reload())
-                throw new IllegalArgumentException("invalid/busy economy settings; previous settings retained");
-            languageManager.reload();
-            if(moduleManager.getModule("items") instanceof codes.castled.allium.module.ItemsModule items && items.isEnabled())items.reloadDatabase();
-            commandManager.reload();
-            if (moduleManager.getModule("preferences") instanceof codes.castled.allium.module.PreferencesModule preferences
-                    && preferences.isEnabled()) {
-                logger.info("Preference defaults reloaded: " + preferences.reloadDefaults());
+        return reloadConfigurationReport(reply).success();
+    }
+
+    /** Two-phase reload returning structured applied, rejected, and restart-required diagnostics. */
+    public codes.castled.allium.config.ReloadReport reloadConfigurationReport(java.util.function.Consumer<String> reply) {
+        var rootSource = new codes.castled.allium.config.ReloadCoordinator.RootConfigSource() {
+            @Override
+            public org.bukkit.configuration.file.FileConfiguration prepareRoot() throws Exception {
+                return configManager.prepareRootConfig();
             }
-            if (moduleManager.getModule("teleport") instanceof codes.castled.allium.module.TeleportModule tp && tp.isEnabled()
-                    && !tp.teleports().reloadSettings()) throw new IllegalArgumentException("invalid teleport configuration; previous teleport settings retained");
-            if (moduleManager.getModule("travel") instanceof codes.castled.allium.module.TravelModule travel && travel.isEnabled()
-                    && !travel.travel().reloadSettings()) throw new IllegalArgumentException("invalid homes/warps configuration; previous settings retained");
-            if (moduleManager.getModule("kits") instanceof codes.castled.allium.module.KitsModule kits && kits.isEnabled()
-                    && kits.kits() != null) {
-                kits.kits().reloadDefinitions();
+
+            @Override
+            public java.util.List<codes.castled.allium.config.ReloadReport.Entry> publishRoot(
+                    org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+                var previous = getConfig();
+                configManager.reloadAll();
+                return codes.castled.allium.config.ConfigManager.detectRestartOnlyChanges(previous, getConfig());
             }
-            if (moduleManager.getModule("moderation") instanceof codes.castled.allium.module.ModerationModule mod && mod.isEnabled()
-                    && mod.moderation() != null) {
-                mod.moderation().reloadSettings();
-                if (mod.discipline() != null) mod.discipline().reloadSettings();
-                if (mod.inspection() != null) mod.inspection().reloadSettings();
-                mod.reloadFeeds();
-            }
-            if (moduleManager.getModule("info") instanceof codes.castled.allium.module.PlayerInfoModule info && info.isEnabled()
-                    && info.info() != null) {
-                info.info().reloadSettings();
-            }
-            if(moduleManager.getModule("signs") instanceof codes.castled.allium.module.SignsModule signs && signs.isEnabled())signs.reloadSettings();
-            if(moduleManager.getModule("chat") instanceof codes.castled.allium.module.ChatModule chat && chat.isEnabled())chat.chat().reload();
-            if(moduleManager.getModule("hide") instanceof codes.castled.allium.module.HideModule hide && hide.isEnabled())hide.hide().reload();
-            if(moduleManager.getModule("creative") instanceof codes.castled.allium.module.CreativeModule creative && creative.isEnabled())creative.reloadSettings();
-            if(moduleManager.getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule essentials && essentials.isEnabled())essentials.reloadSettings();
-            if(moduleManager.getModule("tools") instanceof codes.castled.allium.module.ToolsModule tools && tools.isEnabled())tools.reloadPowerTools();
-            if(moduleManager.getModule("restore") instanceof codes.castled.allium.module.RestoreModule restoreModule && restoreModule.isEnabled())restoreModule.reloadSettings();
-            if(moduleManager.getModule("rtp") instanceof codes.castled.allium.module.RtpModule rtpModule && rtpModule.isEnabled()
-                    && !rtpModule.reloadSettings()) throw new IllegalArgumentException("invalid rtp.yml; previous random teleport settings retained");
-            if(moduleManager.getModule("worth") instanceof codes.castled.allium.module.WorthModule worthModule && worthModule.isEnabled()
-                    && !worthModule.reloadSettings()) throw new IllegalArgumentException("invalid worth.yml; previous prices retained");
-            if(moduleManager.getModule("explosions") instanceof codes.castled.allium.module.ExplosionsModule explosions && explosions.isEnabled()
-                    && !explosions.reloadSettings()) throw new IllegalArgumentException("invalid explosions.yml; previous explosion settings retained");
-            if (moduleManager.getModule("modguard") instanceof codes.castled.allium.module.ModGuardModule modguard && modguard.isEnabled()) {
-                try {
-                    modguard.reloadSettings();
-                } catch (IOException | org.bukkit.configuration.InvalidConfigurationException e) {
-                    throw new IllegalArgumentException("invalid modguard.yml; previous settings retained", e);
-                }
-            }
-            refreshResourcePack(reply);
-            return true;
-        } catch (RuntimeException e) {
-            logger.severe("Reload failed: " + e);
-            return false;
+        };
+
+        java.util.List<codes.castled.allium.config.ReloadCoordinator.Participant> participants = new java.util.ArrayList<>();
+        if (autoRestart != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("autorestart",
+                    autoRestart::prepareReload));
         }
+        if (moduleManager != null && moduleManager.getModule("economy") instanceof codes.castled.allium.module.EconomyModule economy
+                && economy.isEnabled() && economy.runtime() != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("economy",
+                    economy.runtime()::prepareReload));
+        }
+        if (languageManager != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("language", candidate -> {
+                languageManager.validateLocaleFiles(candidate);
+                return codes.castled.allium.config.ReloadCoordinator.Prepared.of(languageManager::reload);
+            }));
+        }
+        if (moduleManager != null && moduleManager.getModule("items") instanceof codes.castled.allium.module.ItemsModule items
+                && items.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("items",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(items::reloadDatabase)));
+        }
+        if (commandManager != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("commands",
+                    commandManager::prepareReload));
+        }
+        if (moduleManager != null && moduleManager.getModule("preferences") instanceof codes.castled.allium.module.PreferencesModule preferences
+                && preferences.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("preferences",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(
+                            () -> logger.info("Preference defaults reloaded: " + preferences.reloadDefaults()))));
+        }
+        if (moduleManager != null && moduleManager.getModule("teleport") instanceof codes.castled.allium.module.TeleportModule tp
+                && tp.isEnabled() && tp.teleports() != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("teleport",
+                    tp.teleports()::prepareReload));
+        }
+        if (moduleManager != null && moduleManager.getModule("travel") instanceof codes.castled.allium.module.TravelModule travel
+                && travel.isEnabled() && travel.travel() != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("travel",
+                    travel.travel()::prepareReload));
+        }
+        if (moduleManager != null && moduleManager.getModule("kits") instanceof codes.castled.allium.module.KitsModule kits
+                && kits.isEnabled() && kits.kits() != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("kits",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(kits.kits()::reloadDefinitions)));
+        }
+        if (moduleManager != null && moduleManager.getModule("moderation") instanceof codes.castled.allium.module.ModerationModule mod
+                && mod.isEnabled() && mod.moderation() != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("moderation",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {
+                        mod.moderation().reloadSettings();
+                        if (mod.discipline() != null) mod.discipline().reloadSettings();
+                        if (mod.inspection() != null) mod.inspection().reloadSettings();
+                        mod.reloadFeeds();
+                    })));
+        }
+        if (moduleManager != null && moduleManager.getModule("info") instanceof codes.castled.allium.module.PlayerInfoModule info
+                && info.isEnabled() && info.info() != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("info",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(info.info()::reloadSettings)));
+        }
+        if (moduleManager != null && moduleManager.getModule("signs") instanceof codes.castled.allium.module.SignsModule signs
+                && signs.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("signs",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(signs::reloadSettings)));
+        }
+        if (moduleManager != null && moduleManager.getModule("chat") instanceof codes.castled.allium.module.ChatModule chat
+                && chat.isEnabled() && chat.chat() != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("chat",
+                    chat.chat()::prepareReload));
+        }
+        if (moduleManager != null && moduleManager.getModule("hide") instanceof codes.castled.allium.module.HideModule hide
+                && hide.isEnabled() && hide.hide() != null) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("hide",
+                    candidate -> hide.hide().prepareReload()));
+        }
+        if (moduleManager != null && moduleManager.getModule("creative") instanceof codes.castled.allium.module.CreativeModule creative
+                && creative.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("creative",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(creative::reloadSettings)));
+        }
+        if (moduleManager != null && moduleManager.getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule essentials
+                && essentials.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("essentials",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(essentials::reloadSettings)));
+        }
+        if (moduleManager != null && moduleManager.getModule("tools") instanceof codes.castled.allium.module.ToolsModule tools
+                && tools.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("tools",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(tools::reloadPowerTools)));
+        }
+        if (moduleManager != null && moduleManager.getModule("restore") instanceof codes.castled.allium.module.RestoreModule restoreModule
+                && restoreModule.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("restore",
+                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(restoreModule::reloadSettings)));
+        }
+        if (moduleManager != null && moduleManager.getModule("rtp") instanceof codes.castled.allium.module.RtpModule rtpModule
+                && rtpModule.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("rtp",
+                    candidate -> rtpModule.prepareReload()));
+        }
+        if (moduleManager != null && moduleManager.getModule("worth") instanceof codes.castled.allium.module.WorthModule worthModule
+                && worthModule.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("worth",
+                    candidate -> worthModule.prepareReload()));
+        }
+        if (moduleManager != null && moduleManager.getModule("explosions") instanceof codes.castled.allium.module.ExplosionsModule explosions
+                && explosions.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("explosions",
+                    candidate -> explosions.prepareReload()));
+        }
+        if (moduleManager != null && moduleManager.getModule("modguard") instanceof codes.castled.allium.module.ModGuardModule modguard
+                && modguard.isEnabled()) {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("modguard",
+                    candidate -> modguard.prepareReload()));
+        }
+        participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("resource-pack", candidate -> {
+            var parsed = ResourcePackSettings.parse(candidate.getConfigurationSection("resource-pack"));
+            return () -> {
+                if (parsed.owner() != startupPackOwner) {
+                    String message = "resource-pack.owner changed from " + startupPackOwner.configName()
+                            + " to " + parsed.owner().configName() + "; owner changes take effect after a restart.";
+                    logger.warning(message);
+                    return java.util.List.of(new codes.castled.allium.config.ReloadReport.Entry("resource-pack", message));
+                }
+                refreshResourcePack(reply);
+                return java.util.List.of();
+            };
+        }));
+
+        var report = codes.castled.allium.config.ReloadCoordinator.execute(rootSource, participants, reply, logger::warning);
+        if (!report.success()) {
+            logger.severe("Reload failed: " + report.rejected());
+        }
+        return report;
     }
 
     /** Re-exports or updates the single delivered pack after settings change. Runs on the server thread. */

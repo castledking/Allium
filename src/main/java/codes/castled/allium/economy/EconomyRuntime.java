@@ -151,15 +151,19 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
     }
 
     public static EconomySettings readSettings(PluginStart plugin){
-        var c=plugin.getConfig();
-        TaxSettings tax=readTaxSettings(plugin);
-        return new EconomySettings(decimal(plugin,"economy.starting-balance","100.00"),decimal(plugin,"economy.min-money","0.00"),
-                decimal(plugin,"economy.max-money","10000000000000.00"),decimal(plugin,"economy.minimum-pay-amount","0.01"),
+        return readSettings(plugin.getConfig(),msg->{if(plugin.logger()!=null)plugin.logger().warning(msg);});
+    }
+    public static EconomySettings readSettings(org.bukkit.configuration.file.FileConfiguration c,java.util.function.Consumer<String> warnLog){
+        TaxSettings tax=readTaxSettings(c,warnLog);
+        return new EconomySettings(decimal(c,warnLog,"economy.starting-balance","100.00"),decimal(c,warnLog,"economy.min-money","0.00"),
+                decimal(c,warnLog,"economy.max-money","10000000000000.00"),decimal(c,warnLog,"economy.minimum-pay-amount","0.01"),
                 c.getBoolean("economy.offline-pay-enabled",true),c.getBoolean("economy.pay-excludes-ignore-list",true),
                 c.getBoolean("preferences.defaults.accept-payments",true),tax);
     }
     public static TaxSettings readTaxSettings(PluginStart plugin){
-        var c=plugin.getConfig();
+        return readTaxSettings(plugin.getConfig(),msg->{if(plugin.logger()!=null)plugin.logger().warning(msg);});
+    }
+    public static TaxSettings readTaxSettings(org.bukkit.configuration.file.FileConfiguration c,java.util.function.Consumer<String> warnLog){
         String base=c.isConfigurationSection("economy.tax")?"economy.tax":c.isConfigurationSection("tax")?"tax":"economy.tax";
         boolean enabled=c.getBoolean(base+".enabled",true);
         java.math.BigDecimal percent=percent(c.get(base+".percent","5"),base+".percent");
@@ -169,7 +173,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         boolean applyPay=c.getBoolean(base+".apply-to.pay",true);
         boolean applyCheques=c.getBoolean(base+".apply-to.cheques",false);
         java.math.RoundingMode roundMode=TaxSettings.parseRoundMode(c.getString(base+".round-mode","nearest"));
-        Money minimumTax=decimal(plugin,base+".minimum-tax","0.00");
+        Money minimumTax=decimal(c,warnLog,base+".minimum-tax","0.00");
         return new TaxSettings(enabled,percent,accountName,applyPay,applyCheques,roundMode,minimumTax,accountInBaltop,accountPayable);
     }
     private static java.math.BigDecimal percent(Object value,String path){
@@ -189,12 +193,12 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
      * {@code starting-balance: 100.0}) is read by its written digits instead of disabling the whole
      * economy, with a warning to quote it.
      */
-    private static Money decimal(PluginStart plugin,String path,String fallback){
-        Object value=plugin.getConfig().get(path,fallback);
+    private static Money decimal(org.bukkit.configuration.file.FileConfiguration config,java.util.function.Consumer<String> warnLog,String path,String fallback){
+        Object value=config.get(path,fallback);
         if(value instanceof String text)return Money.parse(text.trim(),true);
         if(value instanceof Integer||value instanceof Long||value instanceof Double||value instanceof Float||value instanceof java.math.BigDecimal){
             String text=new java.math.BigDecimal(value.toString()).toPlainString();
-            plugin.logger().warning(path+" is a number ("+value+"); read as "+text+". Quote it ('"+text+"') so it stays exact.");
+            warnLog.accept(path+" is a number ("+value+"); read as "+text+". Quote it ('"+text+"') so it stays exact.");
             return Money.parse(text,true);
         }
         throw new IllegalArgumentException(path+" must be a decimal amount such as '100.00'");
@@ -644,9 +648,19 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
             if(!combined.isEmpty())TextSender.send(sender," "+combined);
         }
     }
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot){
+        EconomySettings next=readSettings(candidateRoot,msg->{if(plugin.logger()!=null)plugin.logger().warning(msg);});
+        return ()->{
+            if(!installReloaded(next))throw new IllegalStateException("economy worker busy or unavailable; previous settings retained");
+            return List.of();
+        };
+    }
     public boolean reload(){
         EconomySettings next;
         try{next=readSettings(plugin);}catch(RuntimeException error){plugin.logger().warning("Invalid economy settings: "+error.getMessage());return false;}
+        return installReloaded(next);
+    }
+    private boolean installReloaded(EconomySettings next){
         reloading=true;
         try{
             // No accepted work is dropped; its commit finishes before the settings installation barrier.

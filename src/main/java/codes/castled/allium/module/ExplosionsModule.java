@@ -69,6 +69,12 @@ public final class ExplosionsModule extends AbstractModule {
         return regeneration;
     }
 
+    /** Prepares and validates {@code explosions.yml} without mutating live settings. */
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
+            throws java.io.IOException, org.bukkit.configuration.InvalidConfigurationException {
+        return regeneration == null ? codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {}) : regeneration.prepareReload();
+    }
+
     /** Re-reads {@code explosions.yml}; false keeps the previous settings. */
     public boolean reloadSettings() {
         return regeneration == null || regeneration.reload();

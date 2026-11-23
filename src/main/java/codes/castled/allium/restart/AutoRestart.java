@@ -82,29 +82,39 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
         };
     }
 
-    public boolean reload() {
-        try {
-            var path = plugin.getDataFolder().toPath().resolve("autorestart.yml");
-            var config = new YamlConfiguration();
-            if (Files.exists(path)) {
-                config.load(path.toFile());
-            } else {
-                try (var reader = new InputStreamReader(plugin.getResource("autorestart.yml"), StandardCharsets.UTF_8)) {
-                    config.load(reader);
-                }
-                ConfigurationSection legacy = plugin.getConfig().getConfigurationSection("auto-restart");
-                if (legacy != null) {
-                    for (String key : legacy.getKeys(false)) config.set(key, legacy.get(key));
-                }
-                RestartSettings.read(config);
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration rootConfig)
+            throws IOException, InvalidConfigurationException {
+        var path = plugin.getDataFolder().toPath().resolve("autorestart.yml");
+        var config = new YamlConfiguration();
+        boolean missingFile = !Files.exists(path);
+        if (!missingFile) {
+            config.load(path.toFile());
+        } else {
+            try (var reader = new InputStreamReader(plugin.getResource("autorestart.yml"), StandardCharsets.UTF_8)) {
+                config.load(reader);
+            }
+            ConfigurationSection legacy = rootConfig == null ? null : rootConfig.getConfigurationSection("auto-restart");
+            if (legacy != null) {
+                for (String key : legacy.getKeys(false)) config.set(key, legacy.get(key));
+            }
+        }
+        RestartSettings updated = RestartSettings.read(config);
+        return () -> {
+            if (missingFile) {
                 plugin.saveResource("autorestart.yml", false);
                 YamlFiles.normalize(path, config);
             }
-            RestartSettings updated = RestartSettings.read(config);
             settings = updated;
             scheduleDaily();
+            return List.of();
+        };
+    }
+
+    public boolean reload() {
+        try {
+            prepareReload(plugin.getConfig()).publish();
             return true;
-        } catch (IOException | InvalidConfigurationException | RuntimeException error) {
+        } catch (Exception error) {
             plugin.logger().warning("Could not load autorestart.yml: " + error.getMessage());
             return false;
         }

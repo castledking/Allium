@@ -84,7 +84,10 @@ public final class TravelService implements Listener {
     private record Confirmation(boolean warp,String name,long revision,SavedLocation point,long expires) {}
     private record Settings(int base,Map<UUID,Integer> overrides,long homeConfirm,long warpConfirm,boolean compassTowardsHome) {
         static Settings read(PluginStart p) {
-            var c=p.getConfig();Map<UUID,Integer> overrides=new HashMap<>();
+            return read(p.getConfig());
+        }
+        static Settings read(org.bukkit.configuration.file.FileConfiguration c) {
+            Map<UUID,Integer> overrides=new HashMap<>();
             for(String parent:List.of("homes","warps"))if(c.isSet(parent)&&!(c.get(parent) instanceof org.bukkit.configuration.ConfigurationSection))
                 throw new IllegalArgumentException(parent+" must be a configuration section");
             var section=c.getConfigurationSection("homes.staff-overrides");
@@ -116,6 +119,14 @@ public final class TravelService implements Listener {
         closed=true;HandlerList.unregisterAll(this);sessions.clear();io.shutdown();
         try{if(!io.awaitTermination(3,TimeUnit.SECONDS))plugin.logger().severe("Travel shutdown timed out; outstanding SQL tasks="+io.getQueue().size());}
         catch(InterruptedException e){Thread.currentThread().interrupt();}
+    }
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        Settings next = Settings.read(candidateRoot);
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {
+            settings = next;
+            settingsEpoch++;
+            sessions.values().forEach(s -> { s.confirmation = null; updateCompass(s); });
+        });
     }
     public boolean reloadSettings(){try{settings=Settings.read(plugin);settingsEpoch++;sessions.values().forEach(s->{s.confirmation=null;updateCompass(s);});return true;}
         catch(IllegalArgumentException e){plugin.logger().warning("Kept previous travel settings: "+e.getMessage());return false;}}

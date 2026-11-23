@@ -203,6 +203,49 @@ public final class ConfigManager {
         loadAll();
     }
 
+    /**
+     * Reads and parses {@code config.yml} into a candidate {@link YamlConfiguration} with bundled
+     * defaults attached, without mutating {@code plugin.getConfig()} or writing to disk.
+     */
+    public YamlConfiguration prepareRootConfig() throws IOException, InvalidConfigurationException {
+        Path file = plugin.getDataFolder().toPath().resolve("config.yml");
+        YamlConfiguration candidate = new YamlConfiguration();
+        if (Files.isRegularFile(file)) {
+            candidate.load(file.toFile());
+        }
+        if (plugin.getResource("config.yml") != null) {
+            candidate.setDefaults(bundled("config.yml"));
+        }
+        return candidate;
+    }
+
+    /** Reports restart-only root settings whose values differ between {@code previous} and {@code next}. */
+    public static java.util.List<ReloadReport.Entry> detectRestartOnlyChanges(
+            FileConfiguration previous,
+            FileConfiguration next
+    ) {
+        if (previous == null || next == null) return java.util.List.of();
+        java.util.List<ReloadReport.Entry> notices = new java.util.ArrayList<>();
+        if (sectionChanged(previous, next, "database")) {
+            notices.add(new ReloadReport.Entry("database", "database backend changes take effect after a server restart"));
+        }
+        if (sectionChanged(previous, next, "modules")) {
+            notices.add(new ReloadReport.Entry("modules", "module enable/disable changes take effect after a server restart"));
+        }
+        if (sectionChanged(previous, next, "addons.enabled")) {
+            notices.add(new ReloadReport.Entry("addons", "addon enable/disable changes take effect after a server restart"));
+        }
+        return notices;
+    }
+
+    private static boolean sectionChanged(FileConfiguration previous, FileConfiguration next, String path) {
+        var before = previous.getConfigurationSection(path);
+        var after = next.getConfigurationSection(path);
+        if (before == null && after == null) return false;
+        if (before == null || after == null) return true;
+        return !before.getValues(true).equals(after.getValues(true));
+    }
+
     public BackupManager getBackupManager() {
         return backupManager;
     }

@@ -154,6 +154,10 @@ public final class TeleportService implements Listener {
         }catch(InterruptedException e){Thread.currentThread().interrupt();}
         for(HistoryWrite write:pendingWrites.values())plugin.logger().severe("Teleport history not saved at shutdown: owner="+write.owner()+" command="+write.command()+" origin="+write.origin()+" cooldowns="+write.cooldowns());
     }
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        TeleportSettings next = TeleportSettings.read(candidateRoot);
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> settings = next);
+    }
     public boolean reloadSettings() {
         try { settings=TeleportSettings.read(plugin.getConfig());return true; }
         catch(IllegalArgumentException e){plugin.logger().warning("Kept previous teleport settings: "+e.getMessage());return false;}

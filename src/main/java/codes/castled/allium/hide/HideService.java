@@ -271,6 +271,28 @@ public final class HideService implements Listener,AutoCloseable {
     @EventHandler public void quit(PlayerQuitEvent event){UUID id=event.getPlayer().getUniqueId();viewers.remove(id);pollTracked.remove(id);pollInFlight.remove(id);refreshQueued.remove(id);HidePacketHooks currentPackets=packets;if(currentPackets!=null)currentPackets.forget(id);}
     @EventHandler public void pluginEnabled(PluginEnableEvent event){if(event.getPlugin().getName().equalsIgnoreCase("packetevents")){installPackets();for(Player p:List.copyOf(plugin.getServer().getOnlinePlayers()))queueRefresh(p);}}
     @EventHandler public void pluginDisabled(PluginDisableEvent event){if(event.getPlugin().getName().equalsIgnoreCase("packetevents")&&packets!=null){packets.close();packets=null;for(Player p:List.copyOf(plugin.getServer().getOnlinePlayers()))queueRefresh(p);}}
+    /**
+     * Reads and validates {@code hide.yml} without mutating live hide state or scheduling async work.
+     * Used by {@code /allium reload} so invalid hide settings reject the reload before any changes publish.
+     */
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
+            throws IOException, org.bukkit.configuration.InvalidConfigurationException {
+        if (updating.get()) {
+            throw new IllegalStateException("another hide reload or edit is currently in progress");
+        }
+        YamlConfiguration next = read();
+        HideSettings prepared = prepare(next);
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {
+            if (closed) return;
+            config = next;
+            settings = prepared;
+            refreshLabels();
+            for (Player p : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+                refreshOnOwner(p, true, () -> {});
+            }
+            logCapability();
+        });
+    }
     public void reload(){update(null,null);}
     private void update(CommandSender actor,Consumer<YamlConfiguration> edit){
         if(!updating.compareAndSet(false,true)){if(actor!=null)send(actor,Messages.HIDE_BUSY);return;}

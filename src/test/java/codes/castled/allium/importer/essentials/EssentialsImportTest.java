@@ -2,7 +2,9 @@ package codes.castled.allium.importer.essentials;
 
 import codes.castled.allium.chat.ChatRepository;
 import codes.castled.allium.economy.EconomyEngine;
+import codes.castled.allium.economy.EconomyRequest;
 import codes.castled.allium.economy.EconomyResult;
+import codes.castled.allium.economy.EconomySchema;
 import codes.castled.allium.economy.EconomySettings;
 import codes.castled.allium.economy.Money;
 import codes.castled.allium.importer.ImportLedger;
@@ -21,12 +23,17 @@ import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.travel.TravelRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -95,7 +102,7 @@ class EssentialsImportTest {
 
         var snapshot = EssentialsSnapshot.read(source);
         var plan = EssentialsImportPlan.build(snapshot, (id, name) -> Optional.of(new ResolvedWorld(worldId, "world")),
-                Destination.empty(), 1_800_000_000_000L, new Money(0), new Money(Money.HARD));
+                Destination.empty(), 1_800_000_000_000L, EconomySettings.defaults());
         var blocked = plan.records().stream().filter(record -> record.status() == Status.BLOCKED).toList();
         assertTrue(blocked.stream().anyMatch(r -> r.domain() == Domain.WARP
                 && r.reason().equals("warps/bad.yml: x must be a finite number")));
@@ -121,6 +128,97 @@ class EssentialsImportTest {
         assertEquals(-24.5, valid.z());
         assertEquals(0.0f, valid.yaw());
         assertEquals(0.0f, valid.pitch());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void balanceImportRecoversFromAnInterruptedCommit(boolean commitBeforeFailure, @TempDir Path dir) throws Exception {
+        UUID player = UUID.randomUUID();
+        Path userdata = Files.createDirectory(dir.resolve("userdata"));
+        Files.writeString(userdata.resolve(player + ".yml"), "money: '1234.56'\n");
+        ConnectionSource db = () -> DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("allium.db"));
+        ImportLedger ledger = new ImportLedger(db, SqlDialect.SQLITE, System::currentTimeMillis);
+        ledger.migrate();
+        var settings = EconomySettings.defaults();
+        var engine = new EconomyEngine(db, settings, (c, from, to) -> true, (c, operation) -> {
+            assertTrue(ledger.hash(c, EssentialsImportPlan.SOURCE, Domain.BALANCE.id(), player.toString()).isPresent());
+            if (commitBeforeFailure) {
+                try (var statement = c.createStatement()) { statement.execute("COMMIT"); }
+            }
+            throw new SQLException("injected commit interruption");
+        });
+        var plan = balancePlan(dir, settings);
+        assertEquals(1L, plan.counts(Domain.BALANCE).get(Status.IMPORT));
+
+        if (commitBeforeFailure) {
+            var outcome = EssentialsImportApplier.apply(plan, "interrupted", ledger, balanceTarget(engine)).get(0);
+            assertEquals(EssentialsImportApplier.Result.REPLAYED, outcome.result());
+        } else {
+            assertThrows(SQLException.class,
+                    () -> EssentialsImportApplier.apply(plan, "interrupted", ledger, balanceTarget(engine)));
+            assertInstanceOf(EconomyResult.Missing.class, engine.balance(player));
+            assertTrue(ledger.hashes(EssentialsImportPlan.SOURCE).isEmpty());
+        }
+
+        var reopened = new EconomyEngine(db, settings, (c, from, to) -> true);
+        var retry = EssentialsImportApplier.apply(balancePlan(dir, settings), "retry", ledger, balanceTarget(reopened)).get(0);
+        assertEquals(commitBeforeFailure ? EssentialsImportApplier.Result.REPLAYED : EssentialsImportApplier.Result.APPLIED,
+                retry.result());
+        assertEquals(new Money(123456), assertInstanceOf(EconomyResult.Found.class, reopened.balance(player)).book());
+        assertEquals(plan.records().get(0).payloadHash(), ledger.hashes(EssentialsImportPlan.SOURCE).get("balance:" + player));
+        try (var c = db.connection(); var statement = c.createStatement();
+             var operations = statement.executeQuery("SELECT kind, amount_minor FROM " + EconomySchema.OPERATIONS)) {
+            assertTrue(operations.next());
+            assertEquals("OPEN_IMPORTED", operations.getString("kind"));
+            assertEquals(123456L, operations.getLong("amount_minor"));
+            assertFalse(operations.next());
+        }
+    }
+
+    @Test
+    void dryRunBlocksBalancesWhenEconomyIsUnavailable(@TempDir Path dir) throws Exception {
+        Path userdata = Files.createDirectory(dir.resolve("userdata"));
+        Files.writeString(userdata.resolve(UUID.randomUUID() + ".yml"), "last-account-name: Alice\nmoney: 200\n");
+        var plan = balancePlan(dir, null);
+        assertEquals(1L, plan.counts(Domain.BALANCE).get(Status.BLOCKED));
+        assertEquals(1L, plan.counts(Domain.NAME).get(Status.IMPORT));
+        assertTrue(plan.records().stream().anyMatch(r -> r.domain() == Domain.BALANCE
+                && r.reason().equals("Allium economy is unavailable")));
+    }
+
+    @Test
+    void balanceApplyPreservesAccountsCreatedAfterReview(@TempDir Path dir) throws Exception {
+        Path userdata = Files.createDirectory(dir.resolve("userdata"));
+        UUID matching = UUID.randomUUID();
+        UUID different = UUID.randomUUID();
+        Files.writeString(userdata.resolve(matching + ".yml"), "money: 100\n");
+        Files.writeString(userdata.resolve(different + ".yml"), "money: 500\n");
+        var settings = EconomySettings.defaults();
+        var reviewed = balancePlan(dir, settings);
+        ConnectionSource db = () -> DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("allium.db"));
+        ImportLedger ledger = new ImportLedger(db, SqlDialect.SQLITE, System::currentTimeMillis);
+        ledger.migrate();
+        var engine = new EconomyEngine(db, settings, (c, from, to) -> true);
+        for (UUID id : List.of(matching, different)) {
+            var open = engine.request(UUID.randomUUID(), "test", id.toString(), EconomyRequest.Kind.OPEN,
+                    "test", id, null, settings.starting());
+            assertInstanceOf(EconomyResult.Committed.class, engine.execute(open));
+        }
+
+        var outcomes = EssentialsImportApplier.counts(EssentialsImportApplier.apply(reviewed, "apply", ledger, balanceTarget(engine)));
+        assertEquals(1L, outcomes.get(EssentialsImportApplier.Result.ADOPTED));
+        assertEquals(1L, outcomes.get(EssentialsImportApplier.Result.CONFLICT));
+        assertEquals(settings.starting(), assertInstanceOf(EconomyResult.Found.class, engine.balance(different)).book());
+        assertEquals(Set.of("balance:" + matching), ledger.hashes(EssentialsImportPlan.SOURCE).keySet());
+    }
+
+    private static EssentialsImportPlan balancePlan(Path dir, EconomySettings settings) throws Exception {
+        return EssentialsImportPlan.build(EssentialsSnapshot.read(dir), (id, name) -> Optional.empty(), Destination.empty(),
+                1_800_000_000_000L, settings);
+    }
+
+    private static EssentialsImportApplier.Targets balanceTarget(EconomyEngine engine) {
+        return new EssentialsImportApplier.Targets("test", engine, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -263,7 +361,7 @@ class EssentialsImportTest {
                         : Optional.empty();
 
         EssentialsImportPlan plan = EssentialsImportPlan.build(
-                snapshot, worlds, Destination.empty(), now, new Money(0), new Money(Money.HARD));
+                snapshot, worlds, Destination.empty(), now, economy.settings());
         assertEquals(1, plan.npcSkipped());
         assertEquals(1, plan.nonUuidFiles());
         assertEquals(1L, plan.counts(Domain.BALANCE).get(Status.IMPORT));

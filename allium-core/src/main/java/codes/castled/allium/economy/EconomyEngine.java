@@ -143,9 +143,14 @@ public final class EconomyEngine {
             SqlSavepoint savepoint=new SqlSavepoint(c);
             String rejection=null;Found a=null,b=null;
             if(!q.settings().equals(settings)&&q.kind()!=EconomyRequest.Kind.CAPTURE&&q.kind()!=EconomyRequest.Kind.RELEASE) rejection="SETTINGS_CHANGED";
-            else if(q.kind()==EconomyRequest.Kind.OPEN || q.kind()==EconomyRequest.Kind.OPEN_SYSTEM){
+            else if(q.kind()==EconomyRequest.Kind.OPEN || q.kind()==EconomyRequest.Kind.OPEN_SYSTEM
+                    || q.kind()==EconomyRequest.Kind.OPEN_IMPORTED){
                 a=read(c,q.source());
-                if(a==null){
+                boolean imported = q.kind() == EconomyRequest.Kind.OPEN_IMPORTED;
+                if (imported && a != null) rejection = "ACCOUNT_EXISTS";
+                else if (imported && q.amount().compareTo(settings.minimum()) < 0) rejection = "INSUFFICIENT_FUNDS";
+                else if (imported && q.amount().compareTo(settings.maximum()) > 0) rejection = "CAP";
+                else if(a==null){
                     long now=System.currentTimeMillis();
                     try(var s=c.prepareStatement("INSERT INTO "+EconomySchema.ACCOUNTS+" VALUES(?,?,0,0,?,?)")){
                         s.setString(1,q.source().toString());s.setLong(2,q.amount().minor());s.setLong(3,now);s.setLong(4,now);requireOne(s.executeUpdate());

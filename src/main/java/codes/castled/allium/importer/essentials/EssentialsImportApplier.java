@@ -3,6 +3,8 @@ package codes.castled.allium.importer.essentials;
 import codes.castled.allium.chat.ChatRepository;
 import codes.castled.allium.economy.EconomyEngine;
 import codes.castled.allium.economy.EconomyRequest;
+import codes.castled.allium.economy.EconomyResult;
+import codes.castled.allium.economy.EconomySchema;
 import codes.castled.allium.importer.ImportLedger;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Domain;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Record;
@@ -162,9 +164,9 @@ public final class EssentialsImportApplier {
             return null;
         });
         if (precheck != null) return precheck;
+        if (r.domain() == Domain.BALANCE) return applyBalance(r, runId, ledger, targets.economy());
 
         Result result = switch (r.domain()) {
-            case BALANCE -> applyBalance(r, targets);
             case NICKNAME -> {
                 if (r.status() == Status.PRESENT) yield Result.ADOPTED;
                 var state = targets.chat().load(r.owner());
@@ -238,35 +240,55 @@ public final class EssentialsImportApplier {
         return result;
     }
 
-    private static Result applyBalance(Record r, Targets targets) {
-        if (targets.economy() == null) return Result.SKIPPED;
-        if (r.status() == Status.PRESENT) return Result.ADOPTED;
-        EconomyEngine engine = targets.economy();
-        UUID owner = r.owner();
-        var current = engine.balance(owner);
-        if (current instanceof codes.castled.allium.economy.EconomyResult.Found found) {
-            if (found.reserved().minor() > 0) return Result.CONFLICT;
-            if (found.book().minor() == r.money().minor()) return Result.ADOPTED;
-            return Result.CONFLICT;
+    private static Result applyBalance(Record r, String runId, ImportLedger ledger, @Nullable EconomyEngine engine)
+            throws SQLException {
+        if (engine == null) throw new SQLException("Allium economy became unavailable during import");
+        if (r.status() == Status.PRESENT) return adoptBalance(r, runId, ledger);
+
+        // The import receipt identifies the payload across attempts. Each attempt gets its own economy request.
+        String source = EssentialsImportPlan.SOURCE;
+        UUID operation = UUID.randomUUID();
+        EconomyRequest request = engine.request(operation, "import:essentials", "balance:" + operation,
+                EconomyRequest.Kind.OPEN_IMPORTED, "import:essentials", r.owner(), null, r.money());
+        var mutation = engine.execute(request, c -> {
+            if (ledger.hash(c, source, r.domain().id(), r.key()).isPresent()) return false;
+            ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), Result.APPLIED.name(), runId);
+            return true;
+        });
+        if (mutation instanceof EconomyResult.Committed) return Result.APPLIED;
+        if (mutation instanceof EconomyResult.Rejected rejected) {
+            if ("ACCOUNT_EXISTS".equals(rejected.reason())) return adoptBalance(r, runId, ledger);
+            if ("SETTINGS_CHANGED".equals(rejected.reason())) throw new SQLException("Economy settings changed during import");
+            if (!"WORKFLOW_REFUSED".equals(rejected.reason())) return Result.CONFLICT;
         }
-        if (current instanceof codes.castled.allium.economy.EconomyResult.Unavailable) {
-            return Result.CONFLICT;
-        }
-        UUID openId = UUID.nameUUIDFromBytes(("essentials-open:" + owner).getBytes(StandardCharsets.UTF_8));
-        EconomyRequest openReq = engine.request(openId, "import:essentials", "essentials:open:" + owner,
-                EconomyRequest.Kind.OPEN, "import:essentials", owner, null, engine.settings().starting());
-        var opened = engine.execute(openReq);
-        if (!(opened instanceof codes.castled.allium.economy.EconomyResult.Committed)) {
-            return Result.CONFLICT;
-        }
-        if (r.money().minor() == engine.settings().starting().minor()) {
-            return Result.APPLIED;
-        }
-        UUID opId = UUID.nameUUIDFromBytes(("essentials-balance:" + owner + ":" + r.payloadHash()).getBytes(StandardCharsets.UTF_8));
-        String reqKey = "essentials:" + owner + ":" + r.payloadHash();
-        EconomyRequest req = engine.request(opId, "import:essentials", reqKey, EconomyRequest.Kind.ADMIN_SET,
-                "import:essentials", owner, null, r.money());
-        var mutation = engine.execute(req);
-        return mutation instanceof codes.castled.allium.economy.EconomyResult.Committed ? Result.APPLIED : Result.CONFLICT;
+
+        // A lost commit acknowledgment can be resolved by the receipt written with the account.
+        return ledger.transaction(c -> {
+            var recorded = ledger.hash(c, source, r.domain().id(), r.key());
+            if (recorded.isPresent()) return recorded.get().equals(r.payloadHash()) ? Result.REPLAYED : Result.CONFLICT;
+            String detail = "missing import receipt";
+            if (mutation instanceof EconomyResult.Unknown unknown) detail = unknown.diagnostic();
+            if (mutation instanceof EconomyResult.Unavailable unavailable) detail = unavailable.diagnostic();
+            throw new SQLException("Could not confirm imported balance for " + r.owner() + ": " + detail);
+        });
+    }
+
+    private static Result adoptBalance(Record r, String runId, ImportLedger ledger) throws SQLException {
+        return ledger.transaction(c -> {
+            String source = EssentialsImportPlan.SOURCE;
+            var recorded = ledger.hash(c, source, r.domain().id(), r.key());
+            if (recorded.isPresent()) return recorded.get().equals(r.payloadHash()) ? Result.REPLAYED : Result.CONFLICT;
+            try (var statement = c.prepareStatement("SELECT balance_minor, reserved_minor FROM "
+                    + EconomySchema.ACCOUNTS + " WHERE account_uuid = ?")) {
+                statement.setString(1, r.owner().toString());
+                try (var row = statement.executeQuery()) {
+                    if (!row.next() || row.getLong(1) != r.money().minor() || row.getLong(2) != 0) {
+                        return Result.CONFLICT;
+                    }
+                }
+            }
+            ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), Result.ADOPTED.name(), runId);
+            return Result.ADOPTED;
+        });
     }
 }

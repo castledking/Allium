@@ -4,7 +4,6 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.chat.ChatRepository;
 import codes.castled.allium.economy.EconomyEngine;
 import codes.castled.allium.economy.EconomySchema;
-import codes.castled.allium.economy.Money;
 import codes.castled.allium.importer.ImportLedger;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Destination;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Domain;
@@ -176,12 +175,9 @@ public final class EssentialsImportService implements Listener {
         Path dir = runDir(runId);
         long now = System.currentTimeMillis();
         EssentialsSnapshot snapshot = EssentialsSnapshot.read(settings.source());
-        Destination dest = destination(true);
         EconomyEngine econ = economyEngine();
-        Money minBal = econ != null ? econ.settings().minimum() : new Money(0);
-        Money maxBal = econ != null ? econ.settings().maximum() : new Money(Money.HARD);
         EssentialsImportPlan plan = EssentialsImportPlan.build(snapshot, worlds(settings, byName, byUuid),
-                dest, now, minBal, maxBal);
+                destination(true, econ != null), now, econ != null ? econ.settings() : null);
         Files.createDirectories(dir);
         writePlan(dir, runId, settings, plan, now);
         writeRecords(dir.resolve("records.jsonl"), plan);
@@ -237,10 +233,8 @@ public final class EssentialsImportService implements Listener {
             return;
         }
         EconomyEngine econ = economyEngine();
-        Money minBal = econ != null ? econ.settings().minimum() : new Money(0);
-        Money maxBal = econ != null ? econ.settings().maximum() : new Money(Money.HARD);
         EssentialsImportPlan plan = EssentialsImportPlan.build(snapshot, worlds(settings, byName, byUuid),
-                destination(false), reviewedAt, minBal, maxBal);
+                destination(false, econ != null), reviewedAt, econ != null ? econ.settings() : null);
         if (!plan.planSha256().equals(reviewed.get("planSha256"))) {
             tell(sender, Messages.IMPORT_ESSENTIALS_REFUSED, "{reason}", "the plan differs from " + runId + "; run a new dry run");
             return;
@@ -322,15 +316,14 @@ public final class EssentialsImportService implements Listener {
         };
     }
 
-    private Destination destination(boolean tablesMayBeMissing) throws SQLException {
+    private Destination destination(boolean tablesMayBeMissing, boolean readEconomy) throws SQLException {
         var db = plugin.getDatabaseManager();
         TravelRepository travel = new TravelRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         TeleportRepository teleports = new TeleportRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ModerationRepository moderation = new ModerationRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ImportLedger ledger = new ImportLedger(db.connectionSource(), db.dialect(), System::currentTimeMillis);
 
-        Map<UUID, ExistingAccount> balances = (!tablesMayBeMissing || exists(EconomySchema.ACCOUNTS))
-                ? readBalances() : Map.of();
+        Map<UUID, ExistingAccount> balances = readEconomy ? readBalances() : Map.of();
         var homes = (!tablesMayBeMissing || exists("allium_travel_homes")) ? travel.allHomes() : Map.<UUID, Map<String, codes.castled.allium.teleport.SavedLocation>>of();
         var warps = (!tablesMayBeMissing || exists("allium_travel_warps")) ? travel.warps() : Map.<String, codes.castled.allium.teleport.SavedLocation>of();
         Map<String, codes.castled.allium.teleport.SavedLocation> spawns = new HashMap<>();

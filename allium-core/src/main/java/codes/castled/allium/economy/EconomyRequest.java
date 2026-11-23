@@ -10,7 +10,7 @@ import java.util.UUID;
 public record EconomyRequest(UUID id, String origin, String key, Kind kind, String actor,
                              UUID source, UUID recipient, Money amount, EconomySettings settings,
                              UUID taxAccount, Money taxAmount) {
-    public enum Kind { OPEN, OPEN_SYSTEM, PAY, TRANSFER, DEPOSIT, WITHDRAW, ADMIN_SET, RESERVE, CAPTURE, RELEASE, SPEND }
+    public enum Kind { OPEN, OPEN_SYSTEM, OPEN_IMPORTED, PAY, TRANSFER, DEPOSIT, WITHDRAW, ADMIN_SET, RESERVE, CAPTURE, RELEASE, SPEND }
     public EconomyRequest(UUID id, String origin, String key, Kind kind, String actor,
                           UUID source, UUID recipient, Money amount, EconomySettings settings) {
         this(id, origin, key, kind, actor, source, recipient, amount, settings, null, new Money(0));
@@ -23,7 +23,7 @@ public record EconomyRequest(UUID id, String origin, String key, Kind kind, Stri
         boolean twoParty = kind==Kind.PAY || kind==Kind.TRANSFER;
         if (twoParty && (recipient==null || recipient.equals(source))) throw new IllegalArgumentException("distinct transfer recipient required");
         if (!twoParty && recipient!=null) throw new IllegalArgumentException("unexpected recipient");
-        if (kind!=Kind.ADMIN_SET && kind!=Kind.OPEN && kind!=Kind.OPEN_SYSTEM) amount.positive();
+        if (kind!=Kind.ADMIN_SET && kind!=Kind.OPEN && kind!=Kind.OPEN_SYSTEM && kind!=Kind.OPEN_IMPORTED) amount.positive();
         if (kind==Kind.OPEN && !amount.equals(settings.starting())) throw new IllegalArgumentException("OPEN grant must match admitted settings");
         if (kind==Kind.OPEN_SYSTEM && amount.minor()!=0) throw new IllegalArgumentException("OPEN_SYSTEM grant must be zero");
         if (taxAmount.minor()<0) throw new IllegalArgumentException("tax amount must not be negative");

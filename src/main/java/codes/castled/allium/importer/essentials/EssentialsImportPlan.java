@@ -1,5 +1,6 @@
 package codes.castled.allium.importer.essentials;
 
+import codes.castled.allium.economy.EconomySettings;
 import codes.castled.allium.economy.Money;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan.ResolvedWorld;
 import codes.castled.allium.moderation.JailAssignment;
@@ -157,8 +158,7 @@ public record EssentialsImportPlan(
             Worlds worlds,
             Destination dest,
             long nowMillis,
-            Money minBalance,
-            Money maxBalance
+            @Nullable EconomySettings balanceSettings
     ) {
         List<Record> records = new ArrayList<>();
         List<String> notes = new ArrayList<>(snapshot.notes());
@@ -324,7 +324,7 @@ public record EssentialsImportPlan(
                 records.add(Record.simple(Domain.BALANCE, uuid.toString(), Status.SKIPPED,
                         "missing money field (not treated as zero)", hash("money:missing:" + uuid), uuid));
             } else {
-                planBalance(user, dest, minBalance, maxBalance, records);
+                planBalance(user, dest, balanceSettings, records);
             }
 
             // 3c. Homes
@@ -411,7 +411,7 @@ public record EssentialsImportPlan(
     }
 
     private static void planBalance(EssentialsSnapshot.UserFile user, Destination dest,
-                                    Money minBalance, Money maxBalance, List<Record> records) {
+                                    @Nullable EconomySettings balanceSettings, List<Record> records) {
         UUID uuid = user.uuid();
         String key = uuid.toString();
         Money parsed;
@@ -422,7 +422,8 @@ public record EssentialsImportPlan(
                     "malformed money value: " + user.moneyRaw(), hash("money:bad:" + uuid + ":" + user.moneyRaw()), uuid));
             return;
         }
-        if (parsed.compareTo(minBalance) < 0 || parsed.compareTo(maxBalance) > 0) {
+        if (balanceSettings != null && (parsed.compareTo(balanceSettings.minimum()) < 0
+                || parsed.compareTo(balanceSettings.maximum()) > 0)) {
             records.add(Record.simple(Domain.BALANCE, key, Status.BLOCKED,
                     "balance " + user.moneyRaw() + " outside configured bounds", hash("money:bounds:" + uuid + ":" + parsed.minor()), uuid));
             return;
@@ -432,7 +433,10 @@ public record EssentialsImportPlan(
         String reason = "already imported";
         if (st == null) {
             ExistingAccount existing = dest.balances().get(uuid);
-            if (existing == null) {
+            if (balanceSettings == null) {
+                st = Status.BLOCKED;
+                reason = "Allium economy is unavailable";
+            } else if (existing == null) {
                 st = Status.IMPORT;
                 reason = "new balance";
             } else if (existing.reservedMinor() > 0) {

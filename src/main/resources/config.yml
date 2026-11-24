@@ -299,6 +299,10 @@ end-gateway:
 teleport:
   # Use the saved home named "home" on death before falling back to the configured spawn.
   respawn-at-home: true
+  # Opt-in newcomer onboarding: send brand-new players to the group/default spawn on their first join.
+  first-join-spawn: false
+  # Opt-in: teleport players to the group/default spawn whenever they join.
+  spawn-on-join: false
   # Default teleport warmup/delay in seconds (0 = instant). Per-type overrides live under warmups.
   warmup-seconds: 3
   # Per-type teleport warmup/delay overrides in seconds (0 = instant; -1 or omitted = use warmup-seconds).
@@ -365,6 +369,9 @@ homes:
   staff-overrides: {}
 warps:
   overwrite-confirm-seconds: 30
+kits:
+  # Opt-in starter kit granted automatically once on a player's first join (leave empty to disable).
+  first-join-kit: ''
 
 # Staff feeds in Discord: moderation actions, staff notes, /report and /escalate.
 # Each feed posts to its "channel" through DiscordSRV when DiscordSRV is running (a channel ID, or
@@ -592,6 +599,10 @@ join-and-quit-messages:
   quit:
     enabled: true
     format: '&e%name% &7has left the server'
+  # Opt-in once-only welcome broadcast for brand-new players (suppressed when vanished or jailed).
+  first-join:
+    enabled: false
+    format: '&dWelcome &f%name% &dto the server for the first time!'
   broadcast-scope: server
 chat:
   max-message-length: 512

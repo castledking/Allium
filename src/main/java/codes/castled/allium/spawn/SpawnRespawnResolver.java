@@ -165,9 +165,20 @@ public final class SpawnRespawnResolver {
             @Nullable RtpService rtpOverride,
             @Nullable DisciplineService disciplineOverride
     ) {
+        return evaluateJoin(plugin, player, !player.hasPlayedBefore(), teleportsOverride, rtpOverride, disciplineOverride);
+    }
+
+    /** Evaluates the shared join decision table with an explicit {@code firstJoin} flag (for onboarding recovery). */
+    public static JoinResolution evaluateJoin(
+            PluginStart plugin,
+            Player player,
+            boolean firstJoin,
+            @Nullable TeleportService teleportsOverride,
+            @Nullable RtpService rtpOverride,
+            @Nullable DisciplineService disciplineOverride
+    ) {
         DisciplineService discipline = disciplineOverride != null ? disciplineOverride : discipline(plugin);
         boolean jailed = discipline != null && discipline.jailed(player.getUniqueId());
-        boolean firstJoin = !player.hasPlayedBefore();
         boolean worldPluginOwns = worldPluginOwns(plugin, player.getWorld());
 
         RtpService rtp = rtpOverride != null ? rtpOverride : rtp(plugin);

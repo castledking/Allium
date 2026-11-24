@@ -3,25 +3,39 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.core.AbstractModule;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.command.teleport.TeleportCommand;
+import codes.castled.allium.spawn.OnboardingRepository;
+import codes.castled.allium.spawn.OnboardingService;
 import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.teleport.TeleportService;
 import java.sql.SQLException;
 public final class TeleportModule extends AbstractModule {
     private TeleportService service;
     private codes.castled.allium.teleport.CompanionTeleports companions;
+    private OnboardingService onboarding;
     public codes.castled.allium.teleport.CompanionTeleports companions(){return companions;}
+    public OnboardingService onboarding(){return onboarding;}
     public TeleportModule(PluginStart plugin){super(plugin);}
     @Override public String getName(){return "teleport";}
     @Override public void onEnable(){
         TeleportRepository repository=new TeleportRepository(plugin.getDatabaseManager().connectionSource(),plugin.getDatabaseManager().dialect(),System::currentTimeMillis);
-        try{repository.migrate();}catch(SQLException e){throw new IllegalStateException("teleport storage unavailable",e);}
+        OnboardingRepository onboardingRepository=new OnboardingRepository(plugin.getDatabaseManager().connectionSource(),plugin.getDatabaseManager().dialect(),System::currentTimeMillis);
+        try{
+            repository.migrate();
+            onboardingRepository.migrate();
+        }catch(SQLException e){throw new IllegalStateException("teleport storage unavailable",e);}
         companions = new codes.castled.allium.teleport.CompanionTeleports(plugin);
         service = new TeleportService(plugin, repository, plugin.getScheduler().boundedPool("Allium-Teleport", 1, 512), companions::arrived);
+        onboarding = new OnboardingService(plugin, onboardingRepository, service);
         service.enable();
         companions.enable();
+        onboarding.enable();
         for(var spec:CoreCommandSpecs.TELEPORT_SPECS)plugin.getCommandManager().register(new TeleportCommand(plugin,service,spec));
     }
-    @Override public void onDisable(){if(companions!=null)companions.close();if(service!=null)service.disable();}
+    @Override public void onDisable(){
+        if(onboarding!=null)onboarding.close();
+        if(companions!=null)companions.close();
+        if(service!=null)service.disable();
+    }
     public TeleportService teleports(){return service;}
     @Override public int reloadOrder(){return 50;}
     @Override public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) throws Exception {

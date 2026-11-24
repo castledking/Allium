@@ -471,6 +471,10 @@ commands:
     description: Set the default or a group spawn point here
     usage: /<command> [group]
     permission: allium.setspawn
+  world:
+    description: List accessible worlds or teleport to a world's spawn
+    usage: /<command> [world] [player]
+    permission: allium.world
   tp:
     description: Teleport to a player or coordinates, or move a player
     aliases: [tp2p, tele]
@@ -1606,6 +1610,12 @@ permissions:
   allium.spawn:
     default: true
   allium.setspawn:
+    default: op
+  allium.world:
+    description: Allows /world to list accessible worlds and teleport to a world's spawn
+    default: op
+  allium.world.others:
+    description: Allows /world <world> <player> to send another player to a world's spawn
     default: op
   allium.tp:
     default: op

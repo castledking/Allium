@@ -19,6 +19,7 @@ public final class CoreCommandSpecs {
             Map.entry("back", "Return to your previous location"),
             Map.entry("spawn", "Teleport to spawn"),
             Map.entry("setspawn", "Set the spawn point here"),
+            Map.entry("world", "List accessible worlds or teleport to a world's spawn"),
             Map.entry("tp", "Teleport to a player or coordinates, or move a player"),
             Map.entry("tppos", "Teleport to coordinates"),
             Map.entry("tphere", "Teleport a player to you"),
@@ -934,6 +935,9 @@ public final class CoreCommandSpecs {
             teleportSpec("tpauto", List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
                     CommandArgSpec.optional("player", "allium.tpauto.others", SuggestionSpec.onlinePlayers("allium.tpauto.others")))),
             teleportSpec("back", List.of()), teleportSpec("spawn", List.of()), teleportSpec("setspawn", List.of(CommandArgSpec.optional("group", null, SuggestionSpec.literals(List.of("default"), null)))),
+            teleportSpec("world", List.of(
+                    CommandArgSpec.optional("world", null, SuggestionSpec.none()),
+                    CommandArgSpec.optional("player", "allium.world.others", SuggestionSpec.onlinePlayers("allium.world.others")))),
             teleportSpec("tp", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
                     CommandArgSpec.optional("target", "allium.tp.others", SuggestionSpec.onlinePlayers("allium.tp.others")))),
             teleportSpec("tpo", List.of(CommandArgSpec.required("player", null, SuggestionSpec.onlinePlayers(null)),
@@ -962,6 +966,7 @@ public final class CoreCommandSpecs {
             case "tppet", "tpent", "tpall", "tpaall", "tpacancel" -> " [player]";
             case "tpaccept", "tpdeny" -> " [requester]";
             case "setspawn" -> " [group]";
+            case "world" -> " [world] [player]";
             case "tp" -> " <player> [target] | /tp <x> <y> <z> [yaw] [pitch] [world]";
             case "tppos" -> " <x> <y> <z> [yaw] [pitch] [world]";
             case "tptoggle", "tpauto" -> " [on|off] [player]";
@@ -985,6 +990,7 @@ public final class CoreCommandSpecs {
             case "tptoggle" -> "allium.tptoggle.others";
             case "tpauto" -> "allium.tpauto.others";
             case "tpaall" -> "allium.tpaall.others";
+            case "world" -> "allium.world.others";
             default -> null;
         };
         return new CommandSpec(command, CommandSpec.DEFAULT_NAMESPACE, "teleport", aliases, describe(command, "Allium safe teleport: " + command),

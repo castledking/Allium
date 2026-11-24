@@ -784,6 +784,77 @@ class TeleportServiceTest {
         service.cancel(mover, third);
         assertFalse(service.warming(third.getUniqueId()));
     }
+    @Test void worldCommandListsAccessibleWorldsResolvesEnvironmentsAndEnforcesTravelPolicy() throws Exception {
+        World nether = mock(World.class);
+        UUID netherId = UUID.randomUUID();
+        Location netherSpawn = new Location(nether, 12.5, 64, -8.5);
+        when(nether.getUID()).thenReturn(netherId);
+        when(nether.getName()).thenReturn("world_nether");
+        when(nether.getEnvironment()).thenReturn(World.Environment.NETHER);
+        when(nether.getSpawnLocation()).thenReturn(netherSpawn);
+        when(server.getWorld(netherId)).thenReturn(nether);
+
+        World restricted = mock(World.class);
+        UUID restrictedId = UUID.randomUUID();
+        when(restricted.getUID()).thenReturn(restrictedId);
+        when(restricted.getName()).thenReturn("restricted");
+        when(restricted.getEnvironment()).thenReturn(World.Environment.NORMAL);
+        when(restricted.getSpawnLocation()).thenReturn(new Location(restricted, 0, 64, 0));
+        when(server.getWorld(restrictedId)).thenReturn(restricted);
+
+        when(world.getEnvironment()).thenReturn(World.Environment.NORMAL);
+        when(server.getWorlds()).thenReturn(List.of(world, nether, restricted));
+
+        // Deny mover access to "restricted" world
+        when(mover.hasPermission("allium.worlds.restricted")).thenReturn(false);
+        when(mover.isPermissionSet("allium.worlds.restricted")).thenReturn(true);
+        when(mover.hasPermission("allium.world.others")).thenReturn(false);
+
+        enable();
+        MessageManager messages = plugin.getMessageManager();
+
+        // Exact case-insensitive lookup and environment shorthand resolution
+        assertSame(nether, service.resolveWorld("WORLD_NETHER"));
+        assertSame(nether, service.resolveWorld("nether"));
+        assertSame(world, service.resolveWorld("overworld"));
+        assertNull(service.resolveWorld("missing_world"));
+
+        // accessibleWorlds and /world listing hide worlds the player cannot enter
+        assertEquals(List.of("world", "world_nether"), service.accessibleWorlds(mover));
+        assertEquals(List.of("restricted", "world", "world_nether"), service.accessibleWorlds(staff));
+        service.listWorlds(mover);
+        verify(messages).send(mover, Messages.TELEPORT_WORLD_LIST, "{worlds}", "world, world_nether");
+
+        // Denied world is refused before teleporting
+        service.world(mover, mover, restricted);
+        verify(messages).send(mover, Messages.WORLD_ACCESS_DENIED, "{world}", "restricted");
+        verify(mover, never()).teleport(any(Location.class), any(PlayerTeleportEvent.TeleportCause.class));
+
+        // Moving another player requires allium.world.others
+        service.world(mover, target, nether);
+        verify(messages).send(mover, Messages.NO_PERMISSION);
+
+        // Allowed world teleports through the full TeleportService pipeline
+        when(mover.getWorld()).thenReturn(nether);
+        when(mover.getLocation()).thenReturn(netherSpawn.clone());
+        service.world(mover, mover, nether);
+        drainWorker();
+        verify(mover).teleport(eq(netherSpawn), eq(PlayerTeleportEvent.TeleportCause.PLUGIN));
+        verify(messages).send(mover, Messages.TELEPORT_WORLD_SUCCESS, "{world}", "world_nether");
+
+        // Warmup rechecks world access permission before committing
+        warmup();
+        assertTrue(service.reloadSettings());
+        clearInvocations(mover);
+        when(mover.hasPermission("allium.worlds.world_nether")).thenReturn(true);
+        service.world(mover, mover, nether);
+        assertTrue(service.warming(mover.getUniqueId()));
+        when(mover.hasPermission("allium.worlds.world_nether")).thenReturn(false);
+        when(mover.isPermissionSet("allium.worlds.world_nether")).thenReturn(true);
+        tickAfterWarmup();
+        assertFalse(service.warming(mover.getUniqueId()));
+        verify(mover, never()).teleport(any(Location.class), any(PlayerTeleportEvent.TeleportCause.class));
+    }
     private Player player(String name, UUID id) {
         Player player = mock(Player.class);
         when(player.getName()).thenReturn(name);

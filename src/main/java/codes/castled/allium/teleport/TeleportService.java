@@ -412,6 +412,81 @@ public final class TeleportService implements Listener {
         begin(player, player, "spawn", destination::clone, null, null, false);
     }
 
+    /**
+     * Resolves a loaded world by exact case-insensitive name, falling back to environment shorthands
+     * ({@code overworld}/{@code normal}, {@code nether}, {@code end}/{@code the_end}) when no world
+     * carries that literal name.
+     */
+    @Nullable
+    public World resolveWorld(String raw) {
+        if (raw == null || raw.isBlank() || plugin.getServer() == null) return null;
+        String wanted = raw.trim();
+        List<World> worlds = plugin.getServer().getWorlds();
+        if (worlds == null || worlds.isEmpty()) return null;
+        for (World w : worlds) {
+            if (w != null && w.getName() != null && w.getName().equalsIgnoreCase(wanted)) return w;
+        }
+        World.Environment env = switch (wanted.toLowerCase(Locale.ROOT)) {
+            case "nether", "world_nether" -> World.Environment.NETHER;
+            case "end", "the_end", "world_the_end" -> World.Environment.THE_END;
+            case "overworld", "normal" -> World.Environment.NORMAL;
+            default -> null;
+        };
+        if (env != null) {
+            for (World w : worlds) {
+                if (w != null && w.getEnvironment() == env) return w;
+            }
+        }
+        return null;
+    }
+
+    /** Sorted loaded world names accessible to {@code sender} under {@code allium.worlds.<world>}. */
+    public List<String> accessibleWorlds(CommandSender sender) {
+        if (plugin.getServer() == null || plugin.getServer().getWorlds() == null) return List.of();
+        Player player = sender instanceof Player p ? p : null;
+        List<String> out = new ArrayList<>();
+        for (World w : plugin.getServer().getWorlds()) {
+            if (w == null || w.getName() == null) continue;
+            if (player != null && !canEnterWorld(player, w)) continue;
+            out.add(w.getName());
+        }
+        out.sort(String.CASE_INSENSITIVE_ORDER);
+        return List.copyOf(out);
+    }
+
+    /** {@code /world}: lists loaded worlds accessible to {@code sender}. */
+    public void listWorlds(CommandSender sender) {
+        if (!sender.hasPermission("allium.world")) { send(sender, Messages.NO_PERMISSION); return; }
+        List<String> names = accessibleWorlds(sender);
+        send(sender, Messages.TELEPORT_WORLD_LIST, "{worlds}", names.isEmpty() ? "(none)" : String.join(", ", names));
+    }
+
+    /** {@code /world <world> [player]}: teleports {@code mover} to {@code targetWorld}'s spawn via the shared travel pipeline. */
+    public void world(CommandSender actor, Player mover, World targetWorld) {
+        if (!actor.hasPermission("allium.world") || (actor != mover && !actor.hasPermission("allium.world.others"))) {
+            send(actor, Messages.NO_PERMISSION);
+            return;
+        }
+        if (actor != mover && !visible(actor, mover)) {
+            send(actor, Messages.PLAYER_NOT_FOUND, "{player}", mover.getName());
+            return;
+        }
+        if (!canEnterWorld(mover, targetWorld)) {
+            send(actor, Messages.WORLD_ACCESS_DENIED, "{world}", targetWorld.getName());
+            if (actor != mover) send(mover, Messages.WORLD_ACCESS_DENIED, "{world}", targetWorld.getName());
+            return;
+        }
+        UUID worldId = targetWorld.getUID();
+        begin(mover, actor, "world", () -> {
+            World live = plugin.getServer().getWorld(worldId);
+            return live == null ? null : live.getSpawnLocation().clone();
+        }, null, null, false, () -> {
+            World live = plugin.getServer().getWorld(worldId);
+            return live != null && canEnterWorld(mover, live)
+                    && (actor == mover || (visible(actor, mover) && actor.hasPermission("allium.world.others")));
+        });
+    }
+
     public void setSpawn(Player player) {
         setSpawn(player, "default");
     }
@@ -942,6 +1017,7 @@ public final class TeleportService implements Listener {
         boolean position=operation.anchor()==null&&java.util.Set.of("tp","tpo","tppos","top","bottom","jump","rtp").contains(operation.command());
         saveHistory(session,session.back,operation.command(),until,0,()->{
             if(position){send(mover,Messages.TELEPORT_POSITION,"{x}",coordinate(landed.getX()),"{y}",coordinate(landed.getY()),"{z}",coordinate(landed.getZ()),"{world}",landed.getWorld()==null?"?":landed.getWorld().getName());return;}
+            if(operation.command().equals("world")){send(mover,Messages.TELEPORT_WORLD_SUCCESS,"{world}",landed.getWorld()==null?"?":landed.getWorld().getName());return;}
             send(mover,switch(operation.command()){case "back"->operation.backDeath()?Messages.TELEPORT_BACK_DEATH:Messages.TELEPORT_BACK;case "spawn"->Messages.SPAWN_TELEPORT;case "tpoffline"->Messages.TELEPORT_OFFLINE_SUCCESS;default->Messages.TELEPORT_SUCCESS;},"{target}",offline!=null?offline.name:operation.anchor()==null?operation.command():operation.anchor().getName());
         });
     }

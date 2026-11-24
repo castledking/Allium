@@ -53,6 +53,16 @@ public final class TeleportCommand implements SpecCommandHandler {
             }
             return;
         }
+        if(command.equals("world")){
+            if(args.length==0){service.listWorlds(sender);return;}
+            if(args.length>2||(args.length==1&&!(sender instanceof Player))){context.sendInvalidArgs(spec.selfUsage());return;}
+            if(args.length==2&&!sender.hasPermission("allium.world.others")){plugin.getMessageManager().send(sender,Messages.NO_PERMISSION);return;}
+            org.bukkit.World destWorld=service.resolveWorld(args[0]);
+            if(destWorld==null){plugin.getMessageManager().send(sender,Messages.WORLD_NOT_FOUND,"{world}",args[0]);return;}
+            Player mover=args.length==1?(Player)sender:target(sender,args[1]);
+            if(mover!=null)service.world(sender,mover,destWorld);
+            return;
+        }
         if(command.equals("tp")||command.equals("tpo")){
             if(args.length<1||args.length>2||!(sender instanceof Player)&&args.length!=2){context.sendInvalidArgs(spec.selfUsage());return;}
             Player mover=args.length==1?(Player)sender:target(sender,args[0]);

@@ -296,6 +296,12 @@ teleport:
   arrival-pvp-self:
     - "{prefix} &eYou are briefly protected from PvP after teleporting."
     - "[sound] item.shield.block 1.1"
+  world-list:
+    - "{prefix} &fAvailable worlds: &d{worlds}"
+    - "[sound] ui.button.click 1.1"
+  world-success:
+    - "{prefix} &aTeleported to world &f{world}&a."
+    - "[sound] entity.enderman.teleport 1.05"
 spawnmob:
   list:
     - "{prefix} &6Available mobs: &f{mobs}"

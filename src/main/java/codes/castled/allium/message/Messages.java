@@ -312,6 +312,8 @@ public enum Messages {
     TELEPORT_ENTITIES_MOVED("teleport.entities-moved", "{prefix} &aTeleported &f{count} &a{label}."),
     TELEPORT_ARRIVAL_PVP_TARGET("teleport.arrival-pvp-target", "{prefix} &c{player} &eis briefly protected from PvP after teleporting."),
     TELEPORT_ARRIVAL_PVP_SELF("teleport.arrival-pvp-self", "{prefix} &eYou are briefly protected from PvP after teleporting."),
+    TELEPORT_WORLD_LIST("teleport.world-list", "{prefix} &fAvailable worlds: &d{worlds}"),
+    TELEPORT_WORLD_SUCCESS("teleport.world-success", "{prefix} &aTeleported to world &f{world}&a."),
     SPAWNMOB_LIST("spawnmob.list", "{prefix} &6Available mobs: &f{mobs}"),
     SPAWNMOB_SPAWNED("spawnmob.spawned", "{prefix} &aSpawned &f{count} &a{mob}&a."),
     SPAWNMOB_LIMIT("spawnmob.limit", "{prefix} &eAmount reduced to the server spawn limit (&f{limit}&e)."),

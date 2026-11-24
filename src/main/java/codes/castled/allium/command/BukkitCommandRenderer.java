@@ -144,6 +144,16 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         if(handler instanceof codes.castled.allium.command.explosion.ExplodeCommand explode)return explode.complete(sender,args);
         if(handler instanceof codes.castled.allium.command.tools.PowerToolCommand powerToolCommand)return powerToolCommand.complete(sender,alias,args);
         if(handler instanceof codes.castled.allium.command.creative.CreativeManageCommand creativeManage)return creativeManage.complete(sender,args);
+        if(spec.canonicalName().equals("world")&&args.length==1){
+            if(!sender.hasPermission("allium.world"))return List.of();
+            if(plugin.getModuleManager().getModule("teleport") instanceof codes.castled.allium.module.TeleportModule tp&&tp.isEnabled()&&tp.teleports()!=null){
+                String prefix=args[0];
+                return tp.teleports().accessibleWorlds(sender).stream()
+                        .filter(n->codes.castled.allium.teleport.CoordinateArgs.startsWithIgnoreCase(n,prefix))
+                        .limit(50).toList();
+            }
+            return List.of();
+        }
         boolean tpSelfPosition=(spec.canonicalName().equals("tp")||spec.canonicalName().equals("tpo"))&&args.length>=2&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[0]);
         boolean tpTargetPosition=(spec.canonicalName().equals("tp")||spec.canonicalName().equals("tpo"))&&args.length>=3&&codes.castled.allium.teleport.CoordinateArgs.isCoordinate(args[1]);
         if(tpSelfPosition||tpTargetPosition||spec.canonicalName().equals("tppos")){

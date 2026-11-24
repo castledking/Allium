@@ -326,6 +326,7 @@ teleport:
     tpahere: -1
     back: -1
     spawn: -1
+    world: -1
     tp: -1
     tphere: -1
     rtp: -1
@@ -342,6 +343,7 @@ teleport:
     tpahere: 0
     back: 0
     spawn: 0
+    world: 0
     tp: 0
     tphere: 0
     # Random teleport (/rtp): each one may generate new terrain, so keep this generous.

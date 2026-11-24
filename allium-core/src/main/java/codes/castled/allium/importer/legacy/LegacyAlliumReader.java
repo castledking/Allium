@@ -1,8 +1,11 @@
 package codes.castled.allium.importer.legacy;
 
+import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.BalanceRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.HomeRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.LogoutRow;
+import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.MailRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.MaxHomesRow;
+import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.NoteRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.Point;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.SupersededHome;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.WarpRow;
@@ -13,6 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -136,7 +140,96 @@ public final class LegacyAlliumReader {
                 while (r.next()) limits.add(new MaxHomesRow(r.getString(1), r.getInt(2)));
             }
         }
-        return new LegacyAlliumSnapshot(version, homes, superseded, unnamed, logouts, olderLogouts, warps, limits, other, notes);
+
+        List<BalanceRow> balances = new ArrayList<>();
+        if (tables.contains("PLAYER_BALANCES")) {
+            long seen = 0;
+            try (PreparedStatement s = c.prepareStatement("SELECT uuid, balance FROM player_balances ORDER BY uuid")) {
+                s.setFetchSize(1000);
+                try (ResultSet r = s.executeQuery()) {
+                    while (r.next()) {
+                        if (++seen > ROW_LIMIT) throw new SQLException("more than " + ROW_LIMIT + " PLAYER_BALANCES rows");
+                        Object raw = r.getObject(2);
+                        balances.add(new BalanceRow(r.getString(1), raw == null ? "" : raw.toString().trim()));
+                    }
+                }
+            }
+        }
+
+        List<NoteRow> staffNotes = new ArrayList<>();
+        if (tables.contains("PLAYER_NOTES")) {
+            long seen = 0;
+            try (PreparedStatement s = c.prepareStatement("SELECT id, player_uuid, staff_uuid, note, created_at FROM player_notes ORDER BY id")) {
+                s.setFetchSize(1000);
+                try (ResultSet r = s.executeQuery()) {
+                    while (r.next()) {
+                        if (++seen > ROW_LIMIT) throw new SQLException("more than " + ROW_LIMIT + " PLAYER_NOTES rows");
+                        staffNotes.add(new NoteRow(r.getLong(1), r.getString(2), r.getString(3), r.getString(4), timestampMillis(r, 5)));
+                    }
+                }
+            }
+        }
+
+        List<MailRow> mailMessages = new ArrayList<>();
+        if (tables.contains("MAIL_MESSAGES")) {
+            long seen = 0;
+            try (PreparedStatement s = c.prepareStatement(
+                    "SELECT id, recipient, sender, sender_name, message, sent_time, is_read FROM mail_messages ORDER BY id")) {
+                s.setFetchSize(1000);
+                try (ResultSet r = s.executeQuery()) {
+                    while (r.next()) {
+                        if (++seen > ROW_LIMIT) throw new SQLException("more than " + ROW_LIMIT + " MAIL_MESSAGES rows");
+                        mailMessages.add(new MailRow(r.getLong(1), r.getString(2), r.getString(3), r.getString(4),
+                                r.getString(5), timestampMillis(r, 6), r.getBoolean(7)));
+                    }
+                }
+            }
+        }
+
+        // Read-only inspection counts for legacy serialized item gifts & inventory blobs (never deserialized or auto-imported).
+        Map<String, Long> historicalCounts = new TreeMap<>();
+        if (tables.contains("MAIL_GIFTS")) {
+            long total = countTable(c, "SELECT COUNT(*) FROM mail_gifts");
+            long unclaimed = countTable(c, "SELECT COUNT(*) FROM mail_gifts WHERE is_claimed = FALSE");
+            if (total > 0) historicalCounts.put("mail_gifts_total", total);
+            if (unclaimed > 0) historicalCounts.put("mail_gifts_unclaimed", unclaimed);
+        }
+        for (String invTable : List.of("player_inventories", "inventory_snapshots",
+                "offline_inventory_state", "offline_inventory_overrides")) {
+            if (tables.contains(invTable.toUpperCase(Locale.ROOT))) {
+                long count = countTable(c, "SELECT COUNT(*) FROM " + invTable);
+                if (count > 0) historicalCounts.put(invTable, count);
+            }
+        }
+        if (!historicalCounts.isEmpty()) {
+            notes.add("Serialized item gifts and historical inventory tables (" + historicalCounts
+                    + ") are inspected read-only and never auto-imported.");
+        }
+
+        return new LegacyAlliumSnapshot(version, homes, superseded, unnamed, logouts, olderLogouts, warps, limits,
+                other, notes, balances, staffNotes, mailMessages, historicalCounts);
+    }
+
+    private static long countTable(Connection c, String sql) {
+        try (Statement s = c.createStatement(); ResultSet r = s.executeQuery(sql)) {
+            return r.next() ? r.getLong(1) : 0L;
+        } catch (SQLException ignored) {
+            return 0L;
+        }
+    }
+
+    private static long timestampMillis(ResultSet r, int col) {
+        try {
+            Timestamp ts = r.getTimestamp(col);
+            if (ts != null) return ts.getTime();
+        } catch (SQLException ignored) {
+        }
+        try {
+            long val = r.getLong(col);
+            return r.wasNull() ? 0L : val;
+        } catch (SQLException ignored) {
+            return 0L;
+        }
     }
 
     private static boolean newer(long timestamp, long id, long otherTimestamp, long otherId) {

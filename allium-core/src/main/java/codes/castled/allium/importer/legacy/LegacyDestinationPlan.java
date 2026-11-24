@@ -1,13 +1,19 @@
 package codes.castled.allium.importer.legacy;
 
+import codes.castled.allium.economy.EconomySettings;
+import codes.castled.allium.economy.Money;
+import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.BalanceRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.HomeRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.LogoutRow;
+import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.MailRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.MaxHomesRow;
+import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.NoteRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.Point;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.WarpRow;
 import codes.castled.allium.teleport.SavedLocation;
 import codes.castled.allium.travel.HomePolicy;
 import codes.castled.allium.travel.TravelNames;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -20,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -47,21 +54,32 @@ public final class LegacyDestinationPlan {
     public static final String SOURCE = "legacy-allium";
     static final double HORIZONTAL_LIMIT = 30_000_000;
 
-    public enum Domain { HOME, WARP, LOGOUT;
+    public enum Domain { HOME, WARP, LOGOUT, BALANCE, NOTE, MAIL;
         public String id() { return name().toLowerCase(java.util.Locale.ROOT); }
     }
 
     public enum Status { IMPORT, PRESENT, REPLAYED, CONFLICT, BLOCKED, SKIPPED }
 
+    public record ExistingAccount(long balanceMinor, long reservedMinor) {}
+
+    public record NotePayload(String actorName, String reason, long createdAt) {}
+
+    public record MailPayload(@Nullable UUID senderUuid, String senderName, String body, boolean unread,
+                              long createdAt, String sourceRef) {}
+
     /**
      * @param key        the ledger key: {@code <owner>/<name>} for homes, the name for warps, the
-     *                   owner for logout positions (normalized names; the legacy spelling is in
-     *                   {@code legacy})
+     *                   owner for logout positions and balances, {@code <owner>:<id>} for notes and mail
      * @param legacy     where the record came from, for the report
      * @param location   the destination, when the world resolved
      */
     public record Record(Domain domain, String key, Status status, String reason, String payloadHash,
-                         UUID owner, String name, SavedLocation location, String legacy) {
+                         UUID owner, String name, SavedLocation location, String legacy,
+                         @Nullable Money money, @Nullable NotePayload note, @Nullable MailPayload mail) {
+        public Record(Domain domain, String key, Status status, String reason, String payloadHash,
+                      UUID owner, String name, SavedLocation location, String legacy) {
+            this(domain, key, status, reason, payloadHash, owner, name, location, legacy, null, null, null);
+        }
     }
 
     public record ResolvedWorld(UUID id, String name) {
@@ -74,9 +92,15 @@ public final class LegacyDestinationPlan {
 
     /** What the destination and the ledger hold before the import. */
     public record Destination(Map<UUID, Map<String, SavedLocation>> homes, Map<String, SavedLocation> warps,
-                              Map<UUID, SavedLocation> logouts, Map<String, String> ledger) {
+                              Map<UUID, SavedLocation> logouts, Map<UUID, ExistingAccount> balances,
+                              Set<String> noteFingerprints, Set<String> mailSourceRefs, Map<String, String> ledger) {
+        public Destination(Map<UUID, Map<String, SavedLocation>> homes, Map<String, SavedLocation> warps,
+                           Map<UUID, SavedLocation> logouts, Map<String, String> ledger) {
+            this(homes, warps, logouts, Map.of(), Set.of(), Set.of(), ledger);
+        }
+
         public static Destination empty() {
-            return new Destination(Map.of(), Map.of(), Map.of(), Map.of());
+            return new Destination(Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), Set.of(), Map.of());
         }
 
         static String ledgerKey(Domain domain, String key) {
@@ -121,6 +145,11 @@ public final class LegacyDestinationPlan {
     }
 
     public static LegacyDestinationPlan build(LegacyAlliumSnapshot snapshot, Worlds worlds, Destination destination) {
+        return build(snapshot, worlds, destination, System.currentTimeMillis(), null);
+    }
+
+    public static LegacyDestinationPlan build(LegacyAlliumSnapshot snapshot, Worlds worlds, Destination destination,
+                                              long nowMillis, @Nullable EconomySettings balanceSettings) {
         List<Record> out = new ArrayList<>();
         planHomes(snapshot, worlds, destination, out);
         for (var row : snapshot.supersededHomes()) {
@@ -129,8 +158,143 @@ public final class LegacyDestinationPlan {
         }
         planWarps(snapshot, worlds, destination, out);
         planLogouts(snapshot, worlds, destination, out);
+        planBalances(snapshot, destination, balanceSettings, out);
+        planNotes(snapshot, destination, nowMillis, out);
+        planMail(snapshot, destination, nowMillis, out);
         List<MaxHomesRow> limits = snapshot.maxHomes().stream().filter(r -> r.maxHomes() >= 1 && uuid(r.owner()) != null).toList();
         return new LegacyDestinationPlan(out, limits);
+    }
+
+    private static void planBalances(LegacyAlliumSnapshot snapshot, Destination destination,
+                                     @Nullable EconomySettings balanceSettings, List<Record> out) {
+        for (BalanceRow row : snapshot.balances()) {
+            String legacy = "player_balances " + row.owner() + " (" + row.balanceRaw() + ")";
+            UUID owner = uuid(row.owner());
+            if (owner == null) {
+                out.add(blocked(Domain.BALANCE, String.valueOf(row.owner()), "invalid player UUID", null, null, legacy));
+                continue;
+            }
+            Money parsed;
+            try {
+                parsed = Money.parse(row.balanceRaw(), true);
+            } catch (IllegalArgumentException | ArithmeticException bad) {
+                out.add(blocked(Domain.BALANCE, owner.toString(), "malformed balance: " + row.balanceRaw(), owner, null, legacy));
+                continue;
+            }
+            if (balanceSettings != null && (parsed.compareTo(balanceSettings.minimum()) < 0
+                    || parsed.compareTo(balanceSettings.maximum()) > 0)) {
+                out.add(blocked(Domain.BALANCE, owner.toString(), "balance " + row.balanceRaw() + " outside configured bounds",
+                        owner, null, legacy));
+                continue;
+            }
+            String key = owner.toString();
+            String hash = sha256("balance|" + key + "|" + parsed.minor());
+            String ledgered = destination.ledger().get(Destination.ledgerKey(Domain.BALANCE, key));
+            Status status;
+            String reason;
+            if (ledgered != null) {
+                status = ledgered.equals(hash) ? Status.REPLAYED : Status.CONFLICT;
+                reason = status == Status.REPLAYED ? "already imported" : "imported earlier with different balance";
+            } else if (balanceSettings == null) {
+                status = Status.BLOCKED;
+                reason = "Allium economy is unavailable";
+            } else {
+                ExistingAccount existing = destination.balances().get(owner);
+                if (existing == null) {
+                    status = Status.IMPORT;
+                    reason = "";
+                } else if (existing.reservedMinor() > 0) {
+                    status = Status.CONFLICT;
+                    reason = "account has active reservation holds";
+                } else if (existing.balanceMinor() == parsed.minor()) {
+                    status = Status.PRESENT;
+                    reason = "matches existing balance";
+                } else {
+                    status = Status.CONFLICT;
+                    reason = "account already has different balance; existing kept";
+                }
+            }
+            out.add(new Record(Domain.BALANCE, key, status, reason, hash, owner, null, null, legacy, parsed, null, null));
+        }
+    }
+
+    private static void planNotes(LegacyAlliumSnapshot snapshot, Destination destination, long nowMillis, List<Record> out) {
+        for (NoteRow row : snapshot.staffNotes()) {
+            String legacy = "player_notes id " + row.id();
+            UUID owner = uuid(row.playerUuid());
+            if (owner == null) {
+                out.add(blocked(Domain.NOTE, row.playerUuid() + ":" + row.id(), "invalid player UUID", null, null, legacy));
+                continue;
+            }
+            String text = row.note() == null ? "" : row.note().trim();
+            if (text.isEmpty()) {
+                out.add(new Record(Domain.NOTE, owner + ":" + row.id(), Status.SKIPPED, "empty staff note",
+                        "", owner, null, null, legacy));
+                continue;
+            }
+            if (text.length() > 256) text = text.substring(0, 256);
+            String actor = (row.staffUuid() != null && !row.staffUuid().isBlank())
+                    ? "legacy:" + row.staffUuid().trim() : "legacy:staff";
+            if (actor.length() > 64) actor = actor.substring(0, 64);
+            long createdAt = row.createdAt() > 0L ? row.createdAt() : nowMillis;
+            String key = owner + ":" + row.id();
+            String hash = sha256("note|" + key + "|" + actor + "|" + createdAt + "|" + text);
+            String ledgered = destination.ledger().get(Destination.ledgerKey(Domain.NOTE, key));
+            Status status;
+            String reason;
+            if (ledgered != null) {
+                status = ledgered.equals(hash) ? Status.REPLAYED : Status.CONFLICT;
+                reason = status == Status.REPLAYED ? "already imported" : "imported earlier with different note";
+            } else if (destination.noteFingerprints().contains(owner + "|" + createdAt + "|" + text)) {
+                status = Status.PRESENT;
+                reason = "matching note already present";
+            } else {
+                status = Status.IMPORT;
+                reason = "";
+            }
+            out.add(new Record(Domain.NOTE, key, status, reason, hash, owner, null, null, legacy,
+                    null, new NotePayload(actor, text, createdAt), null));
+        }
+    }
+
+    private static void planMail(LegacyAlliumSnapshot snapshot, Destination destination, long nowMillis, List<Record> out) {
+        for (MailRow row : snapshot.mailMessages()) {
+            String legacy = "mail_messages id " + row.id();
+            UUID owner = uuid(row.recipient());
+            if (owner == null) {
+                out.add(blocked(Domain.MAIL, row.recipient() + ":" + row.id(), "invalid recipient UUID", null, null, legacy));
+                continue;
+            }
+            String body = row.message() == null ? "" : row.message().trim();
+            if (body.isEmpty()) {
+                out.add(new Record(Domain.MAIL, owner + ":" + row.id(), Status.SKIPPED, "empty mail body",
+                        "", owner, null, null, legacy));
+                continue;
+            }
+            UUID senderUuid = uuid(row.sender());
+            String senderName = (row.senderName() != null && !row.senderName().isBlank()) ? row.senderName().trim() : "Legacy";
+            if (senderName.length() > 32) senderName = senderName.substring(0, 32);
+            long createdAt = row.sentAt() > 0L ? row.sentAt() : nowMillis;
+            String hash = sha256("mail|" + owner + "|" + row.id() + "|" + senderUuid + "|" + senderName
+                    + "|" + row.read() + "|" + createdAt + "|" + body);
+            String sourceRef = "legacy-h2:" + owner + ":" + row.id() + ":" + hash.substring(0, 16);
+            String key = sourceRef;
+            String ledgered = destination.ledger().get(Destination.ledgerKey(Domain.MAIL, key));
+            Status status;
+            String reason;
+            if (ledgered != null) {
+                status = ledgered.equals(hash) ? Status.REPLAYED : Status.CONFLICT;
+                reason = status == Status.REPLAYED ? "already imported" : "imported earlier with different mail";
+            } else if (destination.mailSourceRefs().contains(sourceRef)) {
+                status = Status.PRESENT;
+                reason = "mail source_ref already present";
+            } else {
+                status = Status.IMPORT;
+                reason = "";
+            }
+            out.add(new Record(Domain.MAIL, key, status, reason, hash, owner, null, null, legacy,
+                    null, null, new MailPayload(senderUuid, senderName, body, !row.read(), createdAt, sourceRef)));
+        }
     }
 
     private static void planHomes(LegacyAlliumSnapshot snapshot, Worlds worlds, Destination destination, List<Record> out) {

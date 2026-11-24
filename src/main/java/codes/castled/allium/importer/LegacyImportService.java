@@ -1,16 +1,22 @@
 package codes.castled.allium.importer;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.economy.EconomyEngine;
+import codes.castled.allium.economy.EconomySchema;
 import codes.castled.allium.importer.legacy.LegacyAlliumReader;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot;
 import codes.castled.allium.importer.legacy.LegacyDestinationApplier;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan.Destination;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan.Domain;
+import codes.castled.allium.importer.legacy.LegacyDestinationPlan.ExistingAccount;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan.ResolvedWorld;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan.Status;
 import codes.castled.allium.importer.legacy.LegacyH2Source;
+import codes.castled.allium.mail.MailRepository;
 import codes.castled.allium.message.Messages;
+import codes.castled.allium.moderation.ModerationRepository;
+import codes.castled.allium.module.EconomyModule;
 import codes.castled.allium.module.TravelModule;
 import codes.castled.allium.pack.Json;
 import codes.castled.allium.scheduler.AlliumScheduler;
@@ -26,17 +32,22 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -148,10 +159,12 @@ public final class LegacyImportService {
 
     // -- Dry run and apply (worker thread) ---------------------------------------------------------
 
-    private record Read(LegacyH2Source.Snapshot snapshot, LegacyAlliumSnapshot data, String driver, LegacyDestinationPlan plan) {
+    private record Read(LegacyH2Source.Snapshot snapshot, LegacyAlliumSnapshot data, String driver,
+                        LegacyDestinationPlan plan, long plannedAt) {
     }
 
-    private Read read(Settings settings, ImportLifecycle.LoadedWorlds loaded, Path copy, boolean destinationTablesMayBeMissing) throws Exception {
+    private Read read(Settings settings, ImportLifecycle.LoadedWorlds loaded, Path copy,
+                      boolean destinationTablesMayBeMissing, long plannedAt) throws Exception {
         LegacyH2Source.Snapshot snapshot = LegacyH2Source.snapshot(settings.source(), copy);
         List<Path> jars = settings.driver() != null ? List.of(settings.driver()) : importJars();
         try (LegacyH2Source source = LegacyH2Source.load(jars).orElseThrow(() -> new IOException(
@@ -161,16 +174,18 @@ public final class LegacyImportService {
                 data = LegacyAlliumReader.read(c);
             }
             LegacyDestinationPlan.Worlds worlds = name -> loaded.resolve(settings.worlds(), name);
-            Destination destination = destination(destinationTablesMayBeMissing);
+            EconomyEngine econ = economyEngine();
+            Destination destination = destination(destinationTablesMayBeMissing, econ != null);
             return new Read(snapshot, data, source.jar().getFileName() + " (" + source.driverClass() + ")",
-                    LegacyDestinationPlan.build(data, worlds, destination));
+                    LegacyDestinationPlan.build(data, worlds, destination, plannedAt, econ != null ? econ.settings() : null),
+                    plannedAt);
         }
     }
 
     private void runDry(CommandSender sender, Settings settings, ImportLifecycle.LoadedWorlds loaded) throws Exception {
         String runId = newRunId();
         Path dir = runDir(runId);
-        Read read = read(settings, loaded, dir.resolve("source.mv.db"), true);
+        Read read = read(settings, loaded, dir.resolve("source.mv.db"), true, System.currentTimeMillis());
         writePlan(dir, runId, settings, read);
         writeRecords(dir.resolve("records.jsonl"), read.plan());
         writeSummary(dir.resolve("summary.txt"), runId, settings, read, null);
@@ -189,9 +204,13 @@ public final class LegacyImportService {
         var db = plugin.getDatabaseManager();
         TravelRepository travel = new TravelRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         TeleportRepository teleports = new TeleportRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
+        ModerationRepository moderation = new ModerationRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
+        MailRepository mail = new MailRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ImportLedger ledger = new ImportLedger(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         travel.migrate();
         teleports.migrate();
+        moderation.migrate();
+        mail.migrate();
         ledger.migrate();
         var reviewCheck = ImportLifecycle.loadReviewedPlan(planFile, relative(planFile), runId, ledger);
         if (reviewCheck instanceof ImportLifecycle.ReviewCheck.Refused refused) {
@@ -199,11 +218,11 @@ public final class LegacyImportService {
             return false;
         }
         ImportLifecycle.ReviewedPlan reviewed = ((ImportLifecycle.ReviewCheck.Valid) reviewCheck).plan();
-        Read read = read(settings, loaded, dir.resolve("apply-source.mv.db"), false);
+        Read read = read(settings, loaded, dir.resolve("apply-source.mv.db"), false, reviewed.plannedAt());
         Optional<String> mismatch = ImportLifecycle.verifyFingerprints(reviewed, read.snapshot().sha256(),
                 read.plan().sha256(), runId,
                 "the legacy database changed since " + runId + "; run a new dry run",
-                "the plan differs from " + runId + " (this server's homes, warps or the world map changed); run a new dry run");
+                "the plan differs from " + runId + " (this server's data or the world map changed); run a new dry run");
         if (mismatch.isPresent()) {
             tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", mismatch.get());
             return false;
@@ -211,7 +230,8 @@ public final class LegacyImportService {
         ledger.startRun(runId, LegacyDestinationPlan.SOURCE, read.snapshot().sha256(), read.plan().sha256());
         List<LegacyDestinationApplier.Outcome> outcomes;
         try {
-            outcomes = LegacyDestinationApplier.apply(read.plan(), runId, ledger, travel, teleports);
+            var targets = new LegacyDestinationApplier.Targets(serverOrigin(), economyEngine(), travel, teleports, moderation, mail);
+            outcomes = LegacyDestinationApplier.apply(read.plan(), runId, ledger, targets);
         } catch (SQLException | RuntimeException failure) {
             ledger.finishRun(runId, "failed: " + failure.getMessage());
             throw failure;
@@ -233,17 +253,73 @@ public final class LegacyImportService {
     }
 
     /** What this server holds. A dry run never creates tables: missing ones read as empty. */
-    private Destination destination(boolean tablesMayBeMissing) throws SQLException {
+    private Destination destination(boolean tablesMayBeMissing, boolean readEconomy) throws SQLException {
         var db = plugin.getDatabaseManager();
         TravelRepository travel = new TravelRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         TeleportRepository teleports = new TeleportRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
+        ModerationRepository moderation = new ModerationRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ImportLedger ledger = new ImportLedger(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         boolean homes = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), "allium_travel_homes");
         boolean warps = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), "allium_travel_warps");
         boolean locations = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), TeleportRepository.LOCATIONS_TABLE);
+        boolean notes = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), ModerationRepository.NOTES_TABLE);
+        boolean mail = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), "allium_mail");
         boolean records = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), ImportLedger.RECORDS);
+        Map<UUID, ExistingAccount> balances = readEconomy ? readBalances() : Map.of();
         return new Destination(homes ? travel.allHomes() : Map.of(), warps ? travel.warps() : Map.of(),
-                locations ? teleports.slot("logout") : Map.of(), records ? ledger.hashes(LegacyDestinationPlan.SOURCE) : Map.of());
+                locations ? teleports.slot("logout") : Map.of(),
+                balances,
+                notes ? moderation.loadNoteFingerprints() : Set.of(),
+                mail ? readMailRefs() : Set.of(),
+                records ? ledger.hashes(LegacyDestinationPlan.SOURCE) : Map.of());
+    }
+
+    private EconomyEngine economyEngine() {
+        if (plugin.getModuleManager() != null
+                && plugin.getModuleManager().getModule("economy") instanceof EconomyModule mod
+                && mod.isEnabled() && mod.runtime() != null && mod.runtime().ready()) {
+            return mod.runtime().engine();
+        }
+        return null;
+    }
+
+    private Map<UUID, ExistingAccount> readBalances() throws SQLException {
+        Map<UUID, ExistingAccount> out = new HashMap<>();
+        try (Connection c = plugin.getDatabaseManager().connectionSource().connection();
+             PreparedStatement ps = c.prepareStatement("SELECT account_uuid, balance_minor, reserved_minor FROM " + EconomySchema.ACCOUNTS);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                try {
+                    out.put(UUID.fromString(rs.getString(1)), new ExistingAccount(rs.getLong(2), rs.getLong(3)));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+        return out;
+    }
+
+    private Set<String> readMailRefs() throws SQLException {
+        Set<String> out = new HashSet<>();
+        try (Connection c = plugin.getDatabaseManager().connectionSource().connection();
+             PreparedStatement ps = c.prepareStatement("SELECT source_ref FROM allium_mail WHERE source = ? AND source_ref IS NOT NULL")) {
+            ps.setString(1, LegacyDestinationPlan.SOURCE);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) out.add(rs.getString(1));
+            }
+        }
+        return out;
+    }
+
+    private String serverOrigin() {
+        Path file = plugin.getDataFolder().toPath().resolve(".server-id");
+        try {
+            if (Files.isRegularFile(file)) {
+                String id = Files.readString(file, StandardCharsets.UTF_8).trim();
+                if (!id.isEmpty()) return id;
+            }
+        } catch (IOException ignored) {
+        }
+        return "legacy-import";
     }
 
     // -- Settings ------------------------------------------------------------------------------------
@@ -327,6 +403,7 @@ public final class LegacyImportService {
         Map<String, Object> plan = new LinkedHashMap<>();
         plan.put("run", runId);
         plan.put("createdAt", Instant.now().toString());
+        plan.put("plannedAt", read.plannedAt());
         plan.put("source", relative(settings.source()));
         plan.put("sourceSha256", read.snapshot().sha256());
         plan.put("sourceBytes", read.snapshot().bytes());
@@ -344,6 +421,7 @@ public final class LegacyImportService {
         plan.put("unnamedHomes", read.data().unnamedHomes());
         plan.put("supersededLogoutRows", read.data().supersededLogouts());
         plan.put("otherLocationTypes", new LinkedHashMap<>(read.data().otherLocationTypes()));
+        plan.put("historicalInventoryCounts", new LinkedHashMap<>(read.data().historicalInventoryCounts()));
         plan.put("notes", new ArrayList<>(read.data().notes()));
         Files.writeString(dir.resolve("plan.json"), Json.write(plan) + "\n", StandardCharsets.UTF_8);
     }
@@ -393,13 +471,23 @@ public final class LegacyImportService {
         for (String note : read.data().notes()) out.append("Note: ").append(note).append('\n');
         out.append('\n');
         for (Domain d : LegacyDestinationApplier.domains()) {
-            out.append(switch (d) { case HOME -> "Homes"; case WARP -> "Warps"; case LOGOUT -> "Logout positions"; }).append(": ")
-                    .append(outcomes == null ? line(read.plan(), d) : applied(outcomes, d)).append('\n');
+            out.append(switch (d) {
+                case HOME -> "Homes";
+                case WARP -> "Warps";
+                case LOGOUT -> "Logout positions";
+                case BALANCE -> "Balances";
+                case NOTE -> "Staff notes";
+                case MAIL -> "Text mail";
+            }).append(": ").append(outcomes == null ? line(read.plan(), d) : applied(outcomes, d)).append('\n');
         }
         out.append("HOME rows without a name (legacy never used them): ").append(read.data().unnamedHomes()).append('\n');
         out.append("Older LOGOUT rows behind each player's newest: ").append(read.data().supersededLogouts()).append('\n');
         if (!read.data().otherLocationTypes().isEmpty()) {
             out.append("Location rows with no destination (not imported): ").append(read.data().otherLocationTypes()).append('\n');
+        }
+        if (!read.data().historicalInventoryCounts().isEmpty()) {
+            out.append("Serialized legacy item gifts & historical inventory tables (read-only inspection; NOT imported): ")
+                    .append(read.data().historicalInventoryCounts()).append('\n');
         }
         if (!read.plan().overrides().isEmpty()) {
             out.append("Legacy staff-set home limits: ").append(read.plan().overrides().size())

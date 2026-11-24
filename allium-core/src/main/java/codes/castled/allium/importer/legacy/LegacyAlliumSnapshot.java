@@ -19,7 +19,9 @@ import java.util.Map;
  */
 public record LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<SupersededHome> supersededHomes,
                                    long unnamedHomes, List<LogoutRow> logouts, long supersededLogouts, List<WarpRow> warps,
-                                   List<MaxHomesRow> maxHomes, Map<String, Long> otherLocationTypes, List<String> notes) {
+                                   List<MaxHomesRow> maxHomes, Map<String, Long> otherLocationTypes, List<String> notes,
+                                   List<BalanceRow> balances, List<NoteRow> staffNotes, List<MailRow> mailMessages,
+                                   Map<String, Long> historicalInventoryCounts) {
 
     public LegacyAlliumSnapshot {
         homes = List.copyOf(homes);
@@ -29,6 +31,17 @@ public record LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<S
         maxHomes = List.copyOf(maxHomes);
         otherLocationTypes = Map.copyOf(otherLocationTypes);
         notes = List.copyOf(notes);
+        balances = balances == null ? List.of() : List.copyOf(balances);
+        staffNotes = staffNotes == null ? List.of() : List.copyOf(staffNotes);
+        mailMessages = mailMessages == null ? List.of() : List.copyOf(mailMessages);
+        historicalInventoryCounts = historicalInventoryCounts == null ? Map.of() : Map.copyOf(historicalInventoryCounts);
+    }
+
+    public LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<SupersededHome> supersededHomes,
+                                long unnamedHomes, List<LogoutRow> logouts, long supersededLogouts, List<WarpRow> warps,
+                                List<MaxHomesRow> maxHomes, Map<String, Long> otherLocationTypes, List<String> notes) {
+        this(h2Version, homes, supersededHomes, unnamedHomes, logouts, supersededLogouts, warps, maxHomes,
+                otherLocationTypes, notes, List.of(), List.of(), List.of(), Map.of());
     }
 
     /** A position as legacy stored it: a world name, never a world UUID. */
@@ -50,5 +63,17 @@ public record LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<S
 
     /** {@code player_max_homes}: a staff-set limit; -1 or a missing row meant "use permissions". */
     public record MaxHomesRow(String owner, int maxHomes) {
+    }
+
+    /** {@code player_balances}: legacy H2 currency balance. */
+    public record BalanceRow(String owner, String balanceRaw) {
+    }
+
+    /** {@code player_notes}: historical staff notes attached to a player UUID. */
+    public record NoteRow(long id, String playerUuid, String staffUuid, String note, long createdAt) {
+    }
+
+    /** {@code mail_messages}: historical text mail (item gifts live in {@code mail_gifts} and are inspected read-only). */
+    public record MailRow(long id, String recipient, String sender, String senderName, String message, long sentAt, boolean read) {
     }
 }

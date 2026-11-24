@@ -505,6 +505,30 @@ public final class ModerationRepository {
         return listHistory(NOTES_TABLE, playerUuid, limit);
     }
 
+    /** Returns {@code uuid|createdAt|reason} fingerprints of existing notes for idempotent import planning. */
+    public java.util.Set<String> loadNoteFingerprints() throws SQLException {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        try (Connection c = source.connection();
+             PreparedStatement ps = c.prepareStatement("SELECT player_uuid, created_at, reason FROM " + NOTES_TABLE);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.add(rs.getString(1) + "|" + rs.getLong(2) + "|" + rs.getString(3));
+            }
+        }
+        return java.util.Set.copyOf(out);
+    }
+
+    /** Imports a historical staff note on the caller's transaction connection, preserving its original timestamp. */
+    public void importNote(Connection c, UUID playerUuid, String targetName, String actorName, String reason, long createdAt) throws SQLException {
+        Objects.requireNonNull(c, "connection");
+        HistoryEntry entry = new HistoryEntry(0, playerUuid, targetName, actorName, reason, createdAt > 0L ? createdAt : clock.getAsLong());
+        try (PreparedStatement ps = c.prepareStatement("INSERT INTO " + NOTES_TABLE + " (" + PLAYER_COLUMNS + ") VALUES (?, ?, ?, ?, ?)")) {
+            bindPlayer(ps, playerUuid, entry.targetName(), entry.actorName(), entry.reason(), entry.createdAt());
+            ps.executeUpdate();
+        }
+        writeAudit(c, "STAFF_NOTE_IMPORT", entry.actorName(), playerUuid, entry.targetName(), entry.reason());
+    }
+
     private HistoryEntry addHistory(String table, String action, UUID uuid, String name, String actor, String reason) throws SQLException {
         HistoryEntry entry = new HistoryEntry(0, uuid, name, actor, reason, clock.getAsLong());
         return transaction(c -> {

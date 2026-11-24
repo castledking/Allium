@@ -64,3 +64,12 @@ explode:
   default-power: 2
   # Whether its fireball sets fires.
   incendiary: true
+
+# Separate world rule for Wither spawning (independent of explosion regeneration above).
+wither-spawn:
+  # When true, blocks Wither spawns in every world.
+  block-all-worlds: false
+  # World names (case-insensitive) where Wither spawns are blocked when block-all-worlds is false.
+  blocked-worlds: []
+  # False blocks natural BUILD_WITHER and NETHER_PORTAL spawns only; true blocks every spawn reason.
+  block-all-reasons: false

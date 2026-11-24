@@ -55,6 +55,11 @@ public final class ExplosionsModule extends AbstractModule {
         }
         plugin.logger().info("Explosion regeneration enabled for " + (sources.isEmpty() ? "nothing" : String.join(", ", sources))
                 + "; blocks return after " + settings.delayTicks() / 20.0D + "s at " + settings.blocksPerSecond() + " per second.");
+        if (settings.blockWitherSpawnAllWorlds() || !settings.witherSpawnBlockedWorlds().isEmpty()) {
+            plugin.logger().info("Wither spawn rule active for "
+                    + (settings.blockWitherSpawnAllWorlds() ? "all worlds" : String.join(", ", settings.witherSpawnBlockedWorlds()))
+                    + (settings.blockWitherSpawnAllReasons() ? " (all spawn reasons)." : " (BUILD_WITHER, NETHER_PORTAL)."));
+        }
     }
 
     @Override

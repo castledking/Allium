@@ -308,6 +308,11 @@ commands:
     usage: /<command> [player] | /<command> <give|take|set> <player> <amount>[L] | /<command> reset <player>
     aliases: [exp]
     permission: allium.xp
+  xpbottle:
+    description: Convert experience into a redeemable XP bottle
+    usage: /<command> <amount|amountL|all> [player]
+    aliases: [bottle, expbottle]
+    permission: allium.xpbottle
   customtext:
     description: Show a page of the server's custom text
     usage: /<command> [section] [page]
@@ -811,9 +816,14 @@ commands:
     permission: allium.warn
 
   notes:
-    description: Read or add staff notes on a player
-    usage: /<command> <player> [add <note>]
+    description: Read, add, or remove staff notes on a player
+    usage: /<command> <player> [list|add <note>|remove <id>]
     permission: allium.notes
+
+  unnote:
+    description: Remove a staff note while retaining moderation audit history
+    usage: /<command> <id> | /<command> <player> <id>
+    permission: allium.unnote
 
   invsee:
     description: View or edit a player's inventory, online or offline
@@ -988,6 +998,8 @@ permissions:
       allium.togglejail: true
       allium.warn: true
       allium.notes: true
+      allium.unnote: true
+      allium.unnote.others: true
       allium.invsee: true
       allium.enderchest: true
       allium.enderchest.others: true
@@ -1064,6 +1076,8 @@ permissions:
       allium.lore.color: true
       allium.xp: true
       allium.xp.others: true
+      allium.xpbottle: true
+      allium.xpbottle.other: true
       allium.xp.give: true
       allium.xp.take: true
       allium.xp.set: true
@@ -2076,6 +2090,12 @@ permissions:
   allium.notes:
     description: Allows /notes
     default: op
+  allium.unnote:
+    description: Allows /unnote to remove your own staff notes (audit history is retained)
+    default: op
+  allium.unnote.others:
+    description: Allows /unnote to remove staff notes authored by other staff members
+    default: op
   allium.moderation.exempt:
     description: Protects a player from discipline actions without an explicit bypass
     default: false
@@ -2357,6 +2377,12 @@ permissions:
   allium.xp:
     description: Allows /xp to show your own experience
     default: true
+  allium.xpbottle:
+    description: Allows /xpbottle to convert your own XP into a redeemable XP bottle
+    default: true
+  allium.xpbottle.other:
+    description: Allows /xpbottle <amount|min-max> <player> to mint XP bottles for another player
+    default: op
   allium.xp.others:
     description: Allows /xp <player> to show another player's experience
     default: op

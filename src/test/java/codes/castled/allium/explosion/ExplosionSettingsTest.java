@@ -140,4 +140,35 @@ class ExplosionSettingsTest {
         assertEquals(20, settings.explodeDefaultPower());
         assertEquals(1, warnings.size());
     }
+
+    @Test
+    void witherSpawnWorldRuleIsIndependentOfWitherExplosionRegeneration() throws Exception {
+        List<String> warnings = new ArrayList<>();
+        ExplosionSettings defaults = read("", warnings);
+        assertFalse(defaults.blocksWitherSpawn("world", org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.BUILD_WITHER));
+        assertFalse(defaults.blocksWitherSpawn("world_nether", org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NETHER_PORTAL));
+
+        ExplosionSettings scoped = read("""
+                regeneration:
+                  sources:
+                    wither: true
+                wither-spawn:
+                  block-all-worlds: false
+                  blocked-worlds: [World, Spawn_Hub]
+                  block-all-reasons: false
+                """, warnings);
+        assertTrue(scoped.regenerates(Source.WITHER), "explosion regen remains independent of spawn rule");
+        assertTrue(scoped.blocksWitherSpawn("world", org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.BUILD_WITHER));
+        assertTrue(scoped.blocksWitherSpawn("SPAWN_HUB", org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NETHER_PORTAL));
+        assertFalse(scoped.blocksWitherSpawn("world", org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.CUSTOM));
+        assertFalse(scoped.blocksWitherSpawn("world_nether", org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.BUILD_WITHER));
+
+        ExplosionSettings globalAllReasons = read("""
+                wither-spawn:
+                  block-all-worlds: true
+                  block-all-reasons: true
+                """, warnings);
+        assertTrue(globalAllReasons.blocksWitherSpawn("world_the_end", org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.SPAWNER_EGG));
+        assertEquals(List.of(), warnings);
+    }
 }

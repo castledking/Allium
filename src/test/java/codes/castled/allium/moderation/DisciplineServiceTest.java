@@ -492,4 +492,35 @@ class DisciplineServiceTest {
         AsyncPlayerPreLoginEvent e = login(UUID.randomUUID()); service.onAsyncPreLogin(e);
         assertEquals(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, e.getLoginResult());
     }
+
+    @Test void unnoteAndNotesRemoveRespectPermissionsOwnershipAndRetainedAudit() throws Exception {
+        enable();
+        Player target = player("Target", Set.of());
+        UUID targetId = target.getUniqueId();
+        HistoryEntry note = new HistoryEntry(42L, targetId, "Target", "ModA", "kept literal &c<tag>", clock.get());
+        when(repository.listNotes(targetId, 50)).thenReturn(List.of(note));
+        when(repository.findNoteById(42L)).thenReturn(Optional.of(note));
+
+        // /notes <player> includes the numeric note ID
+        service.dispatch(console, "notes", new String[]{"Target"}); io.drain();
+        verify(console).sendMessage("[#42] Target by ModA: kept literal &c<tag>");
+
+        // Invalid ID is rejected before hitting SQL
+        service.dispatch(console, "unnote", new String[]{"abc"});
+        verify(messages).send(console, Messages.DISCIPLINE_NOTE_INVALID_ID, "{id}", "abc");
+
+        // Staff member without allium.unnote.others cannot remove someone else's note
+        Player modB = player("ModB", Set.of("allium.unnote", "allium.notes"));
+        when(repository.removeNote(42L, "ModB", targetId, false))
+                .thenReturn(new ModerationRepository.NoteRemovalResult(ModerationRepository.NoteRemovalStatus.NOT_OWNER, note));
+        service.dispatch(modB, "unnote", new String[]{"42"}); io.drain();
+        verify(messages).send(modB, Messages.NO_PERMISSION);
+
+        // /notes <player> remove <id> succeeds for authorized actor with allium.unnote.others
+        Player admin = player("Admin", Set.of("allium.notes", "allium.unnote", "allium.unnote.others"));
+        when(repository.removeNote(42L, "Admin", targetId, true))
+                .thenReturn(new ModerationRepository.NoteRemovalResult(ModerationRepository.NoteRemovalStatus.REMOVED, note));
+        service.dispatch(admin, "notes", new String[]{"Target", "remove", "42"}); io.drain();
+        verify(messages).send(admin, Messages.DISCIPLINE_NOTE_REMOVED, "{id}", "42", "{player}", "Target");
+    }
 }

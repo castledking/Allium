@@ -44,6 +44,7 @@ public final class EssentialsModule extends AbstractModule {
     private UtilityCommand.DisposalListener disposalListener;
     private UnlimitedCommand unlimited;
     private codes.castled.allium.command.essentials.LoreClipboard loreClipboard;
+    private codes.castled.allium.command.essentials.XpBottleCommand xpBottle;
     private codes.castled.allium.command.essentials.MotdOnJoin motdOnJoin;
     private codes.castled.allium.player.TimedFlight timedFlight;
     private codes.castled.allium.glow.GlowService glow;
@@ -178,6 +179,11 @@ public final class EssentialsModule extends AbstractModule {
         }
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.LORE, loreClipboard));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.XpCommand(plugin));
+        xpBottle = new codes.castled.allium.command.essentials.XpBottleCommand(plugin);
+        plugin.getCommandManager().register(xpBottle);
+        if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
+            plugin.getServer().getPluginManager().registerEvents(xpBottle, plugin);
+        }
         var motd = codes.castled.allium.command.essentials.TextFileCommand.motd(plugin);
         var info = codes.castled.allium.command.essentials.TextFileCommand.info(plugin);
         for (var textFile : java.util.List.of(info, codes.castled.allium.command.essentials.TextFileCommand.customText(plugin), motd,
@@ -257,6 +263,10 @@ public final class EssentialsModule extends AbstractModule {
         if (loreClipboard != null) {
             HandlerList.unregisterAll(loreClipboard);
             loreClipboard = null;
+        }
+        if (xpBottle != null) {
+            HandlerList.unregisterAll(xpBottle);
+            xpBottle = null;
         }
         if (motdOnJoin != null) {
             HandlerList.unregisterAll(motdOnJoin);

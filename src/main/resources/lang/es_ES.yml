@@ -987,6 +987,17 @@ moderation:
       - "[sound] item.book.page_turn 1.0"
     list-entry:
       - "&7- {player} por {actor}: {message}"
+    note-entry:
+      - "&7[#{id}] {player} por {actor}: {message}"
+    note-removed:
+      - "{prefix} &aNota de staff &f#{id} &aeliminada para &f{player}&a. El historial de auditoria se conserva."
+      - "[sound] entity.experience_orb.pickup 1.1"
+    note-not-found:
+      - "{prefix} &cLa nota de staff &f#{id} &cno se encontro."
+      - "[sound] block.note_block.bass 0.8"
+    note-invalid-id:
+      - "{prefix} &cID de nota invalido: &f{id}&c."
+      - "[sound] block.note_block.bass 0.8"
     list-empty:
       - "{prefix} &7No se encontraron registros de moderacion."
       - "[sound] block.note_block.hat 0.95"
@@ -1827,6 +1838,27 @@ utility:
     - "[sound] entity.experience_orb.pickup 1.0"
   xp-invalid:
     - "{prefix} &f{input} &cno es una cantidad: usa puntos como &f100 &co niveles como &f5L &c(hasta el nivel &f{max}&c)."
+    - "[sound] block.note_block.bass 0.8"
+  xpbottle-created:
+    - "{prefix} &aSe creo una botella de XP por &f{points} XP&a."
+    - "[sound] entity.experience_orb.pickup 1.15"
+  xpbottle-given:
+    - "{prefix} &aSe entrego una botella de XP por &f{points} XP &aa &f{player}&a."
+    - "[sound] entity.experience_orb.pickup 1.15"
+  xpbottle-received:
+    - "{prefix} &aRecibiste una botella de XP por &f{points} XP &ade &f{signer}&a."
+    - "[sound] entity.experience_orb.pickup 1.15"
+  xpbottle-not-enough:
+    - "{prefix} &cNecesitas &f{points} XP &cpero solo tienes &f{current} XP&c."
+    - "[sound] block.note_block.bass 0.8"
+  xpbottle-inventory-full:
+    - "{prefix} &cEl inventario de {player} esta lleno."
+    - "[sound] block.note_block.bass 0.8"
+  xpbottle-redeemed:
+    - "{prefix} &aCanjeaste &f{points} XP&a."
+    - "[sound] entity.experience_orb.pickup 1.15"
+  xpbottle-max-xp:
+    - "{prefix} &cTu experiencia ya esta en el limite maximo."
     - "[sound] block.note_block.bass 0.8"
 tool:
   mob-disarmer:

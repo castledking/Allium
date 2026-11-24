@@ -2,6 +2,7 @@ package codes.castled.allium.explosion;
 
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 
 import java.util.Collections;
 import java.util.EnumMap;
@@ -39,8 +40,34 @@ public record ExplosionSettings(
         int explodeMaxPower,
         int explodeDefaultPower,
         boolean explodeIncendiary,
-        boolean antiochAnnounce
+        boolean antiochAnnounce,
+        boolean blockWitherSpawnAllWorlds,
+        Set<String> witherSpawnBlockedWorlds,
+        boolean blockWitherSpawnAllReasons
 ) {
+
+    public ExplosionSettings(
+            Map<Source, Boolean> sources,
+            Map<Explosive, Boolean> commands,
+            long delayTicks,
+            double blocksPerSecond,
+            boolean effects,
+            Set<String> disabledWorlds,
+            boolean skipClaims,
+            Set<Material> ignored,
+            int maxBlocks,
+            boolean protectHanging,
+            double fireballMaxSpeed,
+            int explodeMinPower,
+            int explodeMaxPower,
+            int explodeDefaultPower,
+            boolean explodeIncendiary,
+            boolean antiochAnnounce
+    ) {
+        this(sources, commands, delayTicks, blocksPerSecond, effects, disabledWorlds, skipClaims, ignored,
+                maxBlocks, protectHanging, fireballMaxSpeed, explodeMinPower, explodeMaxPower,
+                explodeDefaultPower, explodeIncendiary, antiochAnnounce, false, Set.of(), false);
+    }
 
     /** Explosions that do not come from Allium's commands. */
     public enum Source {
@@ -106,7 +133,19 @@ public record ExplosionSettings(
         sources = Collections.unmodifiableMap(new EnumMap<>(sources));
         commands = Collections.unmodifiableMap(new EnumMap<>(commands));
         disabledWorlds = Set.copyOf(disabledWorlds);
+        witherSpawnBlockedWorlds = Set.copyOf(witherSpawnBlockedWorlds);
         ignored = ignored.isEmpty() ? Set.of() : Collections.unmodifiableSet(EnumSet.copyOf(ignored));
+    }
+
+    /** Separate world rule for Wither spawning, independent of explosion regeneration. */
+    public boolean blocksWitherSpawn(String world, CreatureSpawnEvent.SpawnReason reason) {
+        if (world == null) return false;
+        boolean worldBlocked = blockWitherSpawnAllWorlds
+                || witherSpawnBlockedWorlds.contains(world.toLowerCase(Locale.ROOT));
+        if (!worldBlocked) return false;
+        if (blockWitherSpawnAllReasons) return true;
+        return reason == CreatureSpawnEvent.SpawnReason.BUILD_WITHER
+                || reason == CreatureSpawnEvent.SpawnReason.NETHER_PORTAL;
     }
 
     public boolean regenerates(Source source) {
@@ -205,9 +244,19 @@ public record ExplosionSettings(
             warn.accept("explosions.yml: explode.default-power must be between min-power and max-power; using " + Math.min(max, Math.max(min, 2)) + ".");
             fallback = Math.min(max, Math.max(min, 2));
         }
+        ConfigurationSection witherSpawn = root.getConfigurationSection("wither-spawn");
+        boolean blockWitherAll = witherSpawn != null && witherSpawn.getBoolean("block-all-worlds", false);
+        Set<String> witherBlockedWorlds = new LinkedHashSet<>();
+        if (witherSpawn != null) {
+            for (String world : witherSpawn.getStringList("blocked-worlds")) {
+                if (world != null && !world.isBlank()) witherBlockedWorlds.add(world.trim().toLowerCase(Locale.ROOT));
+            }
+        }
+        boolean blockWitherAllReasons = witherSpawn != null && witherSpawn.getBoolean("block-all-reasons", false);
         return new ExplosionSettings(sources, commands, Math.round(delaySeconds * 20.0D), perSecond,
                 regen.getBoolean("effects", true), worlds, regen.getBoolean("skip-claims", true), ignored, maxBlocks,
                 regen.getBoolean("protect-hanging", true), maxSpeed, min, max, fallback,
-                root.getBoolean("explode.incendiary", true), root.getBoolean("antioch.announce", true));
+                root.getBoolean("explode.incendiary", true), root.getBoolean("antioch.announce", true),
+                blockWitherAll, witherBlockedWorlds, blockWitherAllReasons);
     }
 }

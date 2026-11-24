@@ -641,7 +641,7 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> DISCIPLINE_SPECS = java.util.stream.Stream.of(
             "kick", "kickall", "ban", "tempban", "unban", "banlist", "ipban", "tempbanip", "unbanip",
-            "freeze", "setjail", "deljail", "jails", "jailedplayers", "jail", "unjail", "togglejail", "warn", "notes")
+            "freeze", "setjail", "deljail", "jails", "jailedplayers", "jail", "unjail", "togglejail", "warn", "notes", "unnote")
             .map(CoreCommandSpecs::disciplineSpec).toList();
 
     private static CommandSpec disciplineSpec(String name) {
@@ -658,7 +658,8 @@ public final class CoreCommandSpecs {
             case "deljail" -> "/deljail <jail>";
             case "jail" -> "/jail <player> <jail> [reason]";
             case "togglejail" -> "/togglejail <player> [jail] [time]";
-            case "notes" -> "/notes <player> [add <note>]";
+            case "notes" -> "/notes <player> [list|add <note>|remove <id>]";
+            case "unnote" -> "/unnote <id> | /unnote <player> <id>";
             default -> throw new IllegalArgumentException(name);
         };
         List<CommandArgSpec> arguments = switch (name) {
@@ -684,7 +685,10 @@ public final class CoreCommandSpecs {
                     CommandArgSpec.optional("history", null, SuggestionSpec.literals(List.of("history", "list"), null)));
             case "notes" -> List.of(
                     CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)),
-                    CommandArgSpec.optional("action", null, SuggestionSpec.literals(List.of("list", "add"), null)));
+                    CommandArgSpec.optional("action", null, SuggestionSpec.literals(List.of("list", "add", "remove"), null)));
+            case "unnote" -> List.of(
+                    CommandArgSpec.required("idOrPlayer", null, SuggestionSpec.knownPlayers(null)),
+                    CommandArgSpec.optional("id", null, SuggestionSpec.none()));
             default -> List.of(CommandArgSpec.required("player", null, SuggestionSpec.knownPlayers(null)));
         };
         List<String> aliases = switch (name) {
@@ -1335,6 +1339,21 @@ public final class CoreCommandSpecs {
             CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    /** {@code /xpbottle}: convert XP into a redeemable XP bottle, or mint one for another player. */
+    public static final CommandSpec XPBOTTLE = new CommandSpec(
+            "xpbottle", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("bottle", "expbottle"),
+            "Convert experience into a redeemable XP bottle",
+            "/xpbottle <amount|amountL|all> [player]",
+            "/xpbottle <amount|amountL|min-max> <player>",
+            "allium.xpbottle", "allium.xpbottle.other",
+            List.of(
+                    CommandArgSpec.required("amount", null, SuggestionSpec.literals(List.of("100", "500", "10L", "30L", "all"), null)),
+                    CommandArgSpec.optional("player", "allium.xpbottle.other", SuggestionSpec.onlinePlayers("allium.xpbottle.other"))
+            ),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     /** {@code /customtext [section] [page]}: pages of {@code custom.txt}, with click and hover tags. */
     public static final CommandSpec CUSTOMTEXT = new CommandSpec(
             "customtext", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
@@ -1482,7 +1501,7 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, COORDS, COMPASS, GLOW, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, PTIME, PWEATHER, ENCHANT, RENAME, LORE, XP, INFO, INFORM, CUSTOMTEXT, MOTD, RULES,
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, PTIME, PWEATHER, ENCHANT, RENAME, LORE, XP, XPBOTTLE, INFO, INFORM, CUSTOMTEXT, MOTD, RULES,
             BROADCAST, BROADCASTWORLD, BROADCASTS, REALNAME, SPAWNMOB, RECIPE, POTION, FIREWORK
     );
 

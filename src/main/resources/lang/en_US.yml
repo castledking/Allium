@@ -987,6 +987,17 @@ moderation:
       - "[sound] item.book.page_turn 1.0"
     list-entry:
       - "&7- {player} by {actor}: {message}"
+    note-entry:
+      - "&7[#{id}] {player} by {actor}: {message}"
+    note-removed:
+      - "{prefix} &aRemoved staff note &f#{id} &afor &f{player}&a. Audit history retained."
+      - "[sound] entity.experience_orb.pickup 1.1"
+    note-not-found:
+      - "{prefix} &cStaff note &f#{id} &cwas not found."
+      - "[sound] block.note_block.bass 0.8"
+    note-invalid-id:
+      - "{prefix} &cInvalid note ID: &f{id}&c."
+      - "[sound] block.note_block.bass 0.8"
     list-empty:
       - "{prefix} &7No moderation records found."
       - "[sound] block.note_block.hat 0.95"
@@ -1827,6 +1838,27 @@ utility:
     - "[sound] entity.experience_orb.pickup 1.0"
   xp-invalid:
     - "{prefix} &f{input} &cis not an amount: use points like &f100 &cor levels like &f5L &c(up to level &f{max}&c)."
+    - "[sound] block.note_block.bass 0.8"
+  xpbottle-created:
+    - "{prefix} &aCreated an XP bottle for &f{points} XP&a."
+    - "[sound] entity.experience_orb.pickup 1.15"
+  xpbottle-given:
+    - "{prefix} &aGave an XP bottle for &f{points} XP &ato &f{player}&a."
+    - "[sound] entity.experience_orb.pickup 1.15"
+  xpbottle-received:
+    - "{prefix} &aYou received an XP bottle for &f{points} XP &afrom &f{signer}&a."
+    - "[sound] entity.experience_orb.pickup 1.15"
+  xpbottle-not-enough:
+    - "{prefix} &cYou need &f{points} XP &cbut only have &f{current} XP&c."
+    - "[sound] block.note_block.bass 0.8"
+  xpbottle-inventory-full:
+    - "{prefix} &c{player}'s inventory is full."
+    - "[sound] block.note_block.bass 0.8"
+  xpbottle-redeemed:
+    - "{prefix} &aRedeemed &f{points} XP&a."
+    - "[sound] entity.experience_orb.pickup 1.15"
+  xpbottle-max-xp:
+    - "{prefix} &cYour experience is already at the maximum limit."
     - "[sound] block.note_block.bass 0.8"
 tool:
   mob-disarmer:

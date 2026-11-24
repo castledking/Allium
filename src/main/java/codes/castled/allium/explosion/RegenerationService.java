@@ -280,6 +280,15 @@ public final class RegenerationService implements Listener {
      * manager (HIGHEST) removes blocks placed in creative mode. Those come back here still marked as
      * creative-placed, instead of vanishing.
      */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onWitherSpawn(org.bukkit.event.entity.CreatureSpawnEvent event) {
+        if (!(event.getEntity() instanceof Wither)) return;
+        World world = event.getLocation().getWorld();
+        if (world != null && settings.blocksWitherSpawn(world.getName(), event.getSpawnReason())) {
+            event.setCancelled(true);
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
         if (explosive(event.getEntity()) == Explosive.NUKE) {

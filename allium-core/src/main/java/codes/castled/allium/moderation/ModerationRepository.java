@@ -505,6 +505,67 @@ public final class ModerationRepository {
         return listHistory(NOTES_TABLE, playerUuid, limit);
     }
 
+    public enum NoteRemovalStatus { REMOVED, NOT_FOUND, NOT_OWNER }
+
+    /** Outcome of removing a staff note; {@code removed} is non-null for REMOVED and NOT_OWNER. */
+    public record NoteRemovalResult(NoteRemovalStatus status, HistoryEntry removed) {}
+
+    /** Looks up a single active staff note by its numeric ID. */
+    public Optional<HistoryEntry> findNoteById(long noteId) throws SQLException {
+        if (noteId <= 0) return Optional.empty();
+        return query("SELECT id, " + PLAYER_COLUMNS + " FROM " + NOTES_TABLE + " WHERE id = ?",
+                ps -> ps.setLong(1, noteId),
+                rs -> new HistoryEntry(rs.getLong(1), UUID.fromString(rs.getString(2)), rs.getString(3),
+                        rs.getString(4), rs.getString(5), rs.getLong(6))).stream().findFirst();
+    }
+
+    /**
+     * Removes an active staff note by ID while permanently retaining a {@code STAFF_NOTE_REMOVE}
+     * audit row in {@link #AUDIT_TABLE} containing the original note ID, author, timestamp, and text.
+     *
+     * @param noteId             positive note row ID
+     * @param actorName          staff actor removing the note
+     * @param expectedTargetUuid optional target player UUID filter (null accepts any target)
+     * @param canRemoveOthers    true if the actor may remove notes authored by other staff members
+     */
+    public NoteRemovalResult removeNote(long noteId, String actorName, UUID expectedTargetUuid, boolean canRemoveOthers) throws SQLException {
+        if (noteId <= 0) return new NoteRemovalResult(NoteRemovalStatus.NOT_FOUND, null);
+        String safeActor = actorName(actorName);
+        return transaction(c -> {
+            // Acquire a write lock first to avoid SQLite deferred upgrade races.
+            try (PreparedStatement ps = c.prepareStatement("UPDATE " + NOTES_TABLE + " SET id = id WHERE id = ?")) {
+                ps.setLong(1, noteId);
+                ps.executeUpdate();
+            }
+            HistoryEntry existing;
+            try (PreparedStatement ps = c.prepareStatement(
+                    "SELECT id, " + PLAYER_COLUMNS + " FROM " + NOTES_TABLE + " WHERE id = ?")) {
+                ps.setLong(1, noteId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return new NoteRemovalResult(NoteRemovalStatus.NOT_FOUND, null);
+                    existing = new HistoryEntry(rs.getLong(1), UUID.fromString(rs.getString(2)), rs.getString(3),
+                            rs.getString(4), rs.getString(5), rs.getLong(6));
+                }
+            }
+            if (expectedTargetUuid != null && !expectedTargetUuid.equals(existing.playerUuid())) {
+                return new NoteRemovalResult(NoteRemovalStatus.NOT_FOUND, null);
+            }
+            if (!canRemoveOthers && !existing.actorName().equalsIgnoreCase(safeActor)) {
+                return new NoteRemovalResult(NoteRemovalStatus.NOT_OWNER, existing);
+            }
+            try (PreparedStatement ps = c.prepareStatement("DELETE FROM " + NOTES_TABLE + " WHERE id = ?")) {
+                ps.setLong(1, noteId);
+                ps.executeUpdate();
+            }
+            String auditDetail = "note_id=" + existing.id()
+                    + " author=" + existing.actorName()
+                    + " created_at=" + existing.createdAt()
+                    + " note=" + existing.reason();
+            writeAudit(c, "STAFF_NOTE_REMOVE", safeActor, existing.playerUuid(), existing.targetName(), auditDetail);
+            return new NoteRemovalResult(NoteRemovalStatus.REMOVED, existing);
+        });
+    }
+
     /** Returns {@code uuid|createdAt|reason} fingerprints of existing notes for idempotent import planning. */
     public java.util.Set<String> loadNoteFingerprints() throws SQLException {
         java.util.Set<String> out = new java.util.HashSet<>();

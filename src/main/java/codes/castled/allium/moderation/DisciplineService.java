@@ -787,6 +787,9 @@ public final class DisciplineService implements Listener {
         if (action.equals("kickall")) {
             kickAll(actor, args); return;
         }
+        if (action.equals("unnote")) {
+            dispatchUnnote(actor, args); return;
+        }
         if (!List.of("kick", "ban", "tempban", "unban", "ipban", "tempbanip", "unbanip",
                 "freeze", "jail", "unjail", "togglejail", "warn", "notes").contains(action)) {
             usage(sender, "/" + action); return;
@@ -794,8 +797,10 @@ public final class DisciplineService implements Listener {
         if (args.length == 0
                 || (action.equals("tempban") || action.equals("tempbanip")) && args.length < 2
                 || action.equals("jail") && args.length < 2
-                || action.equals("notes") && (args.length > 1 && !args[1].equalsIgnoreCase("list") && !args[1].equalsIgnoreCase("add")
-                    || args.length > 2 && args[1].equalsIgnoreCase("list") || args.length == 2 && args[1].equalsIgnoreCase("add"))
+                || action.equals("notes") && (args.length > 1 && !args[1].equalsIgnoreCase("list") && !args[1].equalsIgnoreCase("add") && !args[1].equalsIgnoreCase("remove")
+                    || args.length > 2 && args[1].equalsIgnoreCase("list")
+                    || args.length == 2 && (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove"))
+                    || args.length > 3 && args[1].equalsIgnoreCase("remove"))
                 || (action.equals("unjail") || action.equals("unban") || action.equals("unbanip")) && args.length != 1) {
             usage(sender, usage(action)); return;
         }
@@ -826,6 +831,15 @@ public final class DisciplineService implements Listener {
                         || finalAction.equals("warn") && args.length == 2 && (args[1].equalsIgnoreCase("history") || args[1].equalsIgnoreCase("list"))) {
                     listHistory(actor, target, finalAction.equals("warn")); return;
                 }
+                if (finalAction.equals("notes") && args.length == 3 && args[1].equalsIgnoreCase("remove")) {
+                    if (sender instanceof Player && !sender.hasPermission("allium.unnote")) {
+                        send(sender, Messages.NO_PERMISSION); return;
+                    }
+                    Long noteId = parseNoteId(args[2]);
+                    if (noteId == null) { send(sender, Messages.DISCIPLINE_NOTE_INVALID_ID, "{id}", args[2]); return; }
+                    if (!authorizeAction(sender, target.uuid())) return;
+                    removeNote(actor, target.uuid(), noteId); return;
+                }
                 if (!authorizeAction(sender, target.uuid())) return;
                 mutate(actor, finalAction, target, args, finalDuration);
             }));
@@ -840,7 +854,8 @@ public final class DisciplineService implements Listener {
             case "jail" -> "/jail <player> <jail> [reason]";
             case "togglejail" -> "/togglejail <player> [jail] [time]";
             case "deljail" -> "/deljail <jail>";
-            case "notes" -> "/notes <player> [list|add <note>]";
+            case "notes" -> "/notes <player> [list|add <note>|remove <id>]";
+            case "unnote" -> "/unnote <id> | /unnote <player> <id>";
             case "freeze" -> "/freeze <player> [on|off] [reason]";
             case "unban", "unjail" -> "/" + action + " <player>";
             default -> "/" + action + " <player> [reason]";
@@ -1389,6 +1404,84 @@ public final class DisciplineService implements Listener {
         }
     }
 
+    private void dispatchUnnote(Actor actor, String[] args) {
+        CommandSender sender = actor.sender();
+        if (args.length < 1 || args.length > 2) { usage(sender, usage("unnote")); return; }
+        if (args.length == 1) {
+            Long noteId = parseNoteId(args[0]);
+            if (noteId == null) { send(sender, Messages.DISCIPLINE_NOTE_INVALID_ID, "{id}", args[0]); return; }
+            if (!rate(sender)) return;
+            submit(() -> {
+                try {
+                    Optional<HistoryEntry> existing = repository.findNoteById(noteId);
+                    serverFor(sender, () -> {
+                        if (!authorized(actor)) return;
+                        if (existing.isEmpty()) {
+                            send(sender, Messages.DISCIPLINE_NOTE_NOT_FOUND, "{id}", Long.toString(noteId));
+                            return;
+                        }
+                        if (!canModerate(sender, existing.get().playerUuid())) {
+                            send(sender, Messages.DISCIPLINE_EXEMPT);
+                            return;
+                        }
+                        removeNote(actor, existing.get().playerUuid(), noteId);
+                    });
+                } catch (SQLException failure) {
+                    serverFor(sender, () -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE));
+                }
+            }, () -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE));
+            return;
+        }
+        Long noteId = parseNoteId(args[1]);
+        if (noteId == null) { send(sender, Messages.DISCIPLINE_NOTE_INVALID_ID, "{id}", args[1]); return; }
+        if (plugin.getPlayerNames() == null) { send(sender, Messages.DISCIPLINE_UNAVAILABLE); return; }
+        try {
+            plugin.getPlayerNames().resolve(args[0]).whenComplete((found, error) -> serverFor(sender, () -> {
+                if (!authorized(actor)) return;
+                if (error != null) { send(sender, Messages.DISCIPLINE_UNAVAILABLE); return; }
+                if (found == null || found.isEmpty()) { send(sender, Messages.PLAYER_NOT_FOUND, "{player}", MessagingService.safeName(args[0])); return; }
+                NameCache.Entry target = found.get();
+                if (!authorizeAction(sender, target.uuid())) return;
+                removeNote(actor, target.uuid(), noteId);
+            }));
+        } catch (RejectedExecutionException rejected) { send(sender, Messages.DISCIPLINE_UNAVAILABLE); }
+    }
+
+    private void removeNote(Actor actor, UUID expectedTargetUuid, long noteId) {
+        CommandSender sender = actor.sender();
+        boolean canRemoveOthers = !(sender instanceof Player)
+                || sender.hasPermission("allium.unnote.others")
+                || sender.hasPermission("allium.moderation.bypass");
+        submit(() -> {
+            try {
+                ModerationRepository.NoteRemovalResult result =
+                        repository.removeNote(noteId, actor.name(), expectedTargetUuid, canRemoveOthers);
+                serverFor(sender, () -> {
+                    if (!authorized(actor)) return;
+                    switch (result.status()) {
+                        case REMOVED -> send(sender, Messages.DISCIPLINE_NOTE_REMOVED,
+                                "{id}", Long.toString(noteId), "{player}", result.removed().targetName());
+                        case NOT_FOUND -> send(sender, Messages.DISCIPLINE_NOTE_NOT_FOUND,
+                                "{id}", Long.toString(noteId));
+                        case NOT_OWNER -> send(sender, Messages.NO_PERMISSION);
+                    }
+                });
+            } catch (SQLException failure) {
+                serverFor(sender, () -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE));
+            }
+        }, () -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE));
+    }
+
+    private static Long parseNoteId(String raw) {
+        if (raw == null || !raw.matches("\\d{1,18}")) return null;
+        try {
+            long id = Long.parseLong(raw);
+            return id > 0 ? id : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
     private void listHistory(Actor actor, NameCache.Entry target, boolean warnings) {
         submit(() -> {
             try {
@@ -1397,8 +1490,15 @@ public final class DisciplineService implements Listener {
                     if (!authorized(actor)) return;
                     if (entries.isEmpty()) { send(actor.sender(), Messages.DISCIPLINE_LIST_EMPTY); return; }
                     send(actor.sender(), Messages.DISCIPLINE_LIST_HEADER, "{count}", Integer.toString(entries.size()));
-                    for (HistoryEntry entry : entries) literal(actor.sender(), Messages.DISCIPLINE_LIST_ENTRY, entry.reason(),
-                            "{player}", entry.targetName(), "{actor}", entry.actorName());
+                    for (HistoryEntry entry : entries) {
+                        if (warnings) {
+                            literal(actor.sender(), Messages.DISCIPLINE_LIST_ENTRY, entry.reason(),
+                                    "{player}", entry.targetName(), "{actor}", entry.actorName());
+                        } else {
+                            literal(actor.sender(), Messages.DISCIPLINE_NOTE_ENTRY, entry.reason(),
+                                    "{id}", Long.toString(entry.id()), "{player}", entry.targetName(), "{actor}", entry.actorName());
+                        }
+                    }
                 });
             } catch (SQLException failure) { serverFor(actor.sender(), () -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE)); }
         }, () -> sendIfCurrent(actor, Messages.DISCIPLINE_UNAVAILABLE));

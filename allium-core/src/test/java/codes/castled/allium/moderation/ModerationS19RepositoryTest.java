@@ -212,6 +212,57 @@ class ModerationS19RepositoryTest {
     }
 
     @Test
+    void unnoteRemovesActiveNoteEnforcesOwnershipAndRetainsAuditHistory() throws Exception {
+        for (var database : ModerationDatabases.all(dir)) {
+            try (var db = database) {
+                AtomicLong clock = new AtomicLong(2000);
+                ModerationRepository repo = repository(db, clock);
+                HistoryEntry first = repo.addNote(PLAYER, "Target", "ModA", "suspicious trade");
+                HistoryEntry second = repo.addNote(PLAYER, "Target", "ModB", "verified clean");
+                assertEquals(Optional.of(first), repo.findNoteById(first.id()));
+
+                // Wrong target filter returns NOT_FOUND without touching the note
+                var wrongTarget = repo.removeNote(first.id(), "ModA", OTHER, true);
+                assertEquals(ModerationRepository.NoteRemovalStatus.NOT_FOUND, wrongTarget.status());
+                assertEquals(2, repo.listNotes(PLAYER, 10).size());
+
+                // Another staff member without canRemoveOthers is rejected with NOT_OWNER
+                var denied = repo.removeNote(first.id(), "ModB", PLAYER, false);
+                assertEquals(ModerationRepository.NoteRemovalStatus.NOT_OWNER, denied.status());
+                assertEquals(first, denied.removed());
+                assertEquals(2, repo.listNotes(PLAYER, 10).size());
+
+                // Author removing their own note succeeds and records retained STAFF_NOTE_REMOVE audit
+                clock.set(3000);
+                var ownRemoved = repo.removeNote(first.id(), "ModA", PLAYER, false);
+                assertEquals(ModerationRepository.NoteRemovalStatus.REMOVED, ownRemoved.status());
+                assertEquals(first, ownRemoved.removed());
+                assertEquals(List.of(second), repo.listNotes(PLAYER, 10));
+
+                // Privileged staff member removing another staff member's note succeeds
+                clock.set(4000);
+                var adminRemoved = repo.removeNote(second.id(), "Admin", null, true);
+                assertEquals(ModerationRepository.NoteRemovalStatus.REMOVED, adminRemoved.status());
+                assertTrue(repo.listNotes(PLAYER, 10).isEmpty());
+
+                // Both removals are permanently retained in allium_moderation_audit with original author and note text
+                List<ModerationAuditRecord> audit = repo.loadRecentAudit(10);
+                ModerationAuditRecord latestRemove = audit.get(0);
+                ModerationAuditRecord earlierRemove = audit.get(1);
+                assertEquals("STAFF_NOTE_REMOVE", latestRemove.action());
+                assertEquals("Admin", latestRemove.actorName());
+                assertTrue(latestRemove.detail().contains("note_id=" + second.id()));
+                assertTrue(latestRemove.detail().contains("author=ModB"));
+                assertTrue(latestRemove.detail().contains("verified clean"));
+                assertEquals("STAFF_NOTE_REMOVE", earlierRemove.action());
+                assertEquals("ModA", earlierRemove.actorName());
+                assertTrue(earlierRemove.detail().contains("note_id=" + first.id()));
+                assertTrue(earlierRemove.detail().contains("suspicious trade"));
+            }
+        }
+    }
+
+    @Test
     void allMutationsRollbackBothStateAndAuditOnSqlAndRuntimeFailures() throws Exception {
         for (var database : ModerationDatabases.all(dir)) {
             try (var db = database) {

@@ -1108,6 +1108,8 @@ permissions:
       allium.chat.receive.mention: true
       allium.chat.question: true
       allium.chat.url: true
+      allium.chat.filter.bypass: true
+      allium.chat.filter.alerts: true
       allium.commandspy: true
       allium.spy: true
       allium.spectate: true
@@ -2604,6 +2606,12 @@ permissions:
     default: true
   allium.chat.url:
     description: Allows sending URLs in chat
+    default: op
+  allium.chat.filter.bypass:
+    description: Exempts a player from chat phrase, repeat, and rate-limit filtering
+    default: op
+  allium.chat.filter.alerts:
+    description: Receives staff alerts when the chat filter blocks or flags a message
     default: op
   allium.chat.ignoreexempt:
     description: Exempt from being /ignored by other players

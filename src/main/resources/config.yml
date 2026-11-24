@@ -649,6 +649,36 @@ chat:
   # Require allium.chat.url (default op) to post links in chat.
   urls:
     enabled: true
+  # Opt-in chat phrase, repeat-similarity, and rate-limit filter with auditable staff alerts.
+  # Staff with allium.chat.filter.bypass are exempt; staff with allium.chat.filter.alerts receive notices.
+  filter:
+    enabled: false
+    # block = stop message delivery/relay; alert-only = log & alert staff without blocking (staging/tuning).
+    mode: block
+    exempt-staff-channel: true
+    notify-staff: true
+    # Records CHAT_FILTER entries in the moderation audit log when the moderation module is enabled.
+    audit-to-moderation: true
+    phrases:
+      enabled: true
+      normalize-substitutions: true
+      join-split-letters: true
+      tokens: []
+      phrases: []
+      substrings: []
+      exceptions: []
+    repeat:
+      enabled: true
+      window-seconds: 15
+      max-similar: 2
+      similarity-threshold: 0.85
+      strip-flood-suffix: true
+      whitelist: [gg, wb, ty, welcome]
+    rate-limit:
+      enabled: true
+      min-interval-millis: 1000
+      burst-max: 5
+      burst-window-seconds: 10
 
 # UUID:rank entries are one-time claims. The console runs the selected rank's commands in order.
 # Commands can use {player} and {uuid}. The claimed list is maintained by Allium.

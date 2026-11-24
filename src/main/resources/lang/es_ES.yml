@@ -846,6 +846,18 @@ chat:
   url-denied:
     - "{prefix} &cNo tienes permiso para enviar enlaces en el chat."
     - "[sound] entity.villager.no 0.9"
+  filter:
+    phrase-blocked:
+      - "{prefix} &cTu mensaje fue bloqueado por el filtro de chat."
+      - "[sound] entity.villager.no 0.9"
+    repeat-blocked:
+      - "{prefix} &cPor favor no repitas mensajes similares tan rápido."
+      - "[sound] entity.villager.no 0.9"
+    rate-blocked:
+      - "{prefix} &cEstás enviando mensajes demasiado rápido. Espera {time}s."
+      - "[sound] entity.villager.no 0.9"
+    staff-alert:
+      - "&8[ChatFilter] &c{player} &7({rule}) &8» &f{message}"
   question-denied:
     - "{prefix} &cNo tienes permiso para hacer preguntas globales en el chat."
     - "[sound] entity.villager.no 0.9"

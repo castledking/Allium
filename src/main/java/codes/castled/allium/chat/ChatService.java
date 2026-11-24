@@ -52,6 +52,7 @@ public final class ChatService implements Listener,AutoCloseable {
     private static final int MAX_PRELOADED = 1024;
     private final Map<UUID, Preloaded> preloaded = new ConcurrentHashMap<>();
     private final java.util.function.Function<Player, ChatDecorations.Value> decorQuery;
+    private final ChatFilterPolicy filterPolicy;
     private static final class Session {
         final Player player;
         volatile String nickname,display,gradient;
@@ -79,14 +80,20 @@ public final class ChatService implements Listener,AutoCloseable {
     }
     public ChatService(PluginStart plugin,ChatRepository repository,Executor io){this(plugin,repository,io,null);}
     ChatService(PluginStart plugin,ChatRepository repository,Executor io,ChatRelay relay){
-        this(plugin,repository,io,relay,null);
+        this(plugin,repository,io,relay,null,System::currentTimeMillis);
     }
     ChatService(PluginStart plugin,ChatRepository repository,Executor io,ChatRelay relay,
                 java.util.function.Function<Player,ChatDecorations.Value> decorQuery){
+        this(plugin,repository,io,relay,decorQuery,System::currentTimeMillis);
+    }
+    ChatService(PluginStart plugin,ChatRepository repository,Executor io,ChatRelay relay,
+                java.util.function.Function<Player,ChatDecorations.Value> decorQuery,
+                java.util.function.LongSupplier clock){
         this.plugin=plugin;this.repository=repository;this.io=io;
         settings=ChatSettings.read(plugin.getConfig());
         decorations=new ChatDecorations(plugin);
         this.decorQuery=decorQuery!=null?decorQuery:decorations::query;
+        this.filterPolicy=new ChatFilterPolicy(clock!=null?clock:System::currentTimeMillis);
         if(relay!=null)this.relay=relay;
     }
     public void enable(){
@@ -169,7 +176,7 @@ public final class ChatService implements Listener,AutoCloseable {
             s.readyCallbacks.clear();
             refresh.remove(s);refreshInFlight.remove(s);
         }
-        replays.remove(id);history.forget(id);
+        replays.remove(id);history.forget(id);filterPolicy.forget(id);
         if(s!=null&&s.lastTab!=null&&e.getPlayer().isOnline())e.getPlayer().setPlayerListName(null);
     }
     /** Returns the current display/gradient identity snapshot for join/quit templates. */
@@ -288,6 +295,8 @@ public final class ChatService implements Listener,AutoCloseable {
     public boolean canWrite(Player p,ChatSettings.Channel channel){return p.hasPermission("allium.channel.join."+channel.id()+".write")||channel.id().equals(settings.staffChannel())&&p.hasPermission("allium.staffchat");}
     private boolean listening(Session viewer,ChatSettings.Channel channel){return canRead(viewer.player,channel)&&(channel.local()||viewer.reads.contains(channel.id()));}
     public static final String PERM_URL="allium.chat.url";
+    public static final String PERM_FILTER_BYPASS="allium.chat.filter.bypass";
+    public static final String PERM_FILTER_ALERTS="allium.chat.filter.alerts";
     public static final String PERM_QUESTION="allium.chat.question";
     public static final String PERM_MENTION="allium.chat.mention";
     public static final String PERM_IGNORE_EXEMPT="allium.chat.ignoreexempt";
@@ -327,6 +336,7 @@ public final class ChatService implements Listener,AutoCloseable {
         }
         if(raw.isBlank()||raw.length()>settings.maxBody()){tell(p,Messages.CHAT_MESSAGE_LENGTH_INVALID);return;}
         if(settings.urlsRequirePermission()&&!p.hasPermission(PERM_URL)&&containsUrl(raw)){tell(p,Messages.CHAT_URL_DENIED);return;}
+        if(!checkFilter(p,c.id(),raw))return;
         var allow=new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient"));
         var origin=p.getLocation();
         // /g and /shout with a message are shouts; a ?question from local chat is a question.
@@ -466,6 +476,62 @@ public final class ChatService implements Listener,AutoCloseable {
         }
         return new FormattedText(glyphs);
     }
+    private boolean checkFilter(Player sender,String channelId,String raw){
+        ChatFilterSettings fs=settings.filter();
+        if(!fs.enabled())return true;
+        if(fs.exemptStaffChannel()&&channelId.equals(settings.staffChannel()))return true;
+        if(sender.hasPermission(PERM_FILTER_BYPASS))return true;
+        ChatFilterPolicy.Decision d=filterPolicy.evaluate(sender.getUniqueId(),raw,fs);
+        if(!d.alerted())return true;
+        if(d.blocked()){
+            switch(d.kind()){
+                case PHRASE -> tell(sender,Messages.CHAT_FILTER_PHRASE_BLOCKED);
+                case REPEAT -> tell(sender,Messages.CHAT_FILTER_REPEAT_BLOCKED);
+                case RATE_LIMIT -> tell(sender,Messages.CHAT_FILTER_RATE_BLOCKED,"{time}",formatRetrySeconds(d.retryAfterMillis()));
+            }
+        }
+        notifyFilterAudit(sender,channelId,raw,d,fs);
+        return !d.blocked();
+    }
+    private static String formatRetrySeconds(long millis){
+        if(millis<=0L)return "1";
+        long tenths=(millis+99L)/100L;
+        if(tenths%10L==0L)return Long.toString(tenths/10L);
+        return (tenths/10L)+"."+(tenths%10L);
+    }
+    private void notifyFilterAudit(Player sender,String channelId,String raw,ChatFilterPolicy.Decision decision,ChatFilterSettings fs){
+        String clean=UntrustedText.clean(raw==null?"":raw).strip();
+        String preview=clean.length()>180?clean.substring(0,180)+"...":clean;
+        String action=decision.blocked()?"BLOCK":"ALERT_ONLY";
+        String rule=(decision.blocked()?"":"[alert-only] ")+decision.kind().name().toLowerCase(Locale.ROOT)+":"+decision.ruleDetail();
+        plugin.logger().info("ChatFilter action="+action+" player="+sender.getName()+" ("+sender.getUniqueId()+") channel="+channelId+" rule="+rule+" message=\""+preview+"\"");
+        if(fs.notifyStaff()&&plugin.getMessageManager()!=null){
+            String template=plugin.getMessageManager().resolve(Messages.CHAT_FILTER_STAFF_ALERT,"{player}",sender.getName(),"{rule}",rule);
+            if(template!=null&&!template.isEmpty()){
+                FormattedText alert=UntrustedText.insert(template,UntrustedText.parse(preview,UntrustedText.Allow.NONE));
+                for(Player observer:List.copyOf(plugin.getServer().getOnlinePlayers())){
+                    if(!observer.hasPermission(PERM_FILTER_ALERTS))continue;
+                    UtilitySupport.onOwner(plugin,observer,()->TextSender.sendLiteral(observer,alert));
+                }
+            }
+        }
+        if(fs.auditToModeration()&&plugin.getModuleManager()!=null
+                &&plugin.getModuleManager().getModule("moderation") instanceof ModerationModule mod
+                &&mod.isEnabled()&&mod.repository()!=null){
+            var repo=mod.repository();
+            UUID targetId=sender.getUniqueId();
+            String targetName=sender.getName();
+            String detail="channel="+channelId+" action="+action+" rule="+rule+" msg="+preview;
+            try{
+                io.execute(()->{
+                    try{repo.recordAudit("CHAT_FILTER","ChatFilter",targetId,targetName,detail);}
+                    catch(Exception err){plugin.logger().warning("Could not record chat filter audit: "+err.getMessage());}
+                });
+            }catch(RejectedExecutionException busy){
+                plugin.logger().warning("Chat audit pool busy; skipped SQL audit for "+targetId);
+            }
+        }
+    }
     private void notifyLocalSpy(Player sender,FormattedText body,Set<UUID> delivered){
         if(plugin.getModuleManager()==null)return;
         if(!(plugin.getModuleManager().getModule("moderation") instanceof ModerationModule mod)||!mod.isEnabled()||mod.spy()==null)return;
@@ -488,6 +554,7 @@ public final class ChatService implements Listener,AutoCloseable {
         if(!allowed(p))return;
         String raw=String.join(" ",args);if(raw.isBlank()||raw.length()>settings.maxBody()){tell(p,Messages.CHAT_MESSAGE_LENGTH_INVALID);return;}
         if(settings.urlsRequirePermission()&&!p.hasPermission(PERM_URL)&&containsUrl(raw)){tell(p,Messages.CHAT_URL_DENIED);return;}
+        if(!checkFilter(p,"action",raw))return;
         Session s=sessions.get(p.getUniqueId());
         FormattedText body=UntrustedText.parse(raw,new UntrustedText.Allow(p.hasPermission("allium.chat.color"),p.hasPermission("allium.chat.hex"),p.hasPermission("allium.chat.gradient")));
         String format=plugin.getConfig().getString("chat.action-format","&5* <display_name> &5<message>");
@@ -764,7 +831,7 @@ public final class ChatService implements Listener,AutoCloseable {
         closed=true;tick.cancel();HandlerList.unregisterAll(this);relay.close();
         if(packetMirror!=null)try{packetMirror.close();}catch(Exception ignored){}
         List<Session> snapshot=List.copyOf(sessions.values());
-        sessions.clear();refresh.clear();refreshInFlight.clear();history.clear();replays.clear();
+        sessions.clear();refresh.clear();refreshInFlight.clear();history.clear();replays.clear();filterPolicy.clear();
         for(Session s:snapshot){
             if(!s.player.isOnline())continue;
             boolean resetTab=s.lastTab!=null;

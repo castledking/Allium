@@ -685,7 +685,7 @@ public final class TeleportService implements Listener {
             var checked=safety.resolve(wanted,safetyRules(mover,access.unsafe(),rules));
             if(checked.isEmpty()){send(actor,Messages.TELEPORT_UNSAFE);return false;}
         }
-        long warmup=access.bypassWarmup()?0:rules.warmupMillis();
+        long warmup=access.bypassWarmup()?0:rules.warmup(command);
         var operation=new Operation(session,actor,command,destination,anchor,request,force,mover.getLocation().clone(),warmup,rules,policy,
                 typed(mover,"timer.move",command),new Warmup(),outcome,command.equals("back")&&session.backIsDeath);
         operations.put(mover.getUniqueId(),operation);

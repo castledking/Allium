@@ -9,7 +9,7 @@ public record SignIdentity(UUID id,Type type,String argument,boolean publicWarp,
     public enum Type {
         COLOR, WARP, KIT, BALANCE, HEAL, REPAIR, DISPOSAL, WORKBENCH, ANVIL,
         CARTOGRAPHY, GRINDSTONE, LOOM, SMITHING, MAIL, INFO,
-        GAMEMODE, TIME, WEATHER, RANDOMTELEPORT, FREE, ENCHANT, SPAWNMOB;
+        GAMEMODE, TIME, WEATHER, RANDOMTELEPORT, FREE, ENCHANT, SPAWNMOB, BUY, SELL;
 
         public static Type parse(String text) {
             String trimmed = text.trim();
@@ -59,6 +59,14 @@ public record SignIdentity(UUID id,Type type,String argument,boolean publicWarp,
             if(sep<=0||sep>=argument.length()-1)throw new IllegalArgumentException("spawnmob sign requires amount and mob");
             int amount=Integer.parseInt(argument.substring(0,sep));
             if(amount<1||amount>256)throw new IllegalArgumentException("invalid spawnmob amount");
+        }
+        if(type==Type.BUY||type==Type.SELL){
+            int sep=argument.indexOf('|');
+            if(sep<=0||sep>=argument.length()-1)throw new IllegalArgumentException(type.key()+" sign requires amount and item");
+            int amount=Integer.parseInt(argument.substring(0,sep));
+            if(amount<1||amount>2304)throw new IllegalArgumentException("invalid "+type.key()+" amount");
+            if(argument.substring(sep+1).isBlank())throw new IllegalArgumentException(type.key()+" sign requires item");
+            if(price.minor()<=0)throw new IllegalArgumentException(type.key()+" sign requires positive price");
         }
         if(type==Type.RANDOMTELEPORT&&!argument.isEmpty()&&!argument.matches("[a-zA-Z0-9_-]{1,32}")){
             throw new IllegalArgumentException("invalid randomteleport zone");

@@ -2518,6 +2518,14 @@ signs:
     - "{prefix} &cLine {line} on the sign is invalid. {options}"
   disabled:
     - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."
+  buy-bought:
+    - "{prefix} &aBought &f{amount}x {item} &afor &e{price}&a."
+  buy-inventory-full:
+    - "{prefix} &cYour inventory doesn't have room for &f{amount}x {item}&c."
+  sell-sold:
+    - "{prefix} &aSold &f{amount}x {item} &afor &e{price}&a."
+  sell-not-enough:
+    - "{prefix} &cYou need &f{amount}x {item} &cto use this sign (you have &f{available}&c)."
   repair-paid:
     - "{prefix} &aRepaired &f{items} &afor &e{price}&a."
     - "[sound] block.anvil.use 1.2"

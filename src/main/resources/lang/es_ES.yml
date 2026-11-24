@@ -2518,6 +2518,14 @@ signs:
     - "{prefix} &cLa línea {line} del cartel no es válida. {options}"
   disabled:
     - "{prefix} &eAllium {type} signs are disabled. The sign text is unchanged."
+  buy-bought:
+    - "{prefix} &aCompraste &f{amount}x {item} &apor &e{price}&a."
+  buy-inventory-full:
+    - "{prefix} &cTu inventario no tiene espacio para &f{amount}x {item}&c."
+  sell-sold:
+    - "{prefix} &aVendiste &f{amount}x {item} &apor &e{price}&a."
+  sell-not-enough:
+    - "{prefix} &cNecesitas &f{amount}x {item} &cpara usar este cartel (tienes &f{available}&c)."
   repair-paid:
     - "{prefix} &aReparado &f{items} &apor &e{price}&a."
     - "[sound] block.anvil.use 1.2"

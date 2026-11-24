@@ -246,4 +246,71 @@ class PowerToolCoreTest {
         assertEquals(PowerToolAction.TYPE_RELEASE, PowerToolAction.normalizeType("unrestrain"));
         assertEquals(PowerToolAction.TYPE_RELEASE, PowerToolAction.normalizeType("uncuff"));
     }
+
+    @Test
+    void blockReplaceActionNormalizesValidatesAndRoundTrips() {
+        assertTrue(PowerToolAction.BUILT_IN_TYPES.contains(PowerToolAction.TYPE_BLOCK_REPLACE));
+        assertEquals(PowerToolAction.TYPE_BLOCK_REPLACE, PowerToolAction.normalizeType("replace"));
+        assertEquals(PowerToolAction.TYPE_BLOCK_REPLACE, PowerToolAction.normalizeType("replace-block"));
+        assertEquals(PowerToolAction.TYPE_BLOCK_REPLACE, PowerToolAction.normalizeType("allium:block_replace"));
+
+        Map<String, Object> validDoc = Map.of(
+                "schema", 1,
+                "id", "allium:trowel",
+                "name", "Trowel",
+                "behavior", PowerToolBehaviorType.ID,
+                "item", Map.of("material", "stick"),
+                "appearance", Map.of("default", "allium:trowel", "aliases", List.of()),
+                "permissions", Map.of("use", "allium.tool.trowel.use", "bypass", "allium.tool.trowel.bypass"),
+                "messages", Map.of(),
+                "bindings", Map.of(
+                        "right", Map.of(
+                                "actions", List.of(Map.of(
+                                        "type", "replace",
+                                        "value", "cobblestone:3,mossy_cobblestone:1",
+                                        "required", true,
+                                        "params", Map.of(
+                                                "source", "list",
+                                                "selection", "random",
+                                                "consume", false,
+                                                "drop-old", "none",
+                                                "preserve-data", true
+                                        )
+                                ))
+                        )
+                )
+        );
+        ToolDefinitionParser.Result ok = ToolDefinitionParser.parse(
+                "tools/trowel.yml", validDoc, Map.of(PowerToolBehaviorType.ID, new PowerToolBehaviorType()), TEST_ENV);
+        assertTrue(ok.valid(), ok.errors().toString());
+        PowerToolParameters params = (PowerToolParameters) ok.definition().parameters();
+        PowerToolAction parsed = params.binding(PowerToolTrigger.RIGHT).actions().get(0);
+        assertEquals(PowerToolAction.TYPE_BLOCK_REPLACE, parsed.type());
+        assertEquals("list", parsed.params().get("source"));
+        assertTrue(parsed.required());
+
+        PowerToolParameters back = PowerToolCodec.decodeInlineJson(PowerToolCodec.encodeInlineJson(params, null)).parameters();
+        assertEquals(parsed, back.binding(PowerToolTrigger.RIGHT).actions().get(0));
+
+        Map<String, Object> invalidDoc = Map.of(
+                "schema", 1,
+                "id", "allium:bad_trowel",
+                "behavior", PowerToolBehaviorType.ID,
+                "item", Map.of("material", "stick"),
+                "bindings", Map.of(
+                        "right", Map.of(
+                                "actions", List.of(Map.of(
+                                        "type", "block_replace",
+                                        "params", Map.of("source", "chest", "selection", "magic", "drop-old", "explode")
+                                ))
+                        )
+                )
+        );
+        ToolDefinitionParser.Result bad = ToolDefinitionParser.parse(
+                "tools/bad_trowel.yml", invalidDoc, Map.of(PowerToolBehaviorType.ID, new PowerToolBehaviorType()), TEST_ENV);
+        assertFalse(bad.valid());
+        assertTrue(bad.errors().stream().anyMatch(e -> e.contains("params.source")), bad.errors().toString());
+        assertTrue(bad.errors().stream().anyMatch(e -> e.contains("params.selection")), bad.errors().toString());
+        assertTrue(bad.errors().stream().anyMatch(e -> e.contains("params.drop-old")), bad.errors().toString());
+    }
 }

@@ -78,8 +78,8 @@ economy-log-update-enabled: false
 economy:
   currency-symbol: '$'
   currency-symbol-suffix: false
-  # Opt-in only after host validation; commands and paid workflows do not need Vault.
-  vault-provider-enabled: false
+  # Register Allium as the Vault economy provider when Vault is installed.
+  vault-provider-enabled: true
   # Single-server journaled money. Quote amounts ('100.00') so they stay exact; a plain
   # number is read by its digits with a warning.
   starting-balance: '100.00'
@@ -299,7 +299,20 @@ end-gateway:
 teleport:
   # Use the saved home named "home" on death before falling back to the configured spawn.
   respawn-at-home: true
+  # Default teleport warmup/delay in seconds (0 = instant). Per-type overrides live under warmups.
   warmup-seconds: 3
+  # Per-type teleport warmup/delay overrides in seconds (0 = instant; -1 or omitted = use warmup-seconds).
+  # Other commands (tppos, top, bottom, there, tpoffline, jump) and groups (homes, warps, requests) also work.
+  warmups:
+    home: -1
+    warp: -1
+    tpa: -1
+    tpahere: -1
+    back: -1
+    spawn: -1
+    tp: -1
+    tphere: -1
+    rtp: -1
   movement-tolerance: 0.1
   request-expiry-seconds: 60
   back:
@@ -522,7 +535,7 @@ broadcasts:
 
 # Opt-in sign types: color, warp, kit, balance, heal, repair, disposal, workbench, anvil,
 # cartography, grindstone, loom, smithing, mail, info, gamemode, time, weather,
-# randomteleport (alias rtp), free, enchant, spawnmob.
+# randomteleport (alias rtp), free, enchant, spawnmob, buy, sell.
 # Legacy colour is accepted as color. One shared click limit across all types.
 enabledSigns:
   #- color
@@ -547,6 +560,8 @@ enabledSigns:
   #- free
   #- enchant
   #- spawnmob
+  #- buy
+  #- sell
 sign-use-per-second: 4
 # Display sign prices above 999 in compact K/M/B/T form (for example $1K, $1.1K, $1M).
 sign-short-prices: true

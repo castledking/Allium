@@ -76,6 +76,7 @@ class SignServiceMatrixTest {
         final org.bukkit.inventory.Inventory freeInventory=mock(org.bukkit.inventory.Inventory.class);
         final org.bukkit.inventory.PlayerInventory playerInventory=mock(org.bukkit.inventory.PlayerInventory.class);
         final org.bukkit.inventory.ItemStack handItem=mock(org.bukkit.inventory.ItemStack.class);
+        final PaidSignService paidSigns=mock(PaidSignService.class);
         final World world=mock(World.class);
         final SignIdentity.Type type;
         final SignService service;
@@ -90,6 +91,8 @@ class SignServiceMatrixTest {
             when(handItem.getType()).thenReturn(Material.DIAMOND_SWORD);
             when(handItem.getAmount()).thenReturn(1);
             when(playerInventory.getItemInMainHand()).thenReturn(handItem);
+            when(playerInventory.getStorageContents()).thenReturn(new org.bukkit.inventory.ItemStack[]{
+                    new org.bukkit.inventory.ItemStack(Material.STONE,16),null});
             var scheduler=mock(TaskScheduler.class);when(plugin.getScheduler()).thenReturn(scheduler);
             doAnswer(call->{callbacks.add(call.getArgument(0));return codes.castled.allium.scheduler.TaskHandle.NONE;}).when(scheduler).runOnServerLater(any(Runnable.class),anyLong());
             when(player.getUniqueId()).thenReturn(UUID.randomUUID());when(player.isOnline()).thenReturn(true);when(player.hasPermission(anyString())).thenReturn(true);
@@ -103,7 +106,9 @@ class SignServiceMatrixTest {
             when(pdc.get(any(NamespacedKey.class),eq(PersistentDataType.STRING))).thenAnswer(call->data.get(call.getArgument(0)));
             doAnswer(call->{data.put(call.getArgument(0),call.getArgument(2));return null;}).when(pdc).set(any(NamespacedKey.class),eq(PersistentDataType.STRING),anyString());
             doAnswer(call->{data.remove(call.getArgument(0));return null;}).when(pdc).remove(any());
-            data.put(new NamespacedKey("allium","sign_front"),new SignIdentity(UUID.randomUUID(),type,defaultArg(),false).encode());
+            var defaultPrice=(type==SignIdentity.Type.BUY||type==SignIdentity.Type.SELL)
+                    ?new codes.castled.allium.economy.Money(500):new codes.castled.allium.economy.Money(0);
+            data.put(new NamespacedKey("allium","sign_front"),new SignIdentity(UUID.randomUUID(),type,defaultArg(),false,defaultPrice,defaultPrice.minor()>0).encode());
             when(plugin.getCommandManager()).thenReturn(commands);when(commands.getFamilyPolicy()).thenReturn(policy);
             when(commands.getRenderedCommands()).thenReturn(Map.of(command(),renderer));when(plugin.getCommand(command())).thenReturn(mock(PluginCommand.class));
             var modules=mock(ModuleManager.class);when(plugin.getModuleManager()).thenReturn(modules);
@@ -113,35 +118,39 @@ class SignServiceMatrixTest {
             var economy=mock(EconomyModule.class);when(economy.isEnabled()).thenReturn(true);when(modules.getModule("economy")).thenReturn(economy);
             var warps=mock(TravelModule.class);when(warps.isEnabled()).thenReturn(true);when(warps.travel()).thenReturn(travel);when(modules.getModule("travel")).thenReturn(warps);
             var rtp=mock(RtpModule.class);when(rtp.isEnabled()).thenReturn(true);when(modules.getModule("rtp")).thenReturn(rtp);
-            service=new SignService(plugin);
+            service=new SignService(plugin,null,paidSigns);
         }
         String defaultArg(){return switch(type){
             case REPAIR->"hand";case GAMEMODE->"creative";case TIME->"day";case WEATHER->"sun";
-            case FREE->"stone";case ENCHANT->"*|sharpness:1";case SPAWNMOB->"2|zombie";case RANDOMTELEPORT->"wild";
+            case FREE->"stone";case ENCHANT->"*|sharpness:1";case SPAWNMOB->"2|zombie";case BUY,SELL->"4|stone";case RANDOMTELEPORT->"wild";
             default->"paid";
         };}
         String command(){return switch(type){
             case COLOR->"color";case CARTOGRAPHY->"cartographytable";case RANDOMTELEPORT->"rtp";default->type.key();
         };}
-        String module(){return switch(type){case WARP->"travel";case KIT->"kits";case MAIL->"mail";case BALANCE->"economy";case RANDOMTELEPORT->"rtp";default->"essentials";};}
+        String module(){return switch(type){case WARP->"travel";case KIT->"kits";case MAIL->"mail";case BALANCE,BUY,SELL->"economy";case RANDOMTELEPORT->"rtp";default->"essentials";};}
         PlayerInteractEvent click(){return new PlayerInteractEvent(player,Action.RIGHT_CLICK_BLOCK,null,block,BlockFace.SOUTH,EquipmentSlot.HAND);}
         SignChangeEvent edit(){
             data.clear();
             String[] lines=switch(type){
                 case ENCHANT->new String[]{"[enchant]","*","sharpness:1",""};
                 case SPAWNMOB->new String[]{"[spawnmob]","2","zombie",""};
+                case BUY->new String[]{"[buy]","4","stone","$5"};
+                case SELL->new String[]{"[sell]","4","stone","$5"};
                 default->new String[]{"["+type.key()+"]",defaultArg(),"",""};
             };
             var event=new SignChangeEvent(block,player,lines,Side.FRONT);
             var face=mock(SignSide.class);when(face.getLines()).thenAnswer(call->event.getLines());when(sign.getSide(Side.FRONT)).thenReturn(face);return event;
         }
         void drain(){while(!callbacks.isEmpty())callbacks.remove().run();}
-        void noAction(){verifyNoInteractions(renderer,travel);verify(player,never()).openInventory(any(org.bukkit.inventory.Inventory.class));}
+        void noAction(){verifyNoInteractions(renderer,travel,paidSigns);verify(player,never()).openInventory(any(org.bukkit.inventory.Inventory.class));}
         void action(){
             if(type==SignIdentity.Type.COLOR){noAction();return;}
             if(type==SignIdentity.Type.FREE){verify(player).openInventory(freeInventory);return;}
             if(type==SignIdentity.Type.ENCHANT){verify(plugin.getMessageManager(),never()).send(eq(player),eq(codes.castled.allium.message.Messages.UTILITY_HOLD_ITEM));return;}
             if(type==SignIdentity.Type.SPAWNMOB){verify(plugin.getMessageManager()).send(eq(player),eq(codes.castled.allium.message.Messages.SPAWNMOB_SPAWNED),eq("{count}"),eq("2"),eq("{mob}"),eq("zombie"));return;}
+            if(type==SignIdentity.Type.BUY){verify(paidSigns).startBuy(eq(player),any(),any(),eq(4),eq("Stone"),any());return;}
+            if(type==SignIdentity.Type.SELL){verify(paidSigns).startSell(eq(player),any(),any(),eq(4),eq("Stone"),any());return;}
             if(type==SignIdentity.Type.WARP)verify(travel).useSign(player,"paid",false);
             else verify(renderer).onCommand(eq(player),any(),eq(command()),aryEq(switch(type){
                 case KIT->new String[]{"paid"};
@@ -377,6 +386,74 @@ class SignServiceMatrixTest {
         // Plain uncolored [Spawnmob] written by a player is never adopted.
         f.data.clear();
         when(front.getLines()).thenReturn(new String[]{"[Spawnmob]","1","wolf:tamed","$100"});
+        assertFalse(svc.adoptEssentialsSign(f.sign,Side.FRONT));
+        assertTrue(f.data.isEmpty());
+    }
+
+    @org.junit.jupiter.api.Test void buyAndSellSignsValidateLinesFormatPriceAndAdoptLegacyEssentialsSigns(){
+        var f=new Fixture(SignIdentity.Type.BUY,false);
+        var buyEdit=f.edit();
+        buyEdit.setLine(0,"[Buy]");
+        buyEdit.setLine(1,"64");
+        buyEdit.setLine(2,"diamond");
+        buyEdit.setLine(3,"$1500");
+        f.service.changing(buyEdit);
+        f.drain();
+        assertEquals("§1[Buy]",buyEdit.getLine(0));
+        assertEquals("$1.5K",buyEdit.getLine(3));
+        var storedBuy=SignIdentity.decode(f.data.values().iterator().next()).orElseThrow();
+        assertEquals(SignIdentity.Type.BUY,storedBuy.type());
+        assertEquals("64|diamond",storedBuy.argument());
+        assertEquals(150_000,storedBuy.price().minor());
+
+        // Invalid amount, item, or zero price marks sign red and never writes PDC.
+        var badAmount=f.edit();
+        badAmount.setLine(1,"0");
+        f.service.changing(badAmount);
+        f.drain();
+        assertEquals("§c[Buy]",badAmount.getLine(0));
+        assertEquals("§c<amount>",badAmount.getLine(1));
+        assertTrue(f.data.isEmpty());
+
+        var badItem=f.edit();
+        badItem.setLine(2,"not_a_real_item_xyz");
+        f.service.changing(badItem);
+        f.drain();
+        assertEquals("§c[Buy]",badItem.getLine(0));
+        assertEquals("§c<item>",badItem.getLine(2));
+        assertTrue(f.data.isEmpty());
+
+        var zeroPrice=f.edit();
+        zeroPrice.setLine(3,"$0");
+        f.service.changing(zeroPrice);
+        f.drain();
+        assertEquals("§c[Buy]",zeroPrice.getLine(0));
+        assertEquals("§c<price>",zeroPrice.getLine(3));
+        assertTrue(f.data.isEmpty());
+
+        // Legacy Essentials dark-blue [Buy] and [Sell] adopt into Allium PDC; uncolored text does not.
+        f.config.set("adopt-essentials-signs",true);
+        var svc=new SignService(f.plugin,null,f.paidSigns);
+        var front=mock(SignSide.class);
+        when(f.sign.getSide(Side.FRONT)).thenReturn(front);
+
+        when(front.getLines()).thenReturn(new String[]{"§1[Buy]","16","oak_log","$40"});
+        assertTrue(svc.adoptEssentialsSign(f.sign,Side.FRONT));
+        var adoptedBuy=SignIdentity.decode(f.data.get(new NamespacedKey("allium","sign_front"))).orElseThrow();
+        assertEquals(SignIdentity.Type.BUY,adoptedBuy.type());
+        assertEquals("16|oak_log",adoptedBuy.argument());
+        assertEquals(4_000,adoptedBuy.price().minor());
+
+        f.data.clear();
+        when(front.getLines()).thenReturn(new String[]{"§1[Sell]","32","cobblestone","$12.50"});
+        assertTrue(svc.adoptEssentialsSign(f.sign,Side.FRONT));
+        var adoptedSell=SignIdentity.decode(f.data.get(new NamespacedKey("allium","sign_front"))).orElseThrow();
+        assertEquals(SignIdentity.Type.SELL,adoptedSell.type());
+        assertEquals("32|cobblestone",adoptedSell.argument());
+        assertEquals(1_250,adoptedSell.price().minor());
+
+        f.data.clear();
+        when(front.getLines()).thenReturn(new String[]{"[Sell]","32","cobblestone","$12.50"});
         assertFalse(svc.adoptEssentialsSign(f.sign,Side.FRONT));
         assertTrue(f.data.isEmpty());
     }

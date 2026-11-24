@@ -266,6 +266,9 @@ public final class PowerToolBehaviorType implements ToolBehaviorType<PowerToolPa
                 ar.error("params", "must be a section of action parameters");
             }
         }
+        if (PowerToolAction.TYPE_BLOCK_REPLACE.equals(type)) {
+            validateBlockReplaceParams(ar, params);
+        }
 
         return new PowerToolAction(
                 type,
@@ -307,5 +310,29 @@ public final class PowerToolBehaviorType implements ToolBehaviorType<PowerToolPa
         }
         reader.error(key, "must be a duration like 5s, 500ms, 20t, or milliseconds");
         return fallback;
+    }
+
+    private static void validateBlockReplaceParams(ConfigReader ar, Map<String, Object> params) {
+        Object source = params.get("source");
+        if (source != null) {
+            String s = String.valueOf(source).trim().toLowerCase(Locale.ROOT);
+            if (!List.of("hotbar", "inventory", "offhand", "list").contains(s)) {
+                ar.error("params.source", "must be one of hotbar, inventory, offhand, list (got '" + source + "')");
+            }
+        }
+        Object selection = params.get("selection");
+        if (selection != null) {
+            String s = String.valueOf(selection).trim().toLowerCase(Locale.ROOT);
+            if (!List.of("random", "sequential", "cycle", "order").contains(s)) {
+                ar.error("params.selection", "must be one of random, sequential, cycle (got '" + selection + "')");
+            }
+        }
+        Object dropOld = params.get("drop-old");
+        if (dropOld != null && !(dropOld instanceof Boolean)) {
+            String s = String.valueOf(dropOld).trim().toLowerCase(Locale.ROOT);
+            if (!List.of("none", "inventory", "natural", "true", "false").contains(s)) {
+                ar.error("params.drop-old", "must be one of none, inventory, natural, true, false (got '" + dropOld + "')");
+            }
+        }
     }
 }

@@ -4,8 +4,9 @@
 # "locations" (made or changed in game with /settpr) or the name of a world, which uses the defaults
 # below. /rtp alone uses default-location; '{world}' is the player's current world.
 #
-# The teleport itself goes through Allium's teleport system: the warmup, the cooldown
-# (teleport.cooldowns.rtp in config.yml), world permissions (allium.worlds.<world>), the safety checks
+# The teleport itself goes through Allium's teleport system: the warmup (teleport.warmups.rtp or
+# teleport.warmup-seconds), the cooldown (teleport.cooldowns.rtp in config.yml), world permissions
+# (allium.worlds.<world>), the safety checks
 # (teleport.safety) and /back are the same as for every other teleport.
 default-location: '{world}'
 

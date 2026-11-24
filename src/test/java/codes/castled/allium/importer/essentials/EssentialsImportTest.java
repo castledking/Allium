@@ -412,4 +412,21 @@ class EssentialsImportTest {
         assertTrue(EssentialsImportApplier.counts(replay).get(EssentialsImportApplier.Result.REPLAYED) >= 15L);
         assertEquals(123_456L, ((EconomyResult.Found) economy.balance(alice)).book().minor());
     }
+
+    @Test
+    void enabledSignsImportRecognizesBuyAndSellAsSupported(@TempDir Path source) throws Exception {
+        Files.writeString(source.resolve("config.yml"), """
+                enabledSigns:
+                  - color
+                  - buy
+                  - sell
+                  - warp
+                  - trade
+                """);
+        var snapshot = EssentialsSnapshot.read(source);
+        var plan = EssentialsImportPlan.build(snapshot, (id, name) -> Optional.empty(),
+                Destination.empty(), 1_800_000_000_000L, EconomySettings.defaults());
+        assertEquals(List.of("color", "buy", "sell", "warp"), plan.supportedSigns());
+        assertEquals(List.of("trade"), plan.unsupportedSigns());
+    }
 }

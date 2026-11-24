@@ -13,7 +13,8 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
                                boolean lava, boolean voids, boolean suffocation, boolean falls, boolean loadChunk,
                                Map<String, Long> cooldowns,
                                int tppetMaxEntities, int tpeMaxEntities, int tphereMaxEntities,
-                               long selectorConfirmMillis) {
+                               long selectorConfirmMillis,
+                               Map<String, Long> warmups) {
 
     public static final int DEFAULT_TPPET_MAX = 10;
     public static final int DEFAULT_TPE_MAX = 50;
@@ -26,7 +27,18 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
                             Map<String, Long> cooldowns) {
         this(warmupMillis, movementTolerance, requestExpiryMillis, deathBack, safety, adjust, radius, vertical,
                 lava, voids, suffocation, falls, loadChunk, cooldowns,
-                DEFAULT_TPPET_MAX, DEFAULT_TPE_MAX, DEFAULT_TPHERE_MAX, DEFAULT_SELECTOR_CONFIRM_MILLIS);
+                DEFAULT_TPPET_MAX, DEFAULT_TPE_MAX, DEFAULT_TPHERE_MAX, DEFAULT_SELECTOR_CONFIRM_MILLIS, Map.of());
+    }
+
+    public TeleportSettings(long warmupMillis, double movementTolerance, long requestExpiryMillis,
+                            boolean deathBack, boolean safety, boolean adjust, int radius, int vertical,
+                            boolean lava, boolean voids, boolean suffocation, boolean falls, boolean loadChunk,
+                            Map<String, Long> cooldowns,
+                            int tppetMaxEntities, int tpeMaxEntities, int tphereMaxEntities,
+                            long selectorConfirmMillis) {
+        this(warmupMillis, movementTolerance, requestExpiryMillis, deathBack, safety, adjust, radius, vertical,
+                lava, voids, suffocation, falls, loadChunk, cooldowns,
+                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis, Map.of());
     }
 
     public TeleportSettings {
@@ -50,6 +62,12 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
                 throw new IllegalArgumentException("invalid teleport cooldown " + entry.getKey());
             }
         }
+        warmups = Map.copyOf(warmups);
+        for (var entry : warmups.entrySet()) {
+            if (!entry.getKey().matches("[a-z]+") || entry.getValue() < 0 || entry.getValue() > 300_000) {
+                throw new IllegalArgumentException("invalid teleport warmup " + entry.getKey());
+            }
+        }
     }
 
     /** Flight removes landing requirements; an explicit unsafe grant removes hazard checks too. */
@@ -58,11 +76,32 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
         return new TeleportSettings(warmupMillis, movementTolerance, requestExpiryMillis, deathBack,
                 safety && !unsafe, adjust, radius, vertical, lava, voids && !flight,
                 suffocation, falls && !flight, loadChunk, cooldowns,
-                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis);
+                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis, warmups);
     }
 
     public long cooldown(String command) {
         return cooldowns.getOrDefault(command, 0L);
+    }
+
+    /** Per-type warmup in milliseconds, checking exact command, group/alias fallback, then {@link #warmupMillis()}. */
+    public long warmup(String command) {
+        if (command != null) {
+            Long direct = warmups.get(command);
+            if (direct != null) return direct;
+            String group = switch (command) {
+                case "home" -> "homes";
+                case "warp" -> "warps";
+                case "tpa", "tpahere" -> "requests";
+                case "tpo" -> "tp";
+                case "tpohere" -> "tphere";
+                default -> null;
+            };
+            if (group != null) {
+                Long grouped = warmups.get(group);
+                if (grouped != null) return grouped;
+            }
+        }
+        return warmupMillis;
     }
 
     public static TeleportSettings read(ConfigurationSection root) {
@@ -86,13 +125,29 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
             if (!key.matches("[a-z]+")) throw new IllegalArgumentException("invalid teleport cooldown " + key);
             cooldowns.put(key, (long) (number(commands, key, 0, 0, 86400) * 1000));
         }
+        Map<String, Long> warmups = new HashMap<>();
+        ConfigurationSection warmupCommands = section(config, "warmups");
+        for (String key : warmupCommands.getKeys(false)) {
+            if (!key.matches("[a-z]+")) throw new IllegalArgumentException("invalid teleport warmup " + key);
+            Object raw = warmupCommands.get(key);
+            if (raw == null) continue;
+            if (raw instanceof Number number) {
+                double seconds = number.doubleValue();
+                if (seconds == -1.0) continue;
+                if (Double.isFinite(seconds) && seconds >= 0 && seconds <= 300) {
+                    warmups.put(key, (long) (seconds * 1000));
+                    continue;
+                }
+            }
+            throw new IllegalArgumentException("teleport warmups." + key + " must be -1 (default) or a finite number from 0 to 300");
+        }
         return new TeleportSettings((long) (warmup * 1000), movement, (long) (expiry * 1000),
                 bool(config, "back.include-death", false), bool(config, "safety.enabled", true),
                 bool(config, "safety.adjust", true), radius, vertical,
                 bool(config, "safety.avoid-lava", true), bool(config, "safety.avoid-void", true),
                 bool(config, "safety.avoid-suffocation", true), bool(config, "safety.avoid-falls", true),
                 bool(config, "safety.load-destination-chunk", false), cooldowns,
-                tppetMax, tpeMax, tphereMax, (long) (confirmSec * 1000));
+                tppetMax, tpeMax, tphereMax, (long) (confirmSec * 1000), warmups);
     }
 
     private static ConfigurationSection section(ConfigurationSection root, String path) {

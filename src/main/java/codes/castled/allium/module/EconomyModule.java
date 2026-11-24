@@ -25,7 +25,7 @@ public final class EconomyModule extends AbstractModule {
                 plugin.getCommandManager().register(new codes.castled.allium.economy.EconomyCommands(spec,runtime));
             if(!runtime.ready())throw new IllegalStateException("economy schema/recovery is not ready");
             plugin.logger().info("Journalled economy enabled on " + plugin.getDatabaseManager().getType() + ".");
-            if(!plugin.getConfig().getBoolean("economy.vault-provider-enabled",false)){
+            if(!plugin.getConfig().getBoolean("economy.vault-provider-enabled",true)){
                 plugin.logger().info("Vault economy provider is off (economy.vault-provider-enabled=false).");
             }else if(plugin.getServer().getPluginManager().getPlugin("Vault")!=null){
                 try{vaultRegistration=new VaultRegistration();}

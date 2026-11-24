@@ -232,6 +232,34 @@ class TeleportServiceTest {
     }
 
     @Test
+    void perTypeWarmupConfigControlsDelayPerTeleportType() throws Exception {
+        config.set("teleport.warmup-seconds", 5);
+        config.set("teleport.warmups.spawn", 0);
+        config.set("teleport.warmups.home", -1);
+        config.set("teleport.warmups.warp", 2);
+        enable();
+
+        // /spawn is overridden to 0s -> instant teleport with no warmup.
+        assertTrue(service.teleport(mover, destination(), "spawn"));
+        assertFalse(service.warming(mover.getUniqueId()), "spawn warmup=0 executes immediately");
+        drainWorker();
+
+        // /warp is overridden to 2s -> enters warmup with 2s countdown.
+        assertTrue(service.teleport(mover, destination(), "warp"));
+        assertTrue(service.warming(mover.getUniqueId()), "warp warmup=2 enters warmup");
+        verify(plugin.getMessageManager()).send(eq(mover), eq(codes.castled.allium.message.Messages.TELEPORT_WARMUP),
+                eq("{warmup}"), eq("2"), eq("{time}"), eq("2"));
+
+        // Cancel warmup, then verify /home (-1) inherits teleport.warmup-seconds (5s).
+        service.move(new org.bukkit.event.player.PlayerMoveEvent(mover, mover.getLocation(), destination()));
+        assertFalse(service.warming(mover.getUniqueId()));
+        assertTrue(service.teleport(mover, destination(), "home"));
+        assertTrue(service.warming(mover.getUniqueId()), "home warmup=-1 inherits warmup-seconds");
+        verify(plugin.getMessageManager()).send(eq(mover), eq(codes.castled.allium.message.Messages.TELEPORT_WARMUP),
+                eq("{warmup}"), eq("5"), eq("{time}"), eq("5"));
+    }
+
+    @Test
     void perTypeTimerMoveKeepsTheWarmupWhileMoving() throws Exception {
         warmup();
         enable();

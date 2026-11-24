@@ -105,6 +105,7 @@ public final class PowerToolActionRegistry {
     private final RandomGenerator random;
     private final Function<UUID, Player> players;
     private final PickupSuppression pickupSuppression;
+    private final BlockReplaceAction blockReplace;
 
     // Active tree-fell jobs and re-entry guard so Player#breakBlock does not re-trigger on-break.
     private final Map<UUID, ActiveFellJob> activeFellJobs = new ConcurrentHashMap<>();
@@ -187,6 +188,7 @@ public final class PowerToolActionRegistry {
         this.random = Objects.requireNonNull(random, "random");
         this.players = Objects.requireNonNull(players, "players");
         this.pickupSuppression = new PickupSuppression(clock);
+        this.blockReplace = new BlockReplaceAction(plugin, protection, random);
         registerDefaults();
     }
 
@@ -204,6 +206,11 @@ public final class PowerToolActionRegistry {
         }
         activeFellJobs.clear();
         breakingFor.clear();
+        blockReplace.clearAll();
+    }
+
+    public void cleanupPlayer(UUID playerId) {
+        blockReplace.cleanupPlayer(playerId);
     }
 
     public void register(String typeId, PowerToolActionHandler handler) {
@@ -240,6 +247,7 @@ public final class PowerToolActionRegistry {
         register(PowerToolAction.TYPE_TREE_FELL, this::executeTreeFell);
         register(PowerToolAction.TYPE_DISARM, this::executeDisarm);
         register(PowerToolAction.TYPE_OBLITERATE, this::executeObliterate);
+        register(PowerToolAction.TYPE_BLOCK_REPLACE, blockReplace);
     }
 
     private boolean executeCommand(PowerToolContext ctx, PowerToolAction action) {

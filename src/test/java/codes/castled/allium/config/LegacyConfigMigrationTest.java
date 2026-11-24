@@ -229,6 +229,37 @@ class LegacyConfigMigrationTest {
         assertFalse(saved.contains("\n#   owner:"), "group example comments must stay indented under chat-format, not detach onto chat-hover");
     }
 
+    @Test void obsoleteAddonEntriesAreRemovedAndPartyLocatorMigratesToPartylocator() throws Exception {
+        var defaults = bundled();
+        var current = bundled();
+        current.set("config-version", ConfigVersionManager.CURRENT_VERSION);
+        current.set("addons.enabled.party-locator", true);
+        current.set("addons.enabled.modguard", false);
+        current.set("addons.enabled.custom-items", false);
+
+        var leftovers = LegacyConfigMigration.leftovers(current, defaults);
+        assertEquals(List.of(
+                "addons.enabled.party-locator",
+                "addons.enabled.modguard",
+                "addons.enabled.custom-items"
+        ), leftovers);
+
+        var source = LegacyConfigMigration.extractLeftovers(current, defaults);
+        var plan = LegacyConfigMigration.plan(source, defaults);
+        LegacyConfigMigration.apply(plan.into("config.yml"), current, defaults);
+        LegacyConfigMigration.removeLegacy(current, plan, defaults);
+
+        assertTrue(current.getBoolean("addons.enabled.partylocator"));
+        assertFalse(current.isSet("addons.enabled.party-locator"));
+        assertFalse(current.isSet("addons.enabled.modguard"));
+        assertFalse(current.isSet("addons.enabled.custom-items"));
+        assertEquals(
+                java.util.Set.of("crops", "curios", "ores", "partylocator", "spawnercraft"),
+                current.getConfigurationSection("addons.enabled").getKeys(false)
+        );
+        assertTrue(LegacyConfigMigration.leftovers(current, defaults).isEmpty());
+    }
+
     private static YamlConfiguration bundled() throws Exception {
         var config = new YamlConfiguration();
         try (var reader = new InputStreamReader(Objects.requireNonNull(

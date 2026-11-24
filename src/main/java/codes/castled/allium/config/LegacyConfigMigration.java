@@ -76,7 +76,8 @@ final class LegacyConfigMigration {
             "teleport.cooldown", List.of("teleport.cooldowns.tpa", "teleport.cooldowns.tpahere"),
             "home.cooldown", List.of("teleport.cooldowns.home"),
             "handcuffs.commands-on-quit", List.of("restraints.commands-on-quit"),
-            "restore.snapshot-retention-days", List.of("restore.retention-days"));
+            "restore.snapshot-retention-days", List.of("restore.retention-days"),
+            "addons.enabled.party-locator", List.of("addons.enabled.partylocator"));
 
     /** Legacy sections that another file or an addon owns now. */
     static final Map<String, String> ELSEWHERE = ordered(
@@ -114,7 +115,9 @@ final class LegacyConfigMigration {
             "economy.space-between", "economy.currency-symbol is written as it is configured",
             "world-defaults", "set gamerules per world with /gamerule",
             "nickname.sync-to-essentials", "Allium replaces Essentials' nicknames",
-            "lang", "settings.locale");
+            "lang", "settings.locale",
+            "addons.enabled.modguard", "ModGuard is a built-in module under modules.modguard",
+            "addons.enabled.custom-items", "custom items are built into the items module and addons");
 
     private LegacyConfigMigration() {}
 

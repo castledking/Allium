@@ -48,7 +48,6 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -175,10 +174,11 @@ class TravelAndWorldExtensionsTest {
 
         repo.createHome(aliceId, "alpha", homeLoc, 5);
 
-        ThreadPoolExecutor io = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        java.util.ArrayDeque<Runnable> ioQueue = new java.util.ArrayDeque<>();
+        ThreadPoolExecutor io = deterministicPool(ioQueue);
         TravelService service = new TravelService(plugin, repo, teleports, io);
         service.enable();
-        waitIdle(io);
+        drain(ioQueue);
 
         // 1. Compass points at Alice's first home because homes.compass-towards-home-perm=true + allium.home.compass.
         ArgumentCaptor<Location> compass = ArgumentCaptor.forClass(Location.class);
@@ -201,7 +201,7 @@ class TravelAndWorldExtensionsTest {
 
         // 4. /renamehome alpha beta renames Alice's home.
         service.rename(alice, "alpha", "beta");
-        waitIdle(io);
+        drain(ioQueue);
         verify(messages).send(eq(alice), eq(Messages.HOME_RENAMED), eq("{old}"), eq("alpha"), eq("{name}"), eq("beta"));
         assertEquals(List.of("beta"), service.completeHomes(alice));
 
@@ -209,12 +209,12 @@ class TravelAndWorldExtensionsTest {
         ConsoleCommandSender console = mock(ConsoleCommandSender.class);
         when(console.hasPermission(anyString())).thenReturn(true);
         service.sethomesAdmin(console, new String[]{"Alice", "+4"});
-        waitIdle(io);
+        drain(ioQueue);
         assertEquals(5, service.limit(alice));
         verify(messages).send(eq(console), eq(Messages.HOME_LIMIT_SET), eq("{player}"), eq("Alice"), eq("{override}"), eq("5"), eq("{effective}"), eq("5"));
 
         service.sethomesAdmin(console, new String[]{"Alice", "-1"});
-        waitIdle(io);
+        drain(ioQueue);
         assertEquals(1, service.limit(alice));
         verify(messages).send(eq(console), eq(Messages.HOME_LIMIT_CLEARED), eq("{player}"), eq("Alice"), eq("{effective}"), eq("1"));
 
@@ -340,10 +340,11 @@ class TravelAndWorldExtensionsTest {
         when(modules.getModule("messaging")).thenReturn(messaging);
         when(plugin.getModuleManager()).thenReturn(modules);
 
-        ThreadPoolExecutor io = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        java.util.ArrayDeque<Runnable> ioQueue = new java.util.ArrayDeque<>();
+        ThreadPoolExecutor io = deterministicPool(ioQueue);
         TeleportService service = new TeleportService(plugin, repo, io);
         service.enable();
-        waitIdle(io);
+        drain(ioQueue);
 
         // Dynamic world permission registered with default TRUE on enable and on WorldLoadEvent.
         assertEquals(PermissionDefault.TRUE, registered.get("allium.worlds.world").getDefault());
@@ -376,15 +377,23 @@ class TravelAndWorldExtensionsTest {
         service.disable();
     }
 
-    private static void waitIdle(ThreadPoolExecutor io) throws Exception {
-        long deadline = System.currentTimeMillis() + 5_000L;
-        while (true) {
-            if (System.currentTimeMillis() > deadline) throw new AssertionError("worker did not drain");
-            long before = io.getTaskCount();
-            io.submit(() -> { }).get(5, TimeUnit.SECONDS);
-            if (io.getTaskCount() == before + 1 && io.getQueue().isEmpty() && io.getActiveCount() == 0) {
-                return;
-            }
+    private static ThreadPoolExecutor deterministicPool(java.util.ArrayDeque<Runnable> queue) throws Exception {
+        ThreadPoolExecutor pool = mock(ThreadPoolExecutor.class);
+        doAnswer(inv -> {
+            queue.addLast(inv.getArgument(0));
+            return null;
+        }).when(pool).execute(any(Runnable.class));
+        when(pool.awaitTermination(anyLong(), any(TimeUnit.class))).thenAnswer(inv -> {
+            drain(queue);
+            return true;
+        });
+        when(pool.isTerminated()).thenReturn(true);
+        return pool;
+    }
+
+    private static void drain(java.util.ArrayDeque<Runnable> queue) {
+        while (!queue.isEmpty()) {
+            queue.removeFirst().run();
         }
     }
 }

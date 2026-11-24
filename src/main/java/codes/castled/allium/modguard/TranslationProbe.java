@@ -22,9 +22,9 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerOp
 
 import codes.castled.allium.scheduler.TaskScheduler;
 
-
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -33,7 +33,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-
+import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
@@ -41,13 +41,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Sign Translation Vulnerability (MC-265322) based client-mod probing.
@@ -60,16 +62,23 @@ import java.util.UUID;
  * Multi-probe: up to {@link #CHECKS_PER_SIGN} checks are packed onto one sign,
  * one per line, plus a control line carrying a vanilla keybind (key.forward)
  * used to detect sign-spoofing/exploit-preventer mods.
+ *
+ * <p>Each sign batch uses a distinct block position inside the player's chunk and an immutable
+ * {@link ActiveBatch} snapshot so a delayed echo from an earlier (especially keybind-only) sign
+ * can never be mis-scored against a later batch.
  */
 final class TranslationProbe extends PacketListenerAbstract implements Listener {
 
     private static final int    CHECKS_PER_SIGN = 3;
     private static final String CTRL_KEYBIND    = "key.forward";
+    private static final long   PACK_DEFER_MAX_MS = 15_000L;
 
     private final org.bukkit.plugin.Plugin plugin;
     private final TaskScheduler scheduler;
     private final ModGuard modGuard;
-    private final Map<UUID, ProbeSession> sessions = new HashMap<>();
+    private final Map<UUID, ProbeSession> sessions = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> packLoadingUntil = new ConcurrentHashMap<>();
+    private final Set<UUID> deferredStart = ConcurrentHashMap.newKeySet();
     private final SecureRandom random = new SecureRandom();
     private volatile boolean closed;
 
@@ -94,6 +103,8 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
         PacketEvents.getAPI().getEventManager().unregisterListener(this);
         HandlerList.unregisterAll(this);
         sessions.clear();
+        packLoadingUntil.clear();
+        deferredStart.clear();
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -113,12 +124,35 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
         }
 
         long delayTicks = config().getLong("translation-probe.delay-ticks", 60L);
-        scheduler.runOnServerLater(() -> startSession(player), delayTicks * TaskScheduler.MILLIS_PER_TICK);
+        scheduler.runOnServerLater(() -> maybeStartSession(player), delayTicks * TaskScheduler.MILLIS_PER_TICK);
+    }
+
+    /**
+     * Clients downloading or applying a server resource pack stall and close/reopen UI screens;
+     * defer starting the ghost-sign probe until the pack finishes applying (bounded by {@link #PACK_DEFER_MAX_MS}).
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
+        if (closed) return;
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        String status = event.getStatus().name();
+        if ("ACCEPTED".equals(status) || "DOWNLOADED".equals(status)) {
+            packLoadingUntil.put(uuid, System.currentTimeMillis() + PACK_DEFER_MAX_MS);
+            return;
+        }
+        packLoadingUntil.remove(uuid);
+        if (deferredStart.remove(uuid) && player.isOnline()) {
+            scheduler.runOnServerLater(() -> maybeStartSession(player), 20L * TaskScheduler.MILLIS_PER_TICK);
+        }
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        sessions.remove(event.getPlayer().getUniqueId());
+        UUID uuid = event.getPlayer().getUniqueId();
+        sessions.remove(uuid);
+        packLoadingUntil.remove(uuid);
+        deferredStart.remove(uuid);
     }
 
     @Override
@@ -129,44 +163,57 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
 
         UUID uuid = event.getUser().getUUID();
         ProbeSession session = sessions.get(uuid);
-        if (session == null || session.current.isEmpty()) {
+        if (session == null) {
             return;
         }
 
         WrapperPlayClientUpdateSign packet = new WrapperPlayClientUpdateSign(event);
         Vector3i packetPosition = packet.getBlockPosition();
-        if (!session.position.equals(packetPosition)) {
+        if (!session.sentPositions.contains(packetPosition)) {
             return;
         }
 
+        // Always cancel echoes for any ghost sign this session sent, even stale ones.
         event.setCancelled(true);
+
+        ActiveBatch batch = session.active.get();
+        if (batch == null || !batch.position.equals(packetPosition)) {
+            if (isDebug()) {
+                plugin.getLogger().info("[ModGuard] Ignoring stale translation probe echo for " + uuid
+                        + " at " + packetPosition + " (active=" + (batch == null ? "none" : batch.position) + ")");
+            }
+            return;
+        }
 
         String[] lines = packet.getTextLines();
         String ctrlResp = lines.length > 3 && lines[3] != null ? lines[3].strip() : "";
         boolean exploitPreventer = ctrlResp.equalsIgnoreCase(CTRL_KEYBIND);
 
-        List<ProbeCheck> batch = new ArrayList<>(session.current);
-        List<ProbeMode> modes = new ArrayList<>(batch.size());
-        for (ProbeCheck check : batch) {
+        List<ProbeMode> modes = new ArrayList<>(batch.checks.size());
+        List<String> expectedKeys = new ArrayList<>(batch.checks.size());
+        for (ProbeCheck check : batch.checks) {
             modes.add(check.mode);
+            expectedKeys.add(check.key);
         }
-        if (isForeignEcho(lines, modes, session.fallback, fallbackPrefix())) {
+        if (isForeignEcho(lines, modes, expectedKeys, session.allKeys, batch.fallback, fallbackPrefix())) {
             if (isDebug()) {
-                plugin.getLogger().info("[ModGuard] Ignoring stale translation probe echo for " + uuid
-                        + ": " + Arrays.toString(lines) + " (expected fallback " + session.fallback + ")");
+                plugin.getLogger().info("[ModGuard] Ignoring foreign translation probe echo for " + uuid
+                        + ": " + Arrays.toString(lines) + " (expected fallback " + batch.fallback + ")");
             }
             return;
         }
-        session.current = Collections.emptyList();
+        if (!session.active.compareAndSet(batch, null)) {
+            return;
+        }
 
-        Map<ProbeCheck, String> hits = new HashMap<>();
-        for (int i = 0; i < batch.size(); i++) {
+        Map<ProbeCheck, String> hits = new LinkedHashMap<>();
+        for (int i = 0; i < batch.checks.size(); i++) {
             String resolved = i < lines.length && lines[i] != null ? lines[i].strip() : "";
-            if (batch.get(i).evaluate(resolved, session.fallback, exploitPreventer) == ProbeResult.DETECTED) {
-                hits.put(batch.get(i), resolved);
+            if (batch.checks.get(i).evaluate(resolved, batch.fallback, exploitPreventer) == ProbeResult.DETECTED) {
+                hits.put(batch.checks.get(i), resolved);
             } else if (isDebug()) {
                 plugin.getLogger().info("[ModGuard] Translation probe miss for " + uuid
-                        + ": " + batch.get(i).id + " key=" + batch.get(i).key + " resolved=\"" + resolved + "\"");
+                        + ": " + batch.checks.get(i).id + " key=" + batch.checks.get(i).key + " resolved=\"" + resolved + "\"");
             }
         }
         final Map<ProbeCheck, String> finalHits = hits;
@@ -181,7 +228,7 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
                 return;
             }
 
-            restoreFakeBlock(player, session);
+            restoreFakeBlock(player, batch.position);
 
             for (Map.Entry<ProbeCheck, String> hit : finalHits.entrySet()) {
                 if (!player.isOnline()) {
@@ -189,11 +236,39 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
                 }
                 ProbeCheck check = hit.getKey();
                 modGuard.handleTranslationProbeHit(player, check.displayName, check.key,
-                        hit.getValue(), session.fallback, check.action, check.requireCorroborationForKick);
+                        hit.getValue(), batch.fallback, check.action, check.requireCorroborationForKick);
             }
 
             sendNextBatch(player, session);
         });
+    }
+
+    private void maybeStartSession(Player player) {
+        if (closed || !player.isOnline() || !isEnabled() || player.hasPermission(getBypassPermission())) {
+            return;
+        }
+        UUID uuid = player.getUniqueId();
+        Long deadline = packLoadingUntil.get(uuid);
+        if (deadline != null) {
+            long remainingMs = deadline - System.currentTimeMillis();
+            if (remainingMs > 0L) {
+                if (deferredStart.add(uuid)) {
+                    // Safety wake-up if the client never sends a terminal resource-pack status.
+                    scheduler.runOnServerLater(() -> {
+                        if (deferredStart.remove(uuid)) {
+                            packLoadingUntil.remove(uuid);
+                            maybeStartSession(player);
+                        }
+                    }, remainingMs + 500L);
+                }
+                return;
+            }
+            packLoadingUntil.remove(uuid);
+        }
+        if (sessions.containsKey(uuid)) {
+            return;
+        }
+        startSession(player);
     }
 
     private void startSession(Player player) {
@@ -211,10 +286,28 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
 
         Location base = player.getLocation();
         int minY = player.getWorld().getMinHeight() + 1;
-        Vector3i position = new Vector3i(base.getBlockX(), Math.max(minY, base.getBlockY() - 30), base.getBlockZ());
-        ProbeSession session = new ProbeSession(position, new ArrayDeque<>(checks));
+        Vector3i origin = new Vector3i(base.getBlockX(), Math.max(minY, base.getBlockY() - 30), base.getBlockZ());
+        Set<String> allKeys = new HashSet<>(checks.size() + 1);
+        for (ProbeCheck check : checks) {
+            allKeys.add(check.key.toLowerCase(Locale.ROOT));
+        }
+        allKeys.add(CTRL_KEYBIND.toLowerCase(Locale.ROOT));
+        ProbeSession session = new ProbeSession(origin, new ArrayDeque<>(checks), Set.copyOf(allKeys));
         sessions.put(player.getUniqueId(), session);
         sendNextBatch(player, session);
+    }
+
+    /**
+     * Assigns each batch a distinct block position inside the player's starting chunk (up to 256
+     * unique coordinates per Y level) so every sign echo is unambiguously tied to its exact batch.
+     */
+    static Vector3i batchPosition(Vector3i origin, int batchIndex) {
+        int chunkMinX = (origin.getX() >> 4) << 4;
+        int chunkMinZ = (origin.getZ() >> 4) << 4;
+        int startLocal = ((origin.getZ() & 15) << 4) | (origin.getX() & 15);
+        int slot = (startLocal + batchIndex) & 255;
+        int y = origin.getY() + (batchIndex / 256);
+        return new Vector3i(chunkMinX + (slot & 15), y, chunkMinZ + ((slot >> 4) & 15));
     }
 
     private void sendNextBatch(Player player, ProbeSession session) {
@@ -223,51 +316,59 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
             return;
         }
 
-        List<ProbeCheck> batch = new ArrayList<>();
-        while (batch.size() < CHECKS_PER_SIGN && !session.remaining.isEmpty()) {
-            batch.add(session.remaining.pollFirst());
+        List<ProbeCheck> checks = new ArrayList<>();
+        while (checks.size() < CHECKS_PER_SIGN && !session.remaining.isEmpty()) {
+            checks.add(session.remaining.pollFirst());
         }
-        if (batch.isEmpty()) {
+        if (checks.isEmpty()) {
             sessions.remove(player.getUniqueId());
-            restoreFakeBlock(player, session);
             return;
         }
 
-        // Fresh fallback per sign, so a late echo of an earlier sign can be told apart.
-        session.fallback = createFallback();
-        session.current = batch;
-        sendProbePackets(player, session);
+        Vector3i position = batchPosition(session.origin, session.batchIndex++);
+        String fallback = createFallback();
+        ActiveBatch batch = new ActiveBatch(position, List.copyOf(checks), fallback);
+        session.sentPositions.add(position);
+        session.active.set(batch);
+        sendProbePackets(player, batch);
 
         long timeoutTicks = config().getLong("translation-probe.timeout-ticks", 80L);
         scheduler.runOnServerLater(() -> {
             if (closed) {
                 return;
             }
-            ProbeSession active = sessions.get(player.getUniqueId());
-            if (active == session && active.current == batch) {
-                active.current = Collections.emptyList();
-                restoreFakeBlock(player, active);
-                sendNextBatch(player, active);
+            ProbeSession activeSession = sessions.get(player.getUniqueId());
+            if (activeSession == session && session.active.compareAndSet(batch, null)) {
+                if (player.isOnline()) {
+                    restoreFakeBlock(player, batch.position);
+                    sendNextBatch(player, activeSession);
+                } else {
+                    sessions.remove(player.getUniqueId());
+                }
             }
         }, timeoutTicks * TaskScheduler.MILLIS_PER_TICK);
     }
 
-    private void sendProbePackets(Player player, ProbeSession session) {
+    private void sendProbePackets(Player player, ActiveBatch batch) {
         try {
             WrappedBlockState signState = WrappedBlockState.getDefaultState(StateTypes.OAK_SIGN);
-            playerPacket(player, new WrapperPlayServerBlockChange(session.position, signState));
-            playerPacket(player, new WrapperPlayServerBlockEntityData(session.position, BlockEntityTypes.SIGN, createSignNbt(session.current, session.fallback)));
-            playerPacket(player, new WrapperPlayServerOpenSignEditor(session.position, true));
+            playerPacket(player, new WrapperPlayServerBlockChange(batch.position, signState));
+            playerPacket(player, new WrapperPlayServerBlockEntityData(batch.position, BlockEntityTypes.SIGN, createSignNbt(batch.checks, batch.fallback)));
+            playerPacket(player, new WrapperPlayServerOpenSignEditor(batch.position, true));
             playerPacket(player, new WrapperPlayServerCloseWindow());
         } catch (Throwable t) {
             plugin.getLogger().warning("[ModGuard] Failed to send translation probe to " + player.getName() + ": " + t.getMessage());
             sessions.remove(player.getUniqueId());
-            restoreFakeBlock(player, session);
+            restoreFakeBlock(player, batch.position);
         }
     }
 
-    private void restoreFakeBlock(Player player, ProbeSession session) {
-        Location location = new Location(player.getWorld(), session.position.getX(), session.position.getY(), session.position.getZ());
+    private void restoreFakeBlock(Player player, Vector3i position) {
+        World world = player.getWorld();
+        if (!world.isChunkLoaded(position.getX() >> 4, position.getZ() >> 4)) {
+            return;
+        }
+        Location location = new Location(world, position.getX(), position.getY(), position.getZ());
         player.sendBlockChange(location, location.getBlock().getBlockData());
     }
 
@@ -436,16 +537,20 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
         }
     }
 
-    private static final class ProbeSession {
-        private final Vector3i position;
-        private final Deque<ProbeCheck> remaining;
-        private String fallback = "";
-        private List<ProbeCheck> current;
+    private record ActiveBatch(Vector3i position, List<ProbeCheck> checks, String fallback) {}
 
-        private ProbeSession(Vector3i position, Deque<ProbeCheck> remaining) {
-            this.position = position;
+    private static final class ProbeSession {
+        private final Vector3i origin;
+        private final Deque<ProbeCheck> remaining;
+        private final Set<String> allKeys;
+        private final Set<Vector3i> sentPositions = ConcurrentHashMap.newKeySet();
+        private final AtomicReference<ActiveBatch> active = new AtomicReference<>();
+        private int batchIndex;
+
+        private ProbeSession(Vector3i origin, Deque<ProbeCheck> remaining, Set<String> allKeys) {
+            this.origin = origin;
             this.remaining = remaining;
-            this.current = Collections.emptyList();
+            this.allKeys = allKeys;
         }
     }
 
@@ -502,23 +607,41 @@ final class TranslationProbe extends PacketListenerAbstract implements Listener 
         };
     }
 
-    /**
-     * True when the echo belongs to some other sign than the one currently
-     * awaited: a translate line carrying a probe fallback other than ours,
-     * or a keybind line (which never carries a fallback) echoing one. Such an
-     * echo says nothing about the current batch and must not be scored.
-     */
     static boolean isForeignEcho(String[] lines, List<ProbeMode> modes, String fallback, String prefix) {
-        if (prefix == null || prefix.isEmpty()) {
-            return false;
-        }
+        return isForeignEcho(lines, modes, List.of(), Set.of(), fallback, prefix);
+    }
+
+    /**
+     * True when the echo belongs to some other sign than the one currently awaited:
+     * <ul>
+     *   <li>a translate line carrying a probe fallback other than ours, or a keybind line echoing a fallback; or</li>
+     *   <li>any line echoing a different probe check's raw key (for example a delayed keybind-only batch).</li>
+     * </ul>
+     */
+    static boolean isForeignEcho(
+            String[] lines,
+            List<ProbeMode> modes,
+            List<String> expectedKeys,
+            Set<String> allKnownKeys,
+            String fallback,
+            String prefix
+    ) {
         for (int i = 0; i < modes.size() && i < lines.length; i++) {
             String line = lines[i] == null ? "" : lines[i].strip();
-            if (!regionStartsWith(line, prefix)) {
+            if (line.isEmpty()) {
                 continue;
             }
-            if (modes.get(i) == ProbeMode.KEYBIND || !regionStartsWith(line, fallback)) {
-                return true;
+            if (prefix != null && !prefix.isEmpty() && regionStartsWith(line, prefix)) {
+                if (modes.get(i) == ProbeMode.KEYBIND || !regionStartsWith(line, fallback)) {
+                    return true;
+                }
+            }
+            if (allKnownKeys != null && !allKnownKeys.isEmpty()) {
+                String expectedKey = i < expectedKeys.size() ? expectedKeys.get(i) : null;
+                String lower = line.toLowerCase(Locale.ROOT);
+                if (allKnownKeys.contains(lower) && (expectedKey == null || !expectedKey.equalsIgnoreCase(line))) {
+                    return true;
+                }
             }
         }
         return false;

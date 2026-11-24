@@ -15,12 +15,18 @@ class SignIdentityTest {
                 case FREE->"stone";
                 case ENCHANT->"*|sharpness:1";
                 case SPAWNMOB->"1|wolf:tamed";
+                case BUY,SELL->"4|stone";
                 case RANDOMTELEPORT->"wild";
                 default->"spawn";
             };
-            var identity=new SignIdentity(UUID.randomUUID(),type,arg,type==SignIdentity.Type.WARP);
+            var price=(type==SignIdentity.Type.BUY||type==SignIdentity.Type.SELL)
+                    ?new codes.castled.allium.economy.Money(500):new codes.castled.allium.economy.Money(0);
+            var identity=new SignIdentity(UUID.randomUUID(),type,arg,type==SignIdentity.Type.WARP,price,price.minor()>0);
             assertEquals(identity,SignIdentity.decode(identity.encode()).orElseThrow());
         }
+        assertThrows(IllegalArgumentException.class,()->new SignIdentity(UUID.randomUUID(),SignIdentity.Type.BUY,"4|stone",false));
+        assertThrows(IllegalArgumentException.class,()->new SignIdentity(UUID.randomUUID(),SignIdentity.Type.SELL,"0|stone",false,new codes.castled.allium.economy.Money(100),true));
+        assertThrows(IllegalArgumentException.class,()->new SignIdentity(UUID.randomUUID(),SignIdentity.Type.BUY,"stone",false,new codes.castled.allium.economy.Money(100),true));
     }
     @Test void displayHeadersAndMalformedIdentitiesNeverDecode(){
         for(var raw:List.of("[kit]","§1[warp]","1:bad:kit:0:cGFpZA","2:"+UUID.randomUUID()+":kit:0:cGFpZA","1:"+UUID.randomUUID()+":balance:1:"))assertTrue(SignIdentity.decode(raw).isEmpty());

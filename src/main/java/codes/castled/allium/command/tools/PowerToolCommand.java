@@ -342,6 +342,13 @@ public final class PowerToolCommand implements SpecCommandHandler {
                 return;
             }
         }
+        if (PowerToolAction.TYPE_BLOCK_REPLACE.equals(type)) {
+            String invalid = validateBlockReplaceParams(params);
+            if (invalid != null) {
+                send(sender, Messages.POWERTOOL_INVALID_VALUE, "{reason}", invalid);
+                return;
+            }
+        }
         if (required && delayTicks > 0L) {
             send(sender, Messages.POWERTOOL_INVALID_VALUE, "{reason}", "a required action cannot have a delay");
             return;
@@ -1165,6 +1172,17 @@ public final class PowerToolCommand implements SpecCommandHandler {
         if ("--cd".equals(prev) || "--cooldown".equals(prev) || "--delay".equals(prev) || "--recharge".equals(prev)) {
             return List.of("500ms", "1s", "5s", "30s", "2m", "20t").stream().filter(v -> v.startsWith(current)).toList();
         }
+        if ("--param".equals(prev)) {
+            return List.of(
+                    "source=hotbar", "source=inventory", "source=offhand", "source=list",
+                    "selection=random", "selection=sequential",
+                    "consume=true", "consume=false",
+                    "drop-old=inventory", "drop-old=natural", "drop-old=none",
+                    "preserve-data=true", "preserve-data=false",
+                    "skip-same=true", "skip-same=false",
+                    "weighted-by-stack=true"
+            ).stream().filter(v -> v.startsWith(current)).toList();
+        }
 
         return switch (sub) {
             case "add", "set" -> {
@@ -1287,6 +1305,32 @@ public final class PowerToolCommand implements SpecCommandHandler {
         } catch (NumberFormatException ignored) {
         }
         return raw;
+    }
+
+    @Nullable
+    private static String validateBlockReplaceParams(Map<String, Object> params) {
+        Object source = params.get("source");
+        if (source != null) {
+            String s = String.valueOf(source).trim().toLowerCase(Locale.ROOT);
+            if (!Set.of("hotbar", "inventory", "offhand", "list").contains(s)) {
+                return "source must be hotbar, inventory, offhand, or list";
+            }
+        }
+        Object selection = params.get("selection");
+        if (selection != null) {
+            String s = String.valueOf(selection).trim().toLowerCase(Locale.ROOT);
+            if (!Set.of("random", "sequential", "cycle", "order").contains(s)) {
+                return "selection must be random or sequential";
+            }
+        }
+        Object dropOld = params.get("drop-old");
+        if (dropOld != null && !(dropOld instanceof Boolean)) {
+            String s = String.valueOf(dropOld).trim().toLowerCase(Locale.ROOT);
+            if (!Set.of("none", "inventory", "natural", "true", "false").contains(s)) {
+                return "drop-old must be none, inventory, or natural";
+            }
+        }
+        return null;
     }
 
     private void send(CommandSender sender, Messages message, String... replacements) {

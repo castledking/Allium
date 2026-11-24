@@ -167,11 +167,28 @@ public final class SignService implements Listener,AutoCloseable {
                 return;
             }
             argument=amount+"|"+mob;
+        } else if(type==SignIdentity.Type.BUY||type==SignIdentity.Type.SELL){
+            int amount;
+            try{amount=Integer.parseInt(argument);}
+            catch(NumberFormatException bad){
+                invalid(event,type,2,"<amount>","Enter an amount from 1 to 2304.");
+                return;
+            }
+            if(amount<1||amount>2304){
+                invalid(event,type,2,"<amount>","Enter an amount from 1 to 2304.");
+                return;
+            }
+            String itemSpec=Objects.toString(plain(event.getLine(2)),"");
+            if(resolveShopItem(itemSpec)==null){
+                invalid(event,type,3,"<item>","Enter a valid item name or alias.");
+                return;
+            }
+            argument=amount+"|"+itemSpec;
         }
         int priceLine=switch(type){
             case COLOR->-1;
             case WARP->publicWarp?3:2;
-            case ENCHANT,SPAWNMOB->3;
+            case ENCHANT,SPAWNMOB,BUY,SELL->3;
             case TIME,WEATHER->argument.isEmpty()?-1:2;
             default->2;
         };
@@ -192,6 +209,10 @@ public final class SignService implements Listener,AutoCloseable {
                             "{price}",display.format(price),"{cost}",display.format(configuredCost));
                     return;
                 }
+            }
+            if((type==SignIdentity.Type.BUY||type==SignIdentity.Type.SELL)&&price.minor()<=0){
+                invalid(event,type,priceLine+1,"<price>","Enter a price greater than zero.");
+                return;
             }
         }
         SignIdentity created;
@@ -344,7 +365,7 @@ public final class SignService implements Listener,AutoCloseable {
         if(!plugin.getConfig().getBoolean("modules.signs",true)||command==null
                 ||plugin.getCommandManager().getFamilyPolicy().isDisabled(command))return;
         String module=switch(identity.type()){
-            case WARP->"travel";case KIT->"kits";case BALANCE->"economy";case MAIL->"mail";case RANDOMTELEPORT->"rtp";
+            case WARP->"travel";case KIT->"kits";case BALANCE,BUY,SELL->"economy";case MAIL->"mail";case RANDOMTELEPORT->"rtp";
             default->"essentials";
         };
         var owner=plugin.getModuleManager().getModule(module);if(owner==null||!owner.isEnabled()||!plugin.getConfig().getBoolean("modules."+module,true)||identity.type()==SignIdentity.Type.WARP&&!plugin.getConfig().getBoolean("modules.warps",true))return;
@@ -371,6 +392,14 @@ public final class SignService implements Listener,AutoCloseable {
         }
         if(identity.type()==SignIdentity.Type.SPAWNMOB){
             runSpawnMob(p,identity,valid);
+            return;
+        }
+        if(identity.type()==SignIdentity.Type.BUY){
+            runBuy(p,identity,valid);
+            return;
+        }
+        if(identity.type()==SignIdentity.Type.SELL){
+            runSell(p,identity,valid);
             return;
         }
         if(identity.type()==SignIdentity.Type.WARP){
@@ -445,8 +474,8 @@ public final class SignService implements Listener,AutoCloseable {
 
     private static boolean supportsPaidFolia(SignIdentity.Type type) {
         return switch (type) {
-            case ANVIL, BALANCE, CARTOGRAPHY, DISPOSAL, ENCHANT, FREE, GAMEMODE, GRINDSTONE, HEAL,
-                    INFO, KIT, LOOM, MAIL, RANDOMTELEPORT, REPAIR, SMITHING, SPAWNMOB, TIME, WARP,
+            case ANVIL, BALANCE, BUY, CARTOGRAPHY, DISPOSAL, ENCHANT, FREE, GAMEMODE, GRINDSTONE, HEAL,
+                    INFO, KIT, LOOM, MAIL, RANDOMTELEPORT, REPAIR, SELL, SMITHING, SPAWNMOB, TIME, WARP,
                     WEATHER, WORKBENCH -> true;
             default -> false;
         };
@@ -719,10 +748,16 @@ public final class SignService implements Listener,AutoCloseable {
             String mob=Objects.toString(plain(lines[2]),"");
             if(amount<1||amount>256||!validMobSpec(mob))return Optional.empty();
             argument=amount+"|"+mob;
+        } else if(type==SignIdentity.Type.BUY||type==SignIdentity.Type.SELL){
+            int amount;
+            try{amount=Integer.parseInt(argument);}catch(NumberFormatException bad){return Optional.empty();}
+            String itemSpec=Objects.toString(plain(lines[2]),"");
+            if(amount<1||amount>2304||resolveShopItem(itemSpec)==null)return Optional.empty();
+            argument=amount+"|"+itemSpec;
         }
         int priceLine=switch(type){
             case WARP->publicWarp?3:2;
-            case ENCHANT,SPAWNMOB->3;
+            case ENCHANT,SPAWNMOB,BUY,SELL->3;
             case TIME,WEATHER->argument.isEmpty()?-1:2;
             default->2;
         };
@@ -736,21 +771,111 @@ public final class SignService implements Listener,AutoCloseable {
                     priceOverride=true;
                 }catch(IllegalArgumentException|ArithmeticException bad){return Optional.empty();}
             }
+            if((type==SignIdentity.Type.BUY||type==SignIdentity.Type.SELL)&&price.minor()<=0)return Optional.empty();
         }
         try{return Optional.of(new SignIdentity(UUID.randomUUID(),type,argument,publicWarp,price,priceOverride));}
         catch(IllegalArgumentException bad){return Optional.empty();}
     }
 
+    private void runBuy(Player p,SignIdentity identity,BooleanSupplier valid){
+        int sep=identity.argument().indexOf('|');
+        if(sep<=0||sep>=identity.argument().length()-1)return;
+        int amount;
+        try{amount=Integer.parseInt(identity.argument().substring(0,sep));}
+        catch(NumberFormatException bad){return;}
+        String itemSpec=identity.argument().substring(sep+1);
+        org.bukkit.inventory.ItemStack template=resolveShopItem(itemSpec);
+        if(template==null||template.getType().isAir())return;
+        String itemLabel=shopItemLabel(template,itemSpec);
+        if(UtilitySupport.isInventoryBusy(plugin,p)){
+            plugin.getMessageManager().send(p,Messages.UTILITY_INVENTORY_BUSY,"{player}",p.getName());
+            return;
+        }
+        if(!PaidSignService.canFit(p.getInventory().getStorageContents(),template,amount)){
+            plugin.getMessageManager().send(p,Messages.SIGN_BUY_INVENTORY_FULL,
+                    "{amount}",Integer.toString(amount),"{item}",itemLabel);
+            return;
+        }
+        if(paidSigns==null){
+            plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
+            return;
+        }
+        paidSigns.startBuy(p,identity,template,amount,itemLabel,valid);
+    }
+
+    private void runSell(Player p,SignIdentity identity,BooleanSupplier valid){
+        int sep=identity.argument().indexOf('|');
+        if(sep<=0||sep>=identity.argument().length()-1)return;
+        int amount;
+        try{amount=Integer.parseInt(identity.argument().substring(0,sep));}
+        catch(NumberFormatException bad){return;}
+        String itemSpec=identity.argument().substring(sep+1);
+        org.bukkit.inventory.ItemStack template=resolveShopItem(itemSpec);
+        if(template==null||template.getType().isAir())return;
+        String itemLabel=shopItemLabel(template,itemSpec);
+        if(UtilitySupport.isInventoryBusy(plugin,p)){
+            plugin.getMessageManager().send(p,Messages.UTILITY_INVENTORY_BUSY,"{player}",p.getName());
+            return;
+        }
+        int available=PaidSignService.countMatching(p.getInventory().getStorageContents(),template);
+        if(available<amount){
+            plugin.getMessageManager().send(p,Messages.SIGN_SELL_NOT_ENOUGH,
+                    "{amount}",Integer.toString(amount),"{item}",itemLabel,"{available}",Integer.toString(available));
+            return;
+        }
+        if(paidSigns==null){
+            plugin.getMessageManager().send(p,Messages.SIGN_PAID_UNAVAILABLE);
+            return;
+        }
+        paidSigns.startSell(p,identity,template,amount,itemLabel,valid);
+    }
+
+    private static String shopItemLabel(org.bukkit.inventory.ItemStack stack,String fallback){
+        if(stack!=null&&stack.getType()!=null&&!stack.getType().isAir()){
+            String[] words=stack.getType().name().toLowerCase(Locale.ROOT).split("_");
+            StringBuilder out=new StringBuilder();
+            for(String word:words){
+                if(word.isEmpty())continue;
+                if(out.length()>0)out.append(' ');
+                out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+            }
+            if(out.length()>0)return out.toString();
+        }
+        return fallback;
+    }
+
     private org.bukkit.inventory.ItemStack resolveFreeItem(String spec){
+        return resolveShopItem(spec);
+    }
+
+    private org.bukkit.inventory.ItemStack resolveShopItem(String spec){
         if(spec==null||spec.isBlank())return null;
         String trimmed=spec.trim();
+        var modules=plugin.getModuleManager();
+        if(modules!=null&&modules.getModule("items") instanceof ItemsModule itemsModule&&itemsModule.isEnabled()&&itemsModule.library()!=null){
+            try{
+                var parsed=new codes.castled.allium.item.spec.ItemSpecParser(true).parse(trimmed);
+                if(parsed.items().size()==1){
+                    var built=itemsModule.library().build(parsed,false);
+                    if(!built.items().isEmpty()){
+                        var stack=built.items().get(0).stack();
+                        if(stack!=null&&!stack.getType().isAir()){
+                            stack.setAmount(1);
+                            return stack;
+                        }
+                    }
+                }
+            }catch(RuntimeException ignored){}
+        }
         var itemService=plugin.getItemService();
         if(itemService!=null){
             try{
                 var ref=itemService.parseRef(trimmed);
                 var result=itemService.create(ref);
                 if(result.itemStack().isPresent()&&!result.itemStack().get().getType().isAir()){
-                    return result.itemStack().get();
+                    var stack=result.itemStack().get();
+                    stack.setAmount(1);
+                    return stack;
                 }
             }catch(RuntimeException ignored){}
         }

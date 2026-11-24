@@ -182,4 +182,68 @@ class ModGuardTest {
         assertFalse(Detection.positiveProbe("key.meteor.open", "allium_probe_1", "key.meteor.open", true));
         assertFalse(Detection.positiveProbe("key.meteor.open", "allium_probe_1", "Right Shift", false));
     }
+
+    @Test
+    void translationProbeUsesDistinctPositionsPerBatchAndRejectsStaleKeybindEchoes() {
+        var origin = new com.github.retrooper.packetevents.util.Vector3i(-19, 34, 42);
+        int chunkX = origin.getX() >> 4;
+        int chunkZ = origin.getZ() >> 4;
+        var seen = new java.util.HashSet<com.github.retrooper.packetevents.util.Vector3i>();
+        for (int batch = 0; batch < 32; batch++) {
+            var pos = TranslationProbe.batchPosition(origin, batch);
+            assertTrue(seen.add(pos), "duplicate batch position at batch " + batch + ": " + pos);
+            assertEquals(chunkX, pos.getX() >> 4, "batch sign must stay inside player's chunk X");
+            assertEquals(chunkZ, pos.getZ() >> 4, "batch sign must stay inside player's chunk Z");
+            assertEquals(origin.getY(), pos.getY());
+        }
+
+        java.util.Set<String> allKeys = java.util.Set.of(
+                "key.freecam.toggle", "xray.config.toggle", "key.chestesp.toggle",
+                "key.killaura", "key.autofish.open_gui", "key.lumina.open_click_gui",
+                "key.autoswitch.toggle", "key.auto-clicker_.toggle", "bleachhack.module.killaura",
+                "key.forward"
+        );
+
+        // Delayed Batch 3 keybind-only echo arriving while Batch 4 (KillAura, AutoFish, Lumina) is active
+        assertTrue(TranslationProbe.isForeignEcho(
+                new String[]{"key.freecam.toggle", "xray.config.toggle", "key.chestesp.toggle", "W"},
+                List.of(ProbeMode.KEYBIND, ProbeMode.KEYBIND, ProbeMode.KEYBIND),
+                List.of("key.killaura", "key.autofish.open_gui", "key.lumina.open_click_gui"),
+                allKeys,
+                "allium_probe_batch4",
+                "allium_probe_"
+        ));
+
+        // Delayed Batch 4 keybind-only echo arriving while Batch 5 (AutoSwitch, Auto Clicker, BleachHack) is active
+        assertTrue(TranslationProbe.isForeignEcho(
+                new String[]{"key.killaura", "key.autofish.open_gui", "key.lumina.open_click_gui", "W"},
+                List.of(ProbeMode.KEYBIND, ProbeMode.KEYBIND, ProbeMode.TRANSLATE),
+                List.of("key.autoswitch.toggle", "key.auto-clicker_.toggle", "bleachhack.module.killaura"),
+                allKeys,
+                "allium_probe_batch5",
+                "allium_probe_"
+        ));
+
+        // Genuine clean response for Batch 4 is NOT foreign and evaluates CLEAN
+        assertFalse(TranslationProbe.isForeignEcho(
+                new String[]{"key.killaura", "key.autofish.open_gui", "key.lumina.open_click_gui", "W"},
+                List.of(ProbeMode.KEYBIND, ProbeMode.KEYBIND, ProbeMode.KEYBIND),
+                List.of("key.killaura", "key.autofish.open_gui", "key.lumina.open_click_gui"),
+                allKeys,
+                "allium_probe_batch4",
+                "allium_probe_"
+        ));
+
+        // Genuine detection for Lumina ("Right Shift") is NOT foreign and evaluates DETECTED
+        assertFalse(TranslationProbe.isForeignEcho(
+                new String[]{"key.killaura", "key.autofish.open_gui", "Right Shift", "W"},
+                List.of(ProbeMode.KEYBIND, ProbeMode.KEYBIND, ProbeMode.KEYBIND),
+                List.of("key.killaura", "key.autofish.open_gui", "key.lumina.open_click_gui"),
+                allKeys,
+                "allium_probe_batch4",
+                "allium_probe_"
+        ));
+        assertEquals(ProbeResult.DETECTED, TranslationProbe.evaluateProbe(
+                ProbeMode.KEYBIND, "key.lumina.open_click_gui", java.util.Set.of(), "Right Shift", "allium_probe_batch4", false));
+    }
 }

@@ -133,6 +133,43 @@ class TeleportSettingsTest {
         assertEquals(0, settings.cooldown("back"));
     }
 
+    @Test
+    void perTypeWarmupsOverrideDefaultSupportZeroAndGroupFallbackAndValidateBounds() {
+        MemoryConfiguration config = new MemoryConfiguration();
+        config.set("teleport.warmup-seconds", 3);
+        config.set("teleport.warmups.spawn", 0);
+        config.set("teleport.warmups.home", -1);
+        config.set("teleport.warmups.rtp", 5.5);
+        config.set("teleport.warmups.requests", 4);
+        config.set("teleport.warmups.tpa", 2);
+        config.set("teleport.warmups.tp", 1);
+
+        TeleportSettings settings = TeleportSettings.read(config);
+        assertEquals(0, settings.warmup("spawn"));
+        assertEquals(3000, settings.warmup("home"));
+        assertEquals(5500, settings.warmup("rtp"));
+        assertEquals(2000, settings.warmup("tpa"));
+        assertEquals(4000, settings.warmup("tpahere"));
+        assertEquals(1000, settings.warmup("tpo"));
+        assertEquals(3000, settings.warmup("back"));
+        assertEquals(5500, settings.forMover(true, false).warmup("rtp"));
+        assertThrows(UnsupportedOperationException.class, () -> settings.warmups().put("back", 1L));
+
+        for (Object bad : new Object[]{-2, -0.5, 301, Double.NaN, Double.POSITIVE_INFINITY, "fast"}) {
+            MemoryConfiguration invalid = new MemoryConfiguration();
+            invalid.set("teleport.warmups.home", bad);
+            assertThrows(IllegalArgumentException.class, () -> TeleportSettings.read(invalid), "warmups.home=" + bad);
+        }
+        for (String badKey : new String[]{"Home", "tp-here", "tpa1"}) {
+            MemoryConfiguration invalid = new MemoryConfiguration();
+            invalid.set("teleport.warmups." + badKey, 2);
+            assertThrows(IllegalArgumentException.class, () -> TeleportSettings.read(invalid), badKey);
+        }
+        MemoryConfiguration badSection = new MemoryConfiguration();
+        badSection.set("teleport.warmups", "wrong");
+        assertThrows(IllegalArgumentException.class, () -> TeleportSettings.read(badSection));
+    }
+
     private static TeleportSettings direct(long warmup, double movement, long expiry, int radius, int vertical,
                                            Map<String, Long> cooldowns) {
         return new TeleportSettings(warmup, movement, expiry, false, true, true, radius, vertical,

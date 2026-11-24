@@ -202,6 +202,7 @@ public final class PowerToolBehavior {
     public void cleanupPlayer(UUID playerId) {
         cooldowns.clearPlayer(playerId);
         disabledPlayers.remove(playerId);
+        actionRegistry.cleanupPlayer(playerId);
     }
 
     public void disable() {

@@ -147,12 +147,19 @@ public final class EssentialsConfigReport {
             compareBoolean("teleport-safety", val, "teleport.safety.enabled", cur,
                     "Safe destination adjustment before teleport", out);
         }
+        if (ess.contains("teleport-invulnerability")) {
+            double val = ess.getDouble("teleport-invulnerability", 0);
+            double cur = allium.getDouble("teleport.arrival-pvp-grace-seconds", 0);
+            compareNumeric("teleport-invulnerability", formatNumber(val), "teleport.arrival-pvp-grace-seconds",
+                    formatNumber(cur), formatNumber(val), Double.compare(val, cur) == 0,
+                    "Opt-in inbound/outbound PvP arrival grace in seconds (environmental damage remains normal)", out);
+        }
         for (String manualKey : List.of("force-disable-teleport-safety", "teleport-to-center",
-                "teleport-passenger-dismount", "teleport-invulnerability")) {
+                "teleport-passenger-dismount")) {
             if (ess.contains(manualKey)) {
                 out.add(new ConfigEntry(manualKey, String.valueOf(ess.get(manualKey)),
                         "teleport.safety.*", null, null, Outcome.MANUAL,
-                        "Review teleport safety, block centering, passenger handling, and arrival grace manually"));
+                        "Review teleport safety, block centering, and passenger handling manually"));
             }
         }
     }
@@ -199,10 +206,10 @@ public final class EssentialsConfigReport {
                     "Review cross-world home permissions against Allium's world/region access policy"));
         }
         if (ess.contains("spawn-if-no-home")) {
-            configs.add(new ConfigEntry("spawn-if-no-home", String.valueOf(ess.getBoolean("spawn-if-no-home")),
-                    "teleport.respawn-at-home", String.valueOf(allium.getBoolean("teleport.respawn-at-home", true)), null,
-                    Outcome.MANUAL,
-                    "Allium /home tries bed when no home is set; spawn fallback on death uses teleport.respawn-at-home"));
+            boolean val = ess.getBoolean("spawn-if-no-home", false);
+            boolean cur = allium.getBoolean("homes.spawn-if-no-home", false);
+            compareBoolean("spawn-if-no-home", val, "homes.spawn-if-no-home", cur,
+                    "Fallback to spawn when running plain /home with no homes set (after bed fallback)", configs);
         }
         if (ess.contains("per-warp-permission")) {
             boolean perWarp = ess.getBoolean("per-warp-permission", false);
@@ -520,6 +527,10 @@ public final class EssentialsConfigReport {
             return;
         }
         compareNumeric(essKey, rawEss, alliumKey, rawCur, rawEss, equal, detail, out);
+    }
+
+    private static String formatNumber(double value) {
+        return value == Math.rint(value) ? Long.toString((long) value) : Double.toString(value);
     }
 
     private static void compareNumeric(String sourceKey, String sourceVal, String targetKey, String curVal,

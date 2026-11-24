@@ -38,6 +38,7 @@ class LegacyConfigMigrationTest {
               tppet-radius: 30
             home:
               cooldown: 60
+              spawn-if-no-home: true
             economy:
               symbol-before-amount: false
               decimal-places: 2
@@ -83,6 +84,7 @@ class LegacyConfigMigrationTest {
         assertEquals(30, target.getInt("teleport.cooldowns.tpa"));
         assertEquals(30, target.getInt("teleport.cooldowns.tpahere"));
         assertEquals(60, target.getInt("teleport.cooldowns.home"));
+        assertTrue(target.getBoolean("homes.spawn-if-no-home"));
         assertEquals(30, target.getInt("restore.retention-days"));
         assertTrue(target.getBoolean("economy.currency-symbol-suffix"));
         assertEquals("partial", target.getString("items.give.overflow"));

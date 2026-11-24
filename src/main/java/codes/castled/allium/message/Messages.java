@@ -310,6 +310,8 @@ public enum Messages {
     TELEPORT_ENTITY_LIMIT_EXCEEDED("teleport.entity-limit-exceeded", "{prefix} &cSelection matched &f{count} &centities, which exceeds the maximum limit of &f{limit}&c."),
     TELEPORT_SELECTOR_CONFIRM("teleport.selector-confirm", "{prefix} &eTargeted &f{count} &e{label}. Run &f{command} &eagain within &f{seconds}s &eto confirm the teleport."),
     TELEPORT_ENTITIES_MOVED("teleport.entities-moved", "{prefix} &aTeleported &f{count} &a{label}."),
+    TELEPORT_ARRIVAL_PVP_TARGET("teleport.arrival-pvp-target", "{prefix} &c{player} &eis briefly protected from PvP after teleporting."),
+    TELEPORT_ARRIVAL_PVP_SELF("teleport.arrival-pvp-self", "{prefix} &eYou are briefly protected from PvP after teleporting."),
     SPAWNMOB_LIST("spawnmob.list", "{prefix} &6Available mobs: &f{mobs}"),
     SPAWNMOB_SPAWNED("spawnmob.spawned", "{prefix} &aSpawned &f{count} &a{mob}&a."),
     SPAWNMOB_LIMIT("spawnmob.limit", "{prefix} &eAmount reduced to the server spawn limit (&f{limit}&e)."),

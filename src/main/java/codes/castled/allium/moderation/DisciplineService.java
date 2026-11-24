@@ -751,6 +751,7 @@ public final class DisciplineService implements Listener {
         if (action.contains(":")) action = action.substring(action.indexOf(':') + 1);
         action = switch (action) {
             case "pardon" -> "unban";
+            case "banip" -> "ipban";
             case "pardonip" -> "unbanip";
             case "tjail" -> "togglejail";
             case "remjail", "rmjail" -> "deljail";

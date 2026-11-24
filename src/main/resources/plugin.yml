@@ -440,7 +440,9 @@ commands:
     aliases: [tpno]
     permission: allium.tpdeny
   tpacancel:
-    description: Cancel your outgoing teleport request
+    description: Cancel pending teleport requests or an active teleport
+    usage: /<command> [player]
+    aliases: [tpcancel]
     permission: allium.tpacancel
   tpaall:
     description: Send a teleport-here request to every online player
@@ -746,6 +748,7 @@ commands:
   ipban:
     description: Ban a player's IP address
     usage: /<command> <player> [reason]
+    aliases: [banip]
     permission: allium.ipban
 
   tempbanip:

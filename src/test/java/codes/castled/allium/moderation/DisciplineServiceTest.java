@@ -466,6 +466,8 @@ class DisciplineServiceTest {
         assertEquals(0, service.pendingWrites()); assertFalse(service.isFrozen(p.getUniqueId()));
         service.dispatch(console, "ipban", new String[]{"Target"});
         verify(messages).send(console, Messages.DISCIPLINE_IP_DISABLED);
+        service.dispatch(console, "banip", new String[]{"Target"});
+        verify(messages, times(2)).send(console, Messages.DISCIPLINE_IP_DISABLED);
         verify(repository, never()).saveBan(any());
     }
 

@@ -75,6 +75,7 @@ final class LegacyConfigMigration {
             "teleport.expire", List.of("teleport.request-expiry-seconds"),
             "teleport.cooldown", List.of("teleport.cooldowns.tpa", "teleport.cooldowns.tpahere"),
             "home.cooldown", List.of("teleport.cooldowns.home"),
+            "home.spawn-if-no-home", List.of("homes.spawn-if-no-home"),
             "handcuffs.commands-on-quit", List.of("restraints.commands-on-quit"),
             "restore.snapshot-retention-days", List.of("restore.retention-days"),
             "addons.enabled.party-locator", List.of("addons.enabled.partylocator"));
@@ -108,7 +109,6 @@ final class LegacyConfigMigration {
             "heal.cooldown", "/heal has no cooldown",
             "feed.cooldown", "/feed has no cooldown",
             "home.show-location", "/home always shows the destination",
-            "home.spawn-if-no-home", "teleport.respawn-at-home decides where players respawn",
             "teleport.tppet-radius", "/tppet takes pets by leash and ownership; see teleport.entity-limits",
             "economy.allow-negative-balance", "balances never go below zero",
             "economy.decimal-places", "amounts always have two decimals",

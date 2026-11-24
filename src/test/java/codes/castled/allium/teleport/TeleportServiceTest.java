@@ -3,6 +3,7 @@ package codes.castled.allium.teleport;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.core.ModuleManager;
 import codes.castled.allium.message.MessageManager;
+import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.IgnoreService;
 import codes.castled.allium.messaging.MessagePolicy;
 import codes.castled.allium.messaging.MessagingService;
@@ -21,6 +22,7 @@ import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -689,6 +691,98 @@ class TeleportServiceTest {
         enable();clearInvocations(repository);var event=mock(PlayerQuitEvent.class);when(event.getPlayer()).thenReturn(target);service.quit(event);
         verify(repository,never()).save(eq(target.getUniqueId()),eq("logout"),any());drainWorker();verify(repository).save(eq(target.getUniqueId()),eq("logout"),argThat(p->p.x()==1&&p.y()==64));
         service.disable();disabled=true;verify(repository).save(eq(mover.getUniqueId()),eq("logout"),any());
+    }
+    @Test void arrivalPvpGraceBlocksInboundOutboundAndProjectilePvpWithoutBlockingNonPvp() {
+        config.set("teleport.arrival-pvp-grace-seconds", 5);
+        enable();
+        MessageManager messages = plugin.getMessageManager();
+        assertFalse(service.hasArrivalPvpGrace(mover.getUniqueId()));
+        assertTrue(service.teleport(mover, destination(), "home"));
+        drainWorker();
+        assertTrue(service.hasArrivalPvpGrace(mover.getUniqueId()));
+
+        // Inbound melee PvP blocked
+        var inbound = mock(org.bukkit.event.entity.EntityDamageByEntityEvent.class);
+        when(inbound.getEntity()).thenReturn(mover);
+        when(inbound.getDamager()).thenReturn(target);
+        service.guardArrivalPvp(inbound);
+        verify(inbound).setCancelled(true);
+        verify(messages).send(target, Messages.TELEPORT_ARRIVAL_PVP_TARGET, "{player}", mover.getName());
+
+        // Inbound projectile PvP blocked
+        var arrow = mock(org.bukkit.entity.Projectile.class);
+        when(arrow.getShooter()).thenReturn(target);
+        var projectileHit = mock(org.bukkit.event.entity.EntityDamageByEntityEvent.class);
+        when(projectileHit.getEntity()).thenReturn(mover);
+        when(projectileHit.getDamager()).thenReturn(arrow);
+        service.guardArrivalPvp(projectileHit);
+        verify(projectileHit).setCancelled(true);
+
+        // Outbound PvP blocked while protected
+        var outbound = mock(org.bukkit.event.entity.EntityDamageByEntityEvent.class);
+        when(outbound.getEntity()).thenReturn(target);
+        when(outbound.getDamager()).thenReturn(mover);
+        service.guardArrivalPvp(outbound);
+        verify(outbound).setCancelled(true);
+        verify(messages).send(mover, Messages.TELEPORT_ARRIVAL_PVP_SELF);
+
+        // Self-damage and non-player mob damage are NOT blocked
+        var selfDamage = mock(org.bukkit.event.entity.EntityDamageByEntityEvent.class);
+        when(selfDamage.getEntity()).thenReturn(mover);
+        when(selfDamage.getDamager()).thenReturn(mover);
+        service.guardArrivalPvp(selfDamage);
+        verify(selfDamage, never()).setCancelled(true);
+
+        var mob = mock(org.bukkit.entity.Zombie.class);
+        var mobHit = mock(org.bukkit.event.entity.EntityDamageByEntityEvent.class);
+        when(mobHit.getEntity()).thenReturn(mover);
+        when(mobHit.getDamager()).thenReturn(mob);
+        service.guardArrivalPvp(mobHit);
+        verify(mobHit, never()).setCancelled(true);
+
+        // Death clears arrival grace
+        var deathEvent = mock(PlayerDeathEvent.class);
+        when(deathEvent.getEntity()).thenReturn(mover);
+        service.death(deathEvent);
+        assertFalse(service.hasArrivalPvpGrace(mover.getUniqueId()));
+    }
+    @Test void cancelWithOptionalPlayerNarrowsRequestsAndWarmupsAndNotifiesPeer() {
+        warmup();
+        enable();
+        MessageManager messages = plugin.getMessageManager();
+        Player third = player("Third", UUID.randomUUID());
+        join(third);
+        drainWorker();
+
+        // mover -> target, and third -> mover
+        service.request(mover, target, RequestTracker.Kind.TO_TARGET);
+        service.request(third, mover, RequestTracker.Kind.TO_TARGET);
+        assertEquals(2, service.pendingRequests());
+
+        // Narrowing cancel to 'target' cancels only mover <-> target and notifies target, leaving third -> mover intact
+        service.cancel(mover, target);
+        assertEquals(1, service.pendingRequests());
+        verify(messages).send(mover, Messages.TELEPORT_REQUEST_CANCELLED);
+        verify(messages).send(target, Messages.TELEPORT_REQUEST_CANCELLED);
+        verify(messages, never()).send(third, Messages.TELEPORT_REQUEST_CANCELLED);
+
+        // Unrelated player's /home warmup cannot be cancelled by another player via /tpcancel <player>
+        service.teleport(target, destination(), "home");
+        assertTrue(service.warming(target.getUniqueId()));
+        service.cancel(mover, target);
+        assertTrue(service.warming(target.getUniqueId()));
+
+        // Cancelling incoming request from 'third' by target name works and notifies third
+        service.cancel(mover, third);
+        assertEquals(0, service.pendingRequests());
+        verify(messages).send(third, Messages.TELEPORT_REQUEST_CANCELLED);
+
+        // Accepted request warmup between third and mover can be cancelled by mover targeting third
+        service.request(third, mover, RequestTracker.Kind.TO_TARGET);
+        service.accept(mover, third);
+        assertTrue(service.warming(third.getUniqueId()));
+        service.cancel(mover, third);
+        assertFalse(service.warming(third.getUniqueId()));
     }
     private Player player(String name, UUID id) {
         Player player = mock(Player.class);

@@ -14,7 +14,7 @@ public final class CoreCommandSpecs {
             Map.entry("tpahere", "Ask a player to teleport to you"),
             Map.entry("tpaccept", "Accept a teleport request"),
             Map.entry("tpdeny", "Deny a teleport request"),
-            Map.entry("tpacancel", "Cancel your outgoing teleport request"),
+            Map.entry("tpacancel", "Cancel pending teleport requests or an active teleport"),
             Map.entry("tptoggle", "Allow or block teleport requests to you"),
             Map.entry("back", "Return to your previous location"),
             Map.entry("spawn", "Teleport to spawn"),
@@ -689,6 +689,7 @@ public final class CoreCommandSpecs {
         };
         List<String> aliases = switch (name) {
             case "unban" -> List.of("pardon");
+            case "ipban" -> List.of("banip");
             case "setjail" -> List.of("createjail");
             case "unbanip" -> List.of("pardonip");
             case "togglejail" -> List.of("tjail");
@@ -922,7 +923,7 @@ public final class CoreCommandSpecs {
             teleportSpec("tpaall", List.of(CommandArgSpec.optional("player", "allium.tpaall.others", SuggestionSpec.onlinePlayers("allium.tpaall.others")))),
             teleportSpec("tpaccept", List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("tpdeny", List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null)))),
-            teleportSpec("tpacancel", List.of()),
+            teleportSpec("tpacancel", List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers(null)))),
             teleportSpec("tptoggle", List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
                     CommandArgSpec.optional("player", "allium.tptoggle.others", SuggestionSpec.onlinePlayers("allium.tptoggle.others")))),
             teleportSpec("tpauto", List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
@@ -953,7 +954,7 @@ public final class CoreCommandSpecs {
             case "tpa", "tpahere", "tpoffline", "tpohere" -> " <player>";
             case "tpo" -> " <player> [target]";
             case "tphere", "there" -> " [players|selectors...]";
-            case "tppet", "tpent", "tpall", "tpaall" -> " [player]";
+            case "tppet", "tpent", "tpall", "tpaall", "tpacancel" -> " [player]";
             case "tpaccept", "tpdeny" -> " [requester]";
             case "setspawn" -> " [group]";
             case "tp" -> " <player> [target] | /tp <x> <y> <z> [yaw] [pitch] [world]";
@@ -967,6 +968,7 @@ public final class CoreCommandSpecs {
             case "back" -> List.of("return");
             case "tpaccept" -> List.of("tpyes");
             case "tpdeny" -> List.of("tpno");
+            case "tpacancel" -> List.of("tpcancel");
             case "jump" -> List.of("j", "jumpto");
             case "tpoffline" -> List.of("otp", "offlinetp", "tpoff");
             case "tphere" -> List.of("here", "s");

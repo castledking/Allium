@@ -82,7 +82,7 @@ public final class TravelService implements Listener {
         Session(Player player){this.player=player;}
     }
     private record Confirmation(boolean warp,String name,long revision,SavedLocation point,long expires) {}
-    private record Settings(int base,Map<UUID,Integer> overrides,long homeConfirm,long warpConfirm,boolean compassTowardsHome) {
+    private record Settings(int base,Map<UUID,Integer> overrides,long homeConfirm,long warpConfirm,boolean compassTowardsHome,boolean spawnIfNoHome) {
         static Settings read(PluginStart p) {
             return read(p.getConfig());
         }
@@ -96,7 +96,8 @@ public final class TravelService implements Listener {
             return new Settings(integer(c.get("homes.default-limit",1),"default home limit",0,1000),Map.copyOf(overrides),
                     integer(c.get("homes.overwrite-confirm-seconds",30),"home confirmation",1,300)*1000L,
                     integer(c.get("warps.overwrite-confirm-seconds",30),"warp confirmation",1,300)*1000L,
-                    c.getBoolean("homes.compass-towards-home-perm",false));
+                    c.getBoolean("homes.compass-towards-home-perm",false),
+                    c.getBoolean("homes.spawn-if-no-home",false));
         }
         private static int integer(Object v,String name,int min,int max) {
             if(!(v instanceof Number n)||!Double.isFinite(n.doubleValue())||n.doubleValue()!=n.intValue()||n.intValue()<min||n.intValue()>max)
@@ -626,6 +627,15 @@ public final class TravelService implements Listener {
         Session s=session(p);if(s==null){failed.run();return;}
         // Like Essentials, a plain /home with no homes set goes to the bed when there is one.
         if(!warp&&name.equals("home")&&s.homes.isEmpty()&&!s.busy&&p.hasPermission(PERMISSION_BED)&&RespawnPoints.of(p)!=null){bed(p);return;}
+        // Opt-in fallback: send plain /home with no homes (and no bed) to spawn instead of erroring.
+        if(!warp&&name.equals("home")&&s.homes.isEmpty()&&!s.busy&&settings.spawnIfNoHome()){
+            if(!teleports.isSpawnReady()){send(p,Messages.TELEPORT_LOADING);failed.run();return;}
+            if(teleports.resolveSpawn(p)==null){send(p,Messages.TELEPORT_UNSAFE);failed.run();return;}
+            BooleanSupplier canFallback=()->same(s)&&s.loaded&&s.homes.isEmpty()&&settings.spawnIfNoHome()&&p.hasPermission("allium.home")&&valid.getAsBoolean();
+            if(outcome==null)teleports.teleport(p,()->teleports.resolveSpawn(p),"home",canFallback);
+            else teleports.teleport(p,()->teleports.resolveSpawn(p),"home",canFallback,outcome);
+            return;
+        }
         if(!admit(s)){failed.run();return;}
         if(warp&&!warpsLoaded){s.busy=false;send(p,Messages.TRAVEL_LOADING);failed.run();return;}
         if(warp&&!publicAccess&&!access(p,name)){s.busy=false;notFound(p,name,true);failed.run();return;}

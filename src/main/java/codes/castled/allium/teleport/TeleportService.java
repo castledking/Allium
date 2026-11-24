@@ -61,6 +61,7 @@ public final class TeleportService implements Listener {
     private final Set<UUID> committing=ConcurrentHashMap.newKeySet();
     private volatile TeleportSettings settings;
     private final Map<UUID,SelectorConfirmation> selectorConfirmations=new ConcurrentHashMap<>();
+    private final Map<UUID,Long> arrivalPvpGraceUntil=new ConcurrentHashMap<>();
     private volatile SavedLocation spawn;
     private final Map<String, SavedLocation> groupSpawns = new ConcurrentHashMap<>();
     private volatile boolean spawnReady;
@@ -144,7 +145,7 @@ public final class TeleportService implements Listener {
         for(Operation operation:List.copyOf(operations.values())){
             if(operations.remove(operation.session().player.getUniqueId(),operation))finish(operation,false);
         }
-        requests.expire(Long.MAX_VALUE);operations.clear();offlineLookups.clear();selectorConfirmations.clear();sessions.clear();
+        requests.expire(Long.MAX_VALUE);operations.clear();offlineLookups.clear();selectorConfirmations.clear();arrivalPvpGraceUntil.clear();sessions.clear();
         // Retry records that exhausted their live attempts before draining the worker. Retries
         // belong to the worker, so shutdown never depends on another server tick.
         for(HistoryWrite write:pendingWrites.values())queueHistory(write);
@@ -258,12 +259,41 @@ public final class TeleportService implements Listener {
         tell(request.requester(),Messages.TELEPORT_DENIED);
     }
     public void cancel(Player sender) {
+        cancel(sender, null);
+    }
+    /** Cancels pending teleport requests and active warmups for {@code sender}, optionally narrowed to {@code target}. */
+    public void cancel(Player sender, @Nullable Player target) {
         if(!sender.hasPermission("allium.tpacancel")){send(sender,Messages.NO_PERMISSION);return;}
-        boolean any=requests.remove(sender.getUniqueId()).isPresent();
-        any=offlineLookups.remove(sender.getUniqueId())!=null||any;
-        for(var operation:List.copyOf(operations.values()))if(operation.session().player==sender
-                ||operation.request()!=null&&operation.request().requester().equals(sender.getUniqueId())) {
-            interrupt(operation,"cancelled");any=true;
+        UUID senderId=sender.getUniqueId();
+        UUID targetId=target==null?null:target.getUniqueId();
+        List<RequestTracker.Request> removed=targetId==null
+                ?requests.cancelPlayer(senderId)
+                :requests.removeIf(r->(r.requester().equals(senderId)&&r.recipient().equals(targetId))
+                        ||(r.requester().equals(targetId)&&r.recipient().equals(senderId)));
+        boolean any=!removed.isEmpty();
+        Set<UUID> notified=new HashSet<>();
+        for(var request:removed){
+            UUID otherId=request.requester().equals(senderId)?request.recipient():request.requester();
+            if(notified.add(otherId)){
+                Player other=plugin.getServer().getPlayer(otherId);
+                if(other!=null&&visible(other,sender))send(other,Messages.TELEPORT_REQUEST_CANCELLED);
+            }
+        }
+        if(targetId==null)any=offlineLookups.remove(senderId)!=null||any;
+        for(var operation:List.copyOf(operations.values())){
+            boolean matches;
+            if(targetId==null){
+                matches=operation.session().player==sender
+                        ||(operation.request()!=null&&(operation.request().requester().equals(senderId)
+                                ||operation.request().recipient().equals(senderId)));
+            }else{
+                boolean requestBetween=operation.request()!=null
+                        &&((operation.request().requester().equals(senderId)&&operation.request().recipient().equals(targetId))
+                        ||(operation.request().requester().equals(targetId)&&operation.request().recipient().equals(senderId)));
+                boolean ownAnchored=operation.session().player==sender&&operation.anchor()==target;
+                matches=requestBetween||ownAnchored;
+            }
+            if(matches){interrupt(operation,"cancelled");any=true;}
         }
         send(sender,any?Messages.TELEPORT_REQUEST_CANCELLED:Messages.TELEPORT_NO_PENDING);
     }
@@ -361,12 +391,23 @@ public final class TeleportService implements Listener {
         return defaultSpawn();
     }
 
-    public void spawn(Player player) {
-        if (!spawnReady) { send(player, Messages.TELEPORT_LOADING); return; }
+    public boolean isSpawnReady() {
+        return spawnReady;
+    }
+
+    /** Resolves the player's effective spawn (group -> global -> default world spawn), or {@code null} if unavailable. */
+    @Nullable
+    public Location resolveSpawn(Player player) {
+        if (!spawnReady) return null;
         List<World> worlds = plugin.getServer().getWorlds();
         Location configured = configuredSpawn(player);
-        Location destination = configured != null ? configured
+        return configured != null ? configured
                 : spawn == null && !worlds.isEmpty() ? worlds.get(0).getSpawnLocation() : null;
+    }
+
+    public void spawn(Player player) {
+        if (!spawnReady) { send(player, Messages.TELEPORT_LOADING); return; }
+        Location destination = resolveSpawn(player);
         if (destination == null) { send(player, Messages.TELEPORT_UNSAFE); return; }
         begin(player, player, "spawn", destination::clone, null, null, false);
     }
@@ -891,6 +932,8 @@ public final class TeleportService implements Listener {
         if(provider!=null){long custom=provider.applyAsLong(mover);if(custom>=0)configured=custom;}
         long until=System.currentTimeMillis()+(bypassCooldown?0:configured);
         session.cooldowns.put(operation.command(),until);
+        long graceMillis=operation.rules().arrivalPvpGraceMillis();
+        if(graceMillis>0)arrivalPvpGraceUntil.put(id,System.currentTimeMillis()+graceMillis);
         Location landed=mover.getLocation();
         if(BukkitServerThread.isFolia()){
             try { regionalArrival.accept(mover); }
@@ -1110,13 +1153,43 @@ public final class TeleportService implements Listener {
         onOwner(player,()->{if(!(player instanceof Player p)||samePlayer(p))plugin.getMessageManager().send(player,key,replacements);});
     }
 
+    /** Returns {@code true} while {@code playerId} is within the post-teleport PvP grace window. */
+    public boolean hasArrivalPvpGrace(UUID playerId) {
+        Long until = arrivalPvpGraceUntil.get(playerId);
+        if (until == null) return false;
+        if (System.currentTimeMillis() >= until) {
+            arrivalPvpGraceUntil.remove(playerId, until);
+            return false;
+        }
+        return true;
+    }
+
     @EventHandler(priority=EventPriority.MONITOR) public void join(PlayerJoinEvent e){joined(e.getPlayer());}
     @EventHandler(priority=EventPriority.MONITOR) public void quit(PlayerQuitEvent e){
         Player player=e.getPlayer();
-        saveLogout(player);offlineLookups.remove(player.getUniqueId());selectorConfirmations.remove(player.getUniqueId());
+        saveLogout(player);offlineLookups.remove(player.getUniqueId());selectorConfirmations.remove(player.getUniqueId());arrivalPvpGraceUntil.remove(player.getUniqueId());
         for(var op:List.copyOf(operations.values()))if(op.actor()==player||op.session().player==player||op.anchor()==player||op.request()!=null
                 &&(op.request().requester().equals(player.getUniqueId())||op.request().recipient().equals(player.getUniqueId())))interrupt(op,"player went offline");
         requests.cancelPlayer(player.getUniqueId());Session s=sessions.get(player.getUniqueId());if(s!=null&&s.player==player)sessions.remove(player.getUniqueId());
+    }
+    @EventHandler(priority=EventPriority.HIGH,ignoreCancelled=true) public void guardArrivalPvp(org.bukkit.event.entity.EntityDamageByEntityEvent e){
+        if(!(e.getEntity() instanceof Player victim))return;
+        Player attacker=resolvePlayerAttacker(e.getDamager());
+        if(attacker==null||attacker.getUniqueId().equals(victim.getUniqueId()))return;
+        if(hasArrivalPvpGrace(victim.getUniqueId())){
+            e.setCancelled(true);
+            send(attacker,Messages.TELEPORT_ARRIVAL_PVP_TARGET,"{player}",victim.getName());
+        }else if(hasArrivalPvpGrace(attacker.getUniqueId())){
+            e.setCancelled(true);
+            send(attacker,Messages.TELEPORT_ARRIVAL_PVP_SELF);
+        }
+    }
+    @Nullable private static Player resolvePlayerAttacker(Entity damager){
+        if(damager instanceof Player player)return player;
+        if(damager instanceof org.bukkit.entity.Projectile projectile&&projectile.getShooter() instanceof Player shooter)return shooter;
+        if(damager instanceof org.bukkit.entity.AreaEffectCloud cloud&&cloud.getSource() instanceof Player source)return source;
+        if(damager instanceof org.bukkit.entity.TNTPrimed tnt&&tnt.getSource() instanceof Player source)return source;
+        return null;
     }
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true) public void move(PlayerMoveEvent e){
         var op=operations.get(e.getPlayer().getUniqueId());Location to=e.getTo();
@@ -1139,7 +1212,7 @@ public final class TeleportService implements Listener {
         if(!committing.contains(e.getPlayer().getUniqueId())){var op=operations.get(e.getPlayer().getUniqueId());if(op!=null)interrupt(op,"another teleport");}
     }
     @EventHandler(priority=EventPriority.MONITOR) public void death(PlayerDeathEvent e){
-        Player p=e.getEntity();var op=operations.get(p.getUniqueId());if(op!=null)interrupt(op,"death");
+        Player p=e.getEntity();arrivalPvpGraceUntil.remove(p.getUniqueId());var op=operations.get(p.getUniqueId());if(op!=null)interrupt(op,"death");
         boolean hasDeathPerm=p.hasPermission(PERMISSION_BACK_ON_DEATH);
         if(settings.deathBack()||hasDeathPerm){
             Session s=sessions.get(p.getUniqueId());if(s!=null){

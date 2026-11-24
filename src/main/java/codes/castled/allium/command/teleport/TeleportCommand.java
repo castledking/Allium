@@ -81,9 +81,14 @@ public final class TeleportCommand implements SpecCommandHandler {
                 Player from=args.length==0?null:target(sender,args[0]);if(args.length>0&&from==null)return;
                 if(command.equals("tpaccept"))service.accept(player,from);else service.deny(player,from);
             }
+            case "tpacancel" -> {
+                if(args.length>1){context.sendInvalidArgs(spec.selfUsage());return;}
+                Player other=args.length==0?null:target(sender,args[0]);if(args.length>0&&other==null)return;
+                service.cancel(player,other);
+            }
             default -> {
                 if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
-                switch(command){case "tpacancel"->service.cancel(player);case "back"->service.back(player);case "spawn"->service.spawn(player);
+                switch(command){case "back"->service.back(player);case "spawn"->service.spawn(player);
                     case "jump"->service.jump(player);
                     case "top","bottom"->{
                         var to=command.equals("top")?codes.castled.allium.teleport.VerticalTeleports.top(player):codes.castled.allium.teleport.VerticalTeleports.bottom(player);

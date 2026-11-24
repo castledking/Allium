@@ -40,7 +40,9 @@ class EssentialsConfigReportTest {
                 teleport-delay: 5
                 teleport-cooldown: 30
                 teleport-safety: true
+                teleport-invulnerability: 4
                 teleport-to-center: true
+                spawn-if-no-home: true
                 sethome-multiple:
                   default: 3
                   vip: 5
@@ -75,6 +77,8 @@ class EssentialsConfigReportTest {
         allium.set("teleport.cooldowns.warp", 0);
         allium.set("teleport.cooldowns.tpa", 0);
         allium.set("teleport.safety.enabled", true); // matches -> MAPPED
+        allium.set("teleport.arrival-pvp-grace-seconds", 0); // differs from 4 -> CONFLICT
+        allium.set("homes.spawn-if-no-home", true); // matches -> MAPPED
         allium.set("homes.default-limit", 1); // differs from 3 -> CONFLICT
         allium.set("economy.starting-balance", "100.00"); // numeric equal to 100 -> MAPPED
         allium.set("economy.min-money", "0.00"); // differs from -500 -> CONFLICT
@@ -93,7 +97,11 @@ class EssentialsConfigReportTest {
         assertEquals(Outcome.CONFLICT, findConfig(report, "teleport-delay").outcome());
         assertEquals(Outcome.CONFLICT, findConfig(report, "teleport-cooldown").outcome());
         assertEquals(Outcome.MAPPED, findConfig(report, "teleport-safety").outcome());
+        assertEquals(Outcome.CONFLICT, findConfig(report, "teleport-invulnerability").outcome());
+        assertEquals("teleport.arrival-pvp-grace-seconds", findConfig(report, "teleport-invulnerability").targetKey());
         assertEquals(Outcome.MANUAL, findConfig(report, "teleport-to-center").outcome());
+        assertEquals(Outcome.MAPPED, findConfig(report, "spawn-if-no-home").outcome());
+        assertEquals("homes.spawn-if-no-home", findConfig(report, "spawn-if-no-home").targetKey());
         assertEquals(Outcome.CONFLICT, findConfig(report, "sethome-multiple.default").outcome());
         assertEquals(Outcome.MANUAL, findConfig(report, "sethome-multiple.vip").outcome());
         assertEquals(Outcome.MAPPED, findConfig(report, "per-warp-permission").outcome());

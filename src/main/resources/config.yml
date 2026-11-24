@@ -319,6 +319,8 @@ teleport:
     rtp: -1
   movement-tolerance: 0.1
   request-expiry-seconds: 60
+  # Opt-in inbound and outbound PvP grace window in seconds after a teleport completes (0 = disabled).
+  arrival-pvp-grace-seconds: 0
   back:
     include-death: false
   cooldowns:
@@ -365,6 +367,8 @@ homes:
   overwrite-confirm-seconds: 30
   # Point a player's compass toward their first home when they hold allium.home.compass.
   compass-towards-home-perm: false
+  # Opt-in: when a player runs plain /home with no homes set (and no bed fallback), send them to spawn instead of erroring.
+  spawn-if-no-home: false
   # UUID: absolute minimum limit; does not downgrade a higher rank. Hard cap: 1000.
   staff-overrides: {}
 warps:

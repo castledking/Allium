@@ -290,6 +290,12 @@ teleport:
   entities-moved:
     - "{prefix} &aTeletransportadas &f{count} &a{label}."
     - "[sound] entity.enderman.teleport 1.05"
+  arrival-pvp-target:
+    - "{prefix} &c{player} &eesta protegido brevemente del PvP tras teletransportarse."
+    - "[sound] item.shield.block 1.1"
+  arrival-pvp-self:
+    - "{prefix} &eEstas protegido brevemente del PvP tras teletransportarte."
+    - "[sound] item.shield.block 1.1"
 spawnmob:
   list:
     - "{prefix} &6Mobs disponibles: &f{mobs}"

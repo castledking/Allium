@@ -635,6 +635,44 @@ class TravelServiceTest {
         assertEquals(reads, org.mockito.Mockito.mockingDetails(repository).getInvocations().size(), "completion never reads storage");
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void plainHomeWithNoHomesFallsBackToSpawnOnlyWhenOptInEnabledAndPrefersBedFirst() throws Exception {
+        Location spawnLoc = new Location(world, 0.5, 80, 0.5);
+        when(teleports.isSpawnReady()).thenReturn(true);
+        when(teleports.resolveSpawn(player)).thenReturn(spawnLoc);
+        when(repository.homes(player.getUniqueId())).thenReturn(Map.of());
+        when(repository.home(player.getUniqueId(), "home")).thenReturn(Optional.empty());
+        enable();
+
+        // Default (homes.spawn-if-no-home: false) reports missing home and does not teleport to spawn
+        service.use(player, "home", false);
+        drain();
+        verify(teleports, never()).teleport(any(), any(Supplier.class), anyString(), any(BooleanSupplier.class));
+
+        // Enable opt-in homes.spawn-if-no-home and reload
+        config.set("homes.spawn-if-no-home", true);
+        assertTrue(service.reloadSettings());
+
+        // With no homes and no bed, plain /home falls back to spawn through TeleportService
+        service.use(player, "home", false);
+        ArgumentCaptor<Supplier<Location>> dest = ArgumentCaptor.forClass((Class) Supplier.class);
+        ArgumentCaptor<BooleanSupplier> policy = ArgumentCaptor.forClass(BooleanSupplier.class);
+        verify(teleports).teleport(eq(player), dest.capture(), eq("home"), policy.capture());
+        assertEquals(spawnLoc, dest.getValue().get());
+        assertTrue(policy.getValue().getAsBoolean());
+
+        // Bed fallback still takes precedence over spawn when player has a bed and permission
+        clearInvocations(teleports);
+        Location bedLoc = new Location(world, 22, 65, -9);
+        grants.get(player).add(TravelService.PERMISSION_BED);
+        when(player.getBedSpawnLocation()).thenReturn(bedLoc);
+        service.use(player, "home", false);
+        ArgumentCaptor<Supplier<Location>> bedDest = ArgumentCaptor.forClass((Class) Supplier.class);
+        verify(teleports).teleport(eq(player), bedDest.capture(), eq("home"), any());
+        assertEquals(bedLoc, bedDest.getValue().get());
+    }
+
     private static Map<String, StoredDestination> warpRows(Map<String, SavedLocation> locations) {
         Map<String, StoredDestination> result = new HashMap<>();
         locations.forEach((name, location) -> result.put(name, new StoredDestination(name, location, 1)));

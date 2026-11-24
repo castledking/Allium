@@ -14,7 +14,8 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
                                Map<String, Long> cooldowns,
                                int tppetMaxEntities, int tpeMaxEntities, int tphereMaxEntities,
                                long selectorConfirmMillis,
-                               Map<String, Long> warmups) {
+                               Map<String, Long> warmups,
+                               long arrivalPvpGraceMillis) {
 
     public static final int DEFAULT_TPPET_MAX = 10;
     public static final int DEFAULT_TPE_MAX = 50;
@@ -27,7 +28,7 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
                             Map<String, Long> cooldowns) {
         this(warmupMillis, movementTolerance, requestExpiryMillis, deathBack, safety, adjust, radius, vertical,
                 lava, voids, suffocation, falls, loadChunk, cooldowns,
-                DEFAULT_TPPET_MAX, DEFAULT_TPE_MAX, DEFAULT_TPHERE_MAX, DEFAULT_SELECTOR_CONFIRM_MILLIS, Map.of());
+                DEFAULT_TPPET_MAX, DEFAULT_TPE_MAX, DEFAULT_TPHERE_MAX, DEFAULT_SELECTOR_CONFIRM_MILLIS, Map.of(), 0L);
     }
 
     public TeleportSettings(long warmupMillis, double movementTolerance, long requestExpiryMillis,
@@ -38,14 +39,27 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
                             long selectorConfirmMillis) {
         this(warmupMillis, movementTolerance, requestExpiryMillis, deathBack, safety, adjust, radius, vertical,
                 lava, voids, suffocation, falls, loadChunk, cooldowns,
-                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis, Map.of());
+                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis, Map.of(), 0L);
+    }
+
+    public TeleportSettings(long warmupMillis, double movementTolerance, long requestExpiryMillis,
+                            boolean deathBack, boolean safety, boolean adjust, int radius, int vertical,
+                            boolean lava, boolean voids, boolean suffocation, boolean falls, boolean loadChunk,
+                            Map<String, Long> cooldowns,
+                            int tppetMaxEntities, int tpeMaxEntities, int tphereMaxEntities,
+                            long selectorConfirmMillis,
+                            Map<String, Long> warmups) {
+        this(warmupMillis, movementTolerance, requestExpiryMillis, deathBack, safety, adjust, radius, vertical,
+                lava, voids, suffocation, falls, loadChunk, cooldowns,
+                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis, warmups, 0L);
     }
 
     public TeleportSettings {
         if (warmupMillis < 0 || warmupMillis > 300_000
                 || requestExpiryMillis < 100 || requestExpiryMillis > 3_600_000
+                || arrivalPvpGraceMillis < 0 || arrivalPvpGraceMillis > 300_000
                 || !Double.isFinite(movementTolerance) || movementTolerance < 0 || movementTolerance > 5) {
-            throw new IllegalArgumentException("teleport warmup/expiry/movement settings out of range");
+            throw new IllegalArgumentException("teleport warmup/expiry/movement/arrival-grace settings out of range");
         }
         if (radius < 0 || radius > 8 || vertical < 0 || vertical > 16) {
             throw new IllegalArgumentException("teleport safety search exceeds bounded radius/height");
@@ -76,7 +90,8 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
         return new TeleportSettings(warmupMillis, movementTolerance, requestExpiryMillis, deathBack,
                 safety && !unsafe, adjust, radius, vertical, lava, voids && !flight,
                 suffocation, falls && !flight, loadChunk, cooldowns,
-                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis, warmups);
+                tppetMaxEntities, tpeMaxEntities, tphereMaxEntities, selectorConfirmMillis, warmups,
+                arrivalPvpGraceMillis);
     }
 
     public long cooldown(String command) {
@@ -113,6 +128,7 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
         double warmup = number(config, "warmup-seconds", 3, 0, 300);
         double expiry = number(config, "request-expiry-seconds", 60, 0.1, 3600);
         double movement = number(config, "movement-tolerance", 0.1, 0, 5);
+        double arrivalPvpGrace = number(config, "arrival-pvp-grace-seconds", 0, 0, 300);
         int radius = integer(config, "safety.search-radius", 3, 8);
         int vertical = integer(config, "safety.vertical-search", 4, 16);
         int tppetMax = integer(limits, "tppet-max", DEFAULT_TPPET_MAX, 1, 1000);
@@ -147,7 +163,8 @@ public record TeleportSettings(long warmupMillis, double movementTolerance, long
                 bool(config, "safety.avoid-lava", true), bool(config, "safety.avoid-void", true),
                 bool(config, "safety.avoid-suffocation", true), bool(config, "safety.avoid-falls", true),
                 bool(config, "safety.load-destination-chunk", false), cooldowns,
-                tppetMax, tpeMax, tphereMax, (long) (confirmSec * 1000), warmups);
+                tppetMax, tpeMax, tphereMax, (long) (confirmSec * 1000), warmups,
+                (long) (arrivalPvpGrace * 1000));
     }
 
     private static ConfigurationSection section(ConfigurationSection root, String path) {

@@ -170,6 +170,24 @@ class TeleportSettingsTest {
         assertThrows(IllegalArgumentException.class, () -> TeleportSettings.read(badSection));
     }
 
+    @Test
+    void arrivalPvpGraceDefaultsDisabledParsesSecondsAndValidatesBounds() {
+        assertEquals(0L, TeleportSettings.read(new MemoryConfiguration()).arrivalPvpGraceMillis());
+
+        MemoryConfiguration config = new MemoryConfiguration();
+        config.set("teleport.arrival-pvp-grace-seconds", 3.5);
+        TeleportSettings parsed = TeleportSettings.read(config);
+        assertEquals(3500L, parsed.arrivalPvpGraceMillis());
+        assertEquals(3500L, parsed.forMover(true, false).arrivalPvpGraceMillis());
+
+        for (Object bad : new Object[]{-1, -0.1, 301, Double.NaN, Double.POSITIVE_INFINITY, "short"}) {
+            MemoryConfiguration invalid = new MemoryConfiguration();
+            invalid.set("teleport.arrival-pvp-grace-seconds", bad);
+            assertThrows(IllegalArgumentException.class, () -> TeleportSettings.read(invalid),
+                    "arrival-pvp-grace-seconds=" + bad);
+        }
+    }
+
     private static TeleportSettings direct(long warmup, double movement, long expiry, int radius, int vertical,
                                            Map<String, Long> cooldowns) {
         return new TeleportSettings(warmup, movement, expiry, false, true, true, radius, vertical,

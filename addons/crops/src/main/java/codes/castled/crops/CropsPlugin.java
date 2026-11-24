@@ -28,6 +28,7 @@ public final class CropsPlugin extends AlliumAddon {
             Pattern.compile("[&§](?:x(?:[&§][0-9a-fA-F]){6}|#[0-9a-fA-F]{6}|[0-9a-fA-Fk-oK-OrR])");
 
     private ModelWorld world;
+    private LegacyHarvestMigrationService migration;
     private boolean cropModelInJade;
 
     @Override
@@ -80,7 +81,9 @@ public final class CropsPlugin extends AlliumAddon {
             var crops = new Planting(this, world, catalog, farm);
             var kitchen = new Kitchen(this, world, kitchenConfig);
             kitchen.registerRecipes(definition("recipes.yml").getConfigurationSection("recipes"));
-            var command = new CropsCommand(this, world, crops, kitchen, itemIds);
+            migration = new LegacyHarvestMigrationService(this, world, crops, farm);
+            migration.start();
+            var command = new CropsCommand(this, world, crops, kitchen, migration, itemIds);
             core.commands().register(command.spec(), command::execute, command::complete);
             getServer().getPluginManager().registerEvents(crops, this);
             getServer().getPluginManager().registerEvents(kitchen, this);
@@ -125,6 +128,10 @@ public final class CropsPlugin extends AlliumAddon {
 
     @Override
     protected void onAddonDisable() {
+        if (migration != null) {
+            migration.close();
+            migration = null;
+        }
         if (world != null) world.stop();
     }
 

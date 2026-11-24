@@ -28,6 +28,8 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
     testImplementation("org.mockito:mockito-junit-jupiter:5.16.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
+    testRuntimeOnly("org.xerial:sqlite-jdbc:3.49.1.0")
+    testRuntimeOnly("com.h2database:h2:2.1.214")
 }
 
 tasks.withType<JavaCompile>().configureEach {

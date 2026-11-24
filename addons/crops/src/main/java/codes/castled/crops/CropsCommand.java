@@ -19,21 +19,24 @@ final class CropsCommand {
 
     private static final int MAX_GIVE_AMOUNT = 2304;
     private static final List<String> PLAYER_ACTIONS = List.of("help", "list", "inspect");
-    private static final List<String> ADMIN_ACTIONS = List.of("give", "plant", "grow", "remove", "nearby", "status", "crop");
+    private static final List<String> ADMIN_ACTIONS = List.of("give", "plant", "grow", "remove", "nearby", "status", "migrate", "crop");
     private static final List<String> CROP_SUBACTIONS = List.of("inspect", "plant", "grow", "remove", "nearby");
 
     private final CropsPlugin plugin;
     private final ModelWorld world;
     private final Planting planting;
     private final Kitchen kitchen;
+    private final LegacyHarvestMigrationService migration;
     private final List<String> itemIds;
     private final Set<String> itemIdSet;
 
-    CropsCommand(CropsPlugin plugin, ModelWorld world, Planting planting, Kitchen kitchen, List<String> itemIds) {
+    CropsCommand(CropsPlugin plugin, ModelWorld world, Planting planting, Kitchen kitchen,
+                 LegacyHarvestMigrationService migration, List<String> itemIds) {
         this.plugin = plugin;
         this.world = world;
         this.planting = planting;
         this.kitchen = kitchen;
+        this.migration = migration;
         this.itemIds = List.copyOf(itemIds);
         this.itemIdSet = new LinkedHashSet<>(itemIds);
     }
@@ -81,6 +84,7 @@ final class CropsCommand {
             case "remove" -> remove(sender);
             case "nearby" -> nearby(sender, args);
             case "status" -> status(sender);
+            case "migrate" -> migrate(sender, args);
             default -> sendHelp(sender, ctx.label());
         }
     }
@@ -120,6 +124,7 @@ final class CropsCommand {
             case "nearby" -> admin && args.length == 2
                     ? List.of("8", "16", "32", "64").stream().filter(s -> s.startsWith(prefix)).toList()
                     : List.of();
+            case "migrate" -> completeMigrate(args, admin, prefix);
             default -> List.of();
         };
     }
@@ -177,6 +182,7 @@ final class CropsCommand {
             tell(sender, "&7" + cmd + " remove &8- &fRemove the looked-at crop or kitchen placement");
             tell(sender, "&7" + cmd + " nearby [radius] &8- &fList active placements nearby");
             tell(sender, "&7" + cmd + " status &8- &fShow loaded Crops & Kitchen counts");
+            tell(sender, "&7" + cmd + " migrate [apply <runId>|status|<path>] &8- &fDry-run or apply legacy Harvest farm migration");
         }
     }
 
@@ -398,7 +404,49 @@ final class CropsCommand {
         }
         tell(sender, "&aCrops: &f" + planting.count() + " &7| &aKitchen pies: &f" + kitchen.pieCount()
                 + " &7| &aItems: &f" + itemIds.size() + " &7| &aActive loaded placements: &f" + world.active().size()
-                + " &7| &acrop-model-in-jade: &f" + plugin.cropModelInJade());
+                + " &7| &acrop-model-in-jade: &f" + plugin.cropModelInJade()
+                + (migration != null && migration.pendingEntryCount() > 0
+                ? " &7| &ePending legacy migration: &f" + migration.pendingEntryCount() + " (" + migration.pendingChunkCount() + " chunks)" : ""));
+    }
+
+    private void migrate(CommandSender sender, String[] args) {
+        if (!isAdmin(sender)) {
+            tell(sender, "&cYou do not have permission.");
+            return;
+        }
+        if (migration == null) {
+            tell(sender, "&cMigration service is unavailable.");
+            return;
+        }
+        if (args.length == 1) {
+            migration.dryRun(sender, null);
+            return;
+        }
+        String sub = args[1].toLowerCase(Locale.ROOT);
+        if ("status".equals(sub)) {
+            migration.status(sender);
+            return;
+        }
+        if ("apply".equals(sub)) {
+            if (args.length < 3) {
+                tell(sender, "&eUsage: /crops migrate apply <runId>");
+                return;
+            }
+            migration.apply(sender, args[2]);
+            return;
+        }
+        migration.dryRun(sender, String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
+    }
+
+    private List<String> completeMigrate(String[] args, boolean admin, String prefix) {
+        if (!admin || migration == null) return List.of();
+        if (args.length == 2) {
+            return List.of("apply", "status").stream().filter(s -> s.startsWith(prefix)).toList();
+        }
+        if (args.length == 3 && "apply".equalsIgnoreCase(args[1])) {
+            return migration.recentRuns().stream().filter(s -> s.startsWith(prefix)).toList();
+        }
+        return List.of();
     }
 
     private ModelWorld.Placed targetPlacement(Player player) {

@@ -34,8 +34,27 @@ final class Planting implements Listener {
 
     int count() { return crops.size(); }
     List<String> cropIds() { return List.copyOf(crops.keySet()); }
+    Map<String, Catalog.Crop> catalog() { return Collections.unmodifiableMap(crops); }
     Catalog.Crop crop(String id) { return id == null ? null : crops.get(id.toLowerCase(Locale.ROOT)); }
     Catalog.Path pathOf(ModelWorld.Placed planted) { return path(planted); }
+
+    boolean placeMigrated(Block anchor, Catalog.Crop crop, Catalog.Path path, int stageIndex, long dueAt,
+                          String fertilizerId, double growthSpeed) {
+        Block soil = anchor.getRelative(BlockFace.DOWN);
+        if (!crop.soils().contains(soil.getType()) || !anchor.getType().isAir() || world.at(anchor) != null) {
+            return false;
+        }
+        int clamped = Math.max(0, Math.min(path.stages().size() - 1, stageIndex));
+        var stage = path.stages().get(clamped);
+        double speed = Double.isFinite(growthSpeed) && growthSpeed > 0 ? Math.max(.01, Math.min(100, growthSpeed)) : 1.0;
+        long due = dueAt > 0L ? dueAt : next(System.currentTimeMillis(), crop, stage, speed);
+        var planted = world.place(anchor, "crop", crop.id(), path.id(), clamped, due, stage.visual());
+        if (planted == null) return false;
+        planted.fertilizer = fertilizerId == null ? "" : fertilizerId;
+        planted.growthSpeed = speed;
+        world.store(planted);
+        return true;
+    }
 
     String plantDirect(Player player, Catalog.Crop crop, Block soil, String requestedPath) {
         if (!crop.soils().contains(soil.getType())) {

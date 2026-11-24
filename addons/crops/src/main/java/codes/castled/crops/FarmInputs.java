@@ -51,6 +51,7 @@ final class FarmInputs implements Listener {
         }
     }
 
+    record SoilSnapshot(String fertilizer, long expires) {}
     private record Soil(String fertilizer, long expires) {}
     private record Coverage(double speed, boolean moist) {}
 
@@ -59,6 +60,7 @@ final class FarmInputs implements Listener {
     private final Map<String, Fertilizer> fertilizers = new HashMap<>();
     private final Map<String, Fertilizer> fertilizerItems = new HashMap<>();
     private final Map<String, Sprinkler> sprinklers = new HashMap<>();
+    private final Map<String, String> sprinklerLookup = new HashMap<>();
     private final Set<Material> soils = new HashSet<>();
     private final boolean exhaustion;
     private final long lifetime;
@@ -100,8 +102,52 @@ final class FarmInputs implements Listener {
             String item = row.getString("item", "allium:" + id);
             sprinklers.put(item, new Sprinkler(item, radius, factor(row.getDouble("speed-multiplier", 1), 1),
                     row.getBoolean("keeps-soil-moist"), Catalog.duration(row.getString("soil-retain", "0"))));
+            sprinklerLookup.put(id.toLowerCase(java.util.Locale.ROOT), item);
+            sprinklerLookup.put(item.toLowerCase(java.util.Locale.ROOT), item);
         }
         maximumRadius = sprinklers.values().stream().mapToInt(Sprinkler::radius).max().orElse(0);
+    }
+
+    Set<String> fertilizerIds() { return Set.copyOf(fertilizers.keySet()); }
+    Map<String, String> sprinklerLookup() { return Map.copyOf(sprinklerLookup); }
+    Set<Material> validSoils() { return Set.copyOf(soils); }
+    boolean exhaustionEnabled() { return exhaustion; }
+    long forgetAfterMillis() { return forgetAfter; }
+
+    java.util.Optional<SoilSnapshot> existingSoil(Block block, long now) {
+        var key = BlockKeys.at(plugin, "soil", block);
+        String raw = block.getChunk().getPersistentDataContainer().get(key, PersistentDataType.STRING);
+        if (raw == null) return java.util.Optional.empty();
+        String[] parts = raw.split("\\|", 2);
+        if (parts.length != 2) return java.util.Optional.empty();
+        try {
+            long expires = Long.parseLong(parts[1]);
+            if (exhaustion && forgetAfter > 0 && now - expires >= forgetAfter) return java.util.Optional.empty();
+            return java.util.Optional.of(new SoilSnapshot(parts[0], expires));
+        } catch (NumberFormatException invalid) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    boolean writeMigratedSoil(Block block, String fertilizerId, long exhaustedAt) {
+        if (!soils.contains(block.getType())) return false;
+        String fert = fertilizerId == null ? "" : fertilizerId;
+        if (!fert.isEmpty() && !fertilizers.containsKey(fert)) fert = "";
+        long expires = exhaustedAt > 0L ? exhaustedAt : System.currentTimeMillis() + lifetime;
+        putSoil(block, new Soil(fert, expires));
+        return true;
+    }
+
+    boolean placeMigratedSprinkler(Block cell, String sprinklerItem, boolean ceiling) {
+        var definition = sprinklers.get(sprinklerItem);
+        if (definition == null || !cell.getType().isAir() || world.at(cell) != null) return false;
+        BlockFace support = ceiling ? BlockFace.UP : BlockFace.DOWN;
+        if (!cell.getRelative(support).getType().isSolid()) return false;
+        var placed = world.place(cell, "sprinkler", definition.item(), ceiling ? "ceiling" : "floor", 0, 0,
+                definition.visual(ceiling));
+        if (placed == null) return false;
+        tick(placed);
+        return true;
     }
 
     private static double factor(double value, double fallback) {

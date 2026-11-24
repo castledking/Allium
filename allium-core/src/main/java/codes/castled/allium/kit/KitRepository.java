@@ -47,6 +47,10 @@ public final class KitRepository {
 
     public static final String COMPONENT = "kits";
 
+    public enum ImportOutcome {
+        CREATED, PRESENT, NEWER
+    }
+
     public sealed interface BeginOutcome permits BeginOutcome.Claiming, BeginOutcome.AlreadyClaiming,
             BeginOutcome.OneTimeClaimed, BeginOutcome.OnCooldown, BeginOutcome.CostRefused {
         record Claiming(KitDeliveryRecord delivery) implements BeginOutcome {}
@@ -410,6 +414,51 @@ public final class KitRepository {
                 return Optional.of(readUsage(r));
             }
         }
+    }
+
+    /** Loads all persisted kit usage rows, keyed by {@code playerUuid + ":" + kitName}, for import planning. */
+    public Map<String, KitUsageRecord> loadAllUsages() throws SQLException {
+        Map<String, KitUsageRecord> out = new LinkedHashMap<>();
+        try (Connection c = connections.connection();
+             PreparedStatement s = c.prepareStatement("SELECT * FROM allium_kit_usages");
+             ResultSet r = s.executeQuery()) {
+            while (r.next()) {
+                KitUsageRecord usage = readUsage(r);
+                out.put(usage.playerUuid() + ":" + usage.kitName(), usage);
+            }
+        }
+        return Map.copyOf(out);
+    }
+
+    /**
+     * Imports a kit usage timestamp on an existing SQL transaction. Preserves newer local usage
+     * timestamps and never clears an existing one-time claim lock.
+     */
+    public ImportOutcome importUsage(Connection c, UUID playerUuid, String kitName, long lastClaimedAt,
+                                     boolean oneTimeClaimed) throws SQLException {
+        Objects.requireNonNull(c, "connection");
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        Objects.requireNonNull(kitName, "kitName");
+        Optional<KitUsageRecord> existingOpt = findUsage(c, playerUuid, kitName);
+        if (existingOpt.isEmpty()) {
+            update(c, "INSERT INTO allium_kit_usages (player_uuid, kit_name, last_claimed_at, claim_count, one_time_claimed) "
+                    + "VALUES (?, ?, ?, 1, ?)",
+                    playerUuid.toString(), kitName, lastClaimedAt, oneTimeClaimed);
+            return ImportOutcome.CREATED;
+        }
+        KitUsageRecord existing = existingOpt.get();
+        if (existing.lastClaimedAt() == lastClaimedAt && existing.oneTimeClaimed() == oneTimeClaimed) {
+            return ImportOutcome.PRESENT;
+        }
+        if (existing.lastClaimedAt() >= lastClaimedAt && (!oneTimeClaimed || existing.oneTimeClaimed())) {
+            return ImportOutcome.NEWER;
+        }
+        long mergedTime = Math.max(existing.lastClaimedAt(), lastClaimedAt);
+        boolean mergedOneTime = existing.oneTimeClaimed() || oneTimeClaimed;
+        update(c, "UPDATE allium_kit_usages SET last_claimed_at = ?, one_time_claimed = ? "
+                + "WHERE player_uuid = ? AND kit_name = ?",
+                mergedTime, mergedOneTime, playerUuid.toString(), kitName);
+        return ImportOutcome.CREATED;
     }
 
     private static KitUsageRecord readUsage(ResultSet r) throws SQLException {

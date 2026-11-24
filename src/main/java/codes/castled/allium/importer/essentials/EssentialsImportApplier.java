@@ -9,6 +9,9 @@ import codes.castled.allium.importer.ImportLedger;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Domain;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Record;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Status;
+import codes.castled.allium.kit.KitDefinition;
+import codes.castled.allium.kit.KitDefinitionLoader;
+import codes.castled.allium.kit.KitRepository;
 import codes.castled.allium.mail.MailKind;
 import codes.castled.allium.mail.MailLimits;
 import codes.castled.allium.mail.MailRecord;
@@ -25,13 +28,24 @@ import codes.castled.allium.preference.PreferenceRepository;
 import codes.castled.allium.storage.SqlDialect;
 import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.travel.TravelRepository;
+import codes.castled.allium.worth.WorthSettings;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,8 +73,27 @@ public final class EssentialsImportApplier {
             IgnoreRepository ignores,
             PreferenceRepository preferences,
             ModerationRepository moderation,
-            PlayerNameRepository names
-    ) {}
+            PlayerNameRepository names,
+            @Nullable KitRepository kits,
+            @Nullable KitDefinitionLoader kitLoader,
+            @Nullable Path worthFile
+    ) {
+        public Targets(
+                String serverOrigin,
+                @Nullable EconomyEngine economy,
+                TravelRepository travel,
+                TeleportRepository teleports,
+                MailRepository mail,
+                ChatRepository chat,
+                IgnoreRepository ignores,
+                PreferenceRepository preferences,
+                ModerationRepository moderation,
+                PlayerNameRepository names
+        ) {
+            this(serverOrigin, economy, travel, teleports, mail, chat, ignores, preferences, moderation, names,
+                    null, null, null);
+        }
+    }
 
     @FunctionalInterface
     interface BeforeLedgerRecord {
@@ -84,7 +117,7 @@ public final class EssentialsImportApplier {
         // All shared-database SQL domains share one atomic transaction with their ImportLedger receipts.
         // Preserve plan ordering (JAIL precedes JAILED) and apply in bounded transactional chunks.
         List<Record> transactional = work.stream()
-                .filter(r -> r.domain() != Domain.BALANCE)
+                .filter(r -> r.domain() != Domain.BALANCE && r.domain() != Domain.KIT && r.domain() != Domain.WORTH)
                 .toList();
         for (int start = 0; start < transactional.size(); start += CHUNK) {
             List<Record> chunk = transactional.subList(start, Math.min(transactional.size(), start + CHUNK));
@@ -93,6 +126,19 @@ public final class EssentialsImportApplier {
                 for (Record r : chunk) done.add(new Outcome(r, applyTransactional(c, r, runId, ledger, targets, beforeLedger)));
                 return done;
             }));
+        }
+
+        // File-backed kit definitions write plugins/Allium/kits/<name>.yml and then record their receipts.
+        for (Record r : work) {
+            if (r.domain() == Domain.KIT) {
+                out.add(new Outcome(r, applyKitRecord(r, runId, ledger, targets.kitLoader(), beforeLedger)));
+            }
+        }
+
+        // File-backed worth prices merge atomically into plugins/Allium/worth.yml and then record receipts.
+        List<Record> worthWork = work.stream().filter(r -> r.domain() == Domain.WORTH).toList();
+        if (!worthWork.isEmpty()) {
+            out.addAll(applyWorthRecords(worthWork, runId, ledger, targets.worthFile(), beforeLedger));
         }
 
         // Balance imports use EconomyEngine's atomic transaction callback (account + operation journal + ledger receipt).
@@ -139,6 +185,20 @@ public final class EssentialsImportApplier {
                 case PRESENT -> Result.ADOPTED;
                 case NEWER -> Result.NEWER;
             };
+            case BACK -> switch (targets.teleports().importLocation(c, r.owner(), "back", r.location())) {
+                case CREATED -> Result.APPLIED;
+                case PRESENT -> Result.ADOPTED;
+                case NEWER -> Result.NEWER;
+            };
+            case KIT_USAGE -> {
+                if (targets.kits() == null || r.kitUsage() == null) yield Result.SKIPPED;
+                var u = r.kitUsage();
+                yield switch (targets.kits().importUsage(c, r.owner(), u.kitName(), u.lastClaimedAt(), u.oneTimeClaimed())) {
+                    case CREATED -> Result.APPLIED;
+                    case PRESENT -> Result.ADOPTED;
+                    case NEWER -> Result.NEWER;
+                };
+            }
             case MAIL -> {
                 var m = r.mail();
                 UUID mailId = UUID.nameUUIDFromBytes(("essentials-mail:" + m.sourceRef()).getBytes(StandardCharsets.UTF_8));
@@ -288,5 +348,167 @@ public final class EssentialsImportApplier {
             ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), Result.ADOPTED.name(), runId);
             return Result.ADOPTED;
         });
+    }
+
+    private static Result applyKitRecord(Record r, String runId, ImportLedger ledger, @Nullable KitDefinitionLoader kitLoader,
+                                         @Nullable BeforeLedgerRecord beforeLedger) throws SQLException {
+        String source = EssentialsImportPlan.SOURCE;
+        Result precheck = ledger.transaction(c -> {
+            var ledgered = ledger.hash(c, source, r.domain().id(), r.key());
+            if (ledgered.isPresent()) return ledgered.get().equals(r.payloadHash()) ? Result.REPLAYED : Result.CONFLICT;
+            if (r.status() == Status.REPLAYED) return Result.CONFLICT;
+            return null;
+        });
+        if (precheck != null) return precheck;
+        if (kitLoader == null || r.kit() == null) return Result.SKIPPED;
+
+        var kit = r.kit();
+        Result outcome;
+        if (r.status() == Status.PRESENT) {
+            if (!kitLoader.exists(kit.name())) return Result.CONFLICT;
+            outcome = Result.ADOPTED;
+        } else {
+            if (kitLoader.exists(kit.name())) return Result.CONFLICT;
+            KitDefinition def = new KitDefinition(
+                    kit.name(), true, kit.cooldownSeconds(), kit.oneTime(),
+                    KitDefinition.ZERO_COST, kit.items(),
+                    KitDefinitionLoader.DIRECTORY + "/" + kit.name() + ".yml");
+            try {
+                kitLoader.save(def);
+            } catch (IOException io) {
+                throw new SQLException("Could not write imported kit '" + kit.name() + "': " + io.getMessage(), io);
+            }
+            outcome = Result.APPLIED;
+        }
+
+        final Result finalOutcome = outcome;
+        return ledger.transaction(c -> {
+            var recorded = ledger.hash(c, source, r.domain().id(), r.key());
+            if (recorded.isPresent()) return recorded.get().equals(r.payloadHash()) ? Result.REPLAYED : Result.CONFLICT;
+            if (beforeLedger != null) beforeLedger.beforeRecord(c, r, finalOutcome);
+            ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), finalOutcome.name(), runId);
+            return finalOutcome;
+        });
+    }
+
+    private static List<Outcome> applyWorthRecords(List<Record> worthWork, String runId, ImportLedger ledger,
+                                                   @Nullable Path worthFile,
+                                                   @Nullable BeforeLedgerRecord beforeLedger) throws SQLException {
+        if (worthFile == null) {
+            return worthWork.stream().map(r -> new Outcome(r, Result.SKIPPED)).toList();
+        }
+        String source = EssentialsImportPlan.SOURCE;
+        YamlConfiguration yaml = new YamlConfiguration();
+        if (Files.isRegularFile(worthFile)) {
+            try {
+                yaml.loadFromString(Files.readString(worthFile, StandardCharsets.UTF_8));
+            } catch (IOException | InvalidConfigurationException e) {
+                throw new SQLException("Could not read Allium worth.yml: " + e.getMessage(), e);
+            }
+        }
+        WorthSettings existingSettings = WorthSettings.read(yaml, ignored -> null, ignored -> {});
+        ConfigurationSection worthSection = yaml.getConfigurationSection("worth");
+        if (worthSection == null) worthSection = yaml.createSection("worth");
+        Map<String, String> existingKeys = new HashMap<>();
+        for (String k : worthSection.getKeys(false)) {
+            existingKeys.put(WorthSettings.key(k), k);
+        }
+
+        Map<String, String> ledgerMap = ledger.transaction(c -> {
+            Map<String, String> found = new HashMap<>();
+            for (Record r : worthWork) {
+                ledger.hash(c, source, r.domain().id(), r.key()).ifPresent(h -> found.put(r.key(), h));
+            }
+            return found;
+        });
+
+        List<Outcome> plannedOutcomes = new ArrayList<>(worthWork.size());
+        List<Outcome> toRecord = new ArrayList<>();
+        boolean dirty = false;
+        for (Record r : worthWork) {
+            String ledgered = ledgerMap.get(r.key());
+            if (ledgered != null) {
+                plannedOutcomes.add(new Outcome(r, ledgered.equals(r.payloadHash()) ? Result.REPLAYED : Result.CONFLICT));
+                continue;
+            }
+            if (r.status() == Status.REPLAYED) {
+                plannedOutcomes.add(new Outcome(r, Result.CONFLICT));
+                continue;
+            }
+            if (r.worth() == null) {
+                plannedOutcomes.add(new Outcome(r, Result.SKIPPED));
+                continue;
+            }
+            var w = r.worth();
+            String normKey = WorthSettings.key(w.materialKey());
+            BigDecimal existingPrice = existingSettings.prices().get(normKey);
+            if (r.status() == Status.PRESENT) {
+                if (existingPrice != null && existingPrice.compareTo(w.price()) == 0) {
+                    Outcome o = new Outcome(r, Result.ADOPTED);
+                    plannedOutcomes.add(o);
+                    toRecord.add(o);
+                } else {
+                    plannedOutcomes.add(new Outcome(r, Result.CONFLICT));
+                }
+                continue;
+            }
+            if (existingKeys.containsKey(normKey)) {
+                if (existingPrice != null && existingPrice.compareTo(w.price()) == 0) {
+                    Outcome o = new Outcome(r, Result.ADOPTED);
+                    plannedOutcomes.add(o);
+                    toRecord.add(o);
+                } else {
+                    plannedOutcomes.add(new Outcome(r, Result.CONFLICT));
+                }
+                continue;
+            }
+            worthSection.set(w.materialKey(), w.price().signum() < 0 ? -1 : w.price().doubleValue());
+            existingKeys.put(normKey, w.materialKey());
+            dirty = true;
+            Outcome o = new Outcome(r, Result.APPLIED);
+            plannedOutcomes.add(o);
+            toRecord.add(o);
+        }
+
+        if (dirty) {
+            try {
+                writeWorthFileAtomically(worthFile, yaml);
+            } catch (IOException io) {
+                throw new SQLException("Could not write Allium worth.yml: " + io.getMessage(), io);
+            }
+        }
+
+        for (int start = 0; start < toRecord.size(); start += CHUNK) {
+            List<Outcome> chunk = toRecord.subList(start, Math.min(toRecord.size(), start + CHUNK));
+            ledger.transaction(c -> {
+                for (Outcome o : chunk) {
+                    Record r = o.record();
+                    if (ledger.hash(c, source, r.domain().id(), r.key()).isPresent()) continue;
+                    if (beforeLedger != null) beforeLedger.beforeRecord(c, r, o.result());
+                    ledger.record(c, source, r.domain().id(), r.key(), r.payloadHash(), o.result().name(), runId);
+                }
+                return null;
+            });
+        }
+        return plannedOutcomes;
+    }
+
+    private static void writeWorthFileAtomically(Path file, YamlConfiguration yaml) throws IOException {
+        Path parent = file.toAbsolutePath().normalize().getParent();
+        if (parent != null) Files.createDirectories(parent);
+        Path temp = Files.createTempFile(parent != null ? parent : Path.of("."), ".allium-worth-", ".tmp");
+        try {
+            Files.writeString(temp, yaml.saveToString(), StandardCharsets.UTF_8);
+            if (Files.isRegularFile(file)) {
+                Files.copy(file, file.resolveSibling("worth.yml.before-edit"), StandardCopyOption.REPLACE_EXISTING);
+            }
+            try {
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException fallback) {
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temp);
+        }
     }
 }

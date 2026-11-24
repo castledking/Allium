@@ -12,6 +12,11 @@ import codes.castled.allium.importer.essentials.EssentialsImportPlan.Domain;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.ExistingAccount;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Status;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan.ResolvedWorld;
+import codes.castled.allium.item.spec.ItemSpecParser;
+import codes.castled.allium.kit.KitDefinition;
+import codes.castled.allium.kit.KitDefinitionLoader;
+import codes.castled.allium.kit.KitRepository;
+import codes.castled.allium.kit.KitUsageRecord;
 import codes.castled.allium.mail.MailRepository;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.messaging.IgnoreRepository;
@@ -20,8 +25,11 @@ import codes.castled.allium.moderation.JailRecord;
 import codes.castled.allium.moderation.ModerationRepository;
 import codes.castled.allium.moderation.MuteRecord;
 import codes.castled.allium.module.EconomyModule;
+import codes.castled.allium.module.ItemsModule;
+import codes.castled.allium.module.KitsModule;
 import codes.castled.allium.module.ModerationModule;
 import codes.castled.allium.module.TravelModule;
+import codes.castled.allium.module.WorthModule;
 import codes.castled.allium.naming.PlayerNameRepository;
 import codes.castled.allium.pack.Json;
 import codes.castled.allium.preference.PreferenceRepository;
@@ -30,11 +38,15 @@ import codes.castled.allium.scheduler.AlliumScheduler;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.travel.TravelRepository;
+import codes.castled.allium.worth.WorthSettings;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -202,6 +214,7 @@ public final class EssentialsImportService {
         PreferenceRepository prefs = new PreferenceRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ModerationRepository moderation = new ModerationRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         PlayerNameRepository names = new PlayerNameRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
+        KitRepository kits = new KitRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ImportLedger ledger = new ImportLedger(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         travel.migrate();
         teleports.migrate();
@@ -211,6 +224,7 @@ public final class EssentialsImportService {
         prefs.migrate();
         moderation.migrate();
         names.migrate();
+        kits.migrate();
         ledger.migrate();
         var reviewCheck = ImportLifecycle.loadReviewedPlan(planFile, relative(planFile), runId, ledger);
         if (reviewCheck instanceof ImportLifecycle.ReviewCheck.Refused refused) {
@@ -235,7 +249,8 @@ public final class EssentialsImportService {
         List<EssentialsImportApplier.Outcome> outcomes;
         try {
             var targets = new EssentialsImportApplier.Targets(serverOrigin(), econ, travel, teleports, mail, chat,
-                    ignores, prefs, moderation, names);
+                    ignores, prefs, moderation, names, kits, kitLoader(),
+                    plugin.getDataFolder().toPath().resolve("worth.yml"));
             outcomes = EssentialsImportApplier.apply(plan, runId, ledger, targets);
         } catch (SQLException | RuntimeException failure) {
             ledger.finishRun(runId, "failed: " + failure.getMessage());
@@ -251,6 +266,10 @@ public final class EssentialsImportService {
         long applied = counts.getOrDefault(EssentialsImportApplier.Result.APPLIED, 0L);
         long adopted = counts.getOrDefault(EssentialsImportApplier.Result.ADOPTED, 0L);
         long conflicts = counts.getOrDefault(EssentialsImportApplier.Result.CONFLICT, 0L);
+        boolean appliedKits = outcomes.stream().anyMatch(o -> o.record().domain() == Domain.KIT
+                && o.result() == EssentialsImportApplier.Result.APPLIED);
+        boolean appliedWorth = outcomes.stream().anyMatch(o -> o.record().domain() == Domain.WORTH
+                && o.result() == EssentialsImportApplier.Result.APPLIED);
         plugin.logger().info("Essentials import " + runId + " applied: " + applied + " applied, "
                 + adopted + " adopted, " + conflicts + " conflicts.");
         if (plugin.getPlayerNames() != null) {
@@ -283,6 +302,14 @@ public final class EssentialsImportService {
             if (plugin.getModuleManager().getModule("moderation") instanceof ModerationModule mod && mod.isEnabled()) {
                 if (mod.moderation() != null) mod.moderation().publishImportedMutes(freshMutes);
                 if (mod.discipline() != null) mod.discipline().publishImportedJails(freshJails, freshPrisoners);
+            }
+            if (appliedKits && plugin.getModuleManager().getModule("kits") instanceof KitsModule km
+                    && km.isEnabled() && km.kits() != null) {
+                km.kits().reloadDefinitions();
+            }
+            if (appliedWorth && plugin.getModuleManager().getModule("worth") instanceof WorthModule wm
+                    && wm.isEnabled() && wm.worth() != null) {
+                wm.reloadSettings();
             }
             if (!plan.supportedSigns().isEmpty()) {
                 mergeEnabledSigns(plan.supportedSigns());
@@ -319,24 +346,27 @@ public final class EssentialsImportService {
         };
     }
 
-    private Destination destination(boolean tablesMayBeMissing, boolean readEconomy) throws SQLException {
+    private Destination destination(boolean tablesMayBeMissing, boolean readEconomy) throws SQLException, IOException {
         var db = plugin.getDatabaseManager();
         TravelRepository travel = new TravelRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         TeleportRepository teleports = new TeleportRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ModerationRepository moderation = new ModerationRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
+        KitRepository kitsRepo = new KitRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ImportLedger ledger = new ImportLedger(db.connectionSource(), db.dialect(), System::currentTimeMillis);
 
         Map<UUID, ExistingAccount> balances = readEconomy ? readBalances() : Map.of();
         var homes = (!tablesMayBeMissing || exists("allium_travel_homes")) ? travel.allHomes() : Map.<UUID, Map<String, codes.castled.allium.teleport.SavedLocation>>of();
         var warps = (!tablesMayBeMissing || exists("allium_travel_warps")) ? travel.warps() : Map.<String, codes.castled.allium.teleport.SavedLocation>of();
         Map<String, codes.castled.allium.teleport.SavedLocation> spawns = new HashMap<>();
-        if (!tablesMayBeMissing || exists(TeleportRepository.LOCATIONS_TABLE)) {
+        boolean hasLocationsTable = !tablesMayBeMissing || exists(TeleportRepository.LOCATIONS_TABLE);
+        if (hasLocationsTable) {
             teleports.load(EssentialsImportPlan.SERVER_SPAWN_OWNER, "spawn").ifPresent(loc -> spawns.put("spawn", loc));
             for (var entry : teleports.loadGroupSpawns().entrySet()) {
                 spawns.put("spawn:" + entry.getKey(), entry.getValue());
             }
         }
-        var logouts = (!tablesMayBeMissing || exists(TeleportRepository.LOCATIONS_TABLE)) ? teleports.slot("logout") : Map.<UUID, codes.castled.allium.teleport.SavedLocation>of();
+        var logouts = hasLocationsTable ? teleports.slot("logout") : Map.<UUID, codes.castled.allium.teleport.SavedLocation>of();
+        var backs = hasLocationsTable ? teleports.slot("back") : Map.<UUID, codes.castled.allium.teleport.SavedLocation>of();
         Set<String> mailRefs = (!tablesMayBeMissing || exists("allium_mail")) ? readMailRefs() : Set.of();
         Map<UUID, String> nicks = (!tablesMayBeMissing || exists("allium_nicknames")) ? readNicknames() : Map.of();
         Map<UUID, Set<UUID>> ignores = (!tablesMayBeMissing || exists("allium_ignores")) ? readIgnores() : Map.of();
@@ -355,11 +385,36 @@ public final class EssentialsImportService {
             for (JailAssignment j : moderation.loadJailedPlayers()) jailed.put(j.playerUuid(), j);
         }
         Map<UUID, String> names = (!tablesMayBeMissing || exists("allium_player_names")) ? readNames() : Map.of();
+        Map<String, KitDefinition> existingKits = kitLoader().load(new ItemSpecParser(true)).definitions();
+        Map<String, KitUsageRecord> kitUsages = (!tablesMayBeMissing || exists("allium_kit_usages"))
+                ? kitsRepo.loadAllUsages() : Map.of();
+        Map<String, BigDecimal> worthPrices = readWorthPrices();
         Map<String, String> hashes = (!tablesMayBeMissing || exists(ImportLedger.RECORDS))
                 ? ledger.hashes(EssentialsImportPlan.SOURCE) : Map.of();
 
-        return new Destination(balances, homes, warps, Map.copyOf(spawns), logouts, mailRefs, nicks, ignores, prefs,
-                jails, mutes, jailed, names, hashes);
+        return new Destination(balances, homes, warps, Map.copyOf(spawns), logouts, backs, mailRefs, nicks, ignores, prefs,
+                jails, mutes, jailed, names, existingKits, kitUsages, worthPrices, hashes);
+    }
+
+    private KitDefinitionLoader kitLoader() {
+        return new KitDefinitionLoader(plugin.getDataFolder(), plugin::getResource, ignored -> {}, ignored -> {});
+    }
+
+    private Map<String, BigDecimal> readWorthPrices() throws IOException {
+        Path worthFile = plugin.getDataFolder().toPath().resolve("worth.yml");
+        if (!Files.isRegularFile(worthFile)) return Map.of();
+        YamlConfiguration yaml = new YamlConfiguration();
+        try {
+            yaml.loadFromString(Files.readString(worthFile, StandardCharsets.UTF_8));
+        } catch (InvalidConfigurationException bad) {
+            throw new IOException("Allium worth.yml could not be parsed: " + bad.getMessage(), bad);
+        }
+        return WorthSettings.read(yaml, this::worthAlias, ignored -> {}).prices();
+    }
+
+    private Material worthAlias(String name) {
+        return plugin.getModuleManager() != null && plugin.getModuleManager().getModule("items") instanceof ItemsModule items
+                && items.isEnabled() ? items.material(name) : null;
     }
 
     private void mergeEnabledSigns(List<String> importedSigns) {

@@ -3,6 +3,11 @@ package codes.castled.allium.importer.essentials;
 import codes.castled.allium.economy.EconomySettings;
 import codes.castled.allium.economy.Money;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan.ResolvedWorld;
+import codes.castled.allium.item.spec.ItemSpecException;
+import codes.castled.allium.item.spec.ItemSpecParser;
+import codes.castled.allium.kit.KitDefinition;
+import codes.castled.allium.kit.KitNames;
+import codes.castled.allium.kit.KitUsageRecord;
 import codes.castled.allium.moderation.JailAssignment;
 import codes.castled.allium.moderation.JailRecord;
 import codes.castled.allium.moderation.MuteRecord;
@@ -10,7 +15,12 @@ import codes.castled.allium.preference.PreferenceKey;
 import codes.castled.allium.preference.StoredPreferences;
 import codes.castled.allium.teleport.SavedLocation;
 import codes.castled.allium.travel.TravelNames;
+import codes.castled.allium.worth.WorthSettings;
+import org.bukkit.Material;
 import org.jetbrains.annotations.Nullable;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -53,6 +63,7 @@ public record EssentialsImportPlan(
         WARP("warp"),
         SPAWN("spawn"),
         LOGOUT("logout"),
+        BACK("back"),
         MAIL("mail"),
         NICKNAME("nickname"),
         IGNORE("ignore"),
@@ -60,7 +71,10 @@ public record EssentialsImportPlan(
         JAIL("jail"),
         MUTE("mute"),
         JAILED("jailed"),
-        NAME("name");
+        NAME("name"),
+        KIT("kit"),
+        KIT_USAGE("kit_usage"),
+        WORTH("worth");
 
         private final String id;
         Domain(String id) { this.id = id; }
@@ -101,6 +115,25 @@ public record EssentialsImportPlan(
             @Nullable Long expiresAt
     ) {}
 
+    public record KitPayload(
+            String name,
+            long cooldownSeconds,
+            boolean oneTime,
+            List<String> items,
+            List<String> reviewCommands
+    ) {}
+
+    public record KitUsagePayload(
+            String kitName,
+            long lastClaimedAt,
+            boolean oneTimeClaimed
+    ) {}
+
+    public record WorthPayload(
+            String materialKey,
+            BigDecimal price
+    ) {}
+
     public record Record(
             Domain domain,
             String key,
@@ -117,10 +150,24 @@ public record EssentialsImportPlan(
             @Nullable PreferenceKey preferenceKey,
             @Nullable Boolean preferenceBool,
             @Nullable MutePayload mute,
-            @Nullable JailedPayload jailed
+            @Nullable JailedPayload jailed,
+            @Nullable KitPayload kit,
+            @Nullable KitUsagePayload kitUsage,
+            @Nullable WorthPayload worth
     ) {
+        public Record(
+                Domain domain, String key, Status status, String reason, String payloadHash,
+                @Nullable UUID owner, @Nullable String name, @Nullable SavedLocation location,
+                @Nullable Money money, @Nullable MailPayload mail, @Nullable String textValue,
+                @Nullable UUID targetUuid, @Nullable PreferenceKey preferenceKey,
+                @Nullable Boolean preferenceBool, @Nullable MutePayload mute, @Nullable JailedPayload jailed
+        ) {
+            this(domain, key, status, reason, payloadHash, owner, name, location, money, mail, textValue,
+                    targetUuid, preferenceKey, preferenceBool, mute, jailed, null, null, null);
+        }
+
         static Record simple(Domain d, String key, Status st, String reason, String hash, @Nullable UUID owner) {
-            return new Record(d, key, st, reason, hash, owner, null, null, null, null, null, null, null, null, null, null);
+            return new Record(d, key, st, reason, hash, owner, null, null, null, null, null, null, null, null, null, null, null, null, null);
         }
     }
 
@@ -137,6 +184,7 @@ public record EssentialsImportPlan(
             Map<String, SavedLocation> warps,
             Map<String, SavedLocation> spawns,
             Map<UUID, SavedLocation> logouts,
+            Map<UUID, SavedLocation> backs,
             Set<String> mailSourceRefs,
             Map<UUID, String> nicknames,
             Map<UUID, Set<UUID>> ignores,
@@ -145,11 +193,34 @@ public record EssentialsImportPlan(
             Map<UUID, MuteRecord> mutes,
             Map<UUID, JailAssignment> jailed,
             Map<UUID, String> names,
+            Map<String, KitDefinition> kits,
+            Map<String, KitUsageRecord> kitUsages,
+            Map<String, BigDecimal> worthPrices,
             Map<String, String> ledgerHashes
     ) {
+        public Destination(
+                Map<UUID, ExistingAccount> balances,
+                Map<UUID, Map<String, SavedLocation>> homes,
+                Map<String, SavedLocation> warps,
+                Map<String, SavedLocation> spawns,
+                Map<UUID, SavedLocation> logouts,
+                Set<String> mailSourceRefs,
+                Map<UUID, String> nicknames,
+                Map<UUID, Set<UUID>> ignores,
+                Map<UUID, StoredPreferences> preferences,
+                Map<String, JailRecord> jails,
+                Map<UUID, MuteRecord> mutes,
+                Map<UUID, JailAssignment> jailed,
+                Map<UUID, String> names,
+                Map<String, String> ledgerHashes
+        ) {
+            this(balances, homes, warps, spawns, logouts, Map.of(), mailSourceRefs, nicknames, ignores, preferences,
+                    jails, mutes, jailed, names, Map.of(), Map.of(), Map.of(), ledgerHashes);
+        }
+
         public static Destination empty() {
-            return new Destination(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Set.of(),
-                    Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
+            return new Destination(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Set.of(),
+                    Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
         }
     }
 
@@ -284,6 +355,16 @@ public record EssentialsImportPlan(
             }
         }
 
+        // 2c. Kit definitions (kits.yml) — planned before per-user kit usage so one-time status stays aligned.
+        Map<String, Boolean> kitOneTimeFlags = new HashMap<>();
+        for (var existingKit : dest.kits().entrySet()) {
+            kitOneTimeFlags.put(existingKit.getKey().toLowerCase(Locale.ROOT), existingKit.getValue().oneTime());
+        }
+        planKits(snapshot.kits(), dest, kitOneTimeFlags, notes, records);
+
+        // 2d. Worth prices (worth.yml)
+        planWorth(snapshot.worth(), dest, notes, records);
+
         // 3. Per-user domains
         for (EssentialsSnapshot.UserFile user : snapshot.users()) {
             if (user.npc()) {
@@ -360,6 +441,38 @@ public record EssentialsImportPlan(
                 }
             }
 
+            // 3d-2. Last /back location (lastlocation)
+            if (user.lastLocation() != null) {
+                Optional<ResolvedWorld> world = worlds.resolve(user.lastLocation().world(), user.lastLocation().worldName());
+                if (world.isEmpty()) {
+                    records.add(Record.simple(Domain.BACK, uuid.toString(), Status.BLOCKED,
+                            "unresolved world: " + worldLabel(user.lastLocation()), hash("back:" + uuid), uuid));
+                } else {
+                    SavedLocation loc = toSaved(world.get(), user.lastLocation(), nowMillis);
+                    String ph = hashLocation("back", uuid.toString(), loc);
+                    SavedLocation existing = dest.backs().get(uuid);
+                    Status st = checkLedger(dest.ledgerHashes(), Domain.BACK, uuid.toString(), ph);
+                    String reason = "already imported";
+                    if (st == null) {
+                        if (existing == null) {
+                            st = Status.IMPORT;
+                            reason = "new /back position";
+                        } else if (sameCoords(existing, loc)) {
+                            st = Status.PRESENT;
+                            reason = "matches existing /back position";
+                        } else {
+                            st = Status.SKIPPED;
+                            reason = "server already has a /back position";
+                        }
+                    }
+                    records.add(new Record(Domain.BACK, uuid.toString(), st, reason, ph, uuid, "back", loc,
+                            null, null, null, null, null, null, null, null));
+                }
+            }
+
+            // 3d-3. Per-player kit usage timestamps
+            planKitUsages(user, dest, kitOneTimeFlags, records);
+
             // 3e. Mail
             planMail(user, dest, nowMillis, records);
 
@@ -408,6 +521,229 @@ public record EssentialsImportPlan(
         return new EssentialsImportPlan(snapshot.sourceSha256(), planSha, List.copyOf(records),
                 List.copyOf(supportedSigns), List.copyOf(unsupportedSigns), List.copyOf(notes),
                 npcSkipped, snapshot.skippedUserFiles().size());
+    }
+
+    private static void planKits(
+            List<EssentialsSnapshot.RawKit> rawKits,
+            Destination dest,
+            Map<String, Boolean> kitOneTimeFlags,
+            List<String> notes,
+            List<Record> records
+    ) {
+        if (rawKits.isEmpty()) return;
+        ItemSpecParser specParser = new ItemSpecParser(true);
+        Map<String, String> seen = new HashMap<>();
+        for (EssentialsSnapshot.RawKit raw : rawKits) {
+            if (raw.error() != null) {
+                records.add(Record.simple(Domain.KIT, String.valueOf(raw.name()), Status.BLOCKED,
+                        raw.error(), hash("kit:bad:" + raw.name()), null));
+                continue;
+            }
+            String norm = raw.name() == null ? "" : raw.name().trim().toLowerCase(Locale.ROOT);
+            if (!KitNames.isValid(norm)) {
+                records.add(Record.simple(Domain.KIT, String.valueOf(raw.name()), Status.BLOCKED,
+                        "invalid kit name (must match [a-z0-9_-]{1,32})", hash("kit:name:" + raw.name()), null));
+                continue;
+            }
+            if (seen.putIfAbsent(norm, raw.name()) != null) {
+                records.add(Record.simple(Domain.KIT, norm, Status.BLOCKED,
+                        "normalized kit name collides with " + seen.get(norm), hash("kit:dup:" + raw.name()), null));
+                continue;
+            }
+            boolean oneTime = raw.delaySeconds() < 0L;
+            long cooldownSeconds = oneTime ? 0L : Math.min(raw.delaySeconds(), KitDefinition.MAX_COOLDOWN_SECONDS);
+            List<String> translatedItems = new ArrayList<>();
+            List<String> reviewCommands = new ArrayList<>();
+            List<String> invalidItems = new ArrayList<>();
+            for (String line : raw.rawItems()) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) continue;
+                if (trimmed.startsWith("/") || trimmed.startsWith("$") || trimmed.startsWith("@")) {
+                    reviewCommands.add(trimmed);
+                    notes.add("Essentials kit '" + norm + "' contains embedded command/action '" + trimmed
+                            + "' (not executed or imported; review manually)");
+                    continue;
+                }
+                try {
+                    var parsed = specParser.parse(trimmed);
+                    if (parsed.overflow().isPresent()) {
+                        invalidItems.add("'" + trimmed + "': --overflow flag is not allowed in kit item definitions");
+                        continue;
+                    }
+                    String badRef = null;
+                    for (var ref : parsed.items()) {
+                        if (ref.key().isVanilla()) {
+                            Material mat = Material.matchMaterial(ref.key().id());
+                            if (mat == null || !mat.isItem() || mat.isAir()) {
+                                badRef = "unknown vanilla item '" + ref.key().id() + "'";
+                                break;
+                            }
+                        }
+                    }
+                    if (badRef != null) {
+                        invalidItems.add("'" + trimmed + "': " + badRef);
+                    } else {
+                        translatedItems.add(trimmed);
+                    }
+                } catch (ItemSpecException bad) {
+                    invalidItems.add("'" + trimmed + "': " + bad.getMessage());
+                }
+            }
+            if (!invalidItems.isEmpty()) {
+                records.add(Record.simple(Domain.KIT, norm, Status.BLOCKED,
+                        "unsupported item spec(s): " + String.join("; ", invalidItems),
+                        hash("kit:items:" + norm + ":" + String.join("\n", raw.rawItems())), null));
+                continue;
+            }
+            if (translatedItems.size() > KitDefinition.MAX_ITEMS) {
+                records.add(Record.simple(Domain.KIT, norm, Status.BLOCKED,
+                        "kit has " + translatedItems.size() + " items (max " + KitDefinition.MAX_ITEMS + ")",
+                        hash("kit:max:" + norm + ":" + translatedItems.size()), null));
+                continue;
+            }
+            if (translatedItems.isEmpty()) {
+                records.add(Record.simple(Domain.KIT, norm, Status.SKIPPED,
+                        reviewCommands.isEmpty() ? "kit has no items" : "kit only contained embedded commands (see notes)",
+                        hash("kit:empty:" + norm), null));
+                continue;
+            }
+            kitOneTimeFlags.put(norm, oneTime);
+            KitPayload payload = new KitPayload(norm, cooldownSeconds, oneTime,
+                    List.copyOf(translatedItems), List.copyOf(reviewCommands));
+            String ph = hash("kit:" + norm + ":" + cooldownSeconds + ":" + oneTime + ":" + String.join("\n", translatedItems));
+            Status st = checkLedger(dest.ledgerHashes(), Domain.KIT, norm, ph);
+            String reason = "already imported";
+            if (st == null) {
+                KitDefinition existing = dest.kits().get(norm);
+                if (existing == null) {
+                    st = Status.IMPORT;
+                    reason = reviewCommands.isEmpty()
+                            ? "new kit (" + translatedItems.size() + " item(s))"
+                            : "new kit (" + translatedItems.size() + " item(s); " + reviewCommands.size() + " command(s) flagged for review)";
+                } else if (existing.cooldownSeconds() == cooldownSeconds
+                        && existing.oneTime() == oneTime
+                        && existing.items().equals(translatedItems)) {
+                    st = Status.PRESENT;
+                    reason = "matches existing kit";
+                } else {
+                    st = Status.CONFLICT;
+                    reason = "different kit definition already exists";
+                }
+            }
+            records.add(new Record(Domain.KIT, norm, st, reason, ph, null, norm, null, null, null, null,
+                    null, null, null, null, null, payload, null, null));
+        }
+    }
+
+    private static void planKitUsages(
+            EssentialsSnapshot.UserFile user,
+            Destination dest,
+            Map<String, Boolean> kitOneTimeFlags,
+            List<Record> records
+    ) {
+        if (user.kitTimestamps().isEmpty()) return;
+        UUID uuid = user.uuid();
+        for (Map.Entry<String, Long> entry : user.kitTimestamps().entrySet()) {
+            String kitName = entry.getKey();
+            long ts = entry.getValue();
+            if (!KitNames.isValid(kitName) || ts <= 0L) continue;
+            String key = uuid + ":" + kitName;
+            boolean oneTime = kitOneTimeFlags.getOrDefault(kitName, false);
+            KitUsagePayload payload = new KitUsagePayload(kitName, ts, oneTime);
+            String ph = hash("kit_usage:" + key + ":" + ts + ":" + oneTime);
+            Status st = checkLedger(dest.ledgerHashes(), Domain.KIT_USAGE, key, ph);
+            String reason = "already imported";
+            if (st == null) {
+                KitUsageRecord existing = dest.kitUsages().get(key);
+                if (existing == null) {
+                    st = Status.IMPORT;
+                    reason = oneTime ? "one-time kit usage timestamp" : "kit cooldown timestamp";
+                } else if (existing.lastClaimedAt() == ts && existing.oneTimeClaimed() == oneTime) {
+                    st = Status.PRESENT;
+                    reason = "matches existing kit usage";
+                } else if (existing.lastClaimedAt() >= ts && (!oneTime || existing.oneTimeClaimed())) {
+                    st = Status.SKIPPED;
+                    reason = "newer/stricter kit usage already recorded";
+                } else {
+                    st = Status.IMPORT;
+                    reason = "updates older kit usage timestamp";
+                }
+            }
+            records.add(new Record(Domain.KIT_USAGE, key, st, reason, ph, uuid, kitName, null, null, null, null,
+                    null, null, null, null, null, null, payload, null));
+        }
+    }
+
+    private static void planWorth(
+            List<EssentialsSnapshot.RawWorth> rawWorth,
+            Destination dest,
+            List<String> notes,
+            List<Record> records
+    ) {
+        if (rawWorth.isEmpty()) return;
+        Map<String, Material> materials = new HashMap<>();
+        for (Material m : Material.values()) {
+            if (!m.name().startsWith("LEGACY_") && m.isItem() && !m.isAir()) {
+                materials.put(WorthSettings.key(m), m);
+            }
+        }
+        Map<String, String> seen = new HashMap<>();
+        for (EssentialsSnapshot.RawWorth raw : rawWorth) {
+            Material mat = materials.get(WorthSettings.key(raw.rawKey()));
+            if (mat == null) {
+                records.add(Record.simple(Domain.WORTH, raw.rawKey(), Status.SKIPPED,
+                        "unknown vanilla item key '" + raw.rawKey() + "'", hash("worth:unknown:" + raw.rawKey()), null));
+                continue;
+            }
+            String canonicalKey = mat.name().toLowerCase(Locale.ROOT);
+            String normalizedLookup = WorthSettings.key(mat);
+            if (seen.putIfAbsent(canonicalKey, raw.rawKey()) != null) {
+                records.add(Record.simple(Domain.WORTH, raw.rawKey(), Status.SKIPPED,
+                        "duplicate worth entry for " + canonicalKey + " (already mapped from " + seen.get(canonicalKey) + ")",
+                        hash("worth:dup:" + raw.rawKey()), null));
+                continue;
+            }
+            BigDecimal price;
+            try {
+                BigDecimal parsed = new BigDecimal(raw.rawPrice());
+                if (parsed.signum() < 0) {
+                    price = BigDecimal.ONE.negate();
+                } else if (parsed.compareTo(WorthSettings.MAX_PRICE) > 0) {
+                    records.add(Record.simple(Domain.WORTH, canonicalKey, Status.BLOCKED,
+                            "worth price " + raw.rawPrice() + " exceeds max " + WorthSettings.MAX_PRICE.toPlainString(),
+                            hash("worth:max:" + canonicalKey + ":" + raw.rawPrice()), null));
+                    continue;
+                } else {
+                    price = parsed.setScale(2, RoundingMode.HALF_UP);
+                    if (price.compareTo(parsed) != 0) {
+                        notes.add("worth.yml " + raw.rawKey() + " (" + raw.rawPrice() + ") rounded to " + price.toPlainString());
+                    }
+                }
+            } catch (NumberFormatException bad) {
+                records.add(Record.simple(Domain.WORTH, canonicalKey, Status.BLOCKED,
+                        "malformed worth price: " + raw.rawPrice(), hash("worth:bad:" + canonicalKey + ":" + raw.rawPrice()), null));
+                continue;
+            }
+            WorthPayload payload = new WorthPayload(canonicalKey, price);
+            String ph = hash("worth:" + canonicalKey + ":" + price.toPlainString());
+            Status st = checkLedger(dest.ledgerHashes(), Domain.WORTH, canonicalKey, ph);
+            String reason = "already imported";
+            if (st == null) {
+                BigDecimal existing = dest.worthPrices().get(normalizedLookup);
+                if (existing == null) {
+                    st = Status.IMPORT;
+                    reason = "new worth price " + price.toPlainString();
+                } else if (existing.compareTo(price) == 0) {
+                    st = Status.PRESENT;
+                    reason = "matches existing worth price";
+                } else {
+                    st = Status.CONFLICT;
+                    reason = "Allium worth.yml already sets " + existing.toPlainString() + " (Essentials: " + price.toPlainString() + ")";
+                }
+            }
+            records.add(new Record(Domain.WORTH, canonicalKey, st, reason, ph, null, canonicalKey, null, null, null, null,
+                    null, null, null, null, null, null, null, payload));
+        }
     }
 
     private static void planBalance(EssentialsSnapshot.UserFile user, Destination dest,

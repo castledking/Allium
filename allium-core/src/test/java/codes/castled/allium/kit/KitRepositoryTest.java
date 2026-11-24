@@ -232,4 +232,35 @@ class KitRepositoryTest {
                 "[]", 1, 60_000L, true, false, 2_000L);
         assertTrue(repo.beginClaim(second, 2_000L) instanceof KitRepository.BeginOutcome.Claiming);
     }
+
+    @Test
+    void importUsagePreservesNewerTimestampsAndNeverClearsOneTimeLock() throws Exception {
+        Path dbFile = dir.resolve("kits-import.db");
+        codes.castled.allium.storage.ConnectionSource cs =
+                () -> java.sql.DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+        KitRepository repo = new KitRepository(cs, SqlDialect.SQLITE, () -> 10_000L);
+        repo.migrate();
+        UUID player = UUID.randomUUID();
+
+        try (var c = cs.connection()) {
+            assertEquals(KitRepository.ImportOutcome.CREATED,
+                    repo.importUsage(c, player, "starter", 5_000L, false));
+            assertEquals(KitRepository.ImportOutcome.PRESENT,
+                    repo.importUsage(c, player, "starter", 5_000L, false));
+            assertEquals(KitRepository.ImportOutcome.NEWER,
+                    repo.importUsage(c, player, "starter", 4_000L, false));
+            // Upgrading to one-time lock even with an older timestamp preserves max timestamp and sets oneTimeClaimed.
+            assertEquals(KitRepository.ImportOutcome.CREATED,
+                    repo.importUsage(c, player, "starter", 3_000L, true));
+            // A later non-one-time import must never clear the existing one-time lock.
+            assertEquals(KitRepository.ImportOutcome.CREATED,
+                    repo.importUsage(c, player, "starter", 6_000L, false));
+        }
+
+        var all = repo.loadAllUsages();
+        KitUsageRecord stored = all.get(player + ":starter");
+        assertNotNull(stored);
+        assertEquals(6_000L, stored.lastClaimedAt());
+        assertTrue(stored.oneTimeClaimed());
+    }
 }

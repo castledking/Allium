@@ -23,8 +23,8 @@ import java.util.stream.Stream;
 
 /**
  * Immutable read-only snapshot of an Essentials/EssentialsX plugin folder ({@code userdata/*.yml},
- * {@code warps/*.yml}, {@code jail.yml}/{@code jails.yml}, {@code spawn.yml}, and {@code config.yml}
- * {@code enabledSigns}). Never mutates source files.
+ * {@code warps/*.yml}, {@code jail.yml}/{@code jails.yml}, {@code spawn.yml}, {@code kits.yml},
+ * {@code worth.yml}, and {@code config.yml} {@code enabledSigns}). Never mutates source files.
  */
 public record EssentialsSnapshot(
         String sourceSha256,
@@ -33,6 +33,8 @@ public record EssentialsSnapshot(
         List<WarpFile> warps,
         List<JailEntry> jails,
         List<SpawnEntry> spawns,
+        List<RawKit> kits,
+        List<RawWorth> worth,
         List<String> enabledSigns,
         List<String> notes
 ) {
@@ -85,6 +87,7 @@ public record EssentialsSnapshot(
             @Nullable Boolean confirmPay,
             @Nullable Boolean socialSpy,
             @Nullable Boolean msgToggle,
+            Map<String, Long> kitTimestamps,
             List<String> parseErrors
     ) {}
 
@@ -96,6 +99,10 @@ public record EssentialsSnapshot(
 
     public record SpawnEntry(String group, @Nullable RawLocation location, @Nullable String error) {}
 
+    public record RawKit(String name, long delaySeconds, List<String> rawItems, @Nullable String error) {}
+
+    public record RawWorth(String rawKey, String rawPrice) {}
+
     public static EssentialsSnapshot read(Path root) throws IOException {
         if (!Files.isDirectory(root)) {
             throw new IOException("Essentials directory not found: " + root);
@@ -106,6 +113,8 @@ public record EssentialsSnapshot(
         List<WarpFile> warps = new ArrayList<>();
         List<JailEntry> jails = new ArrayList<>();
         List<SpawnEntry> spawns = new ArrayList<>();
+        List<RawKit> kits = new ArrayList<>();
+        List<RawWorth> worth = new ArrayList<>();
         List<String> enabledSigns = new ArrayList<>();
         List<String> notes = new ArrayList<>();
 
@@ -197,17 +206,49 @@ public record EssentialsSnapshot(
         }
 
         Path configFile = root.resolve("config.yml");
+        YamlConfiguration configYaml = null;
         if (Files.isRegularFile(configFile)) {
             byte[] raw = Files.readAllBytes(configFile);
             hashFile(digest, "config.yml", raw);
             YamlConfiguration yaml = new YamlConfiguration();
             try {
                 yaml.loadFromString(new String(raw, StandardCharsets.UTF_8));
+                configYaml = yaml;
                 for (String sign : yaml.getStringList("enabledSigns")) {
                     if (sign != null && !sign.isBlank()) enabledSigns.add(sign.trim().toLowerCase(Locale.ROOT));
                 }
             } catch (InvalidConfigurationException malformed) {
                 notes.add("config.yml could not be parsed for enabledSigns: " + firstLine(malformed.getMessage()));
+            }
+        }
+
+        // Kits (kits.yml in EssentialsX; older Essentials kept kits under config.yml)
+        Path kitsFile = root.resolve("kits.yml");
+        if (Files.isRegularFile(kitsFile)) {
+            byte[] raw = Files.readAllBytes(kitsFile);
+            hashFile(digest, "kits.yml", raw);
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.loadFromString(new String(raw, StandardCharsets.UTF_8));
+                parseKitsSection(yaml.getConfigurationSection("kits"), kits);
+            } catch (InvalidConfigurationException malformed) {
+                notes.add("kits.yml could not be parsed: " + firstLine(malformed.getMessage()));
+            }
+        } else if (configYaml != null && configYaml.isConfigurationSection("kits")) {
+            parseKitsSection(configYaml.getConfigurationSection("kits"), kits);
+        }
+
+        // Worth (worth.yml)
+        Path worthFile = root.resolve("worth.yml");
+        if (Files.isRegularFile(worthFile)) {
+            byte[] raw = Files.readAllBytes(worthFile);
+            hashFile(digest, "worth.yml", raw);
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.loadFromString(new String(raw, StandardCharsets.UTF_8));
+                parseWorthSection(yaml.getConfigurationSection("worth"), worth);
+            } catch (InvalidConfigurationException malformed) {
+                notes.add("worth.yml could not be parsed: " + firstLine(malformed.getMessage()));
             }
         }
 
@@ -218,9 +259,52 @@ public record EssentialsSnapshot(
                 List.copyOf(warps),
                 List.copyOf(jails),
                 List.copyOf(spawns),
+                List.copyOf(kits),
+                List.copyOf(worth),
                 List.copyOf(enabledSigns),
                 List.copyOf(notes)
         );
+    }
+
+    private static void parseKitsSection(@Nullable ConfigurationSection section, List<RawKit> out) {
+        if (section == null) return;
+        for (String kitName : section.getKeys(false).stream().sorted().toList()) {
+            ConfigurationSection kitSec = section.getConfigurationSection(kitName);
+            if (kitSec == null) {
+                out.add(new RawKit(kitName, 0L, List.of(), "kits." + kitName + " must be a YAML section"));
+                continue;
+            }
+            long delay = kitSec.getLong("delay", 0L);
+            List<String> items = new ArrayList<>();
+            List<?> rawItems = kitSec.getList("items");
+            if (rawItems != null) {
+                for (Object elem : rawItems) {
+                    if (elem != null) {
+                        String line = String.valueOf(elem).trim();
+                        if (!line.isEmpty()) items.add(line);
+                    }
+                }
+            }
+            out.add(new RawKit(kitName, delay, List.copyOf(items), null));
+        }
+    }
+
+    private static void parseWorthSection(@Nullable ConfigurationSection section, List<RawWorth> out) {
+        if (section == null) return;
+        for (String key : section.getKeys(false).stream().sorted().toList()) {
+            Object raw = section.get(key);
+            if (raw instanceof ConfigurationSection sub) {
+                var subKeys = sub.getKeys(false);
+                if (subKeys.size() == 1) {
+                    raw = sub.get(subKeys.iterator().next());
+                } else {
+                    raw = sub.get("*");
+                }
+            }
+            if (raw != null) {
+                out.add(new RawWorth(key, String.valueOf(raw).trim()));
+            }
+        }
     }
 
     private static UserFile parseUser(String fileName, UUID uuid, YamlConfiguration yaml) {
@@ -276,12 +360,24 @@ public record EssentialsSnapshot(
         Boolean socialSpy = optionalBoolean(yaml, "socialspy", "social-spy", errors);
         Boolean msgToggle = optionalBoolean(yaml, "msgtoggle", "msg-toggle", errors);
 
+        Map<String, Long> kitTimestamps = new LinkedHashMap<>();
+        ConfigurationSection kitsTsSection = yaml.getConfigurationSection("timestamps.kits");
+        if (kitsTsSection != null) {
+            for (String kitKey : kitsTsSection.getKeys(false).stream().sorted().toList()) {
+                long ts = kitsTsSection.getLong(kitKey, 0L);
+                if (ts > 0L) {
+                    kitTimestamps.put(kitKey.trim().toLowerCase(Locale.ROOT), ts);
+                }
+            }
+        }
+
         return new UserFile(
                 fileName, uuid, npc, lastAccountName, moneyRaw, moneyPresent,
                 Map.copyOf(homes), logoutLoc, logoutTs, lastLoc,
                 List.copyOf(mail), nickname, List.copyOf(ignores),
                 muted, muteReason, muteTs, jailed, jailName, jailTs, onlineJail,
                 acceptingPay, teleportEnabled, teleportAuto, confirmPay, socialSpy, msgToggle,
+                Map.copyOf(kitTimestamps),
                 List.copyOf(errors)
         );
     }

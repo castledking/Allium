@@ -12,6 +12,11 @@ import codes.castled.allium.importer.essentials.EssentialsImportPlan.Destination
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Domain;
 import codes.castled.allium.importer.essentials.EssentialsImportPlan.Status;
 import codes.castled.allium.importer.legacy.LegacyDestinationPlan.ResolvedWorld;
+import codes.castled.allium.item.spec.ItemSpecParser;
+import codes.castled.allium.kit.KitDefinition;
+import codes.castled.allium.kit.KitDefinitionLoader;
+import codes.castled.allium.kit.KitDeliveryRecord;
+import codes.castled.allium.kit.KitRepository;
 import codes.castled.allium.mail.MailRepository;
 import codes.castled.allium.messaging.IgnoreRepository;
 import codes.castled.allium.moderation.ModerationRepository;
@@ -19,13 +24,18 @@ import codes.castled.allium.naming.PlayerNameRepository;
 import codes.castled.allium.preference.PreferenceRepository;
 import codes.castled.allium.storage.ConnectionSource;
 import codes.castled.allium.storage.SqlDialect;
+import codes.castled.allium.teleport.SavedLocation;
 import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.travel.TravelRepository;
+import codes.castled.allium.worth.WorthSettings;
+import org.bukkit.Material;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.DriverManager;
@@ -428,5 +438,260 @@ class EssentialsImportTest {
                 Destination.empty(), 1_800_000_000_000L, EconomySettings.defaults());
         assertEquals(List.of("color", "buy", "sell", "warp"), plan.supportedSigns());
         assertEquals(List.of("trade"), plan.unsupportedSigns());
+    }
+
+    @Test
+    void lastLocationImportsToBackSlotAndReplaysIdempotently(@TempDir Path dir) throws Exception {
+        Path ess = dir.resolve("Essentials");
+        Files.createDirectories(ess.resolve("userdata"));
+        UUID worldUuid = UUID.randomUUID();
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+        long now = 1_800_000_000_000L;
+
+        Files.writeString(ess.resolve("userdata/" + alice + ".yml"), """
+                lastlocation:
+                  world: %s
+                  world-name: world
+                  x: 12.5
+                  y: 70.0
+                  z: -4.25
+                  yaw: 45.0
+                  pitch: -10.0
+                """.formatted(worldUuid));
+        Files.writeString(ess.resolve("userdata/" + bob + ".yml"), """
+                lastlocation:
+                  world: %s
+                  world-name: world
+                  x: 99.0
+                  y: 64.0
+                  z: 99.0
+                  yaw: 0.0
+                  pitch: 0.0
+                """.formatted(worldUuid));
+
+        ConnectionSource cs = () -> DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("allium.db"));
+        TeleportRepository teleports = new TeleportRepository(cs, SqlDialect.SQLITE, () -> now);
+        ImportLedger ledger = new ImportLedger(cs, SqlDialect.SQLITE, () -> now);
+        teleports.migrate();
+        ledger.migrate();
+
+        SavedLocation bobExisting = new SavedLocation(worldUuid, "world", 1.0, 64.0, 1.0, 0.0f, 0.0f);
+        teleports.save(bob, "back", bobExisting);
+
+        Destination dest = new Destination(
+                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), teleports.slot("back"), Set.of(),
+                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
+                Map.of(), Map.of(), Map.of(), ledger.hashes(EssentialsImportPlan.SOURCE));
+
+        EssentialsSnapshot snapshot = EssentialsSnapshot.read(ess);
+        EssentialsImportPlan plan = EssentialsImportPlan.build(snapshot,
+                (id, name) -> Optional.of(new ResolvedWorld(worldUuid, "world")), dest, now, null);
+
+        assertEquals(1L, plan.counts(Domain.BACK).get(Status.IMPORT));
+        assertEquals(1L, plan.counts(Domain.BACK).get(Status.SKIPPED));
+
+        var targets = new EssentialsImportApplier.Targets("test", null, null, teleports, null, null, null, null, null, null);
+        var applied = EssentialsImportApplier.apply(plan, "essentials-20261123-010000", ledger, targets);
+        assertEquals(1L, EssentialsImportApplier.counts(applied).get(EssentialsImportApplier.Result.APPLIED));
+
+        SavedLocation imported = teleports.load(alice, "back").orElseThrow();
+        assertEquals(12.5, imported.x());
+        assertEquals(-4.25, imported.z());
+        assertEquals(1.0, teleports.load(bob, "back").orElseThrow().x());
+
+        var replay = EssentialsImportApplier.apply(plan, "essentials-20261123-010001", ledger, targets);
+        assertEquals(0L, EssentialsImportApplier.counts(replay).get(EssentialsImportApplier.Result.APPLIED));
+        assertEquals(1L, EssentialsImportApplier.counts(replay).get(EssentialsImportApplier.Result.REPLAYED));
+    }
+
+    @Test
+    void kitsAndKitUsageImportSafelyWithoutExecutingEmbeddedCommands(@TempDir Path dir) throws Exception {
+        Path ess = dir.resolve("Essentials");
+        Path dataFolder = dir.resolve("Allium");
+        Files.createDirectories(ess.resolve("userdata"));
+        Files.createDirectories(dataFolder);
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+        long now = 1_800_000_000_000L;
+
+        Files.writeString(ess.resolve("kits.yml"), """
+                kits:
+                  Starter:
+                    delay: -1
+                    items:
+                      - stone_pickaxe 1
+                      - bread 8
+                      - /give {USERNAME} diamond 64
+                      - $100
+                      - '@msg hi'
+                  Tools:
+                    delay: 3600
+                    items:
+                      - iron_shovel 1
+                  Broken:
+                    delay: 60
+                    items:
+                      - not_a_real_material 1
+                  CommandOnly:
+                    delay: 60
+                    items:
+                      - /say hello
+                  Existing:
+                    delay: 60
+                    items:
+                      - apple 2
+                """);
+        Files.writeString(ess.resolve("userdata/" + alice + ".yml"), """
+                timestamps:
+                  kits:
+                    Starter: 1799999000000
+                    Tools: 1799999500000
+                """);
+        Files.writeString(ess.resolve("userdata/" + bob + ".yml"), """
+                timestamps:
+                  kits:
+                    Tools: 1799990000000
+                """);
+
+        KitDefinitionLoader kitLoader = new KitDefinitionLoader(dataFolder.toFile(), ignored -> null, ignored -> {}, ignored -> {});
+        KitDefinition preExisting = new KitDefinition("existing", true, 300L, false, KitDefinition.ZERO_COST,
+                List.of("golden_apple 1"), "kits/existing.yml");
+        kitLoader.save(preExisting);
+
+        ConnectionSource cs = () -> DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("allium.db"));
+        KitRepository kitsRepo = new KitRepository(cs, SqlDialect.SQLITE, () -> now);
+        ImportLedger ledger = new ImportLedger(cs, SqlDialect.SQLITE, () -> now);
+        kitsRepo.migrate();
+        ledger.migrate();
+
+        // Bob already has a newer local usage for 'tools' that must not be overwritten.
+        try (var c = cs.connection()) {
+            kitsRepo.importUsage(c, bob, "tools", 1_799_999_999_000L, false);
+        }
+
+        var parser = new ItemSpecParser(true);
+        Destination dest = new Destination(
+                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Set.of(),
+                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
+                kitLoader.load(parser).definitions(), kitsRepo.loadAllUsages(), Map.of(),
+                ledger.hashes(EssentialsImportPlan.SOURCE));
+
+        EssentialsSnapshot snapshot = EssentialsSnapshot.read(ess);
+        EssentialsImportPlan plan = EssentialsImportPlan.build(snapshot, (id, name) -> Optional.empty(), dest, now, null);
+
+        assertEquals(2L, plan.counts(Domain.KIT).get(Status.IMPORT)); // starter + tools
+        assertEquals(1L, plan.counts(Domain.KIT).get(Status.BLOCKED)); // broken
+        assertEquals(1L, plan.counts(Domain.KIT).get(Status.SKIPPED)); // commandonly
+        assertEquals(1L, plan.counts(Domain.KIT).get(Status.CONFLICT)); // existing
+        assertTrue(plan.notes().stream().anyMatch(n -> n.contains("/give {USERNAME} diamond 64")));
+        assertTrue(plan.notes().stream().anyMatch(n -> n.contains("$100")));
+        assertTrue(plan.notes().stream().anyMatch(n -> n.contains("@msg hi")));
+
+        assertEquals(2L, plan.counts(Domain.KIT_USAGE).get(Status.IMPORT)); // alice starter + tools
+        assertEquals(1L, plan.counts(Domain.KIT_USAGE).get(Status.SKIPPED)); // bob newer tools
+
+        var targets = new EssentialsImportApplier.Targets("test", null, null, null, null, null, null, null, null, null,
+                kitsRepo, kitLoader, null);
+        var applied = EssentialsImportApplier.apply(plan, "essentials-20261123-020000", ledger, targets);
+        assertEquals(4L, EssentialsImportApplier.counts(applied).get(EssentialsImportApplier.Result.APPLIED));
+
+        var loaded = kitLoader.load(parser);
+        assertTrue(loaded.rejected().isEmpty(), () -> "Unexpected rejected kits: " + loaded.rejected());
+        KitDefinition starter = loaded.definitions().get("starter");
+        assertNotNull(starter);
+        assertTrue(starter.oneTime());
+        assertEquals(0L, starter.cooldownSeconds());
+        assertEquals(List.of("stone_pickaxe 1", "bread 8"), starter.items());
+        assertEquals(List.of("golden_apple 1"), loaded.definitions().get("existing").items());
+
+        // One-time usage for Alice's starter kit must block claiming again.
+        var claimAttempt = kitsRepo.beginClaim(new KitDeliveryRecord(
+                UUID.randomUUID(), alice, "starter", UUID.randomUUID(), "srv", "[]", 2, 0L, true, false, now), now);
+        assertInstanceOf(KitRepository.BeginOutcome.OneTimeClaimed.class, claimAttempt);
+        // Bob's newer local timestamp must be preserved.
+        assertEquals(1_799_999_999_000L, kitsRepo.loadAllUsages().get(bob + ":tools").lastClaimedAt());
+
+        var replay = EssentialsImportApplier.apply(plan, "essentials-20261123-020001", ledger, targets);
+        assertEquals(0L, EssentialsImportApplier.counts(replay).get(EssentialsImportApplier.Result.APPLIED));
+        assertEquals(4L, EssentialsImportApplier.counts(replay).get(EssentialsImportApplier.Result.REPLAYED));
+    }
+
+    @Test
+    void worthImportNormalizesVanillaKeysPreservesExistingAlliumPricesAndReplays(@TempDir Path dir) throws Exception {
+        Path ess = dir.resolve("Essentials");
+        Path worthFile = dir.resolve("Allium/worth.yml");
+        Files.createDirectories(ess);
+        Files.createDirectories(worthFile.getParent());
+        long now = 1_800_000_000_000L;
+
+        Files.writeString(worthFile, """
+                allow-named-items: true
+                multipliers:
+                  default: 1.0
+                  vip: 1.5
+                worth:
+                  diamond: 99.0
+                  coal: 2.0
+                """);
+        Files.writeString(ess.resolve("worth.yml"), """
+                worth:
+                  diamondpickaxe: 12.345
+                  iron_ingot:
+                    '0': 5.0
+                    '*': 4.5
+                  gold_ingot:
+                    '0': 8.25
+                  diamond: 50.0
+                  coal: 2.0
+                  bedrock: -1
+                  fake_custom_item: 10.0
+                """);
+
+        YamlConfiguration existingYaml = new YamlConfiguration();
+        existingYaml.load(worthFile.toFile());
+        WorthSettings before = WorthSettings.read(existingYaml, ignored -> null, ignored -> {});
+
+        ConnectionSource cs = () -> DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("allium.db"));
+        ImportLedger ledger = new ImportLedger(cs, SqlDialect.SQLITE, () -> now);
+        ledger.migrate();
+
+        Destination dest = new Destination(
+                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Set.of(),
+                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(),
+                Map.of(), Map.of(), before.prices(), ledger.hashes(EssentialsImportPlan.SOURCE));
+
+        EssentialsSnapshot snapshot = EssentialsSnapshot.read(ess);
+        EssentialsImportPlan plan = EssentialsImportPlan.build(snapshot, (id, name) -> Optional.empty(), dest, now, null);
+
+        assertEquals(4L, plan.counts(Domain.WORTH).get(Status.IMPORT)); // diamond_pickaxe, iron_ingot, gold_ingot, bedrock
+        assertEquals(1L, plan.counts(Domain.WORTH).get(Status.PRESENT)); // coal
+        assertEquals(1L, plan.counts(Domain.WORTH).get(Status.CONFLICT)); // diamond
+        assertEquals(1L, plan.counts(Domain.WORTH).get(Status.SKIPPED)); // fake_custom_item
+        assertTrue(plan.notes().stream().anyMatch(n -> n.contains("diamondpickaxe") && n.contains("12.35")));
+
+        var targets = new EssentialsImportApplier.Targets("test", null, null, null, null, null, null, null, null, null,
+                null, null, worthFile);
+        var applied = EssentialsImportApplier.apply(plan, "essentials-20261123-030000", ledger, targets);
+        var counts = EssentialsImportApplier.counts(applied);
+        assertEquals(4L, counts.get(EssentialsImportApplier.Result.APPLIED));
+        assertEquals(1L, counts.get(EssentialsImportApplier.Result.ADOPTED));
+        assertTrue(Files.isRegularFile(worthFile.resolveSibling("worth.yml.before-edit")));
+
+        YamlConfiguration afterYaml = new YamlConfiguration();
+        afterYaml.load(worthFile.toFile());
+        WorthSettings after = WorthSettings.read(afterYaml, ignored -> null, ignored -> {});
+        assertTrue(after.allowNamedItems());
+        assertEquals(new BigDecimal("1.50"), after.multipliers().get("vip"));
+        assertEquals(new BigDecimal("99.00"), after.price(Material.DIAMOND).orElseThrow());
+        assertEquals(new BigDecimal("2.00"), after.price(Material.COAL).orElseThrow());
+        assertEquals(new BigDecimal("12.35"), after.price(Material.DIAMOND_PICKAXE).orElseThrow());
+        assertEquals(new BigDecimal("4.50"), after.price(Material.IRON_INGOT).orElseThrow());
+        assertEquals(new BigDecimal("8.25"), after.price(Material.GOLD_INGOT).orElseThrow());
+        assertTrue(after.price(Material.BEDROCK).isEmpty());
+
+        var replay = EssentialsImportApplier.apply(plan, "essentials-20261123-030001", ledger, targets);
+        assertEquals(0L, EssentialsImportApplier.counts(replay).get(EssentialsImportApplier.Result.APPLIED));
+        assertEquals(5L, EssentialsImportApplier.counts(replay).get(EssentialsImportApplier.Result.REPLAYED));
     }
 }

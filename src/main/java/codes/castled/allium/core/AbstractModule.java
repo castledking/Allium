@@ -1,6 +1,9 @@
 package codes.castled.allium.core;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.config.ReloadCoordinator;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.jetbrains.annotations.Nullable;
 
 public abstract class AbstractModule {
 
@@ -40,5 +43,19 @@ public abstract class AbstractModule {
             disable();
             enable();
         }
+    }
+
+    /** Relative reload priority (lower publishes earlier). */
+    public int reloadOrder() {
+        return 100;
+    }
+
+    /**
+     * Prepares and validates a reload candidate against {@code candidateRoot} without mutating
+     * live module state. Return {@code null} if this module has no reloadable settings.
+     */
+    @Nullable
+    public ReloadCoordinator.Prepared prepareReload(FileConfiguration candidateRoot) throws Exception {
+        return null;
     }
 }

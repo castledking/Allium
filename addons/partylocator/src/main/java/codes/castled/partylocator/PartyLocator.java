@@ -38,7 +38,7 @@ public final class PartyLocator extends AlliumAddon implements Listener {
     @Override
     protected void onAddonEnable(AddonConnection connection) {
         core = connection;
-        LegacyPartySettings.importOnFirstStart(this);
+        LegacyPartySettings.importOnFirstStart(this, core.legacyConfigSources());
         saveDefaultConfig();
         store = new PartyStore(getDataFolder().toPath().resolve("parties.yml"));
         try {

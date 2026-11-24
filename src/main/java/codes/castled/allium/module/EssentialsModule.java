@@ -275,4 +275,14 @@ public final class EssentialsModule extends AbstractModule {
             fallbackSkulls = null;
         }
     }
+
+    @Override
+    public int reloadOrder() {
+        return 100;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(this::reloadSettings);
+    }
 }

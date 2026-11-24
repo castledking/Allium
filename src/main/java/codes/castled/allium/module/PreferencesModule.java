@@ -242,4 +242,15 @@ public final class PreferencesModule extends AbstractModule implements Listener 
     public PreferenceDefaults defaults() {
         return defaults;
     }
+
+    @Override
+    public int reloadOrder() {
+        return 45;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(
+                () -> plugin.logger().info("Preference defaults reloaded: " + reloadDefaults()));
+    }
 }

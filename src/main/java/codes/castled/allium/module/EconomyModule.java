@@ -14,6 +14,10 @@ public final class EconomyModule extends AbstractModule {
     public EconomyModule(PluginStart plugin){super(plugin);}
     @Override public String getName(){return "economy";}
     public EconomyRuntime runtime(){return runtime;}
+    @Override public int reloadOrder(){return 20;}
+    @Override public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) throws Exception {
+        return runtime == null ? null : runtime.prepareReload(candidateRoot);
+    }
     @Override public void onEnable(){
         try {
             runtime=new EconomyRuntime(plugin);runtime.enable();

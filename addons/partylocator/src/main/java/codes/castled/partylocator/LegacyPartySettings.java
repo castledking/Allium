@@ -40,10 +40,18 @@ final class LegacyPartySettings {
 
     /** Writes config.yml from legacy settings when there is no config.yml yet and legacy had some. */
     static void importOnFirstStart(JavaPlugin plugin) {
+        importOnFirstStart(plugin, List.of());
+    }
+
+    /** Writes config.yml from legacy settings using Allium's exposed active/archived config sources. */
+    static void importOnFirstStart(JavaPlugin plugin, List<java.nio.file.Path> sharedSources) {
         File config = new File(plugin.getDataFolder(), "config.yml");
         var allium = plugin.getServer().getPluginManager().getPlugin("Allium");
         if (config.exists() || allium == null) return;
-        for (File source : sources(allium.getDataFolder())) {
+        List<File> candidates = sharedSources != null && !sharedSources.isEmpty()
+                ? sharedSources.stream().map(java.nio.file.Path::toFile).toList()
+                : sources(allium.getDataFolder());
+        for (File source : candidates) {
             try {
                 var legacy = new YamlConfiguration();
                 legacy.load(source);

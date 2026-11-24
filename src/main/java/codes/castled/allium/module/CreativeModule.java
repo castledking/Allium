@@ -65,4 +65,14 @@ public final class CreativeModule extends AbstractModule {
             manager.reload();
         }
     }
+
+    @Override
+    public int reloadOrder() {
+        return 95;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(this::reloadSettings);
+    }
 }

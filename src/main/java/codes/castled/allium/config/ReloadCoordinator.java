@@ -33,13 +33,19 @@ public final class ReloadCoordinator {
 
     public interface Participant {
         String name();
+        default int order() { return 100; }
         Prepared prepare(FileConfiguration candidateRoot) throws Exception;
 
         static Participant of(String name, CandidatePreparer preparer) {
+            return of(name, 100, preparer);
+        }
+
+        static Participant of(String name, int order, CandidatePreparer preparer) {
             Objects.requireNonNull(name, "name");
             Objects.requireNonNull(preparer, "preparer");
             return new Participant() {
                 @Override public String name() { return name; }
+                @Override public int order() { return order; }
                 @Override public Prepared prepare(FileConfiguration candidateRoot) throws Exception {
                     return preparer.prepare(candidateRoot);
                 }
@@ -65,6 +71,35 @@ public final class ReloadCoordinator {
 
     private ReloadCoordinator() {}
 
+    /**
+     * Executes a targeted reload for a single named participant (or {@code "config"} for root-only),
+     * preserving the same two-phase validation, single root publication point, and truthful report
+     * as a full reload.
+     */
+    public static ReloadReport executeTargeted(
+            RootConfigSource rootSource,
+            List<Participant> participants,
+            String targetName,
+            @Nullable Consumer<String> reply,
+            @Nullable Consumer<String> warnLog
+    ) {
+        Objects.requireNonNull(targetName, "targetName");
+        String normalized = targetName.trim().toLowerCase(java.util.Locale.ROOT);
+        Consumer<String> out = reply != null ? reply : ignored -> {};
+        if (normalized.equals("config")) {
+            return execute(rootSource, List.of(), reply, warnLog);
+        }
+        List<Participant> matched = participants.stream()
+                .filter(p -> p.name().equalsIgnoreCase(normalized))
+                .toList();
+        if (matched.isEmpty()) {
+            String reason = "unknown reload target '" + targetName + "'";
+            out.accept("Rejected " + targetName + ": " + reason);
+            return new ReloadReport(false, List.of(), List.of(new ReloadReport.Entry(targetName, reason)), List.of());
+        }
+        return execute(rootSource, matched, reply, warnLog);
+    }
+
     public static ReloadReport execute(
             RootConfigSource rootSource,
             List<Participant> participants,
@@ -87,10 +122,14 @@ public final class ReloadCoordinator {
             return new ReloadReport(false, List.of(), List.of(new ReloadReport.Entry("config.yml", reason)), List.of());
         }
 
+        // Order participants deterministically by declared reloadOrder (stable on registration order).
+        List<Participant> ordered = new ArrayList<>(participants);
+        ordered.sort(java.util.Comparator.comparingInt(Participant::order));
+
         // Phase 1: Prepare & validate every participant with zero live mutations.
         Map<String, Prepared> prepared = new LinkedHashMap<>();
         List<ReloadReport.Entry> rejected = new ArrayList<>();
-        for (Participant participant : participants) {
+        for (Participant participant : ordered) {
             try {
                 Prepared candidate = participant.prepare(candidateRoot);
                 if (candidate != null) {

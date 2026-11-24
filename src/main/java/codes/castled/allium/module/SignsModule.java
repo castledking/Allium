@@ -25,4 +25,8 @@ public final class SignsModule extends AbstractModule {
     public SignService signs(){return signs;}
     public codes.castled.allium.sign.PaidRepairService paidRepairs(){return paidRepairs;}
     public PaidSignService paidSigns(){return paidSigns;}
+    @Override public int reloadOrder(){return 80;}
+    @Override public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(this::reloadSettings);
+    }
 }

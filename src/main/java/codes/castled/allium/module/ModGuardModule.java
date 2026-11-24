@@ -41,6 +41,17 @@ public final class ModGuardModule extends AbstractModule {
         modGuard = null;
     }
 
+    @Override
+    public int reloadOrder() {
+        return 150;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot)
+            throws IOException, InvalidConfigurationException {
+        return prepareReload();
+    }
+
     /** Prepares and validates {@code modguard.yml} without mutating live ModGuard state. */
     public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
             throws IOException, InvalidConfigurationException {

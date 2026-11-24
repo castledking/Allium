@@ -566,4 +566,14 @@ public final class ToolsModule extends AbstractModule {
         }
         return report;
     }
+
+    @Override
+    public int reloadOrder() {
+        return 105;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(this::reloadPowerTools);
+    }
 }

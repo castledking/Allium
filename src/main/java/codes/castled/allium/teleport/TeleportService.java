@@ -339,15 +339,26 @@ public final class TeleportService implements Listener {
         if(destination==null){send(player,Messages.TELEPORT_UNSAFE);return;}
         begin(player,player,"back",()->destination.clone(),null,null,false);
     }
+    /** Primary group spawn for {@code player}, or {@code null} when no group spawn matches. */
+    @Nullable
+    public Location groupSpawn(Player player) {
+        if (!spawnReady || player == null || groupSpawns.isEmpty()) return null;
+        String group = codes.castled.allium.text.PlayerMeta.primaryGroup(plugin, player).toLowerCase(Locale.ROOT);
+        SavedLocation point = groupSpawns.get(group);
+        return point == null ? null : location(point);
+    }
+
+    /** Global server spawn ({@code /setspawn}), or {@code null} when unset or unloaded. */
+    @Nullable
+    public Location defaultSpawn() {
+        if (!spawnReady || spawn == null) return null;
+        return location(spawn);
+    }
+
     private Location configuredSpawn(Player player) {
-        if (!spawnReady) return null;
-        if (!groupSpawns.isEmpty()) {
-            String group = codes.castled.allium.text.PlayerMeta.primaryGroup(plugin, player).toLowerCase(Locale.ROOT);
-            SavedLocation point = groupSpawns.get(group);
-            Location groupLocation = point == null ? null : location(point);
-            if (groupLocation != null) return groupLocation;
-        }
-        return spawn == null ? null : location(spawn);
+        Location groupLocation = groupSpawn(player);
+        if (groupLocation != null) return groupLocation;
+        return defaultSpawn();
     }
 
     public void spawn(Player player) {
@@ -412,20 +423,12 @@ public final class TeleportService implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void respawn(PlayerRespawnEvent event) {
-        if (event.getRespawnReason() != PlayerRespawnEvent.RespawnReason.DEATH
-                || event.isBedSpawn() || event.isAnchorSpawn()) return;
-        Player player = event.getPlayer();
-        var modules = plugin.getModuleManager();
-        if (modules != null && modules.getModule("rtp") instanceof codes.castled.allium.module.RtpModule rtp
-                && rtp.isEnabled() && rtp.rtp() != null && rtp.rtp().settings().onDeath()) return;
-        if (modules != null && plugin.getConfig().getBoolean("teleport.respawn-at-home", true)
-                && modules.getModule("travel") instanceof codes.castled.allium.module.TravelModule travel
-                && travel.isEnabled() && travel.travel() != null) {
-            Location home = travel.travel().respawnHome(player);
-            if (home != null) { event.setRespawnLocation(home); return; }
+        var resolution = codes.castled.allium.spawn.SpawnRespawnResolver.evaluateRespawn(
+                plugin, event, this, null, null);
+        Location destination = resolution.targetLocation(resolution.decision().primary());
+        if (destination != null) {
+            event.setRespawnLocation(destination);
         }
-        Location destination = configuredSpawn(player);
-        if (destination != null) event.setRespawnLocation(destination);
     }
 
     /**

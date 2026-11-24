@@ -212,6 +212,41 @@ class ReloadCoordinatorTest {
         assertEquals(List.of("rtp", "worth"), multiFail.rejected().stream().map(ReloadReport.Entry::target).toList());
     }
 
+    @Test
+    void participantsPublishInDeclaredReloadOrderAndTargetedReloadIsolatesTarget() {
+        List<String> publishOrder = new ArrayList<>();
+        ReloadCoordinator.RootConfigSource root = new ReloadCoordinator.RootConfigSource() {
+            @Override public FileConfiguration prepareRoot() { return new YamlConfiguration(); }
+            @Override public List<ReloadReport.Entry> publishRoot(FileConfiguration c) {
+                publishOrder.add("config");
+                return List.of();
+            }
+        };
+        List<ReloadCoordinator.Participant> participants = List.of(
+                ReloadCoordinator.Participant.of("worth", 130, c -> ReloadCoordinator.Prepared.of(() -> publishOrder.add("worth"))),
+                ReloadCoordinator.Participant.of("economy", 20, c -> ReloadCoordinator.Prepared.of(() -> publishOrder.add("economy"))),
+                ReloadCoordinator.Participant.of("rtp", 120, c -> ReloadCoordinator.Prepared.of(() -> publishOrder.add("rtp")))
+        );
+
+        ReloadReport full = ReloadCoordinator.execute(root, participants, line -> {}, warn -> {});
+        assertTrue(full.success());
+        assertEquals(List.of("config", "economy", "rtp", "worth"), publishOrder);
+
+        // Targeted reload runs only the selected participant + root config
+        publishOrder.clear();
+        ReloadReport targeted = ReloadCoordinator.executeTargeted(root, participants, "rtp", line -> {}, warn -> {});
+        assertTrue(targeted.success());
+        assertEquals(List.of("config", "rtp"), publishOrder);
+        assertEquals(List.of("config", "rtp"), targeted.applied());
+
+        // Unknown targeted reload is rejected without publishing root
+        publishOrder.clear();
+        ReloadReport unknown = ReloadCoordinator.executeTargeted(root, participants, "nonexistent", line -> {}, warn -> {});
+        assertFalse(unknown.success());
+        assertTrue(publishOrder.isEmpty());
+        assertEquals("nonexistent", unknown.rejected().get(0).target());
+    }
+
     private static PluginStart mockPlugin(Path dataFolder, AtomicReference<FileConfiguration> liveConfig, ThreadPoolExecutor pool) {
         PluginStart plugin = mock(PluginStart.class);
         Server server = mock(Server.class);

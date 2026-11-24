@@ -26,6 +26,37 @@ public final class GamemodeCommand implements SpecCommandHandler.Immediate {
     }
 
     @Override
+    public AliasTransform transformExecutionArgs(String label, String[] args) {
+        String fixedMode = CoreCommandSpecs.gamemodeAlias(label);
+        if (fixedMode == null) {
+            return new AliasTransform.Pass(args);
+        }
+        if ("toggle".equals(fixedMode)) {
+            if (args.length != 0) {
+                return new AliasTransform.InvalidUsage(java.util.List.of(
+                        codes.castled.allium.command.spec.CommandUsage.of("", "Cycles your gamemode")));
+            }
+            return new AliasTransform.Pass(SpecCommandHandler.prepend(fixedMode, args));
+        }
+        if (args.length > 1) {
+            String mode = UtilitySupport.titleCase(fixedMode);
+            return new AliasTransform.InvalidUsage(java.util.List.of(
+                    codes.castled.allium.command.spec.CommandUsage.of("", "Switches you to " + mode),
+                    codes.castled.allium.command.spec.CommandUsage.of("<player>", "Switches another player to " + mode,
+                            spec().othersPermission())));
+        }
+        return new AliasTransform.Pass(SpecCommandHandler.prepend(fixedMode, args));
+    }
+
+    @Override
+    public AliasTransform transformCompletionArgs(String label, String[] args) {
+        String fixedMode = CoreCommandSpecs.gamemodeAlias(label);
+        if (fixedMode == null) return new AliasTransform.Pass(args);
+        if ("toggle".equals(fixedMode)) return AliasTransform.NoCompletion.INSTANCE;
+        return new AliasTransform.Pass(SpecCommandHandler.prepend(fixedMode, args));
+    }
+
+    @Override
     public boolean executeWithResult(BukkitCommandContext context) {
         String[] args = context.args();
         if (args.length == 0) {

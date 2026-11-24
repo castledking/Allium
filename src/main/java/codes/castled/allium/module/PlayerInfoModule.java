@@ -79,4 +79,14 @@ public final class PlayerInfoModule extends AbstractModule {
     public PlayerInfoRepository repository() {
         return repository;
     }
+
+    @Override
+    public int reloadOrder() {
+        return 75;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return info == null ? null : codes.castled.allium.config.ReloadCoordinator.Prepared.of(info::reloadSettings);
+    }
 }

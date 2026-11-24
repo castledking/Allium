@@ -31,35 +31,73 @@ public final class CommandManager {
 
     public CommandManager(PluginStart plugin) {
         this.plugin = plugin;
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.ESSENTIALS_PROOF_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.UTILITY_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.PARITY_UTILITY_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.ITEM_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.MESSAGING_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.MODERATION_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.INFO_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.ALTS_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.RESTORE_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.TOOLS_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.CREATIVE_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.RTP_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.WORTH_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.EXPLOSION_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.ECONOMY_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.CHAT_SPECS);
-        this.familyPolicy.registerSpec(CoreCommandSpecs.CLEAR_CHAT);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.MAIL_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.TELEPORT_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.TRAVEL_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.KIT_SPECS);
-        this.familyPolicy.registerSpecs(CoreCommandSpecs.CORE_SPECS);
-        familyPolicy.registerSpecs(List.of(BlockToolCommand.BREAK, BlockToolCommand.SPAWNER,
+        this.familyPolicy.registerSpecs(allStartupSpecs());
+        initializePolicyFromConfig();
+    }
+
+    /** Single authoritative startup inventory of every core Allium command family. */
+    public static List<CommandSpec> allStartupSpecs() {
+        List<CommandSpec> all = new java.util.ArrayList<>();
+        all.addAll(CoreCommandSpecs.ESSENTIALS_PROOF_SPECS);
+        all.addAll(CoreCommandSpecs.UTILITY_SPECS);
+        all.addAll(CoreCommandSpecs.PARITY_UTILITY_SPECS);
+        all.addAll(CoreCommandSpecs.ITEM_SPECS);
+        all.addAll(CoreCommandSpecs.MESSAGING_SPECS);
+        all.addAll(CoreCommandSpecs.MODERATION_SPECS);
+        all.addAll(CoreCommandSpecs.INFO_SPECS);
+        all.addAll(CoreCommandSpecs.ALTS_SPECS);
+        all.addAll(CoreCommandSpecs.RESTORE_SPECS);
+        all.addAll(CoreCommandSpecs.TOOLS_SPECS);
+        all.addAll(CoreCommandSpecs.CREATIVE_SPECS);
+        all.addAll(CoreCommandSpecs.RTP_SPECS);
+        all.addAll(CoreCommandSpecs.WORTH_SPECS);
+        all.addAll(CoreCommandSpecs.EXPLOSION_SPECS);
+        all.addAll(CoreCommandSpecs.ECONOMY_SPECS);
+        all.addAll(CoreCommandSpecs.CHAT_SPECS);
+        all.add(CoreCommandSpecs.CLEAR_CHAT);
+        all.addAll(CoreCommandSpecs.MAIL_SPECS);
+        all.addAll(CoreCommandSpecs.TELEPORT_SPECS);
+        all.addAll(CoreCommandSpecs.TRAVEL_SPECS);
+        all.addAll(CoreCommandSpecs.KIT_SPECS);
+        all.addAll(CoreCommandSpecs.CORE_SPECS);
+        all.addAll(List.of(BlockToolCommand.BREAK, BlockToolCommand.SPAWNER,
                 TreeCommand.TREE, TreeCommand.BIG_TREE, ThunderCommand.SPEC, RemoveCommand.SPEC,
                 CondenseCommand.SPEC, BookCommand.SPEC, EditSignCommand.SPEC, UnlimitedCommand.SPEC));
         for (var action : PlayerUtilityCommand.Action.values()) {
-            familyPolicy.registerSpec(action.spec());
+            all.add(action.spec());
         }
-        initializePolicyFromConfig();
+        return List.copyOf(all);
+    }
+
+    /**
+     * Registers an addon command family into Allium's shared command inventory and policy so
+     * {@code disabled-commands}, {@code /help}, {@code HideService}, execution, and tab completion
+     * apply the exact same rules to addon and core commands.
+     */
+    public boolean registerAddonCommand(org.bukkit.plugin.Plugin addon, PluginCommand command, SpecCommandHandler handler) {
+        CommandSpec spec = handler.spec();
+        if (familyPolicy.registerSpecAndApplyStartup(spec)) {
+            boolean yielded = CommandMapBridge.yieldCommandFamily(plugin.getServer(), addon, spec);
+            plugin.logger().info("Addon command family '" + spec.canonicalName() + "' (" + addon.getName()
+                    + ") is disabled via disabled-commands; yielded labels " + spec.allOwnedLabels()
+                    + (yielded ? " from CommandMap." : "."));
+            return false;
+        }
+        BukkitCommandRenderer renderer = new BukkitCommandRenderer(plugin, familyPolicy, handler);
+        renderedCommands.put(spec.canonicalName(), renderer);
+        commands.put(spec.canonicalName(), renderer);
+        command.setExecutor(renderer);
+        command.setTabCompleter(renderer);
+        return true;
+    }
+
+    /** Removes a previously registered addon command family from the shared inventory on disable. */
+    public void unregisterAddonCommand(CommandSpec spec, PluginCommand command) {
+        command.setExecutor(null);
+        command.setTabCompleter(null);
+        renderedCommands.remove(spec.canonicalName());
+        commands.remove(spec.canonicalName());
+        familyPolicy.unregisterSpec(spec);
     }
 
     private void initializePolicyFromConfig() {

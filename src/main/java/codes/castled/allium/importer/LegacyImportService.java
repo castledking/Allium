@@ -116,8 +116,7 @@ public final class LegacyImportService {
             lease = ((ImportApplyCoordinator.Acquired) acquisition).lease();
         }
         // Worlds are read here, on the server thread, and handed to the worker.
-        Map<String, ResolvedWorld> loaded = new LinkedHashMap<>();
-        for (World world : plugin.getServer().getWorlds()) loaded.put(world.getName(), new ResolvedWorld(world.getUID(), world.getName()));
+        ImportLifecycle.LoadedWorlds loaded = ImportLifecycle.LoadedWorlds.capture(plugin.getServer());
         plugin.getMessageManager().send(sender, Messages.IMPORT_LEGACY_STARTED, "{mode}", applyRun == null ? "a dry run" : "apply " + applyRun);
         final ImportApplyCoordinator.Lease acquiredLease = lease;
         try {
@@ -152,7 +151,7 @@ public final class LegacyImportService {
     private record Read(LegacyH2Source.Snapshot snapshot, LegacyAlliumSnapshot data, String driver, LegacyDestinationPlan plan) {
     }
 
-    private Read read(Settings settings, Map<String, ResolvedWorld> loaded, Path copy, boolean destinationTablesMayBeMissing) throws Exception {
+    private Read read(Settings settings, ImportLifecycle.LoadedWorlds loaded, Path copy, boolean destinationTablesMayBeMissing) throws Exception {
         LegacyH2Source.Snapshot snapshot = LegacyH2Source.snapshot(settings.source(), copy);
         List<Path> jars = settings.driver() != null ? List.of(settings.driver()) : importJars();
         try (LegacyH2Source source = LegacyH2Source.load(jars).orElseThrow(() -> new IOException(
@@ -161,17 +160,14 @@ public final class LegacyImportService {
             try (Connection c = source.openReadOnly(snapshot.copy(), settings.user(), settings.password())) {
                 data = LegacyAlliumReader.read(c);
             }
-            LegacyDestinationPlan.Worlds worlds = name -> {
-                String target = settings.worlds().getOrDefault(name, name);
-                return Optional.ofNullable(loaded.get(target));
-            };
+            LegacyDestinationPlan.Worlds worlds = name -> loaded.resolve(settings.worlds(), name);
             Destination destination = destination(destinationTablesMayBeMissing);
             return new Read(snapshot, data, source.jar().getFileName() + " (" + source.driverClass() + ")",
                     LegacyDestinationPlan.build(data, worlds, destination));
         }
     }
 
-    private void runDry(CommandSender sender, Settings settings, Map<String, ResolvedWorld> loaded) throws Exception {
+    private void runDry(CommandSender sender, Settings settings, ImportLifecycle.LoadedWorlds loaded) throws Exception {
         String runId = newRunId();
         Path dir = runDir(runId);
         Read read = read(settings, loaded, dir.resolve("source.mv.db"), true);
@@ -186,15 +182,10 @@ public final class LegacyImportService {
                 "{summary}", relative(dir.resolve("summary.txt")));
     }
 
-    private boolean runApply(CommandSender sender, Settings settings, Map<String, ResolvedWorld> loaded, String runId,
+    private boolean runApply(CommandSender sender, Settings settings, ImportLifecycle.LoadedWorlds loaded, String runId,
                              ImportApplyCoordinator.Lease lease) throws Exception {
         Path dir = runDir(runId);
         Path planFile = dir.resolve("plan.json");
-        if (!Files.isRegularFile(planFile)) {
-            tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", "no dry run " + runId + " (expected " + relative(planFile) + ")");
-            return false;
-        }
-        Map<String, Object> reviewed = Json.parseObject(Files.readString(planFile, StandardCharsets.UTF_8));
         var db = plugin.getDatabaseManager();
         TravelRepository travel = new TravelRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         TeleportRepository teleports = new TeleportRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
@@ -202,17 +193,19 @@ public final class LegacyImportService {
         travel.migrate();
         teleports.migrate();
         ledger.migrate();
-        if (ledger.ran(runId)) {
-            tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", runId + " was already applied; run a new dry run");
+        var reviewCheck = ImportLifecycle.loadReviewedPlan(planFile, relative(planFile), runId, ledger);
+        if (reviewCheck instanceof ImportLifecycle.ReviewCheck.Refused refused) {
+            tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", refused.reason());
             return false;
         }
+        ImportLifecycle.ReviewedPlan reviewed = ((ImportLifecycle.ReviewCheck.Valid) reviewCheck).plan();
         Read read = read(settings, loaded, dir.resolve("apply-source.mv.db"), false);
-        if (!read.snapshot().sha256().equals(reviewed.get("sourceSha256"))) {
-            tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", "the legacy database changed since " + runId + "; run a new dry run");
-            return false;
-        }
-        if (!read.plan().sha256().equals(reviewed.get("planSha256"))) {
-            tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", "the plan differs from " + runId + " (this server's homes, warps or the world map changed); run a new dry run");
+        Optional<String> mismatch = ImportLifecycle.verifyFingerprints(reviewed, read.snapshot().sha256(),
+                read.plan().sha256(), runId,
+                "the legacy database changed since " + runId + "; run a new dry run",
+                "the plan differs from " + runId + " (this server's homes, warps or the world map changed); run a new dry run");
+        if (mismatch.isPresent()) {
+            tell(sender, Messages.IMPORT_LEGACY_REFUSED, "{reason}", mismatch.get());
             return false;
         }
         ledger.startRun(runId, LegacyDestinationPlan.SOURCE, read.snapshot().sha256(), read.plan().sha256());
@@ -231,22 +224,12 @@ public final class LegacyImportService {
         String homes = applied(outcomes, Domain.HOME), warps = applied(outcomes, Domain.WARP), logouts = applied(outcomes, Domain.LOGOUT);
         plugin.logger().info("Legacy import " + runId + " applied: " + homes + " homes; " + warps + " warps; " + logouts + " logout positions.");
         String summaryPath = relative(dir.resolve("apply-summary.txt"));
-        var scheduler = plugin.getScheduler();
-        TaskHandle handle = scheduler.runOnServer(() -> {
-            try {
-                if (plugin.getModuleManager().getModule("travel") instanceof TravelModule module && module.isEnabled() && module.travel() != null) {
-                    module.travel().publishWarps(freshWarps);
-                }
-            } finally {
-                finish(lease);
+        return ImportLifecycle.publishAndRelease(plugin, lease, () -> running.set(false), () -> {
+            if (plugin.getModuleManager().getModule("travel") instanceof TravelModule module && module.isEnabled() && module.travel() != null) {
+                module.travel().publishWarps(freshWarps);
             }
-            tell(sender, Messages.IMPORT_LEGACY_APPLIED, "{run}", runId, "{homes}", homes, "{warps}", warps, "{logouts}", logouts,
-                    "{summary}", summaryPath);
-        });
-        if (scheduler instanceof AlliumScheduler && handle == TaskHandle.NONE) {
-            return false;
-        }
-        return true;
+        }, () -> tell(sender, Messages.IMPORT_LEGACY_APPLIED, "{run}", runId, "{homes}", homes, "{warps}", warps, "{logouts}", logouts,
+                "{summary}", summaryPath));
     }
 
     /** What this server holds. A dry run never creates tables: missing ones read as empty. */
@@ -255,23 +238,12 @@ public final class LegacyImportService {
         TravelRepository travel = new TravelRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         TeleportRepository teleports = new TeleportRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ImportLedger ledger = new ImportLedger(db.connectionSource(), db.dialect(), System::currentTimeMillis);
-        boolean homes = !tablesMayBeMissing || exists("allium_travel_homes");
-        boolean warps = !tablesMayBeMissing || exists("allium_travel_warps");
-        boolean locations = !tablesMayBeMissing || exists(TeleportRepository.LOCATIONS_TABLE);
-        boolean records = !tablesMayBeMissing || exists(ImportLedger.RECORDS);
+        boolean homes = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), "allium_travel_homes");
+        boolean warps = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), "allium_travel_warps");
+        boolean locations = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), TeleportRepository.LOCATIONS_TABLE);
+        boolean records = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), ImportLedger.RECORDS);
         return new Destination(homes ? travel.allHomes() : Map.of(), warps ? travel.warps() : Map.of(),
                 locations ? teleports.slot("logout") : Map.of(), records ? ledger.hashes(LegacyDestinationPlan.SOURCE) : Map.of());
-    }
-
-    private boolean exists(String table) throws SQLException {
-        try (Connection c = plugin.getDatabaseManager().connectionSource().connection()) {
-            for (String name : List.of(table, table.toUpperCase(Locale.ROOT))) {
-                try (ResultSet r = c.getMetaData().getTables(null, null, name, null)) {
-                    if (r.next()) return true;
-                }
-            }
-            return false;
-        }
     }
 
     // -- Settings ------------------------------------------------------------------------------------

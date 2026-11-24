@@ -146,29 +146,12 @@ public final class AddonManager {
         };
     }
 
-    /** Scans {@code plugins/Allium/addons/*.jar} and indexes valid addon jars by canonical config key. */
+    /** Scans {@code plugins/Allium/addons/*.jar} via the shared {@link AddonInventory} and indexes valid addons by canonical config key. */
     public static Map<String, InstalledAddon> scanInstalled(@Nullable Path addonsDir) {
         Map<String, InstalledAddon> found = new LinkedHashMap<>();
-        if (addonsDir == null || !Files.isDirectory(addonsDir)) return found;
-        List<Path> jars;
-        try (Stream<Path> entries = Files.list(addonsDir)) {
-            jars = entries
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
-                    .sorted(Comparator.comparing(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)))
-                    .toList();
-        } catch (IOException ignored) {
-            return found;
-        }
-        for (Path jar : jars) {
-            YamlConfiguration meta = readPluginYml(jar);
-            if (meta == null) continue;
-            String name = trimToNull(meta.getString("name"));
-            String api = trimToNull(meta.getString("allium-api"));
-            if (name == null || api == null) continue;
-            String key = AddonCatalog.configKey(name);
-            String ver = trimToNull(meta.getString("version"));
-            found.putIfAbsent(key, new InstalledAddon(key, name, ver == null ? "?" : ver, jar));
+        AddonInventory inventory = AddonInventory.scan(addonsDir, null);
+        for (AddonInventory.ValidatedAddon addon : inventory.accepted()) {
+            found.putIfAbsent(addon.key(), new InstalledAddon(addon.key(), addon.name(), addon.version(), addon.jarPath()));
         }
         return found;
     }

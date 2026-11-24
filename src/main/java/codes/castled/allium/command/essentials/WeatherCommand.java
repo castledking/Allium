@@ -26,6 +26,23 @@ public final class WeatherCommand implements SpecCommandHandler.Immediate {
     }
 
     @Override
+    public AliasTransform transformExecutionArgs(String label, String[] args) {
+        String fixedWeather = weatherAlias(label);
+        return fixedWeather == null ? new AliasTransform.Pass(args)
+                : new AliasTransform.Pass(SpecCommandHandler.prepend(fixedWeather, args));
+    }
+
+    static String weatherAlias(String label) {
+        if (label == null) return null;
+        String bare = label.substring(label.lastIndexOf(':') + 1).toLowerCase(java.util.Locale.ROOT);
+        return switch (bare) {
+            case "rain", "storm" -> "storm";
+            case "sun", "sky" -> "sun";
+            default -> null;
+        };
+    }
+
+    @Override
     public boolean executeWithResult(BukkitCommandContext context) {
         boolean[] applied = {true};
         executeForSign(context, result -> applied[0] = result);

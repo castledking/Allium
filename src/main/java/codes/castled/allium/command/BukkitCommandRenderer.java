@@ -74,44 +74,14 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             return true;
         }
 
-        String fixedMode=spec.canonicalName().equals("gamemode")?CoreCommandSpecs.gamemodeAlias(label):null;
-        if ("toggle".equals(fixedMode) && args.length != 0) {
-            CommandUsageCard.sendInvalid(plugin, sender, spec, label,
-                    List.of(codes.castled.allium.command.spec.CommandUsage.of("", "Cycles your gamemode")));
+        SpecCommandHandler.AliasTransform transform = handler.transformExecutionArgs(label, args);
+        if (transform instanceof SpecCommandHandler.AliasTransform.InvalidUsage invalid) {
+            CommandUsageCard.sendInvalid(plugin, sender, spec, label, invalid.usages());
             return true;
         }
-        if(fixedMode!=null){
-            if(args.length>1){
-                String mode=codes.castled.allium.command.essentials.UtilitySupport.titleCase(fixedMode);
-                CommandUsageCard.sendInvalid(plugin,sender,spec,label,List.of(
-                        codes.castled.allium.command.spec.CommandUsage.of("","Switches you to "+mode),
-                        codes.castled.allium.command.spec.CommandUsage.of("<player>","Switches another player to "+mode,spec.othersPermission())));
-                return true;
-            }
-            args=withMode(fixedMode,args);
-        }
-        String fixedSpeed=spec.canonicalName().equals("speed")?CoreCommandSpecs.speedAlias(label):null;
-        if(fixedSpeed!=null)args=withMode(fixedSpeed,args);
-        String fixedPayToggle=spec.canonicalName().equals("paytoggle")?CoreCommandSpecs.payToggleAlias(label):null;
-        if(fixedPayToggle!=null)args=withMode(fixedPayToggle,args);
-        String fixedPayConfirm=spec.canonicalName().equals("payconfirmtoggle")?CoreCommandSpecs.payConfirmAlias(label):null;
-        if(fixedPayConfirm!=null)args=withMode(fixedPayConfirm,args);
-        String fixedWeather = spec.canonicalName().equals("weather") ? weatherAlias(label) : null;
-        if (fixedWeather != null) args = withMode(fixedWeather, args);
-        handler.execute(new BukkitCommandContext(plugin, spec, sender, label, args));
+        String[] effectiveArgs = transform instanceof SpecCommandHandler.AliasTransform.Pass pass ? pass.args() : args;
+        handler.execute(new BukkitCommandContext(plugin, spec, sender, label, effectiveArgs));
         return true;
-    }
-
-    private static String[] withMode(String mode,String[] args){String[] expanded=new String[args.length+1];expanded[0]=mode;System.arraycopy(args,0,expanded,1,args.length);return expanded;}
-
-    private static String weatherAlias(String label) {
-        if (label == null) return null;
-        String bare = label.substring(label.lastIndexOf(':') + 1).toLowerCase(java.util.Locale.ROOT);
-        return switch (bare) {
-            case "rain", "storm" -> "storm";
-            case "sun", "sky" -> "sun";
-            default -> null;
-        };
     }
 
     @Override
@@ -124,6 +94,11 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
         CommandSpec spec = handler.spec();
         if (policy.admission(spec, alias, sender::hasPermission) != CommandFamilyPolicy.Admission.ALLOWED) {
             return List.of();
+        }
+
+        var custom = handler.customCompletions(sender, alias, args);
+        if (custom != null && custom.isPresent()) {
+            return custom.get();
         }
 
         if (spec == CoreCommandSpecs.CLEARINVENTORY
@@ -270,17 +245,13 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
             }
         };
 
-        String fixedMode=spec.canonicalName().equals("gamemode")?CoreCommandSpecs.gamemodeAlias(alias):null;
-        String fixedSpeed=spec.canonicalName().equals("speed")?CoreCommandSpecs.speedAlias(alias):null;
-        String fixedPayToggle=spec.canonicalName().equals("paytoggle")?CoreCommandSpecs.payToggleAlias(alias):null;
-        String fixedPayConfirm=spec.canonicalName().equals("payconfirmtoggle")?CoreCommandSpecs.payConfirmAlias(alias):null;
-        if ("toggle".equals(fixedMode)) return List.of();
-        String fixedWeather = spec.canonicalName().equals("weather") ? weatherAlias(alias) : null;
-        String[] effectiveArgs = fixedMode != null ? withMode(fixedMode, args)
-                : fixedSpeed != null ? withMode(fixedSpeed, args)
-                : fixedPayToggle != null ? withMode(fixedPayToggle, args)
-                : fixedPayConfirm != null ? withMode(fixedPayConfirm, args)
-                : fixedWeather != null ? withMode(fixedWeather, args) : args;
+        SpecCommandHandler.AliasTransform completionTransform = handler.transformCompletionArgs(alias, args);
+        if (completionTransform instanceof SpecCommandHandler.AliasTransform.NoCompletion) {
+            return List.of();
+        }
+        String[] effectiveArgs = completionTransform instanceof SpecCommandHandler.AliasTransform.Pass pass
+                ? pass.args()
+                : args;
         List<String> out=spec.complete(completionContext,effectiveArgs);
         if(spec.canonicalName().equals("tp")&&args.length==1&&"~".startsWith(args[0])&&sender.hasPermission("allium.tp.position")){
             out=new ArrayList<>(out);out.add("~");

@@ -620,19 +620,39 @@ public final class DisciplineService implements Listener {
         if (event.getEntered() instanceof Player player && constrained(player)) event.setCancelled(true);
     }
 
+    /** Whether {@code player} currently has an in-flight expired jail release returning them to origin. */
+    public boolean hasPendingRelease(Player player) {
+        if (player == null) return false;
+        PendingRelease release = releases.get(player.getUniqueId());
+        return release != null && release.player == player;
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRespawn(PlayerRespawnEvent event) {
         Player player = event.getPlayer();
+        if (player == null) return;
         PendingRelease release = releases.get(player.getUniqueId());
-        if (release != null && release.player == player) {
+        boolean hasRelease = release != null && release.player == player;
+        Connection c = connections.get(player.getUniqueId());
+        JailAssignment assignment = prisoners.get(player.getUniqueId());
+        boolean activeJail = c != null && c.loaded && c.player == player && assignment != null;
+        var decision = codes.castled.allium.spawn.SpawnRespawnPolicy.decideRespawn(
+                codes.castled.allium.spawn.SpawnRespawnPolicy.RespawnContext.builder()
+                        .deathRespawn(event.getRespawnReason() == PlayerRespawnEvent.RespawnReason.DEATH)
+                        .pendingJailRelease(hasRelease)
+                        .jailed(activeJail)
+                        .build()
+        );
+        if (decision.primary() == codes.castled.allium.spawn.SpawnRespawnPolicy.RespawnTarget.JAIL_RELEASE_RETURN) {
             Location origin = safeIfOwnedRegion(release.assignment.returnLocation());
             if (origin != null) { event.setRespawnLocation(origin); return; }
             // Do not discard the durable origin if it became unsafe during this release.
             release.unsafeRespawn = true;
+            if (!activeJail) return;
+        } else if (decision.primary() != codes.castled.allium.spawn.SpawnRespawnPolicy.RespawnTarget.JAIL) {
+            return;
         }
-        Connection c = connections.get(player.getUniqueId());
-        JailAssignment assignment = prisoners.get(player.getUniqueId());
-        if (c != null && c.loaded && c.player == player && assignment != null) {
+        if (activeJail) {
             JailRecord jail = jails.get(assignment.jailName());
             if (jail != null) {
                 Location location = safeIfOwnedRegion(jail.location());

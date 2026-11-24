@@ -22,4 +22,8 @@ public final class TravelModule extends AbstractModule {
     }
     @Override public void onDisable(){if(service!=null)service.disable();}
     public TravelService travel(){return service;}
+    @Override public int reloadOrder(){return 60;}
+    @Override public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) throws Exception {
+        return service == null ? null : service.prepareReload(candidateRoot);
+    }
 }

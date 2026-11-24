@@ -63,6 +63,17 @@ public final class WorthModule extends AbstractModule {
         return sell;
     }
 
+    @Override
+    public int reloadOrder() {
+        return 130;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot)
+            throws java.io.IOException, org.bukkit.configuration.InvalidConfigurationException {
+        return prepareReload();
+    }
+
     /** Prepares and validates {@code worth.yml} without mutating live prices or permissions. */
     public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
             throws java.io.IOException, org.bukkit.configuration.InvalidConfigurationException {

@@ -3,8 +3,11 @@ package codes.castled.allium.rtp;
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.economy.EconomyDisplay;
 import codes.castled.allium.economy.EconomyReservations;
-import codes.castled.allium.economy.EconomyResult;
+import codes.castled.allium.economy.EconomyRuntime;
 import codes.castled.allium.economy.Money;
+import codes.castled.allium.economy.PaidActionOutcome;
+import codes.castled.allium.economy.PaidActionResult;
+import codes.castled.allium.economy.PaidActionService;
 import codes.castled.allium.economy.PaidWorkflowSupport;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.scheduler.BukkitServerThread;
@@ -80,6 +83,7 @@ public final class RtpService implements Listener {
     private volatile Configuration configuration;
     private final Map<UUID, Run> searching = new ConcurrentHashMap<>();
     private final ThreadPoolExecutor io;
+    private final PaidActionService paidActions;
     private volatile boolean closed;
 
     private record Configuration(RtpSettings settings, Map<String, CachedSpots> cache) {
@@ -100,6 +104,7 @@ public final class RtpService implements Listener {
         this.file = plugin.getDataFolder().toPath().resolve("rtp.yml");
         this.search = new RtpSearch(plugin, safety, plugin::getProtectionService);
         this.io = plugin.getScheduler().boundedPool("Allium-RTP-Payments", 1, 64);
+        this.paidActions = new PaidActionService(plugin, io);
     }
 
     public void enable() throws IOException, InvalidConfigurationException {
@@ -110,6 +115,7 @@ public final class RtpService implements Listener {
 
     public void disable() {
         closed = true;
+        paidActions.close();
         TeleportService tp = teleports.get();
         if (tp != null) tp.cooldownProvider(COMMAND, null);
         HandlerList.unregisterAll(this);
@@ -180,10 +186,25 @@ public final class RtpService implements Listener {
             send(actor, Messages.MODULE_DISABLED);
             return;
         }
-        var request = new Request(actor, target, requested, biomes == null ? null : Set.copyOf(biomes), signPrice, valid, configuration);
+        var request = new Request(actor, target, requested, biomes == null ? null : Set.copyOf(biomes), signPrice, valid, configuration, null);
+        dispatchRequest(request);
+    }
+
+    private void randomWithFallback(CommandSender actor, Player target, @Nullable String requested, @Nullable Runnable onFailure) {
+        if (closed || teleports.get() == null) {
+            if (onFailure != null) onFailure.run();
+            return;
+        }
+        dispatchRequest(new Request(actor, target, requested, null, null, null, configuration, onFailure));
+    }
+
+    private void dispatchRequest(Request request) {
+        CommandSender actor = request.actor();
+        Player target = request.target();
         BukkitServerThread.onOwner(plugin, plugin.getScheduler(), actor, () -> {
             if (!actor.hasPermission(request.self() ? PERMISSION : PERMISSION_OTHERS)) {
                 send(actor, Messages.NO_PERMISSION);
+                runFallback(request.onFailure());
                 return;
             }
             BukkitServerThread.onOwner(plugin, plugin.getScheduler(), target, () -> resolveForTarget(request));
@@ -191,7 +212,8 @@ public final class RtpService implements Listener {
     }
 
     private record Request(CommandSender actor, Player target, @Nullable String location, @Nullable Set<String> biomes,
-                           @Nullable Money signPrice, @Nullable BooleanSupplier valid, Configuration configuration) {
+                           @Nullable Money signPrice, @Nullable BooleanSupplier valid, Configuration configuration,
+                           @Nullable Runnable onFailure) {
         boolean self() { return actor == target; }
     }
 
@@ -204,6 +226,7 @@ public final class RtpService implements Listener {
         Optional<RtpSettings.Resolved> resolved = resolve(current, requested, targetWorld);
         if (resolved.isEmpty()) {
             send(actor, Messages.RTP_UNKNOWN_LOCATION, "{location}", requested == null ? current.defaultLocation() : requested);
+            runFallback(request.onFailure());
             return;
         }
         RtpSettings.Resolved where = resolved.get();
@@ -214,6 +237,7 @@ public final class RtpService implements Listener {
             World redirected = redirect.map(r -> plugin.getServer().getWorld(r.area().world())).orElse(null);
             if (redirected == null || current.disabled(redirected.getName())) {
                 send(actor, Messages.RTP_DISABLED_WORLD, "{world}", world.getName());
+                runFallback(request.onFailure());
                 return;
             }
             where = redirect.get();
@@ -221,6 +245,7 @@ public final class RtpService implements Listener {
         }
         if (world == null) {
             send(actor, Messages.RTP_UNKNOWN_LOCATION, "{location}", where.name());
+            runFallback(request.onFailure());
             return;
         }
         // Named-location permissions and cost exemptions belong to the issuer.
@@ -239,11 +264,13 @@ public final class RtpService implements Listener {
         if (!actor.hasPermission(request.self() ? PERMISSION : PERMISSION_OTHERS)
                 || current.perLocationPermission() && !actor.hasPermission(locationPermission)) {
             send(actor, Messages.NO_PERMISSION);
+            runFallback(request.onFailure());
             return;
         }
         long cooldown = tp.cooldownSeconds(actor, target.getUniqueId(), COMMAND);
         if (cooldown > 0) {
             send(actor, Messages.COOLDOWN_ACTIVE, "{time}", cooldown + "s");
+            runFallback(request.onFailure());
             return;
         }
         // Staff, first-join and death teleports do not pay the location cost.
@@ -251,13 +278,14 @@ public final class RtpService implements Listener {
         if (request.signPrice() != null) {
             if (request.signPrice().minor() > Money.HARD - price.minor()) {
                 send(actor, Messages.RTP_COST_UNAVAILABLE);
+                runFallback(request.onFailure());
                 return;
             }
             price = price.plus(request.signPrice());
         }
         BooleanSupplier canUseSign = request.valid() == null ? null : () -> validSign(request, locationPermission);
         var run = new Run(actor, target, request.self(), where, world, request.configuration(), request.biomes(), price, canUseSign,
-                actor.hasPermission("allium.teleport.unsafe"));
+                actor.hasPermission("allium.teleport.unsafe"), request.onFailure());
         BukkitServerThread.onOwner(plugin, plugin.getScheduler(), target, () -> begin(run));
     }
 
@@ -278,6 +306,7 @@ public final class RtpService implements Listener {
         if (!current(run.configuration()) || tp == null || !samePlayer(target)) return;
         if (!tp.canEnterWorld(target, run.world())) {
             send(run.actor(), Messages.WORLD_ACCESS_DENIED, "{world}", run.world().getName());
+            runFallback(run.onFailure());
             return;
         }
         // Register on every use so a reloaded teleport module also gets the tier provider.
@@ -299,53 +328,61 @@ public final class RtpService implements Listener {
 
     /** One random teleport in progress. */
     private record Run(CommandSender actor, Player target, boolean self, RtpSettings.Resolved where, World world,
-                       Configuration configuration, @Nullable Set<String> biomes, Money price, @Nullable BooleanSupplier valid, boolean unsafe) {
+                       Configuration configuration, @Nullable Set<String> biomes, Money price, @Nullable BooleanSupplier valid,
+                       boolean unsafe, @Nullable Runnable onFailure) {
     }
 
-    /** Holds the price before the search; the hold is captured only when the player arrives. */
+    private static void runFallback(@Nullable Runnable onFailure) {
+        if (onFailure != null) onFailure.run();
+    }
+
+    /** Holds the price via {@link PaidActionService}; captured only when the player arrives. */
     private void reserve(Run run) {
         UUID workflow = UUID.randomUUID();
-        UUID account = run.target().getUniqueId();
-        try {
-            io.execute(() -> {
-                EconomyResult.Mutation result;
-                try {
-                    result = PaidWorkflowSupport.reservations(plugin).reserve(EconomyReservations.Kind.RTP, workflow, account,
-                            run.price(), c -> true);
-                } catch (java.sql.SQLException | RuntimeException failure) {
-                    plugin.logger().warning("Random teleport charge for " + run.target().getName() + " failed: " + failure.getMessage());
-                    onRunOwner(run, () -> abandon(run, Messages.ECO_STORAGE), null);
-                    return;
+        String fingerprint = EconomyReservations.fingerprint(
+                "RTP", workflow.toString(), run.target().getUniqueId().toString(),
+                Long.toString(run.price().minor()));
+        BooleanSupplier stillValid = () -> active(run) && (run.valid() == null || run.valid().getAsBoolean());
+
+        paidActions.execute(new PaidActionService.LiveRequest(
+                EconomyReservations.Kind.RTP,
+                workflow,
+                run.target(),
+                run.price(),
+                fingerprint,
+                "Random teleport hold",
+                stillValid,
+                (valid, complete) -> start(run, complete),
+                result -> handlePaidResult(run, result),
+                false
+        ));
+    }
+
+    private void handlePaidResult(Run run, PaidActionResult result) {
+        switch (result.status()) {
+            case CAPTURED -> send(run.target(), Messages.RTP_PAID, "{price}", format(run.price()));
+            case UNAVAILABLE -> abandon(run, Messages.RTP_COST_UNAVAILABLE);
+            case BUSY -> abandon(run, Messages.ECO_BUSY);
+            case INSUFFICIENT_FUNDS -> {
+                endSearch(run);
+                if (current(run.configuration())) {
+                    send(run.actor(), Messages.RTP_INSUFFICIENT_FUNDS, "{price}", format(run.price()));
                 }
-                boolean mayBeHeld = result instanceof EconomyResult.Committed || result instanceof EconomyResult.Unknown;
-                onRunOwner(run, () -> {
-                    if (!active(run)) {
-                        endSearch(run);
-                        if (mayBeHeld) settle(workflow, false, run);
-                        return;
-                    }
-                    if (result instanceof EconomyResult.Committed) {
-                        if (run.valid() != null && !run.valid().getAsBoolean()) {
-                            settle(workflow, false, run);
-                            endSearch(run);
-                            return;
-                        }
-                        start(run, workflow);
-                    } else if (result instanceof EconomyResult.Rejected refused
-                            && ("INSUFFICIENT_FUNDS".equals(refused.reason()) || "MISSING_ACCOUNT".equals(refused.reason()))) {
-                        endSearch(run);
-                        send(run.actor(), Messages.RTP_INSUFFICIENT_FUNDS, "{price}", format(run.price()));
-                    } else if (result instanceof EconomyResult.Unknown unknown) {
-                        endSearch(run);
-                        send(run.actor(), Messages.ECO_UNKNOWN, "{operation}", unknown.operationId().toString());
-                        settle(workflow, false, run);
-                    } else {
-                        abandon(run, Messages.ECO_STORAGE);
-                    }
-                }, mayBeHeld ? workflow : null);
-            });
-        } catch (RejectedExecutionException full) {
-            abandon(run, Messages.ECO_BUSY);
+            }
+            case RESERVATION_REFUSED -> {
+                endSearch(run);
+                if (current(run.configuration())) {
+                    EconomyRuntime.sendRefusal(plugin, run.actor(), result.detail());
+                }
+            }
+            case UNKNOWN_RESERVE -> {
+                endSearch(run);
+                if (current(run.configuration()) && result.unknownOperationId() != null) {
+                    send(run.actor(), Messages.ECO_UNKNOWN, "{operation}", result.unknownOperationId().toString());
+                }
+            }
+            case STORAGE_ERROR -> abandon(run, Messages.ECO_STORAGE);
+            case RELEASED, RELEASE_DEFERRED, CAPTURE_DEFERRED -> endSearch(run);
         }
     }
 
@@ -353,43 +390,16 @@ public final class RtpService implements Listener {
         if (endSearch(run) && current(run.configuration())) send(run.actor(), reason);
     }
 
-    /** Captures ({@code arrived}) or releases a held price; a failure leaves the hold, which a restart refunds. */
-    private void settle(UUID workflow, boolean arrived, Run run) {
-        try {
-            io.execute(() -> {
-                try {
-                    var reservations = PaidWorkflowSupport.reservations(plugin);
-                    EconomyResult.Mutation result = arrived
-                            ? reservations.capture(EconomyReservations.Kind.RTP, workflow, c -> true)
-                            : reservations.release(EconomyReservations.Kind.RTP, workflow, c -> true);
-                    if (!(result instanceof EconomyResult.Committed) && (arrived
-                            || !(result instanceof EconomyResult.Rejected refused) || !"MISSING_RESERVATION".equals(refused.reason()))) {
-                        plugin.logger().warning("Random teleport hold " + workflow + " for " + run.target().getName()
-                                + " was not " + (arrived ? "captured" : "released") + " (" + result.getClass().getSimpleName()
-                                + "); it stays held until /eco resolve or the next restart refunds it.");
-                    } else if (arrived) {
-                        onServer(() -> send(run.target(), Messages.RTP_PAID, "{price}", format(run.price())));
-                    }
-                } catch (java.sql.SQLException | RuntimeException failure) {
-                    plugin.logger().warning("Random teleport hold " + workflow + " could not be settled: " + failure.getMessage()
-                            + "; it stays held until /eco resolve or the next restart refunds it.");
-                }
-            });
-        } catch (RejectedExecutionException full) {
-            plugin.logger().warning("Random teleport hold " + workflow + " could not be queued; the next restart refunds it.");
-        }
-    }
-
     private String format(Money price) {
         return EconomyDisplay.read(plugin.getConfig()).format(price);
     }
 
     /** Searches (or takes a cached spot) and hands the spot to the teleport pipeline. */
-    private void start(Run run, @Nullable UUID workflow) {
+    private void start(Run run, @Nullable Consumer<PaidActionOutcome> complete) {
         TeleportService tp = teleports.get();
         if (!active(run) || tp == null) {
             endSearch(run);
-            if (workflow != null) settle(workflow, false, run);
+            if (complete != null) complete.accept(PaidActionOutcome.Interrupted.DISCONNECTED);
             return;
         }
         Player target = run.target();
@@ -409,16 +419,17 @@ public final class RtpService implements Listener {
                     TeleportService now = teleports.get();
                     if (!validSearch || now == null || error != null || spot == null
                             || run.valid() != null && !run.valid().getAsBoolean()) {
-                        if (workflow != null) settle(workflow, false, run);
+                        if (complete != null) complete.accept(PaidActionOutcome.refused("rtp_aborted"));
                         if (validSearch && (error != null || spot == null)) {
                             send(actor, Messages.RTP_NOT_FOUND, "{attempts}", Integer.toString(current.findAttempts()));
                             if (!run.self()) send(target, Messages.RTP_NOT_FOUND, "{attempts}", Integer.toString(current.findAttempts()));
+                            runFallback(run.onFailure());
                         }
                         return;
                     }
                     hold(spot);
                     Consumer<Boolean> outcome = arrived -> {
-                        if (workflow != null) settle(workflow, arrived, run);
+                        if (complete != null) complete.accept(PaidActionOutcome.of(arrived));
                     };
                     if (run.self() && run.valid() != null) {
                         now.teleport(target, spot::clone, COMMAND, run.valid(), outcome);
@@ -428,7 +439,7 @@ public final class RtpService implements Listener {
                         now.forceLocation(actor, target, spot, COMMAND, outcome);
                     }
                     if (run.biomes() == null) refill(run.where(), run.world(), run.configuration());
-                }, workflow));
+                }, complete));
     }
 
     /** {@code teleport.cooldowns.rtp}, or the shortest cooldown tier the player holds, in milliseconds (-1: configured). */
@@ -508,7 +519,7 @@ public final class RtpService implements Listener {
         return searching.remove(run.target().getUniqueId(), run);
     }
 
-    private void onRunOwner(Run run, Runnable task, @Nullable UUID workflow) {
+    private void onRunOwner(Run run, Runnable task, @Nullable Consumer<PaidActionOutcome> complete) {
         if (!BukkitServerThread.isFolia()) {
             onServer(task);
             return;
@@ -520,7 +531,7 @@ public final class RtpService implements Listener {
         }
         Runnable retired = () -> {
             endSearch(run);
-            if (workflow != null) settle(workflow, false, run);
+            if (complete != null) complete.accept(PaidActionOutcome.Interrupted.RETIRED);
         };
         try {
             if (plugin.getScheduler().runOn(owner, task, retired, 0) == TaskHandle.NONE) retired.run();
@@ -534,8 +545,11 @@ public final class RtpService implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        if (settings().firstJoin() && !event.getPlayer().hasPlayedBefore()) {
-            firstJoin(event.getPlayer(), 0);
+        Player player = event.getPlayer();
+        var resolution = codes.castled.allium.spawn.SpawnRespawnResolver.evaluateJoin(
+                plugin, player, teleports.get(), this, null);
+        if (resolution.decision().schedulesRtp()) {
+            firstJoin(player, 0, resolution.decision().fallbackOnRtpFailure());
         }
     }
 
@@ -547,38 +561,61 @@ public final class RtpService implements Listener {
     }
 
     /** Waits for the player's teleport data to load (up to 20 seconds), then sends them off as the console. */
-    private void firstJoin(Player player, int tries) {
+    private void firstJoin(Player player, int tries, codes.castled.allium.spawn.SpawnRespawnPolicy.JoinTarget fallback) {
         BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
             TeleportService tp = teleports.get();
-            if (closed || tp == null || !samePlayer(player) || !settings().firstJoin()) return;
+            if (closed || tp == null || !samePlayer(player) || !settings().firstJoin() || jailed(player)) return;
             if (!tp.ready(player.getUniqueId())) {
-                if (tries < 20) firstJoin(player, tries + 1);
+                if (tries < 20) firstJoin(player, tries + 1, fallback);
                 return;
             }
-            random(plugin.getServer().getConsoleSender(), player, settings().firstJoinLocation());
+            Runnable onFailure = () -> executeJoinFallback(player, fallback);
+            randomWithFallback(plugin.getServer().getConsoleSender(), player, settings().firstJoinLocation(), onFailure);
         }, () -> {}, 1000L);
+    }
+
+    private void executeJoinFallback(Player player, codes.castled.allium.spawn.SpawnRespawnPolicy.JoinTarget fallback) {
+        if (closed || !samePlayer(player) || jailed(player)) return;
+        TeleportService tp = teleports.get();
+        if (tp == null) return;
+        Location target = codes.castled.allium.spawn.SpawnRespawnResolver.resolveJoinFallbackLocation(plugin, player, fallback, tp);
+        if (target != null) {
+            tp.forceLocation(plugin.getServer().getConsoleSender(), player, target, "spawn", ignored -> {});
+        }
     }
 
     // -- Death -----------------------------------------------------------------------------------
 
     /**
      * A player respawning after death without a bed or respawn anchor is sent to a random spot of
-     * {@code on-death.location}, as the console. Jailed players are left alone.
+     * {@code on-death.location}, as the console, consulting {@link codes.castled.allium.spawn.SpawnRespawnPolicy}
+     * and falling back to the policy's non-RTP target if RTP fails.
      */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRespawn(PlayerRespawnEvent event) {
-        RtpSettings current = settings();
-        if (!current.onDeath() || event.getRespawnReason() != PlayerRespawnEvent.RespawnReason.DEATH
-                || event.isBedSpawn() || event.isAnchorSpawn()) {
+        var resolution = codes.castled.allium.spawn.SpawnRespawnResolver.evaluateRespawn(
+                plugin, event, teleports.get(), this, null);
+        if (!resolution.decision().schedulesRtp()) {
             return;
         }
         Player player = event.getPlayer();
-        if (jailed(player)) return;
+        var fallback = resolution.decision().fallbackOnRtpFailure();
         BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
             if (!closed && samePlayer(player) && !player.isDead() && !jailed(player) && settings().onDeath()) {
-                random(plugin.getServer().getConsoleSender(), player, settings().onDeathLocation());
+                Runnable onFailure = () -> executeRespawnFallback(player, fallback);
+                randomWithFallback(plugin.getServer().getConsoleSender(), player, settings().onDeathLocation(), onFailure);
             }
         }, () -> {}, 250L);
+    }
+
+    private void executeRespawnFallback(Player player, codes.castled.allium.spawn.SpawnRespawnPolicy.RespawnTarget fallback) {
+        if (closed || !samePlayer(player) || player.isDead() || jailed(player)) return;
+        TeleportService tp = teleports.get();
+        if (tp == null) return;
+        Location target = codes.castled.allium.spawn.SpawnRespawnResolver.resolveRespawnFallbackLocation(plugin, player, fallback, tp);
+        if (target != null) {
+            tp.forceLocation(plugin.getServer().getConsoleSender(), player, target, "spawn", ignored -> {});
+        }
     }
 
     private boolean jailed(Player player) {

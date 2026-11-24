@@ -44,7 +44,8 @@ public final class AlliumCommand implements SpecCommandHandler {
                     plugin.getMessageManager().sendByKey(sender, spec().messageKeys().noPermissionKey(), "{cmd}", "allium reload");
                     return;
                 }
-                boolean ok = plugin.reloadConfiguration(line -> TextSender.send(sender, "&7" + line));
+                String target = context.args().length >= 2 ? context.args()[1] : null;
+                boolean ok = plugin.reloadConfiguration(target, line -> TextSender.send(sender, "&7" + line));
                 context.sendOutcome(sender, ok ? "reloaded" : "reload-failed");
             }
             case "import" -> {

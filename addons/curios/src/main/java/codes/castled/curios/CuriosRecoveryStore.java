@@ -259,91 +259,30 @@ final class CuriosRecoveryStore {
         }
     }
 
-    // -- Paid bonus roll reservation, receipt & recovery ---------------------------------------
+    // -- Paid bonus roll reservation, receipt & recovery (delegated to AddonEconomy) ------------
 
-    /**
-     * Runs a paid bonus roll under a stable {@code operationId}:
-     * <ol>
-     *   <li>Reserves funds under {@code operationId} (when {@code cost > 0}).</li>
-     *   <li>Applies the card mutation via {@code applyMutation}.</li>
-     *   <li>On mutation success: appends {@code operationId} to {@code allium:addon_receipts}
-     *       and calls {@link Player#saveData()}, then captures {@code operationId} (queueing
-     *       durable settlement recovery if capture fails transiently).</li>
-     *   <li>On mutation failure: releases {@code operationId} (queueing durable settlement
-     *       recovery if release fails transiently).</li>
-     * </ol>
-     */
     RollOutcome executePaidRoll(Player player, AddonEconomy economy, double cost, BooleanSupplier applyMutation) {
-        UUID operationId = UUID.randomUUID();
-        if (cost > 0) {
-            if (economy == null || !economy.available()) {
-                return new RollOutcome(RollStatus.ECONOMY_UNAVAILABLE, operationId);
-            }
-            if (!economy.has(player.getUniqueId(), cost)
-                    || !economy.reserve(operationId, player.getUniqueId(), cost)) {
-                return new RollOutcome(RollStatus.INSUFFICIENT_FUNDS, operationId);
-            }
+        if (cost > 0 && economy == null) {
+            return new RollOutcome(RollStatus.ECONOMY_UNAVAILABLE, UUID.randomUUID());
         }
-
-        boolean applied;
-        try {
-            applied = applyMutation.getAsBoolean();
-        } catch (RuntimeException failed) {
-            applied = false;
-        }
-
-        if (applied) {
-            if (cost > 0) {
-                recordAddonReceipt(player, operationId);
-                player.saveData();
-                if (economy.capture(operationId, player.getUniqueId(), cost)) {
-                    return new RollOutcome(RollStatus.CAPTURED, operationId);
-                }
-                addPendingSettlement(player, new PendingSettlement(operationId, cost));
-                player.saveData();
-                return new RollOutcome(RollStatus.CAPTURED_DEFERRED, operationId);
-            }
-            return new RollOutcome(RollStatus.FREE_APPLIED, operationId);
-        }
-
-        if (cost > 0) {
-            if (economy.release(operationId, player.getUniqueId(), cost)) {
-                return new RollOutcome(RollStatus.RELEASED, operationId);
-            }
-            addPendingSettlement(player, new PendingSettlement(operationId, cost));
-            player.saveData();
-            return new RollOutcome(RollStatus.RELEASE_DEFERRED, operationId);
-        }
-        return new RollOutcome(RollStatus.MUTATION_FAILED, operationId);
+        AddonEconomy effective = economy != null ? economy : AddonEconomy.UNAVAILABLE;
+        AddonEconomy.PaidActionResult result = effective.executePaidAction(player, cost, applyMutation, pendingRollsKey);
+        RollStatus status = switch (result.status()) {
+            case FREE_APPLIED -> RollStatus.FREE_APPLIED;
+            case CAPTURED -> RollStatus.CAPTURED;
+            case CAPTURE_DEFERRED -> RollStatus.CAPTURED_DEFERRED;
+            case RELEASED -> RollStatus.RELEASED;
+            case RELEASE_DEFERRED -> RollStatus.RELEASE_DEFERRED;
+            case INSUFFICIENT_FUNDS -> RollStatus.INSUFFICIENT_FUNDS;
+            case ECONOMY_UNAVAILABLE -> RollStatus.ECONOMY_UNAVAILABLE;
+            case DISCONNECTED, REFUSED -> RollStatus.MUTATION_FAILED;
+        };
+        return new RollOutcome(status, result.operationId());
     }
 
-    /**
-     * Reconciles any deferred paid-roll settlements for {@code player} using the durable receipt
-     * proof in {@code allium:addon_receipts}: captures iff the receipt is present, releases otherwise.
-     */
     int reconcilePendingRolls(Player player, AddonEconomy economy) {
-        if (player == null || economy == null || !economy.available()) return 0;
-        List<PendingSettlement> pending = readPendingSettlements(player);
-        if (pending.isEmpty()) return 0;
-        Set<UUID> receipts = readAddonReceipts(player);
-        List<PendingSettlement> remaining = new ArrayList<>();
-        int settled = 0;
-        for (PendingSettlement item : pending) {
-            boolean hasReceipt = receipts.contains(item.operationId());
-            boolean done = hasReceipt
-                    ? economy.capture(item.operationId(), player.getUniqueId(), item.amount())
-                    : economy.release(item.operationId(), player.getUniqueId(), item.amount());
-            if (done || !economy.isHeld(item.operationId())) {
-                settled++;
-            } else {
-                remaining.add(item);
-            }
-        }
-        if (settled > 0) {
-            writePendingSettlements(player, remaining);
-            player.saveData();
-        }
-        return settled;
+        if (player == null || economy == null) return 0;
+        return economy.reconcilePaidActions(player, pendingRollsKey);
     }
 
     List<PendingSettlement> pendingSettlements(Player player) {
@@ -351,41 +290,12 @@ final class CuriosRecoveryStore {
     }
 
     boolean hasAddonReceipt(Player player, UUID operationId) {
-        return readAddonReceipts(player).contains(operationId);
-    }
-
-    private static void recordAddonReceipt(Player player, UUID operationId) {
-        LinkedHashSet<UUID> receipts = readAddonReceipts(player);
-        receipts.add(operationId);
-        while (receipts.size() > MAX_ADDON_RECEIPTS) {
-            Iterator<UUID> it = receipts.iterator();
-            it.next();
-            it.remove();
-        }
-        String joined = String.join(",", receipts.stream().map(UUID::toString).toList());
-        player.getPersistentDataContainer().set(KEY_ADDON_RECEIPTS, PersistentDataType.STRING, joined);
-    }
-
-    private static LinkedHashSet<UUID> readAddonReceipts(Player player) {
         String raw = player.getPersistentDataContainer().get(KEY_ADDON_RECEIPTS, PersistentDataType.STRING);
-        LinkedHashSet<UUID> out = new LinkedHashSet<>();
-        if (raw == null || raw.isBlank()) return out;
+        if (raw == null || raw.isBlank()) return false;
         for (String token : raw.split(",")) {
-            String trimmed = token.trim();
-            if (trimmed.isEmpty()) continue;
-            try {
-                out.add(UUID.fromString(trimmed));
-            } catch (IllegalArgumentException ignored) {
-            }
+            if (operationId.toString().equals(token.trim())) return true;
         }
-        return out;
-    }
-
-    private void addPendingSettlement(Player player, PendingSettlement entry) {
-        List<PendingSettlement> list = new ArrayList<>(readPendingSettlements(player));
-        list.removeIf(existing -> existing.operationId().equals(entry.operationId()));
-        list.add(entry);
-        writePendingSettlements(player, list);
+        return false;
     }
 
     private List<PendingSettlement> readPendingSettlements(Player player) {
@@ -407,17 +317,5 @@ final class CuriosRecoveryStore {
             }
         }
         return out;
-    }
-
-    private void writePendingSettlements(Player player, List<PendingSettlement> list) {
-        PersistentDataContainer pdc = player.getPersistentDataContainer();
-        if (list.isEmpty()) {
-            pdc.remove(pendingRollsKey);
-        } else {
-            String encoded = String.join(";", list.stream()
-                    .map(s -> s.operationId() + "=" + s.amount())
-                    .toList());
-            pdc.set(pendingRollsKey, PersistentDataType.STRING, encoded);
-        }
     }
 }

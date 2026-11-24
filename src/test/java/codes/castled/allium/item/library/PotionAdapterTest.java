@@ -36,6 +36,13 @@ class PotionAdapterTest {
   assertEquals("strong_slowness",VanillaPotions.variant("slowness",20,4,1));
   assertNull(VanillaPotions.variant("weakness",0,2,1));
   assertEquals("long_swiftness",VanillaPotions.variant("swiftness",120,1,4),"a lingering cloud applies a quarter");
+  assertEquals("swiftness",VanillaPotions.variant("swiftness",45,1,4),"default lingering swiftness is 0:45");
+  assertEquals("poison",VanillaPotions.variant("poison",11,1,4),"lingering poison truncates 45/4 to 0:11");
+  assertEquals("strong_poison",VanillaPotions.variant("poison",5,2,4),"strong lingering poison truncates 432/80 to 0:05");
+  assertEquals("slowness",VanillaPotions.variant("slowness",22,1,4),"lingering slowness truncates 90/4 to 0:22");
+  assertEquals("strong_swiftness",VanillaPotions.variant("swiftness",22,2,4),"strong lingering swiftness truncates 1800/80 to 0:22");
+  assertEquals("swiftness",VanillaPotions.variant("swiftness",22,1,8),"tipped arrow swiftness truncates 180/8 to 0:22");
+  assertEquals("poison",VanillaPotions.variant("poison",5,1,8),"tipped arrow poison truncates 45/8 to 0:05");
   assertEquals("swiftness",VanillaPotions.variant("swiftness",0,1,8));
   assertEquals("harming",VanillaPotions.variant("harming",7,1,1),"instant effects ignore durations");
   assertEquals("swiftness",VanillaPotions.key("speed"));assertEquals("leaping",VanillaPotions.key("jump_boost"));

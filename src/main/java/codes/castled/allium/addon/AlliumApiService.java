@@ -183,61 +183,30 @@ public final class AlliumApiService implements AlliumApi, Listener {
             allium.logger().warning("Could not create addons directory " + dir + ": " + e.getMessage());
             return;
         }
-        List<Path> jars;
-        try (Stream<Path> entries = Files.list(dir)) {
-            jars = entries
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
-                    .sorted(Comparator.comparing(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)))
-                    .toList();
-        } catch (IOException e) {
-            allium.logger().warning("Could not list addons directory " + dir + ": " + e.getMessage());
-            return;
-        }
-        if (jars.isEmpty()) {
-            return;
-        }
-
-        var preflights = new java.util.LinkedHashMap<Path, JarPreflight>();
-        var metadata = new java.util.LinkedHashMap<Path, YamlConfiguration>();
-        for (Path jar : jars) {
-            JarPreflight preflight = preflightJar(jar);
-            preflights.put(jar, preflight);
-            metadata.put(jar, preflight.meta());
+        AddonInventory inventory = AddonInventory.scan(dir, allium.getConfig());
+        for (AddonInventory.RejectedAddon rejected : inventory.rejected()) {
+            String fileName = rejected.jarPath().getFileName().toString();
+            if (rejected.verdict() != null && rejected.verdict().refused() && rejected.name() != null) {
+                verdicts.putIfAbsent(rejected.name(), rejected.verdict());
+                allium.logger().severe("Refusing addon " + rejected.name() + " (" + fileName + "): " + rejected.detail());
+            } else if (rejected.reason() == AddonInventory.RejectionReason.DUPLICATE
+                    || rejected.reason() == AddonInventory.RejectionReason.MISSING_PACK) {
+                allium.logger().severe("Refusing addon " + (rejected.name() != null ? rejected.name() + " " : "")
+                        + "(" + fileName + "): " + rejected.detail());
+            } else {
+                allium.logger().warning("Ignoring " + (rejected.name() != null ? rejected.name() + " (" + fileName + ")" : fileName)
+                        + " in plugins/Allium/addons/: " + rejected.detail() + ".");
+            }
         }
         PluginManager pm = allium.getServer().getPluginManager();
-        for (Path jarPath : orderAddons(metadata)) {
+        for (AddonInventory.ValidatedAddon entry : inventory.accepted()) {
+            Path jarPath = entry.jarPath();
             String fileName = jarPath.getFileName().toString();
-            JarPreflight preflight = preflights.get(jarPath);
-            if (preflight == null || preflight.meta() == null) {
-                allium.logger().warning("Ignoring " + fileName + " in plugins/Allium/addons/: "
-                        + (preflight == null ? "missing a valid plugin.yml." : preflight.error() + "."));
-                continue;
-            }
-            String name = preflight.name();
-            if (name == null) {
-                allium.logger().warning("Ignoring " + fileName + " in plugins/Allium/addons/: plugin.yml has no name.");
-                continue;
-            }
-            if (!AddonCatalog.isEnabledInConfig(allium.getConfig(), name)) {
+            String name = entry.name();
+            if (!entry.enabledInConfig()) {
                 allium.logger().info("Skipping disabled addon " + name + " (" + fileName
-                        + "): addons.enabled." + AddonCatalog.configKey(name)
-                        + " is false in config.yml (run /allium addon enable " + AddonCatalog.configKey(name) + " and restart to enable).");
-                continue;
-            }
-            AddonVerdict preCheck = preflight.verdict();
-            if (preCheck != null && preCheck.refused()) {
-                verdicts.putIfAbsent(name, preCheck);
-                allium.logger().severe("Refusing addon " + name + " (" + fileName + "): " + preCheck.message());
-                continue;
-            }
-            if (preCheck == null || preCheck.status() == AddonVerdict.Status.NOT_AN_ADDON) {
-                allium.logger().warning("Ignoring " + name + " (" + fileName + ") in plugins/Allium/addons/: "
-                        + "missing allium-api declaration in plugin.yml.");
-                continue;
-            }
-            if (!preflight.accepted()) {
-                allium.logger().severe("Refusing addon " + name + " (" + fileName + "): " + preflight.error());
+                        + "): addons.enabled." + entry.key()
+                        + " is false in config.yml (run /allium addon enable " + entry.key() + " and restart to enable).");
                 continue;
             }
             if (pm.getPlugin(name) != null) {

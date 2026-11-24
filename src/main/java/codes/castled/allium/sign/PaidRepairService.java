@@ -2,18 +2,16 @@ package codes.castled.allium.sign;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.essentials.UtilitySupport;
-import codes.castled.allium.core.FaultInjection;
 import codes.castled.allium.economy.EconomyDisplay;
 import codes.castled.allium.economy.EconomyReservations;
-import codes.castled.allium.economy.EconomyResult;
+import codes.castled.allium.economy.EconomyRuntime;
 import codes.castled.allium.economy.Money;
+import codes.castled.allium.economy.PaidActionOutcome;
+import codes.castled.allium.economy.PaidActionResult;
+import codes.castled.allium.economy.PaidActionService;
 import codes.castled.allium.economy.PaidWorkflowSupport;
-import codes.castled.allium.economy.RepairReceipts;
-import codes.castled.allium.mail.PlayerDataFiles;
 import codes.castled.allium.mail.PlayerDataReceiptProof;
 import codes.castled.allium.message.Messages;
-import codes.castled.allium.scheduler.BukkitServerThread;
-import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,67 +22,39 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
-import org.bukkit.persistence.PersistentDataType;
-import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 /**
- * Paid repair signs, settled so a crash never loses money and never repairs for free.
- *
- * <ol>
- *   <li><b>Reserve:</b> the price is held (not yet spent) as a {@code REPAIR} reservation. The
- *       player's saved file is proven to hold the current receipt first.</li>
- *   <li><b>Apply and save:</b> on the server thread the planned repairs are rechecked and applied,
- *       the workflow ID is added to the player's repair receipt (their own persistent data), and the
- *       player is saved: the repaired items and the receipt reach disk in the same file write.</li>
- *   <li><b>Capture:</b> once the saved file is proven to list the receipt, the hold is captured.</li>
- * </ol>
- *
- * <p>A hold whose receipt the saved file lacks is released: nothing was repaired. That decision is
- * made from the complete, validated player file, on the player's next join (or at startup for an
- * offline player, in {@code EconomyRecovery}), so a crash at any point settles exactly once.
+ * Paid repair signs built on {@link PaidActionService}'s receipt-backed lifecycle:
+ * plans damaged inventory items, delegates baseline proof, reservation, atomic receipt save,
+ * capture/release settlement, and join recovery to {@link PaidActionService}.
  */
 public final class PaidRepairService implements Listener {
 
     public static final String FAULT_HALT_AFTER_RESERVE = "repair.halt-after-reserve";
     public static final String FAULT_HALT_AFTER_SAVE = "repair.halt-after-save";
 
-    private record Plan(boolean all, Map<Integer, ItemStack> originals, Map<Integer, ItemStack> replacements, List<String> names) {
-    }
+    private record Plan(boolean all, Map<Integer, ItemStack> originals, Map<Integer, ItemStack> replacements, List<String> names) {}
 
     private final PluginStart plugin;
-    private final NamespacedKey receiptKey;
-    private final Executor io;
-    private final Path playerData;
-    /** Players with a paid repair or a recovery in flight: one at a time across regions. */
-    private final Set<UUID> busy = ConcurrentHashMap.newKeySet();
-    private volatile boolean closed;
+    private final PaidActionService actions;
+    private final PaidActionService.ReceiptSpec receiptSpec;
 
     public PaidRepairService(PluginStart plugin) {
         this.plugin = plugin;
-        this.receiptKey = new NamespacedKey(plugin, "repair_receipts");
-        this.io = plugin.getScheduler().boundedPool("Allium-PaidRepair", 1, 128);
-        this.playerData = PlayerDataFiles.directory(plugin.getServer());
-        if (!receiptKey.toString().equals(PlayerDataReceiptProof.REPAIR_RECEIPTS)) {
-            throw new IllegalStateException("repair receipt key " + receiptKey + " does not match the proof key");
-        }
+        this.actions = new PaidActionService(plugin, plugin.getScheduler().boundedPool("Allium-PaidRepair", 1, 128));
+        this.receiptSpec = new PaidActionService.ReceiptSpec(
+                PlayerDataReceiptProof.REPAIR_RECEIPTS,
+                new NamespacedKey(plugin, "repair_receipts"),
+                FAULT_HALT_AFTER_RESERVE,
+                FAULT_HALT_AFTER_SAVE
+        );
     }
 
     public void enable() {
@@ -95,12 +65,12 @@ public final class PaidRepairService implements Listener {
     }
 
     public void close() {
-        closed = true;
+        actions.close();
         HandlerList.unregisterAll(this);
     }
 
     public boolean busy(Player player) {
-        return busy.contains(player.getUniqueId());
+        return actions.busy(player);
     }
 
     // -- Starting a paid repair --------------------------------------------------------------------
@@ -117,7 +87,7 @@ public final class PaidRepairService implements Listener {
             plugin.getMessageManager().send(player, Messages.NO_PERMISSION, "{cmd}", all ? "repair all" : "repair");
             return;
         }
-        if (closed || !PaidWorkflowSupport.ready(plugin)) {
+        if (actions.isClosed() || !PaidWorkflowSupport.ready(plugin)) {
             plugin.getMessageManager().send(player, Messages.SIGN_PAID_REPAIR_DISABLED);
             return;
         }
@@ -130,156 +100,72 @@ public final class PaidRepairService implements Listener {
             plugin.getMessageManager().send(player, all ? Messages.UTILITY_REPAIR_NONE : Messages.REPAIR_HOLD_DAMAGED);
             return;
         }
-        UUID account = player.getUniqueId();
+
         UUID workflow = UUID.randomUUID();
         String display = EconomyDisplay.read(plugin.getConfig()).format(price);
-        // The saved file must match the live receipt before a hold exists: a crash after the hold
-        // then decides from a file that provably holds this state.
-        try {
-            player.saveData();
-        } catch (RuntimeException error) {
-            plugin.getMessageManager().send(player, Messages.SIGN_PAID_REPAIR_DISABLED);
-            return;
-        }
-        String baseline = receipt(player);
-        Path file = file(account);
-        if (!busy.add(account)) {
-            plugin.getMessageManager().send(player, Messages.UTILITY_INVENTORY_BUSY, "{player}", player.getName());
-            return;
-        }
-        Runnable forget = () -> busy.remove(account);
-        if (!submit(player, () -> {
-            try {
-                PaidWorkflowSupport.prove(file, PlayerDataReceiptProof.REPAIR_RECEIPTS, baseline);
-                EconomyResult.Mutation reserved = PaidWorkflowSupport.reservations(plugin).reserve(
-                        EconomyReservations.Kind.REPAIR, workflow, account, price,
-                        EconomyReservations.fingerprint("REPAIR", workflow.toString(), account.toString(),
-                                Long.toString(price.minor()), mode), c -> true);
-                if (reserved instanceof EconomyResult.Rejected refused) {
-                    onPlayer(player, () -> {
-                        busy.remove(account);
-                        if (refused.reason().equals("INSUFFICIENT_FUNDS") || refused.reason().equals("MISSING_ACCOUNT")) {
-                            plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_FUNDS, "{price}", display);
-                        } else {
-                            codes.castled.allium.economy.EconomyRuntime.sendRefusal(plugin, player, refused.reason());
-                        }
-                    }, forget);
-                    return;
-                }
-                PaidWorkflowSupport.committed(reserved);
-            } catch (PaidWorkflowSupport.UnknownCommit unknown) {
-                // If the hold committed, the next join releases it: no receipt was ever saved.
-                onPlayer(player, () -> {
-                    busy.remove(account);
-                    plugin.getMessageManager().send(player, Messages.ECO_UNKNOWN, "{operation}", unknown.operationId().toString());
-                }, forget);
-                return;
-            } catch (SQLException error) {
-                plugin.logger().warning("Paid repair for " + player.getName() + " was not started: " + error.getMessage());
-                onPlayer(player, () -> {
-                    busy.remove(account);
-                    plugin.getMessageManager().send(player, Messages.ECO_STORAGE);
-                }, forget);
-                return;
-            }
-            if (FaultInjection.trip(FAULT_HALT_AFTER_RESERVE)) {
-                plugin.logger().warning("Fault " + FAULT_HALT_AFTER_RESERVE + ": halting with repair " + workflow + " held (simulated crash).");
-                Runtime.getRuntime().halt(77);
-            }
-            onPlayer(player, () -> apply(player, workflow, plan, price, display, baseline, valid), forget);
-        })) {
-            busy.remove(account);
-            plugin.getMessageManager().send(player, Messages.ECO_BUSY);
-        }
+        String fingerprint = EconomyReservations.fingerprint(
+                "REPAIR", workflow.toString(), player.getUniqueId().toString(),
+                Long.toString(price.minor()), mode);
+
+        actions.executeReceiptBacked(new PaidActionService.ReceiptRequest(
+                EconomyReservations.Kind.REPAIR,
+                workflow,
+                player,
+                price,
+                fingerprint,
+                "Paid repair",
+                receiptSpec,
+                valid,
+                stillValid -> {
+                    if (!stillValid.getAsBoolean() || !stillPlanned(player, plan) || !emptyCursor(player)) {
+                        return PaidActionOutcome.refused("changed");
+                    }
+                    var inventory = player.getInventory();
+                    plan.replacements().forEach(inventory::setItem);
+                    return PaidActionOutcome.delivered();
+                },
+                result -> handleResult(player, plan, price, display, result)
+        ));
     }
 
-    /** Owning player thread: the hold exists. Repair, record the receipt and save them together. */
-    private void apply(Player player, UUID workflow, Plan plan, Money price, String display, @Nullable String baseline, BooleanSupplier valid) {
-        UUID account = player.getUniqueId();
-        if (closed || plugin.getServer().getPlayer(account) != player || !player.isOnline()) {
-            // The player left: the saved file has no receipt, so their next join releases the hold.
-            busy.remove(account);
-            return;
-        }
-        if (!valid.getAsBoolean() || !stillPlanned(player, plan) || !emptyCursor(player)) {
-            releaseNow(player, workflow, baseline, () -> plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_CHANGED,
-                    "{price}", display));
-            return;
-        }
-        var inventory = player.getInventory();
-        plan.replacements().forEach(inventory::setItem);
-        Set<UUID> receipts = RepairReceipts.parse(receipt(player));
-        receipts.add(workflow);
-        setReceipt(player, receipts);
-        try {
-            player.saveData();
-        } catch (RuntimeException error) {
-            // Live state holds the repair and the receipt; the next save and join settle it.
-            plugin.logger().warning("Could not save " + player.getName() + " after paid repair " + workflow + ": " + error.getMessage());
-            busy.remove(account);
-            plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_PENDING, "{operation}", workflow.toString());
-            return;
-        }
-        String expected = receipt(player);
-        if (FaultInjection.trip(FAULT_HALT_AFTER_SAVE)) {
-            plugin.logger().warning("Fault " + FAULT_HALT_AFTER_SAVE + ": halting with repair " + workflow + " saved but not captured.");
-            Runtime.getRuntime().halt(77);
-        }
-        Path file = file(account);
-        if (!submit(player, () -> {
-            boolean captured;
-            try {
-                PaidWorkflowSupport.prove(file, PlayerDataReceiptProof.REPAIR_RECEIPTS, expected);
-                captured = PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin)
-                        .capture(EconomyReservations.Kind.REPAIR, workflow, c -> true));
-            } catch (SQLException error) {
-                plugin.logger().warning("Paid repair " + workflow + " for " + player.getName()
-                        + " is saved; its capture waits for the next join: " + error.getMessage());
-                captured = false;
-            }
-            boolean done = captured;
-            onPlayer(player, () -> {
-                busy.remove(account);
-                if (!done) {
-                    plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_PENDING, "{operation}", workflow.toString());
-                    return;
+    private void handleResult(Player player, Plan plan, Money price, String display, PaidActionResult result) {
+        switch (result.status()) {
+            case UNAVAILABLE -> plugin.getMessageManager().send(player, Messages.SIGN_PAID_REPAIR_DISABLED);
+            case BUSY -> {
+                if ("worker queue full".equals(result.detail())) {
+                    plugin.getMessageManager().send(player, Messages.ECO_BUSY);
+                } else {
+                    plugin.getMessageManager().send(player, Messages.UTILITY_INVENTORY_BUSY, "{player}", player.getName());
                 }
-                if (plugin.getServer().getPlayer(account) == player) {
-                    Set<UUID> left = RepairReceipts.parse(receipt(player));
-                    left.remove(workflow);
-                    setReceipt(player, left);
-                }
-                plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_PAID, "{items}", String.join(", ", plan.names()),
-                        "{price}", display);
-                UtilitySupport.audit(plugin, player, "paid_repair", "workflow=" + workflow + " items=" + plan.names().size()
-                        + " price=" + price.minor());
-            }, () -> busy.remove(account));
-        })) {
-            busy.remove(account);
-            plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_PENDING, "{operation}", workflow.toString());
-        }
-    }
-
-    /** Releases {@code workflow}'s hold once the saved file proves its receipt absent. */
-    private void releaseNow(Player player, UUID workflow, @Nullable String baseline, Runnable then) {
-        UUID account = player.getUniqueId();
-        Path file = file(account);
-        if (!submit(player, () -> {
-            try {
-                PaidWorkflowSupport.prove(file, PlayerDataReceiptProof.REPAIR_RECEIPTS, baseline);
-                PaidWorkflowSupport.committed(PaidWorkflowSupport.reservations(plugin)
-                        .release(EconomyReservations.Kind.REPAIR, workflow, c -> true));
-                onPlayer(player, () -> {
-                    busy.remove(account);
-                    then.run();
-                }, () -> busy.remove(account));
-            } catch (SQLException error) {
-                plugin.logger().warning("Paid repair hold " + workflow + " stays held until " + player.getName()
-                        + "'s next join: " + error.getMessage());
-                onPlayer(player, () -> busy.remove(account), () -> busy.remove(account));
             }
-        })) {
-            busy.remove(account);
+            case INSUFFICIENT_FUNDS ->
+                    plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_FUNDS, "{price}", display);
+            case RESERVATION_REFUSED -> EconomyRuntime.sendRefusal(plugin, player, result.detail());
+            case UNKNOWN_RESERVE -> {
+                if (result.unknownOperationId() != null) {
+                    plugin.getMessageManager().send(player, Messages.ECO_UNKNOWN,
+                            "{operation}", result.unknownOperationId().toString());
+                }
+            }
+            case STORAGE_ERROR -> plugin.getMessageManager().send(player, Messages.ECO_STORAGE);
+            case RELEASED -> {
+                if (result.deliveryOutcome() instanceof PaidActionOutcome.Refused) {
+                    plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_CHANGED, "{price}", display);
+                }
+            }
+            case RELEASE_DEFERRED -> {
+                // Hold remains for next-join receipt recovery.
+            }
+            case CAPTURE_DEFERRED ->
+                    plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_PENDING,
+                            "{operation}", result.workflowId().toString());
+            case CAPTURED -> {
+                plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_PAID,
+                        "{items}", String.join(", ", plan.names()), "{price}", display);
+                UtilitySupport.audit(plugin, player, "paid_repair",
+                        "workflow=" + result.workflowId() + " items=" + plan.names().size()
+                                + " price=" + price.minor());
+            }
         }
     }
 
@@ -292,75 +178,20 @@ public final class PaidRepairService implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
-        busy.remove(event.getPlayer().getUniqueId());
+        actions.clearBusy(event.getPlayer().getUniqueId());
     }
 
-    /**
-     * Settles {@code player}'s HELD repair holds from their saved file: captured when it lists the
-     * receipt, released when the complete file proves it absent. Receipts of settled holds are
-     * then dropped from the live data.
-     */
     private void recover(Player player) {
-        if (!PaidWorkflowSupport.ready(plugin)) {
-            return;
-        }
-        UUID account = player.getUniqueId();
-        busy.add(account);
-        Path file = file(account);
-        if (!submit(player, () -> {
-            int captured = 0;
-            int released = 0;
-            Set<UUID> settled = new HashSet<>();
-            try {
-                EconomyReservations holds = PaidWorkflowSupport.reservations(plugin);
-                List<EconomyReservations.Reservation> rows = holds.list(account).stream()
-                        .filter(r -> r.kind() == EconomyReservations.Kind.REPAIR).toList();
-                Set<UUID> saved = rows.stream().anyMatch(r -> r.state().equals("HELD"))
-                        ? RepairReceipts.parse(PlayerDataReceiptProof.read(file, PlayerDataReceiptProof.REPAIR_RECEIPTS))
-                        : Set.of();
-                for (EconomyReservations.Reservation row : rows) {
-                    if (!row.state().equals("HELD")) {
-                        settled.add(row.id());
-                        continue;
-                    }
-                    if (holds.operatorResolved(row.kind(), row.id())) {
-                        continue;
-                    }
-                    boolean charge = saved.contains(row.id());
-                    EconomyResult.Mutation result = charge
-                            ? holds.capture(row.kind(), row.id(), c -> true)
-                            : holds.release(row.kind(), row.id(), c -> true);
-                    if (PaidWorkflowSupport.committed(result)) {
-                        settled.add(row.id());
-                        if (charge) captured++;
-                        else released++;
-                    }
-                }
-            } catch (SQLException | IOException | RuntimeException error) {
-                plugin.logger().warning("Paid repair recovery for " + player.getName() + " is retried on their next join: "
-                        + error.getMessage());
+        actions.recoverReceipts(player, EconomyReservations.Kind.REPAIR, receiptSpec, "Paid repair", summary -> {
+            int total = summary.captured() + summary.released();
+            if (total > 0) {
+                plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_RECOVERED,
+                        "{captured}", Integer.toString(summary.captured()),
+                        "{released}", Integer.toString(summary.released()));
+                plugin.logger().info("Settled " + total + " interrupted paid repair(s) for " + player.getName()
+                        + ": " + summary.captured() + " captured, " + summary.released() + " released.");
             }
-            int charged = captured;
-            int refunded = released;
-            onPlayer(player, () -> {
-                busy.remove(account);
-                if (plugin.getServer().getPlayer(account) != player) {
-                    return;
-                }
-                Set<UUID> live = RepairReceipts.parse(receipt(player));
-                if (live.removeAll(settled)) {
-                    setReceipt(player, live);
-                }
-                if (charged + refunded > 0) {
-                    plugin.getMessageManager().send(player, Messages.SIGN_REPAIR_RECOVERED,
-                            "{captured}", Integer.toString(charged), "{released}", Integer.toString(refunded));
-                    plugin.logger().info("Settled " + (charged + refunded) + " interrupted paid repair(s) for " + player.getName()
-                            + ": " + charged + " captured, " + refunded + " released.");
-                }
-            }, () -> busy.remove(account));
-        })) {
-            busy.remove(account);
-        }
+        });
     }
 
     // -- Helpers -----------------------------------------------------------------------------------
@@ -383,7 +214,7 @@ public final class PaidRepairService implements Listener {
             if (!replacement.setItemMeta(damage)) continue;
             originals.put(slot, item.clone());
             replacements.put(slot, replacement);
-            names.add(codes.castled.allium.command.essentials.UtilitySupport.itemName(item));
+            names.add(UtilitySupport.itemName(item));
         }
         return new Plan(all, originals, replacements, names);
     }
@@ -402,49 +233,5 @@ public final class PaidRepairService implements Listener {
     private static boolean emptyCursor(Player player) {
         ItemStack cursor = player.getItemOnCursor();
         return cursor == null || cursor.getType().isAir();
-    }
-
-    @Nullable
-    private String receipt(Player player) {
-        return player.getPersistentDataContainer().get(receiptKey, PersistentDataType.STRING);
-    }
-
-    private void setReceipt(Player player, Set<UUID> ids) {
-        String value = RepairReceipts.format(new LinkedHashSet<>(ids));
-        if (value == null) {
-            player.getPersistentDataContainer().remove(receiptKey);
-        } else {
-            player.getPersistentDataContainer().set(receiptKey, PersistentDataType.STRING, value);
-        }
-    }
-
-    private Path file(UUID account) {
-        return playerData.resolve(account + ".dat");
-    }
-
-    private boolean submit(Player player, Runnable task) {
-        try {
-            io.execute(task);
-            return true;
-        } catch (RejectedExecutionException full) {
-            plugin.logger().warning("Paid repair queue is full; " + player.getName() + "'s request was not started.");
-            return false;
-        }
-    }
-
-    private void onPlayer(Player player, Runnable action, Runnable retired) {
-        var started = new AtomicBoolean();
-        Runnable unavailable = () -> {
-            if (started.compareAndSet(false, true)) retired.run();
-        };
-        try {
-            TaskHandle handle = BukkitServerThread.runFor(plugin, plugin.getScheduler(), player, () -> {
-                if (started.compareAndSet(false, true) && !closed) action.run();
-            }, unavailable, 0L);
-            if (BukkitServerThread.isFolia() && handle == TaskHandle.NONE) unavailable.run();
-        } catch (RuntimeException failure) {
-            plugin.logger().warning("Paid repair could not schedule player work for " + player.getName() + ": " + failure.getMessage());
-            unavailable.run();
-        }
     }
 }

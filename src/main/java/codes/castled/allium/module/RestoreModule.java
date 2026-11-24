@@ -58,4 +58,14 @@ public final class RestoreModule extends AbstractModule {
     public RestoreService restore() {
         return restore;
     }
+
+    @Override
+    public int reloadOrder() {
+        return 110;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(this::reloadSettings);
+    }
 }

@@ -234,4 +234,14 @@ public final class ItemsModule extends AbstractModule {
         library = null;
         delivery = null;
     }
+
+    @Override
+    public int reloadOrder() {
+        return 30;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(this::reloadDatabase);
+    }
 }

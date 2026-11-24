@@ -23,4 +23,8 @@ public final class TeleportModule extends AbstractModule {
     }
     @Override public void onDisable(){if(companions!=null)companions.close();if(service!=null)service.disable();}
     public TeleportService teleports(){return service;}
+    @Override public int reloadOrder(){return 50;}
+    @Override public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) throws Exception {
+        return service == null ? null : service.prepareReload(candidateRoot);
+    }
 }

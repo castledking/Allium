@@ -77,12 +77,12 @@ public final class AddonPacks {
 
     /** Scans {@code <dataFolder>/addons/*.jar} in sorted order for {@code allium-pack} contributions. */
     public static List<Discovered> discover(Path dataFolder, PackExport.Logs logs) {
-        return discover(dataFolder, null, logs);
+        return discover(dataFolder, (org.bukkit.configuration.file.FileConfiguration) null, logs);
     }
 
     /**
-     * Scans {@code <dataFolder>/addons/*.jar} in sorted order for {@code allium-pack} contributions,
-     * skipping addons disabled under {@code addons.enabled.*} in {@code config}.
+     * Scans {@code <dataFolder>/addons/*.jar} via the shared validated {@link codes.castled.allium.addon.AddonInventory}
+     * for {@code allium-pack} contributions, skipping disabled, invalid, incompatible, shaded, or duplicate jars.
      */
     public static List<Discovered> discover(Path dataFolder,
                                             @Nullable org.bukkit.configuration.file.FileConfiguration config,
@@ -94,30 +94,36 @@ public final class AddonPacks {
         if (!Files.isDirectory(addonsDir)) {
             return List.of();
         }
-        List<Path> jars;
-        try (Stream<Path> entries = Files.list(addonsDir)) {
-            jars = entries
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
-                    .sorted(Comparator.comparing(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)))
-                    .toList();
-        } catch (IOException e) {
-            logs.warning().accept("Could not scan " + addonsDir + " for addon resource packs: " + e.getMessage());
+        codes.castled.allium.addon.AddonInventory inventory =
+                codes.castled.allium.addon.AddonInventory.scan(addonsDir, config);
+        return discover(dataFolder, inventory, logs);
+    }
+
+    /**
+     * Extracts {@code allium-pack} contributions from an already validated {@link codes.castled.allium.addon.AddonInventory}.
+     */
+    public static List<Discovered> discover(Path dataFolder,
+                                            codes.castled.allium.addon.AddonInventory inventory,
+                                            PackExport.Logs logs) {
+        if (dataFolder == null || inventory == null) {
             return List.of();
+        }
+        Path addonsDir = dataFolder.resolve("addons");
+        for (var rejected : inventory.rejected()) {
+            logs.warning().accept("Skipping pack discovery for " + rejected.jarPath().getFileName()
+                    + (rejected.name() != null ? " (" + rejected.name() + ")" : "")
+                    + ": " + rejected.detail() + ".");
         }
 
         List<Discovered> found = new ArrayList<>();
-        for (Path jarPath : jars) {
+        for (var addon : inventory.enabled()) {
+            String packResource = addon.packResource();
+            if (packResource == null) {
+                continue;
+            }
+            Path jarPath = addon.jarPath();
+            String name = addon.name();
             try (JarFile jar = new JarFile(jarPath.toFile())) {
-                YamlConfiguration pluginYml = readYamlEntry(jar, "plugin.yml");
-                if (pluginYml == null) continue;
-                String name = trimToNull(pluginYml.getString("name"));
-                String packResource = trimToNull(pluginYml.getString("allium-pack"));
-                if (name == null || packResource == null) continue;
-                if (config != null && !codes.castled.allium.addon.AddonCatalog.isEnabledInConfig(config, name)) {
-                    continue;
-                }
-
                 Mode mode = readDeliveryMode(dataFolder.toAbsolutePath().getParent(), addonsDir, jar, name, logs);
                 if (mode == Mode.NONE) {
                     logs.info().accept("Addon " + name + " resource pack delivery is set to none; skipping.");

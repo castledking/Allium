@@ -63,12 +63,12 @@ final class VanillaPotions {
         int lvl = Math.max(1, level);
         boolean instant = potion.normal() < 0;
         if (lvl == 1) {
-            if (instant || seconds <= 0 || seconds * factor == potion.normal()) return key;
-            if (potion.extended() > 0 && seconds * factor == potion.extended()) return "long_" + key;
+            if (instant || seconds <= 0 || seconds == potion.normal() / factor) return key;
+            if (potion.extended() > 0 && seconds == potion.extended() / factor) return "long_" + key;
             return null;
         }
         if (lvl != potion.strongLevel()) return null;
-        if (instant || seconds <= 0 || seconds * factor * 20 == potion.strongTicks()) return "strong_" + key;
+        if (instant || seconds <= 0 || seconds == potion.strongTicks() / (factor * 20)) return "strong_" + key;
         return null;
     }
 }

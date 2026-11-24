@@ -9,4 +9,8 @@ public final class HideModule extends AbstractModule {
     public HideService hide(){return service;}
     public void onEnable(){service=new HideService(plugin);service.enable();}
     public void onDisable(){if(service!=null)service.close();}
+    @Override public int reloadOrder(){return 90;}
+    @Override public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) throws Exception {
+        return service == null ? null : service.prepareReload();
+    }
 }

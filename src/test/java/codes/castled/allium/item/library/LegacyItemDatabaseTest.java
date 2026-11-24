@@ -20,6 +20,10 @@ class LegacyItemDatabaseTest {
   assertEquals("NOTE_BLOCK",db.lookup("nblock"),"Essentials' meaning");assertEquals("TRIAL_SPAWNER",db.lookup("trialspawner"));
   assertEquals("POTION;LINGERING;180",db.lookup("lingeringpotion"),"kept: a lingering water potion");
   assertEquals("POTION potion:long_swiftness",db.lookup("potionofswiftnesslong"));
+  assertEquals("LINGERING_POTION potion:swiftness",db.lookup("swiftness_lingering_potion"));
+  assertEquals("TIPPED_ARROW potion:swiftness",db.lookup("swiftness_tipped_arrow"));
+  assertEquals("POTION potion:strength",db.lookup("373:8201"));
+  assertEquals("POTION potion:night_vision",db.lookup("373:38"));
   assertTrue(db.complete("potionofswiftn",List.of()).contains("potionofswiftnesslong"),"potion aliases complete");}
  @Test void renamedItemsResolveUnderEitherName(){
   // The test API is Spigot 1.20(.0): GRASS, SCUTE and CHAIN exist there; SHORT_GRASS, TURTLE_SCUTE and IRON_CHAIN do not.

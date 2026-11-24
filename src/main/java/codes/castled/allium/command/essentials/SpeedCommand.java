@@ -23,6 +23,13 @@ public final class SpeedCommand implements SpecCommandHandler {
     }
 
     @Override
+    public AliasTransform transformExecutionArgs(String label, String[] args) {
+        String fixedSpeed = CoreCommandSpecs.speedAlias(label);
+        return fixedSpeed == null ? new AliasTransform.Pass(args)
+                : new AliasTransform.Pass(SpecCommandHandler.prepend(fixedSpeed, args));
+    }
+
+    @Override
     public void execute(BukkitCommandContext context) {
         var parsedOpt = SpeedSpecParser.parse(context.args());
         if (parsedOpt.isEmpty()) {

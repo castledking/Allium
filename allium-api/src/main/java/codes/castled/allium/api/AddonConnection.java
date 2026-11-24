@@ -13,6 +13,8 @@ import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BooleanSupplier;
 
@@ -68,6 +70,15 @@ public interface AddonConnection {
     /** Allium's economy, for charging and paying players; unavailable when its economy module is off. */
     default AddonEconomy economy() {
         return AddonEconomy.UNAVAILABLE;
+    }
+
+    /**
+     * Candidate legacy Allium configuration files in precedence order (newest first: kept
+     * {@code config.legacy.yml}, archived {@code import/backups/tidy-*\/config.legacy.yml}, then
+     * {@code config.yml}) so addons migrate settings without reimplementing archive discovery.
+     */
+    default List<Path> legacyConfigSources() {
+        return List.of();
     }
 
     /** Whether the host server is Folia (regionized multithreading). */

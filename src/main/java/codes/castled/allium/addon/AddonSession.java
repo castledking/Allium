@@ -57,13 +57,14 @@ final class AddonSession implements AddonConnection {
     private final Plugin addon;
     private final String namespace;
     private final AlliumScheduler scheduler;
-    private final CommandFamilyPolicy commandPolicy = new CommandFamilyPolicy();
     private final List<String> definedItems = new ArrayList<>();
-    private final List<PluginCommand> commands = new ArrayList<>();
+    private final List<RegisteredAddonCommand> commands = new ArrayList<>();
     private final List<org.bukkit.NamespacedKey> recipes = new ArrayList<>();
     private final List<Runnable> powerToolCleanup = new ArrayList<>();
     private volatile boolean closed;
     private final codes.castled.allium.api.AddonEconomy economy;
+
+    private record RegisteredAddonCommand(CommandSpec spec, PluginCommand command) {}
 
     AddonSession(PluginStart allium, Plugin addon) {
         this.allium = allium;
@@ -101,6 +102,12 @@ final class AddonSession implements AddonConnection {
     @Override
     public codes.castled.allium.api.AddonEconomy economy() {
         return economy;
+    }
+
+    @Override
+    public java.util.List<java.nio.file.Path> legacyConfigSources() {
+        requireOpen();
+        return codes.castled.allium.importer.ImportLifecycle.legacyConfigSources(allium.getDataFolder().toPath());
     }
 
     @Override
@@ -374,8 +381,7 @@ final class AddonSession implements AddonConnection {
                 throw new IllegalArgumentException("declare /" + spec.canonicalName() + " under commands: in " + addon.getName()
                         + "'s plugin.yml; Allium runs it, but Bukkit registers it");
             }
-            commandPolicy.registerSpec(spec);
-            BukkitCommandRenderer renderer = new BukkitCommandRenderer(allium, commandPolicy, new SpecCommandHandler() {
+            SpecCommandHandler specHandler = new SpecCommandHandler() {
                 @Override
                 public CommandSpec spec() {
                     return spec;
@@ -383,6 +389,7 @@ final class AddonSession implements AddonConnection {
 
                 @Override
                 public void execute(BukkitCommandContext context) {
+                    if (closed) return;
                     handler.execute(new Context() {
                         @Override public CommandSender sender() { return context.sender(); }
                         @Override public String label() { return context.label(); }
@@ -390,29 +397,31 @@ final class AddonSession implements AddonConnection {
                         @Override public CommandSpec spec() { return spec; }
                     });
                 }
-            });
-            command.setExecutor(renderer);
-            if (completer == null) {
-                command.setTabCompleter(renderer);
-            } else {
-                command.setTabCompleter((sender, cmd, alias, args) -> {
-                    if (closed || commandPolicy.isDisabled(spec.canonicalName()) || commandPolicy.isDisabled(alias)) {
-                        return List.of();
-                    }
-                    String basePerm = spec.basePermission();
-                    if (basePerm != null && !basePerm.isEmpty() && !sender.hasPermission(basePerm)) {
-                        return List.of();
-                    }
+
+                @Override
+                public java.util.Optional<List<String>> customCompletions(CommandSender sender, String alias, String[] args) {
+                    if (closed) return java.util.Optional.of(List.of());
+                    if (completer == null) return java.util.Optional.empty();
                     List<String> out = completer.complete(new Context() {
                         @Override public CommandSender sender() { return sender; }
                         @Override public String label() { return alias; }
                         @Override public String[] args() { return args; }
                         @Override public CommandSpec spec() { return spec; }
                     });
-                    return out == null ? List.of() : out;
-                });
+                    return java.util.Optional.of(out == null ? List.of() : out);
+                }
+            };
+            var commandManager = allium.getCommandManager();
+            if (commandManager != null) {
+                commandManager.registerAddonCommand(addon, command, specHandler);
+            } else {
+                var localPolicy = new CommandFamilyPolicy();
+                localPolicy.registerSpec(spec);
+                BukkitCommandRenderer renderer = new BukkitCommandRenderer(allium, localPolicy, specHandler);
+                command.setExecutor(renderer);
+                command.setTabCompleter(renderer);
             }
-            commands.add(command);
+            commands.add(new RegisteredAddonCommand(spec, command));
             allium.logger().info(addon.getName() + " registered /" + spec.canonicalName() + " through Allium's command spec.");
         }
     };
@@ -461,9 +470,14 @@ final class AddonSession implements AddonConnection {
         }
         recipes.clear();
         definedItems.forEach(allium.getItemService()::unregisterAlliumItem);
-        for (PluginCommand command : commands) {
-            command.setExecutor(null);
-            command.setTabCompleter(null);
+        var commandManager = allium.getCommandManager();
+        for (RegisteredAddonCommand registered : commands) {
+            if (commandManager != null) {
+                commandManager.unregisterAddonCommand(registered.spec(), registered.command());
+            } else {
+                registered.command().setExecutor(null);
+                registered.command().setTabCompleter(null);
+            }
         }
         allium.logger().info("Released " + addon.getName() + "'s Allium connection (" + definedItems.size() + " item(s), "
                 + commands.size() + " command(s)).");

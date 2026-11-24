@@ -25,4 +25,8 @@ public final class ChatModule extends AbstractModule {
         for(var spec:CoreCommandSpecs.CHAT_SPECS)plugin.getCommandManager().register(new SpecCommandHandler(){public CommandSpec spec(){return spec;}public void execute(BukkitCommandContext context){service.dispatch(context);}});
     }
     @Override public void onDisable(){if(service!=null)service.close();}
+    @Override public int reloadOrder(){return 85;}
+    @Override public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) throws Exception {
+        return service == null ? null : service.prepareReload(candidateRoot);
+    }
 }

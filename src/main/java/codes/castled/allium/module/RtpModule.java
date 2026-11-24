@@ -58,6 +58,17 @@ public final class RtpModule extends AbstractModule {
         return rtp;
     }
 
+    @Override
+    public int reloadOrder() {
+        return 120;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot)
+            throws java.io.IOException, org.bukkit.configuration.InvalidConfigurationException {
+        return prepareReload();
+    }
+
     /** Prepares and validates {@code rtp.yml} without mutating live settings. */
     public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload()
             throws java.io.IOException, org.bukkit.configuration.InvalidConfigurationException {

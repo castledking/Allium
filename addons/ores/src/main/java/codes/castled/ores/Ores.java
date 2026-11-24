@@ -98,7 +98,11 @@ public final class Ores extends AlliumAddon {
     private void importLegacySettings(File config) {
         var allium = getServer().getPluginManager().getPlugin("Allium");
         if (allium == null) return;
-        for (File source : legacySources(allium.getDataFolder())) {
+        List<File> candidates = core != null
+                ? core.legacyConfigSources().stream().map(java.nio.file.Path::toFile).toList()
+                : List.of();
+        if (candidates.isEmpty()) candidates = legacySources(allium.getDataFolder());
+        for (File source : candidates) {
             String name = allium.getDataFolder().toPath().relativize(source.toPath()).toString();
             try {
                 var legacy = new YamlConfiguration();

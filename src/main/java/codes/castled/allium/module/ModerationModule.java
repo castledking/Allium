@@ -177,4 +177,20 @@ public final class ModerationModule extends AbstractModule {
     public ModerationRepository repository() {
         return repository;
     }
+
+    @Override
+    public int reloadOrder() {
+        return 70;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        if (moderation == null) return null;
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {
+            moderation.reloadSettings();
+            if (discipline != null) discipline.reloadSettings();
+            if (inspection != null) inspection.reloadSettings();
+            reloadFeeds();
+        });
+    }
 }

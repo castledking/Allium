@@ -84,6 +84,16 @@ public final class KitsModule extends AbstractModule {
         return kits;
     }
 
+    @Override
+    public int reloadOrder() {
+        return 65;
+    }
+
+    @Override
+    public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
+        return kits == null ? null : codes.castled.allium.config.ReloadCoordinator.Prepared.of(kits::reloadDefinitions);
+    }
+
     private String serverId() {
         try {
             return ServerIdentity.load(plugin.getDataFolder().toPath());

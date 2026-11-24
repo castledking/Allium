@@ -91,6 +91,11 @@ public final class PackDelivery implements Listener {
 
     private record PackOffer(ResourcePackSettings settings, String url, String sha1, byte[] hash) {}
 
+    public PackDelivery(PluginStart plugin, PackGeneration generation) {
+        this(plugin, Objects.requireNonNull(generation, "generation").settings(),
+                Objects.requireNonNull(generation.coreArtifact(), "generation.coreArtifact"));
+    }
+
     public PackDelivery(PluginStart plugin, ResourcePackSettings settings, PackSource pack) {
         this(plugin, settings, pack, PackDelivery::download, null);
     }
@@ -175,6 +180,19 @@ public final class PackDelivery implements Listener {
             plugin.logger().warning("Not sending Allium's resource pack: " + hostedDetail + ".");
             reply.accept("Not sending the resource pack: " + hostedDetail + ".");
         }
+    }
+
+    /** {@code /allium reload}: applies a freshly assembled immutable {@link PackGeneration}. */
+    public void reload(PackGeneration nextGeneration, java.util.function.Consumer<String> reply) {
+        Objects.requireNonNull(nextGeneration, "nextGeneration");
+        if (nextGeneration.coreArtifact() == null) {
+            stopSelfHost();
+            activeUrl = "";
+            hosted = Hosted.OFF;
+            reply.accept("No core resource pack artifact is available for standalone delivery.");
+            return;
+        }
+        reload(nextGeneration.settings(), nextGeneration.coreArtifact(), reply);
     }
 
     /**

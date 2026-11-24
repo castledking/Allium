@@ -49,6 +49,7 @@ public final class PluginStart extends JavaPlugin {
     private AssetManifest packManifest;
     private AlliumScheduler scheduler;
     private codes.castled.allium.pack.delivery.PackDelivery packDelivery;
+    private volatile codes.castled.allium.pack.delivery.PackGeneration activePackGeneration;
     private ResourcePackSettings.Owner startupPackOwner = ResourcePackSettings.Owner.NONE;
     private codes.castled.allium.addon.AlliumApiService addonApi;
     private codes.castled.allium.addon.AddonManager addonManager;
@@ -160,9 +161,12 @@ public final class PluginStart extends JavaPlugin {
         new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this, scheduler);
         // Addons (depend: [Allium]) are loaded but not yet enabled here, so each is checked before it starts.
         addonManager = new codes.castled.allium.addon.AddonManager(this);
-        addonManager.ensureAutoDownloaded();
+        int downloadedOnEnable = addonManager.ensureAutoDownloaded();
         addonApi = new codes.castled.allium.addon.AlliumApiService(this);
         addonApi.install();
+        if (downloadedOnEnable > 0) {
+            refreshResourcePack(logger::info);
+        }
         logger.info("Item signing keyring loaded: active=" + hmacSigner.activeKeyId()
                 + ", verification keys=" + hmacSigner.keyIds()
                 + ". Loaded inventories are audited for unknown key IDs.");
@@ -199,89 +203,50 @@ public final class PluginStart extends JavaPlugin {
     }
 
     /**
-     * The pack to deliver: {@code resource-pack.pack-file} if it is a valid core-pack build, else
-     * the bundled standalone pack (when {@code owner: standalone} and bundled in the jar), else the
-     * bundled core pack — merged with any {@code resource-pack.delivery: allium} addon packs.
+     * Assembles one immutable {@link codes.castled.allium.pack.delivery.PackGeneration} from the
+     * validated addon inventory, bundled core/standalone pack, and configured command hint.
      */
-    @org.jetbrains.annotations.Nullable
-    private codes.castled.allium.pack.delivery.PackSource packSource(ResourcePackSettings settings,
-                                                                     codes.castled.allium.pack.delivery.PackExport.Logs logs,
-                                                                     java.util.List<codes.castled.allium.pack.delivery.AddonPacks.Discovered> addonPacks) {
-        byte[] core = bundledPackResource(CoreItems.PACK_RESOURCE);
-        if (core == null) {
-            logs.warning().accept("The core resource pack is missing from the plugin jar; nothing was exported or sent.");
-            return null;
-        }
-        codes.castled.allium.pack.delivery.PackSource base;
-        if (settings.packFile() != null && !settings.packFile().isBlank()) {
-            base = codes.castled.allium.pack.delivery.PackSource.choose(getDataFolder().toPath(), settings.packFile(), core, logs.warning());
-        } else if (settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
-            byte[] standalone = bundledPackResource(CoreItems.STANDALONE_PACK_RESOURCE);
-            base = standalone != null
-                    ? codes.castled.allium.pack.delivery.PackSource.bundled(standalone)
-                    : codes.castled.allium.pack.delivery.PackSource.bundled(core);
-        } else {
-            base = codes.castled.allium.pack.delivery.PackSource.bundled(core);
-        }
-        var merged = codes.castled.allium.pack.delivery.AddonPacks.mergeIntoBase(base, addonPacks, logs);
-        try {
-            byte[] withHint = codes.castled.allium.hide.CommandHintPack.merge(merged.bytes(),
-                    codes.castled.allium.hide.CommandHintPack.configured(this));
-            return withHint == merged.bytes() ? merged : new codes.castled.allium.pack.delivery.PackSource(
-                    withHint, codes.castled.allium.pack.delivery.PackExport.sha1(withHint), merged.source(), merged.override());
-        } catch (IOException | org.bukkit.configuration.InvalidConfigurationException | IllegalArgumentException failure) {
-            logs.warning().accept("Could not merge the configured command hint: " + failure.getMessage());
-            return merged;
-        }
-    }
-
-    private record ExportPackOutcome(
-            @org.jetbrains.annotations.Nullable codes.castled.allium.pack.delivery.PackSource source,
-            @org.jetbrains.annotations.Nullable codes.castled.allium.pack.delivery.PackExport.ExportResult coreMixer,
-            codes.castled.allium.pack.delivery.AddonPacks.RspmExportResult addonMixer
-    ) {}
-
-    private ExportPackOutcome exportPack(ResourcePackSettings settings,
-                                         codes.castled.allium.pack.delivery.PackExport.Logs logs) {
+    private codes.castled.allium.pack.delivery.PackGeneration assemblePackGeneration(
+            ResourcePackSettings settings,
+            codes.castled.allium.pack.delivery.PackExport.Logs logs
+    ) {
         Path dataFolder = getDataFolder().toPath();
         Path pluginsFolder = dataFolder.getParent();
-        var addonPacks = codes.castled.allium.pack.delivery.AddonPacks.discover(dataFolder, getConfig(), logs);
-        var addonResult = codes.castled.allium.pack.delivery.AddonPacks.exportRspm(dataFolder, pluginsFolder, settings, addonPacks, logs);
-        if (settings.owner() == ResourcePackSettings.Owner.NONE) {
-            codes.castled.allium.pack.delivery.PackExport.reconcileUnusedCoreMixerExports(dataFolder, settings.dryRun(), logs);
-            cleanupHintPack(settings, logs);
-            var waiting = addonPacks.stream()
-                    .filter(d -> d.mode() == codes.castled.allium.pack.delivery.AddonPacks.Mode.ALLIUM)
-                    .map(codes.castled.allium.pack.delivery.AddonPacks.Discovered::addonName)
-                    .toList();
-            if (!waiting.isEmpty()) {
-                logs.warning().accept("Addon pack(s) " + waiting + " requested resource-pack.delivery: allium, "
-                        + "but Allium's resource-pack.owner is none. Set Allium's owner to standalone/rpm-export or set the addon's delivery to rspm.");
-            }
-            return new ExportPackOutcome(null, null, addonResult);
-        }
-        codes.castled.allium.pack.delivery.PackSource source = packSource(settings, logs, addonPacks);
-        if (source == null) {
-            return new ExportPackOutcome(null, null, addonResult);
-        }
-        if (source.override()) {
-            logs.info().accept("Delivering " + source.source() + " (SHA-1 " + source.sha1() + ") instead of the bundled core pack.");
-        }
-        codes.castled.allium.pack.delivery.PackExport.ExportResult coreMixer = null;
+        byte[] core = bundledPackResource(CoreItems.PACK_RESOURCE);
+        byte[] standalone = settings.owner() == ResourcePackSettings.Owner.STANDALONE
+                ? bundledPackResource(CoreItems.STANDALONE_PACK_RESOURCE)
+                : null;
+        String hint = "";
         try {
-            if (settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
-                codes.castled.allium.pack.delivery.PackExport.exportStandalone(dataFolder, source.bytes(), logs);
-                codes.castled.allium.pack.delivery.PackExport.reconcileUnusedCoreMixerExports(dataFolder, settings.dryRun(), logs);
-            } else {
-                AssetManifest manifest = CoreItems.loadManifest(getClassLoader());
-                coreMixer = codes.castled.allium.pack.delivery.PackExport.exportToMixer(dataFolder, pluginsFolder, settings, source.bytes(),
-                        manifest.tools(), logs);
-            }
-            if (settings.owner() != ResourcePackSettings.Owner.RPM_EXPORT || !settings.dryRun()) cleanupHintPack(settings, logs);
-        } catch (IOException | RuntimeException e) {
-            logs.warning().accept("Could not export the core resource pack for " + settings.owner().configName() + ": " + e);
+            hint = codes.castled.allium.hide.CommandHintPack.configured(this);
+        } catch (IOException | org.bukkit.configuration.InvalidConfigurationException | IllegalArgumentException failure) {
+            logs.warning().accept("Could not read the configured command hint: " + failure.getMessage());
         }
-        return new ExportPackOutcome(source, coreMixer, addonResult);
+        return codes.castled.allium.pack.delivery.PackGeneration.assemble(
+                dataFolder, pluginsFolder, getConfig(), settings, core, standalone, hint, logs);
+    }
+
+    private codes.castled.allium.pack.delivery.PackGeneration.PublishOutcome exportPack(
+            ResourcePackSettings settings,
+            codes.castled.allium.pack.delivery.PackExport.Logs logs
+    ) {
+        Path dataFolder = getDataFolder().toPath();
+        Path pluginsFolder = dataFolder.getParent();
+        var generation = assemblePackGeneration(settings, logs);
+        this.activePackGeneration = generation;
+        java.util.List<AssetManifest.Tool> tools = java.util.List.of();
+        if (settings.owner() == ResourcePackSettings.Owner.RPM_EXPORT) {
+            try {
+                tools = CoreItems.loadManifest(getClassLoader()).tools();
+            } catch (IOException | RuntimeException e) {
+                logs.warning().accept("Could not load core item manifest for mixer audit: " + e.getMessage());
+            }
+        }
+        var outcome = generation.publishExports(dataFolder, pluginsFolder, tools, logs);
+        if (settings.owner() != ResourcePackSettings.Owner.RPM_EXPORT || !settings.dryRun()) {
+            cleanupHintPack(settings, logs);
+        }
+        return outcome;
     }
 
     private void cleanupHintPack(ResourcePackSettings settings, codes.castled.allium.pack.delivery.PackExport.Logs logs) {
@@ -299,7 +264,7 @@ public final class PluginStart extends JavaPlugin {
         }
     }
 
-    /** Logs the bundled core pack and, when Allium owns delivery (standalone), starts sending it. */
+    /** Logs the bundled core pack and, when Allium owns delivery (standalone), starts sending the already-assembled generation. */
     private void reportCorePack() {
         ResourcePackSettings settings = ResourcePackSettings.parse(getConfig().getConfigurationSection("resource-pack"));
         settings.warnings().forEach(logger::warning);
@@ -324,11 +289,14 @@ public final class PluginStart extends JavaPlugin {
             logger.info("Core resource pack " + info.get("sha1") + " (" + info.get("bytes") + " bytes) is bundled; delivery owner " + owner + ".");
             startupPackOwner = settings.owner();
             if (settings.sendsUrl()) {
-                var quietLogs = new codes.castled.allium.pack.delivery.PackExport.Logs(m -> { }, m -> { });
-                var addonPacks = codes.castled.allium.pack.delivery.AddonPacks.discover(getDataFolder().toPath(), getConfig(), quietLogs);
-                codes.castled.allium.pack.delivery.PackSource source = packSource(settings, quietLogs, addonPacks);
-                if (source != null) {
-                    packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, source);
+                codes.castled.allium.pack.delivery.PackGeneration generation = this.activePackGeneration;
+                if (generation == null || generation.settings().owner() != settings.owner()) {
+                    var quietLogs = new codes.castled.allium.pack.delivery.PackExport.Logs(m -> { }, m -> { });
+                    generation = assemblePackGeneration(settings, quietLogs);
+                    this.activePackGeneration = generation;
+                }
+                if (generation.coreArtifact() != null) {
+                    packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, generation);
                     packDelivery.enable();
                 }
             }
@@ -338,19 +306,29 @@ public final class PluginStart extends JavaPlugin {
     }
 
     /**
-     * {@code /allium reload}: prepares and validates every candidate configuration before publishing
-     * any live changes, then returns a truthful report of what was applied, rejected, or requires a
-     * server restart.
-     *
-     * @param reply receives progress and summary lines for the command sender
-     * @return whether the reload succeeded
+     * {@code /allium reload [target]}: prepares and validates candidate configuration(s) before
+     * publishing any live changes, then returns a truthful report of what was applied, rejected,
+     * or requires a server restart.
      */
     public boolean reloadConfiguration(java.util.function.Consumer<String> reply) {
-        return reloadConfigurationReport(reply).success();
+        return reloadConfigurationReport(null, reply).success();
+    }
+
+    public boolean reloadConfiguration(@org.jetbrains.annotations.Nullable String target,
+                                       java.util.function.Consumer<String> reply) {
+        return reloadConfigurationReport(target, reply).success();
     }
 
     /** Two-phase reload returning structured applied, rejected, and restart-required diagnostics. */
     public codes.castled.allium.config.ReloadReport reloadConfigurationReport(java.util.function.Consumer<String> reply) {
+        return reloadConfigurationReport(null, reply);
+    }
+
+    /** Two-phase full or targeted reload delegating candidate preparation & ordering to modules. */
+    public codes.castled.allium.config.ReloadReport reloadConfigurationReport(
+            @org.jetbrains.annotations.Nullable String target,
+            java.util.function.Consumer<String> reply
+    ) {
         var rootSource = new codes.castled.allium.config.ReloadCoordinator.RootConfigSource() {
             @Override
             public org.bukkit.configuration.file.FileConfiguration prepareRoot() throws Exception {
@@ -368,121 +346,27 @@ public final class PluginStart extends JavaPlugin {
 
         java.util.List<codes.castled.allium.config.ReloadCoordinator.Participant> participants = new java.util.ArrayList<>();
         if (autoRestart != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("autorestart",
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("autorestart", 10,
                     autoRestart::prepareReload));
         }
-        if (moduleManager != null && moduleManager.getModule("economy") instanceof codes.castled.allium.module.EconomyModule economy
-                && economy.isEnabled() && economy.runtime() != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("economy",
-                    economy.runtime()::prepareReload));
-        }
         if (languageManager != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("language", candidate -> {
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("language", 25, candidate -> {
                 languageManager.validateLocaleFiles(candidate);
                 return codes.castled.allium.config.ReloadCoordinator.Prepared.of(languageManager::reload);
             }));
         }
-        if (moduleManager != null && moduleManager.getModule("items") instanceof codes.castled.allium.module.ItemsModule items
-                && items.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("items",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(items::reloadDatabase)));
-        }
         if (commandManager != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("commands",
+            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("commands", 40,
                     commandManager::prepareReload));
         }
-        if (moduleManager != null && moduleManager.getModule("preferences") instanceof codes.castled.allium.module.PreferencesModule preferences
-                && preferences.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("preferences",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(
-                            () -> logger.info("Preference defaults reloaded: " + preferences.reloadDefaults()))));
+        if (moduleManager != null) {
+            for (codes.castled.allium.core.AbstractModule module : moduleManager.getModules().values()) {
+                if (!module.isEnabled()) continue;
+                participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of(
+                        module.getName(), module.reloadOrder(), module::prepareReload));
+            }
         }
-        if (moduleManager != null && moduleManager.getModule("teleport") instanceof codes.castled.allium.module.TeleportModule tp
-                && tp.isEnabled() && tp.teleports() != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("teleport",
-                    tp.teleports()::prepareReload));
-        }
-        if (moduleManager != null && moduleManager.getModule("travel") instanceof codes.castled.allium.module.TravelModule travel
-                && travel.isEnabled() && travel.travel() != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("travel",
-                    travel.travel()::prepareReload));
-        }
-        if (moduleManager != null && moduleManager.getModule("kits") instanceof codes.castled.allium.module.KitsModule kits
-                && kits.isEnabled() && kits.kits() != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("kits",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(kits.kits()::reloadDefinitions)));
-        }
-        if (moduleManager != null && moduleManager.getModule("moderation") instanceof codes.castled.allium.module.ModerationModule mod
-                && mod.isEnabled() && mod.moderation() != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("moderation",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {
-                        mod.moderation().reloadSettings();
-                        if (mod.discipline() != null) mod.discipline().reloadSettings();
-                        if (mod.inspection() != null) mod.inspection().reloadSettings();
-                        mod.reloadFeeds();
-                    })));
-        }
-        if (moduleManager != null && moduleManager.getModule("info") instanceof codes.castled.allium.module.PlayerInfoModule info
-                && info.isEnabled() && info.info() != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("info",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(info.info()::reloadSettings)));
-        }
-        if (moduleManager != null && moduleManager.getModule("signs") instanceof codes.castled.allium.module.SignsModule signs
-                && signs.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("signs",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(signs::reloadSettings)));
-        }
-        if (moduleManager != null && moduleManager.getModule("chat") instanceof codes.castled.allium.module.ChatModule chat
-                && chat.isEnabled() && chat.chat() != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("chat",
-                    chat.chat()::prepareReload));
-        }
-        if (moduleManager != null && moduleManager.getModule("hide") instanceof codes.castled.allium.module.HideModule hide
-                && hide.isEnabled() && hide.hide() != null) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("hide",
-                    candidate -> hide.hide().prepareReload()));
-        }
-        if (moduleManager != null && moduleManager.getModule("creative") instanceof codes.castled.allium.module.CreativeModule creative
-                && creative.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("creative",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(creative::reloadSettings)));
-        }
-        if (moduleManager != null && moduleManager.getModule("essentials") instanceof codes.castled.allium.module.EssentialsModule essentials
-                && essentials.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("essentials",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(essentials::reloadSettings)));
-        }
-        if (moduleManager != null && moduleManager.getModule("tools") instanceof codes.castled.allium.module.ToolsModule tools
-                && tools.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("tools",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(tools::reloadPowerTools)));
-        }
-        if (moduleManager != null && moduleManager.getModule("restore") instanceof codes.castled.allium.module.RestoreModule restoreModule
-                && restoreModule.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("restore",
-                    candidate -> codes.castled.allium.config.ReloadCoordinator.Prepared.of(restoreModule::reloadSettings)));
-        }
-        if (moduleManager != null && moduleManager.getModule("rtp") instanceof codes.castled.allium.module.RtpModule rtpModule
-                && rtpModule.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("rtp",
-                    candidate -> rtpModule.prepareReload()));
-        }
-        if (moduleManager != null && moduleManager.getModule("worth") instanceof codes.castled.allium.module.WorthModule worthModule
-                && worthModule.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("worth",
-                    candidate -> worthModule.prepareReload()));
-        }
-        if (moduleManager != null && moduleManager.getModule("explosions") instanceof codes.castled.allium.module.ExplosionsModule explosions
-                && explosions.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("explosions",
-                    candidate -> explosions.prepareReload()));
-        }
-        if (moduleManager != null && moduleManager.getModule("modguard") instanceof codes.castled.allium.module.ModGuardModule modguard
-                && modguard.isEnabled()) {
-            participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("modguard",
-                    candidate -> modguard.prepareReload()));
-        }
-        participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("resource-pack", candidate -> {
+        participants.add(codes.castled.allium.config.ReloadCoordinator.Participant.of("resource-pack", 200, candidate -> {
             var parsed = ResourcePackSettings.parse(candidate.getConfigurationSection("resource-pack"));
             return () -> {
                 if (parsed.owner() != startupPackOwner) {
@@ -496,7 +380,9 @@ public final class PluginStart extends JavaPlugin {
             };
         }));
 
-        var report = codes.castled.allium.config.ReloadCoordinator.execute(rootSource, participants, reply, logger::warning);
+        var report = (target == null || target.isBlank())
+                ? codes.castled.allium.config.ReloadCoordinator.execute(rootSource, participants, reply, logger::warning)
+                : codes.castled.allium.config.ReloadCoordinator.executeTargeted(rootSource, participants, target, reply, logger::warning);
         if (!report.success()) {
             logger.severe("Reload failed: " + report.rejected());
         }
@@ -517,12 +403,20 @@ public final class PluginStart extends JavaPlugin {
         var outcome = exportPack(settings, new codes.castled.allium.pack.delivery.PackExport.Logs(logger::info, logger::warning));
         if (settings.owner() == ResourcePackSettings.Owner.RPM_EXPORT) {
             reply.accept(codes.castled.allium.pack.delivery.PackExport.formatRpmReloadReply(outcome.coreMixer(), outcome.addonMixer()));
-        } else if (outcome.source() != null && settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
+        } else if (outcome.generation().coreArtifact() != null && settings.owner() == ResourcePackSettings.Owner.STANDALONE) {
             if (packDelivery == null) {
-                packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, settings, outcome.source());
+                packDelivery = new codes.castled.allium.pack.delivery.PackDelivery(this, outcome.generation());
                 packDelivery.enable();
-            } else packDelivery.reload(settings, outcome.source(), reply);
+            } else {
+                packDelivery.reload(outcome.generation(), reply);
+            }
         }
+    }
+
+    /** Most recently assembled immutable resource-pack generation; {@code null} before {@code onLoad()}. */
+    @org.jetbrains.annotations.Nullable
+    public codes.castled.allium.pack.delivery.PackGeneration getActivePackGeneration() {
+        return activePackGeneration;
     }
 
     /** Allium's own pack delivery, when {@code resource-pack.owner} is standalone; otherwise {@code null}. */

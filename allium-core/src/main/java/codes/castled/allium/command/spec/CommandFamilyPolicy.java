@@ -50,6 +50,16 @@ public final class CommandFamilyPolicy {
         }
     }
 
+    /** Removes a dynamically registered spec (such as an addon command on addon disable). */
+    public void unregisterSpec(CommandSpec spec) {
+        Objects.requireNonNull(spec, "spec");
+        if (specsByCanonical.remove(spec.canonicalName(), spec)) {
+            for (String label : spec.allOwnedLabels()) {
+                labelToCanonical.remove(label.toLowerCase(Locale.ROOT), spec.canonicalName());
+            }
+        }
+    }
+
     public Optional<CommandSpec> findSpec(String labelOrAlias) {
         return resolveCanonicalFamily(labelOrAlias).map(specsByCanonical::get);
     }

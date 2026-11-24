@@ -185,10 +185,13 @@ public final class EssentialsImportService {
         EconomyEngine econ = economyEngine();
         EssentialsImportPlan plan = EssentialsImportPlan.build(snapshot, worlds(settings, loadedWorlds),
                 destination(true, econ != null), now, econ != null ? econ.settings() : null);
+        EssentialsConfigReport configReport = EssentialsConfigReport.analyze(settings.source(), readAlliumConfig(), plan);
         Files.createDirectories(dir);
         writePlan(dir, runId, settings, plan, now);
         writeRecords(dir.resolve("records.jsonl"), plan);
-        writeSummary(dir.resolve("summary.txt"), runId, settings, plan, null, loadedSigns);
+        Files.writeString(dir.resolve("config-mapping.txt"), configReport.renderText(runId), StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("config-mapping.jsonl"), configReport.renderJsonl(), StandardCharsets.UTF_8);
+        writeSummary(dir.resolve("summary.txt"), runId, settings, plan, null, loadedSigns, configReport);
         plugin.logger().info("Essentials import dry run " + runId + ": " + plan.count(Status.IMPORT)
                 + " to import, " + plan.count(Status.PRESENT) + " present, " + plan.count(Status.CONFLICT)
                 + " conflicts, " + plan.count(Status.BLOCKED) + " blocked. Reports: " + relative(dir));
@@ -259,7 +262,7 @@ public final class EssentialsImportService {
         var counts = EssentialsImportApplier.counts(outcomes);
         ledger.finishRun(runId, "applied " + counts);
         writeOutcomes(dir.resolve("apply.jsonl"), outcomes);
-        writeSummary(dir.resolve("apply-summary.txt"), runId, settings, plan, outcomes, -1);
+        writeSummary(dir.resolve("apply-summary.txt"), runId, settings, plan, outcomes, -1, null);
         Path signMarker = plugin.getDataFolder().toPath().resolve(codes.castled.allium.sign.SignService.ESSENTIALS_SIGN_MARKER);
         Files.createDirectories(signMarker.getParent());
         Files.writeString(signMarker, "adopted-by=" + runId + "\n", StandardCharsets.UTF_8);
@@ -398,6 +401,19 @@ public final class EssentialsImportService {
 
     private KitDefinitionLoader kitLoader() {
         return new KitDefinitionLoader(plugin.getDataFolder(), plugin::getResource, ignored -> {}, ignored -> {});
+    }
+
+    private org.bukkit.configuration.ConfigurationSection readAlliumConfig() {
+        Path configPath = plugin.getDataFolder().toPath().resolve("config.yml");
+        if (Files.isRegularFile(configPath)) {
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.loadFromString(Files.readString(configPath, StandardCharsets.UTF_8));
+                return yaml;
+            } catch (Exception ignored) {
+            }
+        }
+        return plugin.getConfig();
     }
 
     private Map<String, BigDecimal> readWorthPrices() throws IOException {
@@ -652,7 +668,8 @@ public final class EssentialsImportService {
     }
 
     private void writeSummary(Path file, String runId, Settings settings, EssentialsImportPlan plan,
-                              List<EssentialsImportApplier.Outcome> outcomes, int loadedSigns) throws IOException {
+                              List<EssentialsImportApplier.Outcome> outcomes, int loadedSigns,
+                              @org.jetbrains.annotations.Nullable EssentialsConfigReport configReport) throws IOException {
         StringBuilder sb = new StringBuilder();
         sb.append("# Essentials import ").append(outcomes == null ? "dry run " : "apply ").append(runId).append('\n');
         sb.append("# Source: ").append(settings.source()).append('\n');
@@ -667,6 +684,9 @@ public final class EssentialsImportService {
         if (!plan.supportedSigns().isEmpty() || !plan.unsupportedSigns().isEmpty()) {
             sb.append("# Essentials enabledSigns -> Allium: ").append(plan.supportedSigns())
                     .append(" (unsupported: ").append(plan.unsupportedSigns()).append(")\n");
+        }
+        if (configReport != null) {
+            sb.append("# ").append(configReport.summaryLine()).append('\n');
         }
         sb.append("\n");
         for (Domain d : Domain.values()) {

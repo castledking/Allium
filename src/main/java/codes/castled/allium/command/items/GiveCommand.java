@@ -6,11 +6,13 @@ import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
+import codes.castled.allium.item.ProviderKey;
 import codes.castled.allium.item.delivery.DeliveryOutcome;
 import codes.castled.allium.item.delivery.ItemDeliveryService;
 import codes.castled.allium.item.delivery.OverflowPolicy;
 import codes.castled.allium.item.library.ItemBuildException;
 import codes.castled.allium.item.library.ItemLibrary;
+import codes.castled.allium.item.spec.GiveItemPolicy;
 import codes.castled.allium.item.spec.GiveSpec;
 import codes.castled.allium.item.spec.ItemReference;
 import codes.castled.allium.item.spec.ItemSpecException;
@@ -43,14 +45,22 @@ public final class GiveCommand implements SpecCommandHandler {
     private final ItemLibrary library;
     private final ItemDeliveryService delivery;
     private final Supplier<OverflowPolicy> defaultPolicy;
+    private final Supplier<GiveItemPolicy> itemPolicy;
 
     public GiveCommand(PluginStart plugin, Supplier<ItemSpecParser> parser, ItemLibrary library,
                        ItemDeliveryService delivery, Supplier<OverflowPolicy> defaultPolicy) {
+        this(plugin, parser, library, delivery, defaultPolicy, GiveItemPolicy::allowAll);
+    }
+
+    public GiveCommand(PluginStart plugin, Supplier<ItemSpecParser> parser, ItemLibrary library,
+                       ItemDeliveryService delivery, Supplier<OverflowPolicy> defaultPolicy,
+                       Supplier<GiveItemPolicy> itemPolicy) {
         this.plugin = plugin;
         this.parser = parser;
         this.library = library;
         this.delivery = delivery;
         this.defaultPolicy = defaultPolicy;
+        this.itemPolicy = itemPolicy != null ? itemPolicy : GiveItemPolicy::allowAll;
     }
 
     public List<String> completeItems(String prefix){
@@ -135,6 +145,18 @@ public final class GiveCommand implements SpecCommandHandler {
             if (policy == null) {
                 send(sender, "invalid", "{reason}", "--overflow must be drop, refuse or partial");
                 return;
+            }
+        }
+        GiveItemPolicy giveItemPolicy = itemPolicy.get();
+        if (giveItemPolicy != null && !giveItemPolicy.isDefaultPermissive()) {
+            boolean bypassPolicy = !(sender instanceof Player) || sender.hasPermission(GiveItemPolicy.PERMISSION_BYPASS);
+            for (ItemReference reference : spec.items()) {
+                ProviderKey canonical = library.canonicalKey(reference);
+                GiveItemPolicy.Decision decision = giveItemPolicy.evaluate(canonical, bypassPolicy, sender::hasPermission);
+                if (!decision.allowed()) {
+                    send(sender, "policy-denied", "{item}", canonical.asString(), "{reason}", decision.reason());
+                    return;
+                }
             }
         }
         String itemText = spec.items().stream().map(ItemReference::text).collect(Collectors.joining(","));

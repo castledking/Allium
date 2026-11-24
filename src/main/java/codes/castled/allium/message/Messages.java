@@ -904,6 +904,7 @@ public enum Messages {
     ITEM_GIVE_INVALID("item.give.invalid", "{prefix} &cInvalid item spec: &f{reason}"),
     ITEM_GIVE_UNRESOLVED("item.give.unresolved", "{prefix} &cCould not give {item} ({status}): &f{reason}"),
     ITEM_GIVE_PRIVILEGED("item.give.privileged", "{prefix} &cGiving {item} ({behavior}) needs &f{permission}&c."),
+    ITEM_GIVE_POLICY_DENIED("item.give.policy-denied", "{prefix} &cGiving &f{item} &cis blocked by item policy: &f{reason}"),
     ITEM_GIVE_PENDING("item.give.pending", "{prefix} &7Resolving skull profiles for {player}..."),
     ITEM_GIVE_WARNING("item.give.warning", "{prefix} &eWarning: {warning}"),
     ITEM_GIVE_RECEIVED("item.give.received", "{prefix} &aYou received &f{amount} {item}&a."),

@@ -266,6 +266,7 @@ public final class CoreCommandSpecs {
                     Map.entry("no-target", "item.give.no-target"),
                     Map.entry("unresolved", "item.give.unresolved"),
                     Map.entry("privileged", "item.give.privileged"),
+                    Map.entry("policy-denied", "item.give.policy-denied"),
                     Map.entry("pending", "item.give.pending"),
                     Map.entry("warning", "item.give.warning"),
                     Map.entry("received", "item.give.received")

@@ -10,6 +10,7 @@ import codes.castled.allium.item.library.ComponentAdapter;
 import codes.castled.allium.item.library.ItemLibrary;
 import codes.castled.allium.item.library.ServerVersion;
 import codes.castled.allium.item.library.SkullProfiles;
+import codes.castled.allium.item.spec.GiveItemPolicy;
 import codes.castled.allium.item.spec.ItemSpecParser;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -88,6 +89,7 @@ public final class ItemsModule extends AbstractModule {
     private volatile OverflowPolicy overflow = OverflowPolicy.DROP;
     private volatile SkullFallback skullFallback = SkullFallback.UNTEXTURED;
     private volatile ItemSpecParser parser = new ItemSpecParser(false);
+    private volatile GiveItemPolicy itemPolicy = GiveItemPolicy.allowAll();
 
     public ItemsModule(PluginStart plugin) {
         super(plugin);
@@ -114,6 +116,12 @@ public final class ItemsModule extends AbstractModule {
         int perMinute = give == null ? 30 : give.getInt("skull.max-lookups-per-minute", 30);
         boolean legacy = give != null && give.getBoolean("legacy-semicolon-syntax", false);
         parser = new ItemSpecParser(legacy, reference -> !plugin.getItemService().variantNames(reference).isEmpty());
+        try {
+            itemPolicy = readItemPolicy(plugin.getConfig());
+        } catch (IllegalArgumentException invalid) {
+            plugin.logger().warning("Invalid items.give.policy configuration (" + invalid.getMessage() + "); using default allow-all policy.");
+            itemPolicy = GiveItemPolicy.allowAll();
+        }
         long timeout = give == null ? 3000L : Math.max(100L, give.getLong("skull.lookup-timeout-millis", 3000L));
         long ttl = give == null ? 3_600_000L : Math.max(0L, give.getLong("skull.cache-minutes", 60L) * 60_000L);
         int size = give == null ? 256 : Math.max(1, give.getInt("skull.cache-size", 256));
@@ -128,7 +136,7 @@ public final class ItemsModule extends AbstractModule {
         delivery = new ItemDeliveryService(
                 ItemDeliveryService.targetThread(plugin, plugin.getScheduler()),
                 Bukkit::getPlayer, Bukkit.getPluginManager(), () -> skullFallback);
-        GiveCommand giveCommand = new GiveCommand(plugin, () -> parser, library, delivery, () -> overflow);
+        GiveCommand giveCommand = new GiveCommand(plugin, () -> parser, library, delivery, () -> overflow, () -> itemPolicy);
         String route = registerGive(giveCommand);
         plugin.getCommandManager().register(new codes.castled.allium.command.items.ItemSelfCommand(plugin, giveCommand));
         plugin.logger().info("Item library enabled: /give harness (" + route + "), overflow " + overflow.configName() + ", skull fallback "
@@ -235,6 +243,24 @@ public final class ItemsModule extends AbstractModule {
         delivery = null;
     }
 
+    public GiveItemPolicy itemPolicy() {
+        return itemPolicy;
+    }
+
+    public static GiveItemPolicy readItemPolicy(ConfigurationSection root) {
+        if (root == null) return GiveItemPolicy.allowAll();
+        Object rawPolicy = root.get("items.give.policy");
+        if (rawPolicy == null) return GiveItemPolicy.allowAll();
+        if (!(rawPolicy instanceof ConfigurationSection section)) {
+            throw new IllegalArgumentException("items.give.policy must be a configuration section");
+        }
+        GiveItemPolicy.Mode mode = GiveItemPolicy.Mode.parse(section.getString("mode", "denylist"));
+        List<String> deny = section.getStringList("deny");
+        List<String> allow = section.getStringList("allow");
+        boolean permBased = section.getBoolean("permission-based-spawn", false);
+        return new GiveItemPolicy(mode, deny, allow, permBased);
+    }
+
     @Override
     public int reloadOrder() {
         return 30;
@@ -242,6 +268,10 @@ public final class ItemsModule extends AbstractModule {
 
     @Override
     public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
-        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(this::reloadDatabase);
+        GiveItemPolicy nextPolicy = readItemPolicy(candidateRoot);
+        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(() -> {
+            itemPolicy = nextPolicy;
+            reloadDatabase();
+        });
     }
 }

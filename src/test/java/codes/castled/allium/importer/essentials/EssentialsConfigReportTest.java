@@ -65,6 +65,8 @@ class EssentialsConfigReportTest {
                   - warp
                   - trade
                 sign-use-per-second: 4
+                permission-based-item-spawn: true
+                item-spawn-blacklist: 'bedrock,tnt'
                 chat:
                   radius: 100
                   format: '{TEAMNAME} {PREFIX}{DISPLAYNAME}: {MESSAGE}'
@@ -102,6 +104,12 @@ class EssentialsConfigReportTest {
         assertEquals(Outcome.MANUAL, findConfig(report, "teleport-to-center").outcome());
         assertEquals(Outcome.MAPPED, findConfig(report, "spawn-if-no-home").outcome());
         assertEquals("homes.spawn-if-no-home", findConfig(report, "spawn-if-no-home").targetKey());
+        assertEquals(Outcome.CONFLICT, findConfig(report, "permission-based-item-spawn").outcome());
+        assertEquals("items.give.policy.permission-based-spawn", findConfig(report, "permission-based-item-spawn").targetKey());
+        assertEquals(Outcome.CONFLICT, findConfig(report, "item-spawn-blacklist").outcome());
+        assertEquals("items.give.policy.deny", findConfig(report, "item-spawn-blacklist").targetKey());
+        assertEquals("allium.give.item.minecraft.<id>", findPerm(report, "essentials.give.item-*").alliumNode());
+        assertEquals("allium.give.bypass.policy", findPerm(report, "essentials.itemspawn.exempt").alliumNode());
         assertEquals(Outcome.CONFLICT, findConfig(report, "sethome-multiple.default").outcome());
         assertEquals(Outcome.MANUAL, findConfig(report, "sethome-multiple.vip").outcome());
         assertEquals(Outcome.MAPPED, findConfig(report, "per-warp-permission").outcome());

@@ -2226,6 +2226,9 @@ item:
     privileged:
       - "{prefix} &cGiving {item} ({behavior}) needs &f{permission}&c."
       - "[sound] entity.villager.no 0.95"
+    policy-denied:
+      - "{prefix} &cGiving &f{item} &cis blocked by item policy: &f{reason}"
+      - "[sound] entity.villager.no 0.95"
     pending:
       - "{prefix} &7Resolving skull profiles for {player}..."
       - "[sound] ui.button.click 1.0"

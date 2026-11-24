@@ -169,6 +169,18 @@ items:
       lookup-timeout-millis: 3000
       cache-size: 256
       cache-minutes: 60
+    # Optional provider-aware allow/deny rules and per-item spawn permissions for /give and /i.
+    # Rules match canonical provider keys ("bedrock", "minecraft:*_spawn_egg", "allium:*",
+    # "craftengine:sf_ores:*", "nexo:*", "oraxen:*"). Bare names mean minecraft:<id>.
+    policy:
+      # denylist: allow everything except deny (specific allow rules can carve out exceptions).
+      # allowlist: deny everything except allow (equal or more specific deny rules still win).
+      mode: denylist
+      deny: []
+      allow: []
+      # When true, players also need allium.give.item.<provider>.<id> (or provider/global wildcard)
+      # or allium.give.bypass.policy to give an item.
+      permission-based-spawn: false
       # Remote profile lookups started per rolling minute; over the limit a head falls back as above.
       max-lookups-per-minute: 30
 

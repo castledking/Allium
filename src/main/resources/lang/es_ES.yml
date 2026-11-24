@@ -2226,6 +2226,9 @@ item:
     privileged:
       - "{prefix} &cEntregar {item} ({behavior}) requiere &f{permission}&c."
       - "[sound] entity.villager.no 0.95"
+    policy-denied:
+      - "{prefix} &cEntregar &f{item} &cesta bloqueado por la politica de objetos: &f{reason}"
+      - "[sound] entity.villager.no 0.95"
     pending:
       - "{prefix} &7Resolviendo perfiles de cabeza para {player}..."
       - "[sound] ui.button.click 1.0"

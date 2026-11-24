@@ -77,6 +77,26 @@ public final class ItemLibrary {
         }
     }
 
+    /** Resolves legacy item aliases (if loaded) to the canonical provider key used for build and policy checks. */
+    public ProviderKey canonicalKey(ItemReference reference) {
+        if (database == null) {
+            return reference.key();
+        }
+        String raw = reference.text();
+        int open = codes.castled.allium.item.spec.ItemSpecLexer.indexOfOpenGroup(raw);
+        String alias = database.lookup(open < 0 ? raw : raw.substring(0, open));
+        if (alias == null) {
+            return reference.key();
+        }
+        try {
+            var expanded = new codes.castled.allium.item.spec.ItemSpecParser(true)
+                    .parse(alias + (reference.raw().isPresent() ? reference.raw().get().text() : ""));
+            return expanded.items().get(0).key();
+        } catch (codes.castled.allium.item.spec.ItemSpecException ignored) {
+            return reference.key();
+        }
+    }
+
     /**
      * @param mayGivePrivileged whether the sender may mint privileged behaviors (handcuffs, ...)
      * @throws ItemBuildException when any reference cannot be built; nothing is returned partially

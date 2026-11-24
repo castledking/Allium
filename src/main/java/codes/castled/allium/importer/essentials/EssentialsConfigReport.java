@@ -105,6 +105,7 @@ public final class EssentialsConfigReport {
         analyzeHomesAndWarps(ess, allium, plan, configs, perms);
         analyzeEconomy(ess, allium, configs);
         analyzeOnboarding(ess, allium, plan, configs);
+        analyzeItemPolicy(ess, allium, configs, perms);
         analyzeSignsAndMobs(ess, allium, plan, configs, perms);
         analyzeChatAndJoin(ess, allium, configs);
         analyzeGeneralPermissions(plan, perms);
@@ -237,6 +238,46 @@ public final class EssentialsConfigReport {
                 perms.add(new PermissionEntry("essentials.warps." + warp, "allium.warps." + warp, Outcome.MAPPED,
                         "Verify rank grants for warp '" + warp + "' so pre-existing private warps stay private"));
             }
+        }
+    }
+
+    private static void analyzeItemPolicy(ConfigurationSection ess, ConfigurationSection allium,
+                                          List<ConfigEntry> configs, List<PermissionEntry> perms) {
+        if (ess.contains("permission-based-item-spawn")) {
+            boolean val = ess.getBoolean("permission-based-item-spawn", false);
+            boolean cur = allium.getBoolean("items.give.policy.permission-based-spawn", false);
+            compareBoolean("permission-based-item-spawn", val, "items.give.policy.permission-based-spawn", cur,
+                    "Provider-aware per-item /give and /i spawn permissions", configs);
+            if (val) {
+                perms.add(new PermissionEntry("essentials.give.item-*", "allium.give.item.minecraft.<id>", Outcome.MAPPED,
+                        "Per-item spawn permissions support allium.give.item.<provider>.<id> and allium.give.item.<provider>.*"));
+                perms.add(new PermissionEntry("essentials.itemspawn.exempt", "allium.give.bypass.policy", Outcome.MAPPED,
+                        "Explicitly bypasses items.give.policy allow/deny and per-item spawn rules"));
+            }
+        }
+        if (ess.contains("item-spawn-blacklist")) {
+            Object raw = ess.get("item-spawn-blacklist");
+            List<String> entries = new ArrayList<>();
+            if (raw instanceof List<?> list) {
+                for (Object item : list) {
+                    if (item != null && !String.valueOf(item).isBlank()) {
+                        entries.add(String.valueOf(item).trim().toLowerCase(Locale.ROOT));
+                    }
+                }
+            } else if (raw != null && !String.valueOf(raw).isBlank()) {
+                for (String token : String.valueOf(raw).split(",")) {
+                    if (!token.isBlank()) entries.add(token.trim().toLowerCase(Locale.ROOT));
+                }
+            }
+            List<String> currentDeny = allium.getStringList("items.give.policy.deny");
+            boolean emptyBoth = entries.isEmpty() && currentDeny.isEmpty();
+            configs.add(new ConfigEntry("item-spawn-blacklist", String.join(",", entries),
+                    "items.give.policy.deny", String.join(",", currentDeny),
+                    entries.isEmpty() ? "" : String.join(",", entries),
+                    emptyBoth ? Outcome.MAPPED : Outcome.CONFLICT,
+                    emptyBoth
+                            ? "Matches empty Allium /give deny list"
+                            : "Review EssentialsX item-spawn-blacklist entries and copy desired provider keys into items.give.policy.deny"));
         }
     }
 

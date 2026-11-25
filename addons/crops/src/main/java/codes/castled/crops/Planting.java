@@ -271,7 +271,7 @@ final class Planting implements Listener {
         List<Catalog.Drop> primary = List.of();
         List<Catalog.Drop> loot;
         if (pick) {
-            primary = path.primary().roll(fertilizer.quality());
+            primary = path.primary().roll(fertilizer.quality(), cropQualityBonus(player));
             loot = path.additional().roll();
         } else loot = (mature ? path.mature() : path.immature()).roll();
         int regrow = breaking ? path.breakRegrowth() : path.rightRegrowth();
@@ -287,6 +287,17 @@ final class Planting implements Listener {
         drop(crop, player, primary, delivery, fertilizer);
         drop(crop, player, loot, delivery);
         player.getWorld().playSound(crop.hitbox.getLocation(), "block.crop.break", 1, 1);
+    }
+
+    private double cropQualityBonus(Player player) {
+        try {
+            var boosts = plugin.getServer().getServicesManager().load(codes.castled.allium.api.CurioBoosts.class);
+            if (boosts == null) return 0.0;
+            double bonus = boosts.cropQualityBonus(player.getUniqueId());
+            return Double.isFinite(bonus) && bonus > 0.0 ? bonus : 0.0;
+        } catch (NoClassDefFoundError | RuntimeException unavailable) {
+            return 0.0;
+        }
     }
 
     private void drop(ModelWorld.Placed crop, Player player, List<Catalog.Drop> loot, String delivery) {

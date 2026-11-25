@@ -65,6 +65,29 @@ class ConfigUpgradeTest {
     }
 
     @Test
+    void versionTwoUpgradesRelicAbilitiesAndAttributesWithoutFlippingTexturedMenu() throws Exception {
+        YamlConfiguration v2 = YamlConfiguration.loadConfiguration(new java.io.StringReader(bundled().saveToString()));
+        v2.set("config-version", 2);
+        v2.set("textured-menu", false);
+        v2.set("items.evokers_mantle.abilities", null);
+        v2.set("items.evokers_mantle.attributes", null);
+        v2.set("items.evokers_mantle.effects", null);
+        v2.set("items.strider_hide_girdle.abilities", null);
+        v2.set("items.chorus_buckle.abilities", null);
+        v2.setDefaults(bundled());
+
+        assertTrue(ConfigUpgrade.apply(v2));
+        assertEquals(ConfigUpgrade.VERSION, v2.getInt("config-version"));
+        assertFalse(v2.getBoolean("textured-menu"), "v2->v3 upgrade must preserve textured-menu: false");
+        assertEquals(java.util.List.of("summon_vex"), v2.getStringList("items.evokers_mantle.abilities"));
+        assertEquals(java.util.List.of("lava_walker"), v2.getStringList("items.strider_hide_girdle.abilities"));
+        assertEquals(java.util.List.of("chorus_blink"), v2.getStringList("items.chorus_buckle.abilities"));
+        assertEquals(1, v2.getMapList("items.evokers_mantle.attributes").size());
+        assertEquals(600, v2.getInt("items.evokers_mantle.effects.cooldown-ticks"));
+        assertFalse(ConfigUpgrade.apply(v2));
+    }
+
+    @Test
     void cardTitlesKeepLegacyColoursEvenWithoutAConfiguredSection() {
         CardRules rules = new CardRules(new YamlConfiguration());
         assertEquals("gold", rules.mobColour("fox"));

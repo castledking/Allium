@@ -58,4 +58,20 @@ class LocatorRulesTest {
         assertFalse(LocatorRules.show(with(with(pair(5), "spectatorTarget"), "staff")));
         assertTrue(LocatorRules.show(with(with(pair(5), "spectatorTarget"), "spectatorViewer")));
     }
+
+    @Test
+    void curioBoostsEffectiveRadiusWidensWithoutEverShrinkingBase() {
+        codes.castled.allium.api.CurioBoosts boosts = new codes.castled.allium.api.CurioBoosts() {
+            @Override public double cropQualityBonus(java.util.UUID p) { return 0; }
+            @Override public double locatorRangeBonus(java.util.UUID p) { return 48.0; }
+            @Override public double locatorRangeMultiplier(java.util.UUID p) { return 1.5; }
+            @Override public double xpMultiplier(java.util.UUID p) { return 1.0; }
+            @Override public double sellMultiplier(java.util.UUID p) { return 1.0; }
+            @Override public double questMoneyBonus(java.util.UUID p) { return 0; }
+            @Override public double questTokensBonus(java.util.UUID p) { return 0; }
+            @Override public double tokenDropChance(java.util.UUID p) { return 0; }
+            @Override public double tokenDropMultiplier(java.util.UUID p) { return 1.0; }
+        };
+        assertEquals(240.0, boosts.effectiveLocatorRadius(java.util.UUID.randomUUID(), 128.0), 1e-6);
+    }
 }

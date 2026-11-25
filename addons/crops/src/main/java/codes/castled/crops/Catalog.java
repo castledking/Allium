@@ -19,14 +19,37 @@ final class Catalog {
             return roll(Map.of());
         }
         List<Drop> roll(Map<String, Double> quality) {
+            return roll(quality, 0.0);
+        }
+        List<Drop> roll(Map<String, Double> quality, double rarityBias) {
             if (mode.equals("WEIGHTED_ONE")) {
-                Entry chosen = weighted(entries, row -> row.weight() * quality.getOrDefault(row.id(), 1.0));
+                Map<String, Double> bias = rarityBias > 0.0 && Double.isFinite(rarityBias)
+                        ? rarityMultipliers(entries, rarityBias) : Map.of();
+                Entry chosen = weighted(entries, row -> row.weight()
+                        * quality.getOrDefault(row.id(), 1.0)
+                        * bias.getOrDefault(row.id(), 1.0));
                 return chosen == null ? List.of() : chosen.drops();
             }
             var random = ThreadLocalRandom.current();
             return entries.stream().filter(entry -> !mode.equals("INDEPENDENT") || random.nextDouble() < entry.chance())
                     .flatMap(entry -> entry.drops().stream()).toList();
         }
+    }
+
+    /** Biases rarer weighted outcomes upward linearly without unlocking zero-weight entries. */
+    static Map<String, Double> rarityMultipliers(List<Entry> entries, double bonus) {
+        if (entries.size() < 2 || !Double.isFinite(bonus) || bonus <= 0.0) return Map.of();
+        List<Entry> sorted = new ArrayList<>(entries);
+        sorted.sort(Comparator.comparingDouble(Entry::weight).thenComparing(Entry::id));
+        Map<String, Double> out = new HashMap<>();
+        int n = sorted.size();
+        for (int rank = 0; rank < n; rank++) {
+            Entry entry = sorted.get(rank);
+            if (entry.weight() <= 0.0) continue;
+            double share = 1.0 - ((double) rank / (n - 1));
+            out.put(entry.id(), 1.0 + (bonus * share));
+        }
+        return out;
     }
     record Path(String id, double weight, List<Stage> stages, Table primary, Table additional,
                 Table immature, Table mature, int rightRegrowth, int breakRegrowth, String delivery) {}

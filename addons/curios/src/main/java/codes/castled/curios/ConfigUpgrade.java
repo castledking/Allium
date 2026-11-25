@@ -6,22 +6,24 @@ import org.bukkit.configuration.ConfigurationSection;
 /** Upgrades a {@code config.yml} written by an earlier Curios build. */
 final class ConfigUpgrade {
     /** The config.yml layout this build writes. */
-    static final int VERSION = 2;
+    static final int VERSION = 3;
 
     private ConfigUpgrade() {}
 
     /**
-     * Brings a config.yml written by an earlier Curios build up to {@link #VERSION}. It adds
-     * the top-level sections the file lacks: Bukkit reads a section that is only in the jar's
-     * defaults as empty, which left card names white and dropped the card menu settings. It also
-     * turns {@code textured-menu} back on, which builds before version 2 wrote as {@code false}
-     * while the card art was still being ported. A config already at this version is left alone,
-     * so a later {@code textured-menu: false} is kept.
+     * Brings a config.yml written by an earlier Curios build up to {@link #VERSION}.
+     * <ul>
+     *   <li>v1 -&gt; v2: adds missing top-level sections and turns {@code textured-menu} back on.</li>
+     *   <li>v2 -&gt; v3: adds missing relic {@code abilities}, {@code attributes}, and {@code effects}
+     *       blocks from defaults onto existing bundled relic entries without overwriting user edits
+     *       or flipping {@code textured-menu}.</li>
+     * </ul>
      *
      * @return whether the config changed and should be saved
      */
     static boolean apply(Configuration config) {
-        if (config.isSet("config-version") && config.getInt("config-version") >= VERSION) return false;
+        int current = config.isSet("config-version") ? config.getInt("config-version") : 1;
+        if (current >= VERSION) return false;
         Configuration defaults = config.getDefaults();
         if (defaults != null) {
             for (String key : defaults.getKeys(false)) {
@@ -37,9 +39,40 @@ final class ConfigUpgrade {
                     if (!section.isConfigurationSection(path)) config.set(key + "." + path, section.get(path));
                 }
             }
+            if (current < 3) {
+                upgradeRelicDefaults(config, defaults);
+            }
         }
-        if (config.isSet("textured-menu") && !config.getBoolean("textured-menu")) config.set("textured-menu", true);
+        if (current < 2 && config.isSet("textured-menu") && !config.getBoolean("textured-menu")) {
+            config.set("textured-menu", true);
+        }
         config.set("config-version", VERSION);
         return true;
+    }
+
+    private static void upgradeRelicDefaults(Configuration config, Configuration defaults) {
+        ConfigurationSection defaultItems = defaults.getConfigurationSection("items");
+        ConfigurationSection currentItems = config.getConfigurationSection("items");
+        if (defaultItems == null || currentItems == null) return;
+        for (String id : defaultItems.getKeys(false)) {
+            if (!currentItems.isConfigurationSection(id)) continue;
+            ConfigurationSection defRow = defaultItems.getConfigurationSection(id);
+            ConfigurationSection curRow = currentItems.getConfigurationSection(id);
+            if (defRow == null || curRow == null) continue;
+            if (defRow.isSet("abilities") && !curRow.isSet("abilities")) {
+                curRow.set("abilities", defRow.getStringList("abilities"));
+            }
+            if (defRow.isSet("attributes") && !curRow.isSet("attributes")) {
+                curRow.set("attributes", defRow.getList("attributes"));
+            }
+            if (defRow.isConfigurationSection("effects") && !curRow.isSet("effects")) {
+                ConfigurationSection defEffects = defRow.getConfigurationSection("effects");
+                if (defEffects != null) {
+                    for (String k : defEffects.getKeys(false)) {
+                        curRow.set("effects." + k, defEffects.get(k));
+                    }
+                }
+            }
+        }
     }
 }

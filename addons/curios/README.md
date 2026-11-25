@@ -130,7 +130,10 @@ The bundled catalog has 180 legacy mob cards, the nine enabled Antiquities relic
 57 frame styles. Card pools roll one tier per successful drop. Relic drop chances can be
 set independently for mob deaths and supported loot tables. The Membrane Cowl recipe uses
 five phantom membranes. The ring ignition, phantom and piglin truces, Echoing Circlet,
-Witch's Brewstone and water retaliation effects can be assigned to any definition.
+Witch's Brewstone, water retaliation, Evoker's Mantle Vex summon, Strider Hide Girdle lava
+walker, Chorus Buckle safe blink, and Iron Golem/Ravager knockback immunity effects — along
+with passive attribute modifiers and per-relic effect parameters — can be assigned to any
+definition.
 
 Art comes from the legacy Relique menu and icons, Antiquities relic sprites, and SF's Nexo
 card, frame, label and menu assets. The card home, bonus boost, merge and trade-in screens draw SF's
@@ -160,10 +163,9 @@ features and remaining follow-up bridges:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Relics equipment (`/relics`), 7 slots, 9 Antiquities relics & effects | **Implemented** | Ring ignition, phantom/piglin truces, Echoing Circlet, Witch's Brewstone, water retaliation, attribute modifiers, legacy Relique import. |
-| Trading cards, 5 tiers, quality bands, bonus rolls, merge & trade-in | **Implemented** | 180 bundled mob cards, textured GUIs, Jade mod-name metadata, held-card action bar, economy-reserved bonus rolls, durable recovery store for trade-ins/rolls, `CardCrafting` & `CurioExperience` services. |
+| Relics equipment (`/relics`), 7 slots, 9 Antiquities relics, attributes & effects | **Implemented** | All 9 Antiquities relics with passive attributes and active effects: Piglin Signet, Echoing Circlet, Idol of Depths, Evoker's Mantle (`summon_vex`), Strider Hide Girdle (`lava_walker`), Membrane Cowl, Chorus Buckle (`chorus_blink`), Blaze Ember Ring, Witch's Brewstone, plus assignable `golem_knockback_immunity` and legacy Relique import. |
+| Trading cards, 5 tiers, quality bands, bonus rolls, merge & trade-in | **Implemented** | 180 bundled mob cards, tier-based signature stats, textured GUIs, Jade mod-name metadata, held-card action bar, economy-reserved bonus rolls, durable recovery store for trade-ins/rolls, `CardCrafting` & `CurioExperience` services. |
+| Card boost runtime executors & cross-addon service | **Implemented** | Zero-dependency AuraSkills reflection bridge (non-persistent stat modifiers with join load retry) plus vanilla attribute/combat/regen/XP fallback when AuraSkills is absent; vanilla attributes (`armor`, `haste`, `knockback`, `scale`, `flight-speed`); combat disarm, XP drop & loot listeners; BeastTokens reflective drop bridge; and `CurioBoosts` service (API 1.7) consumed directly by `Crops` (`crop-boost`) and `PartyLocator` (`waypoint-range`, `waypoint-multiplier`). |
 | Item & chat hover frames, player choice & custom authoring | **Implemented** | 57 bundled styles, `ChatHoverFrame` service (API 1.6), PacketEvents item framing, `/frame` choice/overrides (`frames-choices.yml`, `frames-overrides.yml`), optional `frames.yml` authoring with `/frame build` and `/frame reload`. |
 | Legacy FABLED morphs (`LibsDisguises`) | **Intentionally omitted** | No disguise dependency or morph command is registered in Curios. |
 | Custom enchantments | **Intentionally omitted** | Handled outside Curios. |
-| Legacy card boost runtime executors | **Separate follow-up** | Card boost definitions, strength rolls, lore display, and legacy tag import are preserved; combat/utility runtime executors beyond equipped attributes and relic abilities remain separate follow-up work. |
-| Legacy quest and economy bridges | **Separate follow-up** | Bonus-slot roll pricing integrates directly with Allium's `AddonEconomy`; external quest/legacy economy bridges and remaining unported Antiquities relic effects remain separate follow-up work. |

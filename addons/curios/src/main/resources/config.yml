@@ -8,7 +8,7 @@ resource-pack:
   delivery: allium
 
 # The layout of this file. Curios upgrades an older file on startup (keeping a copy beside it).
-config-version: 2
+config-version: 3
 # Chances are per kill or loot event (0..1). Set a chance to 0 to disable its roll.
 kill-xp: 5
 # true: frames, tier labels and menu backgrounds come from the Curios resource pack. Turn it off
@@ -2280,6 +2280,13 @@ items:
     drop-chance: 0.05
     abilities:
     - piglin_truce
+    attributes:
+    - attribute: attack_damage
+      amount: 1.0
+      operation: ADD_NUMBER
+    - attribute: armor
+      amount: -1.0
+      operation: ADD_NUMBER
   echoing_circlet:
     name: Echoing Circlet
     slot: head
@@ -2294,6 +2301,13 @@ items:
     drop-chance: 0.05
     abilities:
     - echo_strike
+    attributes:
+    - attribute: armor_toughness
+      amount: 2.0
+      operation: ADD_NUMBER
+    effects:
+      duration-ticks: 100
+      cooldown-ticks: 200
   idol_of_depths:
     name: Idol Of Depths
     slot: charm
@@ -2308,6 +2322,12 @@ items:
     drop-chance: 0.05
     abilities:
     - water_retaliate
+    attributes:
+    - attribute: water_movement_efficiency
+      amount: 0.1
+      operation: MULTIPLY_SCALAR_1
+    effects:
+      retaliation-damage: 2.0
   evokers_mantle:
     name: Evokers Mantle
     slot: chest
@@ -2321,6 +2341,17 @@ items:
     drop-mob: EVOKER
     drop-chance: 0.05
     drop-condition: raid
+    abilities:
+    - summon_vex
+    attributes:
+    - attribute: max_health
+      amount: 1.0
+      operation: ADD_NUMBER
+    effects:
+      health-threshold: 0.3
+      vex-count: 2
+      duration-ticks: 300
+      cooldown-ticks: 600
   strider_hide_girdle:
     name: Strider Hide Girdle
     slot: belt
@@ -2334,6 +2365,16 @@ items:
     drop-mob: STRIDER
     drop-chance: 0.05
     drop-condition: freeze
+    abilities:
+    - lava_walker
+    attributes:
+    - attribute: armor
+      amount: 2.0
+      operation: ADD_NUMBER
+    effects:
+      radius: 3
+      basalt-ticks: 60
+      magma-ticks: 60
   membrane_cowl:
     name: Membrane Cowl
     slot: head
@@ -2352,6 +2393,10 @@ items:
         m: PHANTOM_MEMBRANE
     abilities:
     - phantom_truce
+    attributes:
+    - attribute: movement_speed
+      amount: 0.02
+      operation: ADD_NUMBER
   chorus_buckle:
     name: Chorus Buckle
     slot: belt
@@ -2364,6 +2409,16 @@ items:
     legacy-relic: antiquities:chorus_buckle
     loot-table: minecraft:chests/end_city_treasure
     drop-chance: 0.05
+    abilities:
+    - chorus_blink
+    attributes:
+    - attribute: attack_speed
+      amount: 0.5
+      operation: ADD_NUMBER
+    effects:
+      radius: 16
+      attempts: 16
+      cooldown-ticks: 300
   blaze_ember_ring:
     name: Blaze Ember Ring
     slot: ring
@@ -2378,6 +2433,8 @@ items:
     drop-chance: 0.05
     abilities:
     - unarmed_ignite
+    effects:
+      fire-ticks: 80
   witchs_brewstone:
     name: Witchs Brewstone
     slot: charm
@@ -2392,6 +2449,13 @@ items:
     drop-chance: 0.05
     abilities:
     - purify
+    attributes:
+    - attribute: luck
+      amount: 2.0
+      operation: ADD_NUMBER
+    effects:
+      duration-ticks: 100
+      cooldown-ticks: 600
 card-pools:
   allay:
     mob: ALLAY

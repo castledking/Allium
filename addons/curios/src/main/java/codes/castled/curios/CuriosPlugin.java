@@ -36,6 +36,8 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     private FrameRegistry frameRegistry;
     private GiveCommand give;
     private HeldCardBar heldCardBar;
+    private RelicAbilities relicAbilities;
+    private CardBoostRuntime boostRuntime;
     private AutoCloseable framePackets;
     private final Map<NamespacedKey, Catalog.Entry> recipes = new HashMap<>();
     private final Map<UUID, Map<Catalog.Slot, ItemStack>> loadouts = new java.util.concurrent.ConcurrentHashMap<>();
@@ -68,7 +70,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
             defaults.put("bound", "false");
             if (!entry.legacyCard().isEmpty()) {
                 defaults.put("quality", "100");
-                defaults.put("signatures", "luck,strength,speed");
+                defaults.put("signatures", CardRules.defaultSignaturesFor(CardRules.Tier.parse(entry.legacyTier())));
                 defaults.put("bonuses", ",,,,");
             }
             core.items().define(new ItemDefinition(entry.id(), Material.PAPER, "&f" + entry.name(), entry.model(),
@@ -84,7 +86,12 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                 this::frame, this::completeFrame);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(cardGui, this);
-        getServer().getPluginManager().registerEvents(new RelicAbilities(this, core.scheduler()), this);
+        relicAbilities = new RelicAbilities(this, core.scheduler());
+        getServer().getPluginManager().registerEvents(relicAbilities, this);
+        relicAbilities.registerOptionalHooks();
+        boostRuntime = new CardBoostRuntime(this, new AuraSkillsBridge(getLogger()));
+        getServer().getPluginManager().registerEvents(boostRuntime, this);
+        boostRuntime.registerOptionalBridges();
         heldCardBar = new HeldCardBar(this);
         getServer().getPluginManager().registerEvents(heldCardBar, this);
         heldCardBar.start();
@@ -93,6 +100,12 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                     new HoverFrames(this), this, org.bukkit.plugin.ServicePriority.Normal);
         } catch (NoClassDefFoundError olderAllium) {
             // Core versions before 1.6 have no chat hover service.
+        }
+        try {
+            getServer().getServicesManager().register(codes.castled.allium.api.CurioBoosts.class,
+                    boostRuntime, this, org.bukkit.plugin.ServicePriority.Normal);
+        } catch (NoClassDefFoundError olderAllium) {
+            // Core versions before 1.7 have no CurioBoosts service.
         }
         if (texturedMenu() && getServer().getPluginManager().isPluginEnabled("packetevents")) {
             try {
@@ -197,11 +210,13 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         }
         if (cardGui != null) cardGui.closeAll();
         if (heldCardBar != null) heldCardBar.stop();
+        if (relicAbilities != null) relicAbilities.close();
         for (Player player : getServer().getOnlinePlayers()) {
             if (core.isFolia() && !core.ownsEntity(player)) continue;
             if (player.getOpenInventory().getTopInventory().getHolder() instanceof Menu) player.closeInventory();
             clearAttributes(player);
         }
+        if (boostRuntime != null) boostRuntime.close();
         getServer().getServicesManager().unregisterAll(this);
         if (importIo != null) importIo.shutdownNow();
         loadouts.clear();
@@ -846,7 +861,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                 merged.put("quality", Integer.toString(cardRules.rollQuality(ThreadLocalRandom.current())));
             }
             if (!state.containsKey("signatures")) {
-                merged.put("signatures", "luck,strength,speed");
+                merged.put("signatures", CardRules.defaultSignaturesFor(CardRules.Tier.parse(entry.legacyTier())));
             }
             if (!state.containsKey("bonuses")) {
                 merged.put("bonuses", ",,,,");
@@ -1131,21 +1146,24 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     private int awardEquipped(Player player, double xp) {
         if (!core.ownsEntity(player) || !player.isOnline() || !player.hasPermission("curios.use")
                 || !Double.isFinite(xp) || xp <= 0 || !core.canEditInventory(player)) return 0;
+        double effectiveXp = boostRuntime != null ? xp * boostRuntime.xpMultiplier(player.getUniqueId()) : xp;
         int changes = 0;
+        boolean leveledUp = false;
         for (Catalog.Slot slot : catalog.slots) {
             ItemStack item = equipped(player, slot);
             Catalog.Entry entry = entry(item);
             if (entry == null) continue;
             Progression before = progress(identity(item).orElseThrow());
             Progression after = entry.legacyCard().isEmpty()
-                    ? before.award(xp, entry.maxLevel(), entry.step())
-                    : cardRules.awardCardXp(before.level(), before.xp(), xp, entry.maxLevel());
+                    ? before.award(effectiveXp, entry.maxLevel(), entry.step())
+                    : cardRules.awardCardXp(before.level(), before.xp(), effectiveXp, entry.maxLevel());
             if (before.equals(after)) continue;
             ItemStack updated = changed(item, progressState(after));
             if (updated != null) {
                 player.getPersistentDataContainer().set(equipmentKey(slot), PersistentDataType.STRING, encode(updated));
                 changes++;
                 if (!entry.legacyCard().isEmpty() && after.level() > before.level()) {
+                    leveledUp = true;
                     tellCards(player, "&eYour " + CardRules.titleCase(entry.legacyCard())
                             + " card is now level &a" + after.level() + "&e! &2" + before.level() + " &f→ &a" + after.level());
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f);
@@ -1153,6 +1171,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
             }
         }
         if (changes > 0) loadouts.remove(player.getUniqueId());
+        if (leveledUp) refreshAttributes(player);
         return changes;
     }
 
@@ -1236,12 +1255,16 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     }
 
     boolean hasAbility(Player player, Catalog.Ability ability) {
-        if (!player.hasPermission("curios.use") || player.getGameMode() == org.bukkit.GameMode.SPECTATOR) return false;
+        return abilityEntry(player, ability) != null;
+    }
+
+    Catalog.Entry abilityEntry(Player player, Catalog.Ability ability) {
+        if (!player.hasPermission("curios.use") || player.getGameMode() == org.bukkit.GameMode.SPECTATOR) return null;
         for (var slot : catalog.slots) {
             Catalog.Entry entry = entry(equipped(player, slot));
-            if (entry != null && entry.abilities().contains(ability)) return true;
+            if (entry != null && entry.abilities().contains(ability)) return entry;
         }
-        return false;
+        return null;
     }
 
     @EventHandler
@@ -1275,68 +1298,12 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         loadouts.remove(event.getPlayer().getUniqueId());
     }
 
-    private static final UUID ATTR_ARMOR = UUID.nameUUIDFromBytes("curios:card_armor".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-    private static final UUID ATTR_HASTE = UUID.nameUUIDFromBytes("curios:card_haste".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-    private static final UUID ATTR_KNOCKBACK = UUID.nameUUIDFromBytes("curios:card_knockback".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-
     void refreshAttributes(Player player) {
-        clearAttributes(player);
-        if (!player.isOnline() || !player.hasPermission("curios.use")) return;
-        double armor = 0.0, haste = 0.0, knockback = 0.0;
-        for (Catalog.Slot slot : catalog.slots) {
-            ItemStack item = equipped(player, slot);
-            Catalog.Entry entry = entry(item);
-            if (entry == null || entry.legacyCard().isEmpty()) continue;
-            ItemIdentity id = identity(item).orElse(null);
-            if (id == null) continue;
-            CardRules.Tier tier = CardRules.Tier.parse(entry.legacyTier());
-            int unlocked = Math.min(CardRules.BONUS_SLOT_COUNT, tier.ordinal() + 1);
-            List<CardRules.BonusSlotData> bonuses = CardRules.parseBonuses(id.state().get("bonuses"));
-            for (int i = 0; i < unlocked && i < bonuses.size(); i++) {
-                CardRules.BonusSlotData b = bonuses.get(i);
-                if (b.isEmpty()) continue;
-                CardRules.BonusDef def = CardRules.BONUSES.get(b.boostId());
-                if (def == null) continue;
-                switch (b.boostId()) {
-                    case "armor" -> armor += def.scaled(b.strength());
-                    case "haste" -> haste += def.scaled(b.strength()) / 100.0;
-                    case "knockback" -> knockback += def.scaled(b.strength()) / 100.0;
-                    default -> { }
-                }
-            }
-        }
-        applyModifier(player, org.bukkit.attribute.Attribute.GENERIC_ARMOR, ATTR_ARMOR, "curios_armor", armor,
-                org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER);
-        applyModifier(player, org.bukkit.attribute.Attribute.GENERIC_ATTACK_SPEED, ATTR_HASTE, "curios_haste", haste,
-                org.bukkit.attribute.AttributeModifier.Operation.ADD_SCALAR);
-        applyModifier(player, org.bukkit.attribute.Attribute.GENERIC_KNOCKBACK_RESISTANCE, ATTR_KNOCKBACK, "curios_knockback",
-                Math.min(1.0, knockback), org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER);
+        if (boostRuntime != null) boostRuntime.refresh(player);
     }
 
     void clearAttributes(Player player) {
-        removeModifier(player, org.bukkit.attribute.Attribute.GENERIC_ARMOR, ATTR_ARMOR, "curios_armor");
-        removeModifier(player, org.bukkit.attribute.Attribute.GENERIC_ATTACK_SPEED, ATTR_HASTE, "curios_haste");
-        removeModifier(player, org.bukkit.attribute.Attribute.GENERIC_KNOCKBACK_RESISTANCE, ATTR_KNOCKBACK, "curios_knockback");
-    }
-
-    @SuppressWarnings("deprecation")
-    private static void applyModifier(Player player, org.bukkit.attribute.Attribute attr, UUID id, String name, double amount,
-                                      org.bukkit.attribute.AttributeModifier.Operation op) {
-        if (amount <= 0.0) return;
-        var instance = player.getAttribute(attr);
-        if (instance == null) return;
-        instance.addModifier(new org.bukkit.attribute.AttributeModifier(id, name, amount, op));
-    }
-
-    @SuppressWarnings("deprecation")
-    private static void removeModifier(Player player, org.bukkit.attribute.Attribute attr, UUID id, String name) {
-        var instance = player.getAttribute(attr);
-        if (instance == null) return;
-        for (var mod : new ArrayList<>(instance.getModifiers())) {
-            if (id.equals(mod.getUniqueId()) || name.equals(mod.getName())) {
-                instance.removeModifier(mod);
-            }
-        }
+        if (boostRuntime != null) boostRuntime.clear(player);
     }
 
     private void importLoadout(Player actor, Player target) {
@@ -1401,6 +1368,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         values.forEach((key, value) -> data.set(key, PersistentDataType.STRING, value));
         data.set(imported, PersistentDataType.BYTE, (byte) 1);
         loadouts.remove(target.getUniqueId());
+        refreshAttributes(target);
         target.saveData();
         tellWithMode(actor, cardsMode, "Imported " + values.size() + " equipped curios for " + target.getName() + ".");
     }

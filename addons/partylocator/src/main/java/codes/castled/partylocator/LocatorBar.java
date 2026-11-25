@@ -192,7 +192,7 @@ final class LocatorBar implements Listener {
                 plugin.book().sameParty(viewer.getUniqueId(), target.getUniqueId()),
                 override(viewer.getUniqueId(), target.getUniqueId()),
                 viewerStaff, self.spectator(), viewerSpecPerm, targetSnap.spectator(),
-                distSq, radius);
+                distSq, effectiveRadius(viewer.getUniqueId()));
         waypoints.apply(viewer, target.getUniqueId(), targetSnap.blockX(), targetSnap.blockY(), targetSnap.blockZ(),
                 LocatorRules.show(pair));
     }
@@ -212,7 +212,21 @@ final class LocatorBar implements Listener {
                 override(viewer.getUniqueId(), target.getUniqueId()), staffMode(viewer),
                 viewer.getGameMode() == GameMode.SPECTATOR, viewer.hasPermission(SPECTATOR),
                 target.getGameMode() == GameMode.SPECTATOR,
-                sameWorld ? viewer.getLocation().distanceSquared(target.getLocation()) : Double.MAX_VALUE, radius);
+                sameWorld ? viewer.getLocation().distanceSquared(target.getLocation()) : Double.MAX_VALUE,
+                effectiveRadius(viewer.getUniqueId()));
+    }
+
+    double effectiveRadius(UUID viewer) {
+        try {
+            var server = plugin.getServer();
+            var services = server == null ? null : server.getServicesManager();
+            var boosts = services == null ? null : services.load(codes.castled.allium.api.CurioBoosts.class);
+            if (boosts == null) return radius;
+            double widened = boosts.effectiveLocatorRadius(viewer, radius);
+            return Double.isFinite(widened) ? Math.max(radius, widened) : radius;
+        } catch (NoClassDefFoundError | RuntimeException unavailable) {
+            return radius;
+        }
     }
 
     private boolean barEnabled(World world) {

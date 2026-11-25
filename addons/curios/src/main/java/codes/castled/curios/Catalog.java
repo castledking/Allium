@@ -1,16 +1,30 @@
 package codes.castled.curios;
 
 import org.bukkit.Material;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.*;
 
 final class Catalog {
     enum DropCondition { ANY, RAID, FREEZE }
-    enum Ability { UNARMED_IGNITE, PHANTOM_TRUCE, PIGLIN_TRUCE, ECHO_STRIKE, PURIFY, WATER_RETALIATE }
+    enum Ability {
+        UNARMED_IGNITE, PHANTOM_TRUCE, PIGLIN_TRUCE, ECHO_STRIKE, PURIFY, WATER_RETALIATE,
+        SUMMON_VEX, LAVA_WALKER, CHORUS_BLINK, GOLEM_KNOCKBACK_IMMUNITY
+    }
+    record AttributeBonus(String attribute, double amount, AttributeModifier.Operation operation) {}
     record Entry(String id, String name, String slot, int model, int maxLevel, int step, String frame,
                  Material trade, int tradeAmount, String dropMob, double chance, DropCondition dropCondition, String lootTable, String legacyRelic,
-                 String legacyCard, String legacyTier, ConfigurationSection recipe, Set<Ability> abilities) {}
+                 String legacyCard, String legacyTier, ConfigurationSection recipe, Set<Ability> abilities,
+                 List<AttributeBonus> attributes, Map<String, Double> effects) {
+        double effect(String key, double fallback) {
+            Double value = effects.get(key);
+            return value == null || !Double.isFinite(value) ? fallback : value;
+        }
+        int effectTicks(String key, int fallback) {
+            return (int) Math.round(effect(key, fallback));
+        }
+    }
     record Slot(String type, int index) {
         String key() { return type + "_" + index; }
     }
@@ -57,7 +71,8 @@ final class Catalog {
                     row.getString("frame", "simple"), trade, trade == null ? 0 : integer(row, "trade-amount", 1, trade.getMaxStackSize()),
                     row.getString("drop-mob", ""), chance(row, "drop-chance"),
                     DropCondition.valueOf(row.getString("drop-condition", "ANY").toUpperCase(Locale.ROOT)), row.getString("loot-table", ""), row.getString("legacy-relic", ""),
-                    row.getString("legacy-card", ""), row.getString("legacy-tier", ""), row.getConfigurationSection("recipe"), abilities(row)));
+                    row.getString("legacy-card", ""), row.getString("legacy-tier", ""), row.getConfigurationSection("recipe"), abilities(row),
+                    attributes(id, row), effects(row)));
         }
         var cardPools = config.getConfigurationSection("card-pools");
         if (cardPools == null) return;
@@ -83,6 +98,39 @@ final class Catalog {
             abilities.add(Ability.valueOf(value.toUpperCase(Locale.ROOT)));
         }
         return Set.copyOf(abilities);
+    }
+
+    private static List<AttributeBonus> attributes(String id, ConfigurationSection entry) {
+        List<Map<?, ?>> raw = entry.getMapList("attributes");
+        if (raw.isEmpty()) return List.of();
+        List<AttributeBonus> out = new ArrayList<>(raw.size());
+        for (Map<?, ?> row : raw) {
+            Object attrObj = row.get("attribute");
+            Object amtObj = row.get("amount");
+            if (attrObj == null || !(amtObj instanceof Number num)) {
+                throw new IllegalArgumentException(id + ": invalid attribute modifier");
+            }
+            String attr = attrObj.toString().trim();
+            double amount = num.doubleValue();
+            if (attr.isEmpty() || !Double.isFinite(amount)) {
+                throw new IllegalArgumentException(id + ": invalid attribute modifier " + attr);
+            }
+            String opName = row.get("operation") == null ? "ADD_NUMBER" : row.get("operation").toString().trim().toUpperCase(Locale.ROOT);
+            AttributeModifier.Operation op = AttributeModifier.Operation.valueOf(opName);
+            out.add(new AttributeBonus(attr, amount, op));
+        }
+        return List.copyOf(out);
+    }
+
+    private static Map<String, Double> effects(ConfigurationSection entry) {
+        ConfigurationSection section = entry.getConfigurationSection("effects");
+        if (section == null || section.getKeys(false).isEmpty()) return Map.of();
+        Map<String, Double> out = new LinkedHashMap<>();
+        for (String key : section.getKeys(false)) {
+            double value = section.getDouble(key, Double.NaN);
+            if (Double.isFinite(value)) out.put(key, value);
+        }
+        return Collections.unmodifiableMap(out);
     }
 
     private static ConfigurationSection section(ConfigurationSection config, String key) {

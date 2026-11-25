@@ -159,6 +159,15 @@ final class CardRules {
     }
 
     static final List<String> DEFAULT_SIGNATURES = List.of("luck", "strength", "speed");
+
+    static String defaultSignaturesFor(Tier tier) {
+        if (tier == null) return "luck,strength,speed";
+        return switch (tier) {
+            case SIMPLE, ELITE -> "luck,strength,speed";
+            case ULTIMATE, LEGENDARY -> "luck,strength,speed,health";
+            case FABLED -> "luck,strength,speed,health,wisdom";
+        };
+    }
     static final int BONUS_SLOT_COUNT = 5;
     private static final String SMALL_CAPS = "ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀꜱᴛᴜᴠᴡxʏᴢ";
 

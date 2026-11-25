@@ -21,34 +21,48 @@ import java.util.Locale;
  */
 public final class ReportCommand implements SpecCommandHandler {
 
+    private enum Mode { REPORT, ESCALATE, HELPOP }
+
     private final PluginStart plugin;
     private final ReportService reports;
-    private final boolean escalate;
+    private final Mode mode;
 
-    private ReportCommand(PluginStart plugin, ReportService reports, boolean escalate) {
+    private ReportCommand(PluginStart plugin, ReportService reports, Mode mode) {
         this.plugin = plugin;
         this.reports = reports;
-        this.escalate = escalate;
+        this.mode = mode;
     }
 
     public static ReportCommand report(PluginStart plugin, ReportService reports) {
-        return new ReportCommand(plugin, reports, false);
+        return new ReportCommand(plugin, reports, Mode.REPORT);
     }
 
     public static ReportCommand escalate(PluginStart plugin, ReportService reports) {
-        return new ReportCommand(plugin, reports, true);
+        return new ReportCommand(plugin, reports, Mode.ESCALATE);
+    }
+
+    public static ReportCommand helpop(PluginStart plugin, ReportService reports) {
+        return new ReportCommand(plugin, reports, Mode.HELPOP);
     }
 
     @Override
     public CommandSpec spec() {
-        return escalate ? CoreCommandSpecs.ESCALATE : CoreCommandSpecs.REPORT;
+        return switch (mode) {
+            case REPORT -> CoreCommandSpecs.REPORT;
+            case ESCALATE -> CoreCommandSpecs.ESCALATE;
+            case HELPOP -> CoreCommandSpecs.HELPOP;
+        };
     }
 
     @Override
     public void execute(BukkitCommandContext context) {
         String[] args = context.args();
-        if (!escalate) {
+        if (mode == Mode.REPORT) {
             reports.report(context.sender(), args, () -> context.sendInvalidArgs(spec().selfUsage()));
+            return;
+        }
+        if (mode == Mode.HELPOP) {
+            reports.helpop(context.sender(), args, () -> context.sendInvalidArgs(spec().selfUsage()));
             return;
         }
         if (args.length < 2) {
@@ -60,7 +74,7 @@ public final class ReportCommand implements SpecCommandHandler {
     }
 
     public List<String> complete(CommandSender sender, String[] args) {
-        if (args.length != 1) return List.of();
+        if (mode == Mode.HELPOP || args.length != 1) return List.of();
         String prefix = args[0].toLowerCase(Locale.ROOT);
         List<String> names = new ArrayList<>();
         for (Player player : plugin.getServer().getOnlinePlayers()) {

@@ -44,12 +44,12 @@ public final class DiscordChatRelay implements ChatRelay {
     @Subscribe public void preventDefaultRelay(GameChatMessagePreProcessEvent event){if(service.ownsChat())event.setCancelled(true);}
     @Subscribe public void incoming(DiscordGuildMessagePreProcessEvent event){
         if(closed||event.isCancelled()||!service.ownsChat())return;
-        var channel=service.settings().channels().values().stream().filter(c->!c.local()&&c.discordId().equals(event.getChannel().getId())).findFirst().orElse(null);if(channel==null)return;
+        var channel=service.settings().channels().values().stream().filter(c->!c.local()&&!c.excludeFromDiscord()&&c.discordId().equals(event.getChannel().getId())).findFirst().orElse(null);if(channel==null)return;
         event.setCancelled(true);if(event.getAuthor().isBot()||event.getMessage().isWebhookMessage())return;
         service.inbound(event.getMessage().getId(),event.getChannel().getId(),event.getMember()==null?event.getAuthor().getName():event.getMember().getEffectiveName(),event.getMessage().getContentDisplay());
     }
     @Override public void send(ChatHistory.Message message,ChatSettings.Channel channel,String player,String body){
-        if(closed||channel.local()||channel.discordId().isEmpty()||message.deleted().get())return;
+        if(closed||channel.excludeFromDiscord()||channel.discordId().isEmpty()||message.deleted().get())return;
         var jda=backend.jda();if(jda==null){failed(message.id());return;}
         TextChannel destination=jda.getTextChannelById(channel.discordId());if(destination==null){failed(message.id());return;}
         String content=channel.discordOut().replace("{player}",player).replace("{message}",body);

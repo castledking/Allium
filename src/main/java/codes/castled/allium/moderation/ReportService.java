@@ -46,6 +46,9 @@ public final class ReportService {
     public static final String PERM_COOLDOWN_BYPASS = "allium.report.cooldown.bypass";
     public static final String PERM_ESCALATE = "allium.escalate";
     public static final String PERM_ESCALATE_RECEIVE = "allium.escalate.receive";
+    public static final String PERM_HELPOP = "allium.helpop";
+    public static final String PERM_HELPOP_RECEIVE = "allium.helpop.receive";
+    public static final String PERM_HELPOP_COOLDOWN_BYPASS = "allium.helpop.cooldown.bypass";
     public static final int MAX_LENGTH = 256;
 
     private final PluginStart plugin;
@@ -54,6 +57,7 @@ public final class ReportService {
     private final Executor io;
     private final LongSupplier clock;
     private final Map<UUID, Long> lastReport = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastHelpop = new ConcurrentHashMap<>();
     private volatile long cooldownMillis;
 
     public ReportService(PluginStart plugin, ModerationRepository repository, StaffFeeds feeds, Executor io, LongSupplier clock) {
@@ -151,6 +155,49 @@ public final class ReportService {
         feeds.post(DiscordFeeds.Feed.REPORTS, StaffPosts.report(name, parsed.player(), parsed.text(), where, Instant.now()));
         audit("REPORT", name, parsed.playerId(), parsed.player(), parsed.text() + (where == null ? "" : " @ " + where));
         send(sender, Messages.REPORT_SENT);
+    }
+
+    // -- /helpop ---------------------------------------------------------------------------------
+
+    /**
+     * Sends a staff help request distinct from {@code /report}: every argument is preserved as
+     * message text (never split on a target player name), recipients require
+     * {@link #PERM_HELPOP_RECEIVE}, and audit entries record the {@code HELPOP} action.
+     */
+    public void helpop(CommandSender sender, String[] args, Runnable usage) {
+        if (args.length == 0) {
+            usage.run();
+            return;
+        }
+        String text = clean(String.join(" ", args));
+        if (text.isEmpty()) {
+            usage.run();
+            return;
+        }
+        Player requester = sender instanceof Player player ? player : null;
+        if (requester != null
+                && !requester.hasPermission(PERM_HELPOP_COOLDOWN_BYPASS)
+                && !requester.hasPermission(PERM_COOLDOWN_BYPASS)) {
+            Long last = lastHelpop.get(requester.getUniqueId());
+            long wait = last == null ? 0L : last + cooldownMillis - clock.getAsLong();
+            if (wait > 0L) {
+                send(sender, Messages.HELPOP_COOLDOWN, "{time}", DurationParser.formatRemaining(wait));
+                return;
+            }
+        }
+        if (requester != null) lastHelpop.put(requester.getUniqueId(), clock.getAsLong());
+        String name = requester == null ? "Console" : requester.getName();
+        String where = requester == null ? null : where(requester.getLocation());
+        for (Player staff : List.copyOf(plugin.getServer().getOnlinePlayers())) {
+            if (staff == requester || !staff.hasPermission(PERM_HELPOP_RECEIVE)) continue;
+            literal(staff, Messages.HELPOP_STAFF, text, "{player}", name,
+                    "{where}", where == null ? "" : "(" + where + ")");
+        }
+        plugin.logger().info("[HelpOp] " + name + ": " + text + (where == null ? "" : " (" + where + ")"));
+        feeds.post(DiscordFeeds.Feed.REPORTS, StaffPosts.report(name, null, "[HelpOp] " + text, where, Instant.now()));
+        audit("HELPOP", name, requester == null ? null : requester.getUniqueId(), requester == null ? null : name,
+                text + (where == null ? "" : " @ " + where));
+        send(sender, Messages.HELPOP_SENT);
     }
 
     // -- /escalate -------------------------------------------------------------------------------

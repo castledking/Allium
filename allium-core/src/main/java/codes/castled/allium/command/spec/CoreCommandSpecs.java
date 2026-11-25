@@ -788,8 +788,17 @@ public final class CoreCommandSpecs {
             List.of(),
             CommandMessageKeys.ofOutcomes(Map.of()));
 
+    public static final CommandSpec HELPOP = new CommandSpec(
+            "helpop", CommandSpec.DEFAULT_NAMESPACE, "moderation", List.of("helpme"),
+            "Send a help request to online staff",
+            "/helpop <message>", "/helpop <message>",
+            "allium.helpop", null,
+            List.of(),
+            List.of(),
+            CommandMessageKeys.ofOutcomes(Map.of()));
+
     public static final List<CommandSpec> MODERATION_SPECS = java.util.stream.Stream.concat(
-            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES, INVSEE, ENDERCHEST, COMMANDSPY, SPY, SPECTATE, REPORT, ESCALATE),
+            java.util.stream.Stream.of(VANISH, MUTE, UNMUTE, MUTES, INVSEE, ENDERCHEST, COMMANDSPY, SPY, SPECTATE, REPORT, ESCALATE, HELPOP),
             DISCIPLINE_SPECS.stream()).toList();
 
     public static final List<CommandSpec> CHAT_SPECS = java.util.stream.Stream.of("nick","channel","delmsg","action")
@@ -804,6 +813,12 @@ public final class CoreCommandSpecs {
             "Clear the chat window for everyone or one player", "/clearchat [player]", "/clearchat [player]",
             "allium.clearchat", "allium.clearchat.others",
             List.of(CommandArgSpec.optional("player", null, SuggestionSpec.onlinePlayers("allium.clearchat.others"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final CommandSpec EDITNICK = new CommandSpec("editnick", CommandSpec.DEFAULT_NAMESPACE, "chat", List.of("nickgui"),
+            "Open the nickname customization GUI", "/editnick [player]", "/editnick [player]",
+            "allium.editnick", "allium.nick.others",
+            List.of(CommandArgSpec.optional("player", "allium.nick.others", SuggestionSpec.onlinePlayers("allium.nick.others"))),
             List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
 
     private static final List<String> MONEY_AMOUNTS = List.of("1", "10", "100", "1k", "100k", "1M");

@@ -3004,3 +3004,13 @@ pvp:
     loading:
       - "{prefix} &ePvP is temporarily blocked while player preferences load."
       - "[sound] block.note_block.bass 0.8"
+helpop:
+  sent:
+    - "{prefix} &aYour help request was sent to staff."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  cooldown:
+    - "{prefix} &cYou can send another help request in &f{time}&c."
+    - "[sound] block.note_block.bass 0.85"
+  staff:
+    - "&e[HelpOp] &f{player}&7: &f{message} &8{where}"
+    - "[sound] block.note_block.bell 1.35"

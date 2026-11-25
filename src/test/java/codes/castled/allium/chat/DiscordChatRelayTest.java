@@ -37,6 +37,23 @@ class DiscordChatRelayTest {
     @Test void returnedMessageIdentityLinksDeletionWithoutTextMatching(){var m=message();relay.send(m,service.settings().channels().get("default"),"Alice","repeated text");var sent=mock(Message.class,RETURNS_DEEP_STUBS);ack.get().accept(sent);relay.delete(m.id());verify(sent).delete();verify(destination,never()).getHistory();verify(action).allowedMentions(List.of());}
     @Test void deletionBeforeAcknowledgementDeletesLateCopy(){var m=message();relay.send(m,service.settings().channels().get("default"),"Alice","late");m.deleted().set(true);relay.delete(m.id());var sent=mock(Message.class,RETURNS_DEEP_STUBS);ack.get().accept(sent);verify(sent).delete();}
     @Test void localAndUnconfiguredChannelsNeverRelay(){var m=message();relay.send(m,service.settings().channels().get("local"),"Alice","secret local");relay.send(m,service.settings().channels().get("staff-chat"),"Alice","unconfigured staff");verify(destination,never()).sendMessage(anyString());}
+    @Test void localChannelHonorsExcludeFromDiscordSetting(){
+        var excludedConfig=new org.bukkit.configuration.file.YamlConfiguration();
+        excludedConfig.set("chat.channels.local-channel.exclude-from-discord",true);
+        excludedConfig.set("chat.channels.local-channel.discord-channel-id","123456789");
+        var excludedLocal=ChatSettings.read(excludedConfig).channels().get("local");
+        assertTrue(excludedLocal.excludeFromDiscord());
+        relay.send(message(),excludedLocal,"Alice","hidden local");
+        verify(destination,never()).sendMessage(anyString());
+
+        var optInConfig=new org.bukkit.configuration.file.YamlConfiguration();
+        optInConfig.set("chat.channels.local-channel.exclude-from-discord",false);
+        optInConfig.set("chat.channels.local-channel.discord-channel-id","123456789");
+        var optInLocal=ChatSettings.read(optInConfig).channels().get("local");
+        assertFalse(optInLocal.excludeFromDiscord());
+        relay.send(message(),optInLocal,"Alice","opted in local");
+        verify(destination,times(1)).sendMessage("Alice: opted in local");
+    }
     @Test void inboundOnlyInterceptsConfiguredChannelAndSkipsBots(){var event=mock(DiscordGuildMessagePreProcessEvent.class,RETURNS_DEEP_STUBS);when(event.getChannel().getId()).thenReturn("123456789");when(event.getAuthor().isBot()).thenReturn(true);relay.incoming(event);verify(event).setCancelled(true);verify(service,never()).inbound(anyString(),anyString(),anyString(),anyString());}
     @Test void unrelatedDiscordChannelIsLeftToItsOwner(){var event=mock(DiscordGuildMessagePreProcessEvent.class,RETURNS_DEEP_STUBS);when(event.getChannel().getId()).thenReturn("999999999");relay.incoming(event);verify(event,never()).setCancelled(anyBoolean());verify(service,never()).inbound(anyString(),anyString(),anyString(),anyString());}
     @Test void missingTransportDoesNotPretendToSendOrRetry(){when(backend.jda()).thenReturn(null);relay.send(message(),service.settings().channels().get("default"),"Alice","text");verify(destination,never()).sendMessage(anyString());verify(plugin.logger()).warning(contains("no automatic resend"));}

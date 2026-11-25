@@ -6,7 +6,12 @@ public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEn
     public ChatSettings(boolean enabled,boolean formatting,boolean channelsEnabled,String format,Map<String,String> groups,Map<String,Channel> channels,String defaultChannel,String staffChannel,int clearEntries,int packetBudget,int maxBody,int nicknameLength,boolean animate,int updatesPerTick,boolean mentionsEnabled,String mentionColor,String mentionSound,double mentionVolume,double mentionPitch,boolean questionEnabled,String questionPrefix,String questionFormat,boolean urlsRequirePermission){
         this(enabled,formatting,channelsEnabled,format,groups,channels,defaultChannel,staffChannel,clearEntries,packetBudget,maxBody,nicknameLength,animate,updatesPerTick,mentionsEnabled,mentionColor,mentionSound,mentionVolume,mentionPitch,questionEnabled,questionPrefix,questionFormat,urlsRequirePermission,ChatFilterSettings.disabled());
     }
-    public record Channel(String id,String display,Set<String> aliases,String format,double radius,String discordId,String discordIn,String discordOut,boolean webhook){public boolean local(){return radius>0;}}
+    public record Channel(String id,String display,Set<String> aliases,String format,double radius,String discordId,String discordIn,String discordOut,boolean webhook,boolean excludeFromDiscord){
+        public Channel(String id,String display,Set<String> aliases,String format,double radius,String discordId,String discordIn,String discordOut,boolean webhook){
+            this(id,display,aliases,format,radius,discordId,discordIn,discordOut,webhook,radius>0);
+        }
+        public boolean local(){return radius>0;}
+    }
     public static ChatSettings read(ConfigurationSection config){
         var channels=new LinkedHashMap<String,Channel>();var root=config.getConfigurationSection("chat.channels");
         String def=root==null?"default":root.getString("default-write-channel","default"),staff=root==null?"staff-chat":root.getString("staff-channel","staff-chat");
@@ -26,7 +31,12 @@ public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEn
         if (local != null) {
             for (String alias : local.getStringList("aliases")) localAliases.add(ChatRepository.channel(alias));
         }
-        channels.put("local",new Channel("local","Local",Set.copyOf(localAliases),local==null?"&8[Local] <display_name>&f: <message>":local.getString("format","&8[Local] <display_name>&f: <message>"),radius,"","","",false));
+        boolean localExcludeDiscord = local == null || local.getBoolean("exclude-from-discord", true);
+        String localDiscordId = local == null ? "" : local.getString("discord-channel-id", "");
+        String localDiscordIn = local == null ? "" : local.getString("discord-in-format", "");
+        String localDiscordOut = local == null ? "{player}: {message}" : local.getString("discord-out-format", "{player}: {message}");
+        boolean localWebhook = local != null && local.getBoolean("webhook-delivery", false);
+        channels.put("local",new Channel("local","Local",Set.copyOf(localAliases),local==null?"&8[Local] <display_name>&f: <message>":local.getString("format","&8[Local] <display_name>&f: <message>"),radius,localDiscordId,localDiscordIn,localDiscordOut,localWebhook,localExcludeDiscord));
         if(channels.size()>64)throw new IllegalArgumentException("too many channels");
         var labels=new HashMap<String,String>();var discord=new HashSet<String>();
         for(var c:channels.values()){

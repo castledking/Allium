@@ -672,6 +672,8 @@ chat:
     local-channel:
       radius: 100
       format: '&8[Local] <display_name>&f: <message>'
+      # Keep local proximity chat out of Discord by default; set false + discord-channel-id to opt in.
+      exclude-from-discord: true
     list:
       default:
         display-name: Global

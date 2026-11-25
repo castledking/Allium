@@ -109,6 +109,11 @@ commands:
     description: Set or clear your nickname (or another player's)
     aliases: [nickname]
     permission: allium.nick
+  editnick:
+    description: Open the nickname customization GUI
+    aliases: [nickgui]
+    usage: /<command> [player]
+    permission: allium.editnick
   channel:
     description: Join, leave or write to a chat channel
     aliases: [g, global, shout, l, local, a, ac, amsg, staffchat]
@@ -663,6 +668,11 @@ commands:
     description: Hand an issue up to senior staff
     usage: /<command> <target> <reason>
     permission: allium.escalate
+  helpop:
+    aliases: [helpme]
+    description: Send a help request to online staff
+    usage: /<command> <message>
+    permission: allium.helpop
   voucher:
     aliases: [vouchers]
     description: Give and list vouchers (powertools named voucher_<name>); /vouchers lists them
@@ -942,6 +952,9 @@ permissions:
       allium.voucher.reload: true
       allium.report.receive: true
       allium.report.cooldown.bypass: true
+      allium.helpop: true
+      allium.helpop.receive: true
+      allium.helpop.cooldown.bypass: true
       allium.escalate: true
       allium.escalate.receive: true
       allium.antioch: true
@@ -1444,6 +1457,15 @@ permissions:
     default: op
   allium.escalate.receive:
     description: See escalations in chat
+    default: op
+  allium.helpop:
+    description: Send a help request to online staff with /helpop
+    default: true
+  allium.helpop.receive:
+    description: See /helpop requests in chat
+    default: op
+  allium.helpop.cooldown.bypass:
+    description: Send /helpop requests without waiting for cooldown
     default: op
   allium.unrestrain:
     description: Allows /unrestrain [player], to free restrained players
@@ -2608,8 +2630,16 @@ permissions:
 
   allium.nick:
     default: op
+  allium.editnick:
+    description: Allows opening the nickname customization GUI (/editnick)
+    default: op
   allium.nick.others:
     default: op
+  allium.nick.other:
+    description: Alias for allium.nick.others
+    default: op
+    children:
+      allium.nick.others: true
   allium.nick.color:
     default: op
   allium.nick.hex:

@@ -708,6 +708,59 @@ public final class ChatService implements Listener,AutoCloseable {
         }
     }
 
+    public void applyNicknameFromGui(Player viewer, UUID targetId, @org.jetbrains.annotations.Nullable String raw) {
+        if (!settings.enabled()) {
+            tell(viewer, Messages.CHAT_MODULE_DISABLED);
+            return;
+        }
+        if (raw != null) {
+            if (!raw.equals(UntrustedText.clean(raw))) {
+                tell(viewer, Messages.CHAT_NICK_CONTROL_TEXT);
+                return;
+            }
+            var allow = new UntrustedText.Allow(viewer.hasPermission("allium.nick.color"),
+                    viewer.hasPermission("allium.nick.hex"), viewer.hasPermission("allium.nick.gradient"));
+            String plain = UntrustedText.parse(raw, allow).toPlainText();
+            if (plain.codePointCount(0, plain.length()) > settings.nicknameLength()
+                    || !plain.matches("[\\p{L}\\p{N}_ .-]+") || plain.isBlank()) {
+                tell(viewer, Messages.CHAT_NICK_INVALID);
+                return;
+            }
+        }
+        saveNick(viewer, targetId, raw);
+    }
+
+    public void openNicknameEditor(BukkitCommandContext context, NicknameEditorGui gui) {
+        if (!settings.enabled()) {
+            tell(context.sender(), Messages.CHAT_MODULE_DISABLED);
+            return;
+        }
+        if (!(context.sender() instanceof Player viewer)) {
+            tell(context.sender(), Messages.CHAT_CHANNEL_PLAYER_ONLY);
+            return;
+        }
+        String[] args = context.args();
+        if (args.length > 1) {
+            context.sendInvalidArgs(context.spec().selfUsage());
+            return;
+        }
+        Player target = viewer;
+        if (args.length == 1) {
+            if (!viewer.hasPermission("allium.nick.others") && !viewer.hasPermission("allium.nick.other")) {
+                tell(viewer, Messages.NO_PERMISSION);
+                return;
+            }
+            target = plugin.getServer().getPlayerExact(args[0]);
+            if (target == null || !canSeePlayer(viewer, target)) {
+                tell(viewer, Messages.CHAT_PLAYER_LOOKUP_FAILED);
+                return;
+            }
+        }
+        Session session = sessions.get(target.getUniqueId());
+        String currentRaw = session != null && session.ready ? session.nickname : null;
+        gui.open(viewer, target.getUniqueId(), target.getName(), currentRaw);
+    }
+
     private void nick(CommandSender sender,String[] args){
         if(args.length<1||args.length>2)throw new UsageFailure();
         String raw=args[args.length-1];boolean reset=Set.of("off","reset").contains(raw.toLowerCase(Locale.ROOT));

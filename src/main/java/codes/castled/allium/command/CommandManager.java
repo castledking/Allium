@@ -55,6 +55,7 @@ public final class CommandManager {
         all.addAll(CoreCommandSpecs.ECONOMY_SPECS);
         all.addAll(CoreCommandSpecs.CHAT_SPECS);
         all.add(CoreCommandSpecs.CLEAR_CHAT);
+        all.add(CoreCommandSpecs.EDITNICK);
         all.addAll(CoreCommandSpecs.MAIL_SPECS);
         all.addAll(CoreCommandSpecs.TELEPORT_SPECS);
         all.addAll(CoreCommandSpecs.TRAVEL_SPECS);

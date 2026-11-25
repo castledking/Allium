@@ -110,8 +110,9 @@ public final class ModerationModule extends AbstractModule {
         plugin.getCommandManager().register(new SpectateCommand(plugin, spy));
         plugin.getCommandManager().register(codes.castled.allium.command.moderation.ReportCommand.report(plugin, reports));
         plugin.getCommandManager().register(codes.castled.allium.command.moderation.ReportCommand.escalate(plugin, reports));
+        plugin.getCommandManager().register(codes.castled.allium.command.moderation.ReportCommand.helpop(plugin, reports));
         plugin.logger().info("Moderation enabled: /vanish, /mute, /unmute, /mutes, /invsee, /enderchest, /commandspy, /spy, /spectate,"
-                + " /report, /escalate.");
+                + " /report, /escalate, /helpop.");
         java.util.List<String> discordFeeds = new java.util.ArrayList<>();
         for (var feed : codes.castled.allium.discord.DiscordFeeds.Feed.values()) {
             var route = feeds.settings().route(feed);

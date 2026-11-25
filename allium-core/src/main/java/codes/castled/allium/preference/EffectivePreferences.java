@@ -7,14 +7,23 @@ package codes.castled.allium.preference;
  */
 public record EffectivePreferences(boolean acceptMessages, boolean acceptPayments, boolean acceptTeleportRequests,
                                    double messageSoundVolume, boolean volumeOverridden, boolean socialSpy,
-                                   boolean payConfirm, boolean tpAuto) {
+                                   boolean payConfirm, boolean tpAuto, boolean pvpEnabled) {
+    public EffectivePreferences(boolean acceptMessages, boolean acceptPayments, boolean acceptTeleportRequests,
+                                double messageSoundVolume, boolean volumeOverridden, boolean socialSpy,
+                                boolean payConfirm, boolean tpAuto) {
+        this(acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, volumeOverridden, socialSpy,
+                payConfirm, tpAuto, true);
+    }
+
     public EffectivePreferences(boolean acceptMessages, boolean acceptPayments, boolean acceptTeleportRequests,
                                 double messageSoundVolume, boolean volumeOverridden, boolean socialSpy) {
-        this(acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, volumeOverridden, socialSpy, false, false);
+        this(acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, volumeOverridden, socialSpy,
+                false, false, true);
     }
 
     public EffectivePreferences(boolean acceptMessages, boolean acceptPayments, boolean acceptTeleportRequests,
                                 double messageSoundVolume, boolean volumeOverridden) {
-        this(acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, volumeOverridden, false, false, false);
+        this(acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, volumeOverridden, false,
+                false, false, true);
     }
 }

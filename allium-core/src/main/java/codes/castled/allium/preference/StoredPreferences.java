@@ -16,10 +16,20 @@ import java.util.UUID;
 public record StoredPreferences(UUID uuid, @Nullable Boolean acceptMessages, @Nullable Boolean acceptPayments,
                                 @Nullable Boolean acceptTeleportRequests, @Nullable Double messageSoundVolume,
                                 @Nullable Double messageSoundRestore, @Nullable Boolean socialSpy,
-                                @Nullable Boolean payConfirm, @Nullable Boolean tpAuto, long version) {
+                                @Nullable Boolean payConfirm, @Nullable Boolean tpAuto,
+                                @Nullable Boolean pvpEnabled, long version) {
 
     public StoredPreferences {
         Objects.requireNonNull(uuid, "uuid");
+    }
+
+    /** Compatibility constructor for the pre-pvp row. */
+    public StoredPreferences(UUID uuid, @Nullable Boolean acceptMessages, @Nullable Boolean acceptPayments,
+                             @Nullable Boolean acceptTeleportRequests, @Nullable Double messageSoundVolume,
+                             @Nullable Double messageSoundRestore, @Nullable Boolean socialSpy,
+                             @Nullable Boolean payConfirm, @Nullable Boolean tpAuto, long version) {
+        this(uuid, acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, messageSoundRestore,
+                socialSpy, payConfirm, tpAuto, null, version);
     }
 
     /** Compatibility constructor for the pre-pay-confirm/tp-auto row. */
@@ -27,18 +37,18 @@ public record StoredPreferences(UUID uuid, @Nullable Boolean acceptMessages, @Nu
                              @Nullable Boolean acceptTeleportRequests, @Nullable Double messageSoundVolume,
                              @Nullable Double messageSoundRestore, @Nullable Boolean socialSpy, long version) {
         this(uuid, acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, messageSoundRestore,
-                socialSpy, null, null, version);
+                socialSpy, null, null, null, version);
     }
 
     /** Compatibility constructor for the pre-social-spy row. */
     public StoredPreferences(UUID uuid, Boolean acceptMessages, Boolean acceptPayments, Boolean acceptTeleportRequests,
                              Double messageSoundVolume, Double messageSoundRestore, long version) {
         this(uuid, acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, messageSoundRestore,
-                null, null, null, version);
+                null, null, null, null, version);
     }
 
     public static StoredPreferences empty(UUID uuid) {
-        return new StoredPreferences(uuid, null, null, null, null, null, null, null, null, 0L);
+        return new StoredPreferences(uuid, null, null, null, null, null, null, null, null, null, 0L);
     }
 
     @Nullable
@@ -50,6 +60,7 @@ public record StoredPreferences(UUID uuid, @Nullable Boolean acceptMessages, @Nu
             case ACCEPT_TELEPORT_REQUESTS -> acceptTeleportRequests;
             case PAY_CONFIRM -> payConfirm;
             case TP_AUTO -> tpAuto;
+            case PVP_ENABLED -> pvpEnabled;
             case MESSAGE_SOUND_VOLUME -> messageSoundVolume;
             case MESSAGE_SOUND_RESTORE -> messageSoundRestore;
         };
@@ -63,6 +74,7 @@ public record StoredPreferences(UUID uuid, @Nullable Boolean acceptMessages, @Nu
         Boolean teleports = acceptTeleportRequests;
         Boolean confirm = payConfirm;
         Boolean autoTp = tpAuto;
+        Boolean pvp = pvpEnabled;
         Double volume = messageSoundVolume;
         Double restore = messageSoundRestore;
         for (Map.Entry<PreferenceKey, Optional<Object>> e : change.entries().entrySet()) {
@@ -74,11 +86,12 @@ public record StoredPreferences(UUID uuid, @Nullable Boolean acceptMessages, @Nu
                 case ACCEPT_TELEPORT_REQUESTS -> teleports = (Boolean) value;
                 case PAY_CONFIRM -> confirm = (Boolean) value;
                 case TP_AUTO -> autoTp = (Boolean) value;
+                case PVP_ENABLED -> pvp = (Boolean) value;
                 case MESSAGE_SOUND_VOLUME -> volume = (Double) value;
                 case MESSAGE_SOUND_RESTORE -> restore = (Double) value;
             }
         }
-        return new StoredPreferences(uuid, messages, payments, teleports, volume, restore, spy, confirm, autoTp, version);
+        return new StoredPreferences(uuid, messages, payments, teleports, volume, restore, spy, confirm, autoTp, pvp, version);
     }
 
     public EffectivePreferences effective(PreferenceDefaults defaults) {
@@ -88,6 +101,7 @@ public record StoredPreferences(UUID uuid, @Nullable Boolean acceptMessages, @Nu
                 acceptPayments != null ? acceptPayments : defaults.acceptPayments(),
                 acceptTeleportRequests != null ? acceptTeleportRequests : defaults.acceptTeleportRequests(),
                 volume, messageSoundVolume != null, Boolean.TRUE.equals(socialSpy),
-                Boolean.TRUE.equals(payConfirm), Boolean.TRUE.equals(tpAuto));
+                Boolean.TRUE.equals(payConfirm), Boolean.TRUE.equals(tpAuto),
+                pvpEnabled != null ? pvpEnabled : defaults.pvpEnabled());
     }
 }

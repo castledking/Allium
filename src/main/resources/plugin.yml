@@ -360,6 +360,10 @@ commands:
     description: Toggle invulnerability
     usage: /<command> [player]
     permission: allium.god
+  pvp:
+    description: Toggle player-versus-player combat
+    usage: /<command> [on|off] [player]
+    permission: allium.pvp
   gamemode:
     description: Change gamemode (per-mode permission)
     usage: /<command> <mode> [player]
@@ -892,6 +896,9 @@ permissions:
       allium.fly.others: true
       allium.god: true
       allium.god.others: true
+      allium.pvp: true
+      allium.pvp.other: true
+      allium.pvp.others: true
       allium.gamemode: true
       allium.gamemode.others: true
       allium.gamemode.survival: true
@@ -1283,6 +1290,17 @@ permissions:
   allium.god.others:
     description: Allows toggling god mode for other players
     default: op
+  allium.pvp:
+    description: Allows using /pvp on yourself
+    default: true
+  allium.pvp.other:
+    description: Allows using /pvp on other players
+    default: op
+  allium.pvp.others:
+    description: Alias for allium.pvp.other
+    default: op
+    children:
+      allium.pvp.other: true
   allium.gamemode:
     description: Allows use of /gamemode
     default: op

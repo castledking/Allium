@@ -19,6 +19,7 @@ import codes.castled.allium.moderation.ModerationRepository;
 import codes.castled.allium.module.EconomyModule;
 import codes.castled.allium.module.TravelModule;
 import codes.castled.allium.pack.Json;
+import codes.castled.allium.preference.PreferenceRepository;
 import codes.castled.allium.scheduler.AlliumScheduler;
 import codes.castled.allium.scheduler.TaskHandle;
 import codes.castled.allium.teleport.TeleportRepository;
@@ -206,11 +207,13 @@ public final class LegacyImportService {
         TeleportRepository teleports = new TeleportRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ModerationRepository moderation = new ModerationRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         MailRepository mail = new MailRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
+        PreferenceRepository preferences = new PreferenceRepository(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         ImportLedger ledger = new ImportLedger(db.connectionSource(), db.dialect(), System::currentTimeMillis);
         travel.migrate();
         teleports.migrate();
         moderation.migrate();
         mail.migrate();
+        preferences.migrate();
         ledger.migrate();
         var reviewCheck = ImportLifecycle.loadReviewedPlan(planFile, relative(planFile), runId, ledger);
         if (reviewCheck instanceof ImportLifecycle.ReviewCheck.Refused refused) {
@@ -230,7 +233,7 @@ public final class LegacyImportService {
         ledger.startRun(runId, LegacyDestinationPlan.SOURCE, read.snapshot().sha256(), read.plan().sha256());
         List<LegacyDestinationApplier.Outcome> outcomes;
         try {
-            var targets = new LegacyDestinationApplier.Targets(serverOrigin(), economyEngine(), travel, teleports, moderation, mail);
+            var targets = new LegacyDestinationApplier.Targets(serverOrigin(), economyEngine(), travel, teleports, moderation, mail, preferences);
             outcomes = LegacyDestinationApplier.apply(read.plan(), runId, ledger, targets);
         } catch (SQLException | RuntimeException failure) {
             ledger.finishRun(runId, "failed: " + failure.getMessage());
@@ -264,6 +267,7 @@ public final class LegacyImportService {
         boolean locations = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), TeleportRepository.LOCATIONS_TABLE);
         boolean notes = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), ModerationRepository.NOTES_TABLE);
         boolean mail = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), "allium_mail");
+        boolean prefs = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), PreferenceRepository.TABLE);
         boolean records = !tablesMayBeMissing || ImportLifecycle.tableExists(db.connectionSource(), ImportLedger.RECORDS);
         Map<UUID, ExistingAccount> balances = readEconomy ? readBalances() : Map.of();
         return new Destination(homes ? travel.allHomes() : Map.of(), warps ? travel.warps() : Map.of(),
@@ -271,7 +275,26 @@ public final class LegacyImportService {
                 balances,
                 notes ? moderation.loadNoteFingerprints() : Set.of(),
                 mail ? readMailRefs() : Set.of(),
+                prefs ? readPvpPreferences() : Map.of(),
                 records ? ledger.hashes(LegacyDestinationPlan.SOURCE) : Map.of());
+    }
+
+    private Map<UUID, Boolean> readPvpPreferences() throws SQLException {
+        Map<UUID, Boolean> out = new HashMap<>();
+        try (Connection c = plugin.getDatabaseManager().connectionSource().connection();
+             PreparedStatement ps = c.prepareStatement("SELECT uuid, pvp_enabled FROM " + PreferenceRepository.TABLE + " WHERE pvp_enabled IS NOT NULL");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                try {
+                    out.put(UUID.fromString(rs.getString(1)), rs.getBoolean(2));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        } catch (SQLException missingColumn) {
+            // Older unmigrated preferences table during dry-run: no existing pvp_enabled overrides yet.
+            return Map.of();
+        }
+        return out;
     }
 
     private EconomyEngine economyEngine() {
@@ -478,6 +501,7 @@ public final class LegacyImportService {
                 case BALANCE -> "Balances";
                 case NOTE -> "Staff notes";
                 case MAIL -> "Text mail";
+                case PVP -> "PvP preferences";
             }).append(": ").append(outcomes == null ? line(read.plan(), d) : applied(outcomes, d)).append('\n');
         }
         out.append("HOME rows without a name (legacy never used them): ").append(read.data().unnamedHomes()).append('\n');

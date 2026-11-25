@@ -1506,10 +1506,19 @@ public final class CoreCommandSpecs {
             List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    public static final CommandSpec PVP = new CommandSpec(
+            "pvp", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of(),
+            "Toggle player-versus-player combat",
+            "/pvp [on|off] [player]", "/pvp [on|off] <player>",
+            "allium.pvp", "allium.pvp.other",
+            List.of(CommandArgSpec.optional("state", null, SuggestionSpec.literals(List.of("on", "off"), null)),
+                    CommandArgSpec.optional("player", "allium.pvp.other", SuggestionSpec.onlinePlayers("allium.pvp.other"))),
+            List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, COORDS, COMPASS, GLOW, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
             ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, PTIME, PWEATHER, ENCHANT, RENAME, LORE, XP, XPBOTTLE, INFO, INFORM, CUSTOMTEXT, MOTD, RULES,
-            BROADCAST, BROADCASTWORLD, BROADCASTS, REALNAME, SPAWNMOB, RECIPE, POTION, FIREWORK
+            BROADCAST, BROADCASTWORLD, BROADCASTS, REALNAME, SPAWNMOB, RECIPE, POTION, FIREWORK, PVP
     );
 
     public static final List<CommandSpec> ESSENTIALS_PROOF_SPECS = List.of(

@@ -138,7 +138,8 @@ public final class PreferencesModule extends AbstractModule implements Listener 
                 d == null || d.getBoolean("accept-messages", true),
                 d == null || d.getBoolean("accept-payments", true),
                 d == null || d.getBoolean("accept-teleport-requests", true),
-                volume);
+                volume,
+                d == null || d.getBoolean("pvp-enabled", true));
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

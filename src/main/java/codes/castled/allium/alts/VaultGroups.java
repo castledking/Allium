@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
  * Vault's group API, isolated so Vault classes load only when Vault is installed: {@link AltService}
  * itself never names a Vault type, so its listener registers on servers without Vault.
  */
-final class VaultGroups {
+public final class VaultGroups {
 
     private final Permission permission;
 
@@ -19,7 +19,7 @@ final class VaultGroups {
 
     /** The Vault group API, or null without Vault or without a provider that supports groups. */
     @Nullable
-    static VaultGroups find(Server server) {
+    public static VaultGroups find(Server server) {
         if (server.getPluginManager().getPlugin("Vault") == null) {
             return null;
         }
@@ -31,7 +31,7 @@ final class VaultGroups {
         }
     }
 
-    boolean has(OfflinePlayer player, String group) {
+    public boolean has(OfflinePlayer player, String group) {
         return permission.playerInGroup(null, player, group);
     }
 

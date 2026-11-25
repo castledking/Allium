@@ -2,7 +2,12 @@ package codes.castled.allium.preference;
 
 /** Configured defaults for players who never set a preference ({@code preferences.defaults}). */
 public record PreferenceDefaults(boolean acceptMessages, boolean acceptPayments, boolean acceptTeleportRequests,
-                                 double messageSoundVolume) {
+                                 double messageSoundVolume, boolean pvpEnabled) {
+
+    public PreferenceDefaults(boolean acceptMessages, boolean acceptPayments, boolean acceptTeleportRequests,
+                              double messageSoundVolume) {
+        this(acceptMessages, acceptPayments, acceptTeleportRequests, messageSoundVolume, true);
+    }
 
     public PreferenceDefaults {
         if (!Double.isFinite(messageSoundVolume) || messageSoundVolume < 0.0D || messageSoundVolume > 1.0D) {

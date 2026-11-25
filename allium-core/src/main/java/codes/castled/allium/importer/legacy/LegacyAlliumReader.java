@@ -7,6 +7,7 @@ import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.MailRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.MaxHomesRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.NoteRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.Point;
+import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.PvpRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.SupersededHome;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.WarpRow;
 
@@ -206,8 +207,23 @@ public final class LegacyAlliumReader {
                     + ") are inspected read-only and never auto-imported.");
         }
 
+        List<PvpRow> pvpPreferences = new ArrayList<>();
+        if (tables.contains("PLAYER_DATA") && columns(meta, "PLAYER_DATA").contains("PVP_ENABLED")) {
+            long seen = 0;
+            try (PreparedStatement s = c.prepareStatement(
+                    "SELECT uuid, pvp_enabled FROM player_data WHERE pvp_enabled IS NOT NULL ORDER BY uuid")) {
+                s.setFetchSize(1000);
+                try (ResultSet r = s.executeQuery()) {
+                    while (r.next()) {
+                        if (++seen > ROW_LIMIT) throw new SQLException("more than " + ROW_LIMIT + " PLAYER_DATA rows");
+                        pvpPreferences.add(new PvpRow(r.getString(1), r.getBoolean(2)));
+                    }
+                }
+            }
+        }
+
         return new LegacyAlliumSnapshot(version, homes, superseded, unnamed, logouts, olderLogouts, warps, limits,
-                other, notes, balances, staffNotes, mailMessages, historicalCounts);
+                other, notes, balances, staffNotes, mailMessages, historicalCounts, pvpPreferences);
     }
 
     private static long countTable(Connection c, String sql) {

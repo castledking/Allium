@@ -283,6 +283,57 @@ class LegacyImportTest {
         assertEquals(1, mail.mailbox(alice, now).size());
     }
 
+    @Test
+    void legacyPvpPreferencesImportAndRespectExistingOverrides(@TempDir Path dir) throws Exception {
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+        long now = 1_750_000_000_000L;
+
+        LegacyAlliumSnapshot snapshot;
+        try (Connection legacy = DriverManager.getConnection("jdbc:sqlite::memory:");
+             java.sql.Statement st = legacy.createStatement()) {
+            st.execute("CREATE TABLE player_data (uuid VARCHAR(36) PRIMARY KEY, name VARCHAR(32), pvp_enabled BOOLEAN)");
+            st.execute("INSERT INTO player_data VALUES ('" + alice + "', 'Alice', FALSE)");
+            st.execute("INSERT INTO player_data VALUES ('" + bob + "', 'Bob', TRUE)");
+            snapshot = LegacyAlliumReader.read(legacy);
+        }
+
+        assertEquals(2, snapshot.pvpPreferences().size());
+
+        ConnectionSource cs = () -> DriverManager.getConnection("jdbc:sqlite:" + dir.resolve("allium-pvp.db"));
+        var travel = new TravelRepository(cs, SqlDialect.SQLITE, () -> now);
+        var teleports = new TeleportRepository(cs, SqlDialect.SQLITE, () -> now);
+        var prefs = new codes.castled.allium.preference.PreferenceRepository(cs, SqlDialect.SQLITE, () -> now);
+        var ledger = new ImportLedger(cs, SqlDialect.SQLITE, () -> now);
+        travel.migrate();
+        teleports.migrate();
+        prefs.migrate();
+        ledger.migrate();
+
+        // Bob already explicitly set PvP to false in recode; legacy true must be flagged as CONFLICT and kept.
+        prefs.apply(bob, codes.castled.allium.preference.PreferenceChange.set(
+                codes.castled.allium.preference.PreferenceKey.PVP_ENABLED, false));
+
+        Destination dest = new Destination(
+                Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), Set.of(),
+                Map.of(bob, Boolean.FALSE),
+                ledger.hashes(LegacyDestinationPlan.SOURCE)
+        );
+        var plan = LegacyDestinationPlan.build(snapshot, name -> Optional.empty(), dest, now, null);
+        assertEquals(1L, plan.counts(Domain.PVP).get(Status.IMPORT));
+        assertEquals(1L, plan.counts(Domain.PVP).get(Status.CONFLICT));
+
+        var targets = new LegacyDestinationApplier.Targets("srv-1", null, travel, teleports, null, null, prefs);
+        var applied = LegacyDestinationApplier.apply(plan, "legacy-20261124-130000", ledger, targets);
+        assertEquals(1L, LegacyDestinationApplier.counts(applied).get(Result.APPLIED));
+        assertEquals(Boolean.FALSE, prefs.load(alice).orElseThrow().pvpEnabled());
+        assertEquals(Boolean.FALSE, prefs.load(bob).orElseThrow().pvpEnabled());
+
+        // Replaying the plan is idempotent.
+        var replay = LegacyDestinationApplier.apply(plan, "legacy-20261124-130001", ledger, targets);
+        assertEquals(1L, LegacyDestinationApplier.counts(replay).get(Result.REPLAYED));
+    }
+
     static Destination destination(TravelRepository travel, TeleportRepository teleports, ImportLedger ledger) throws Exception {
         return new Destination(travel.allHomes(), travel.warps(), teleports.slot("logout"), ledger.hashes(LegacyDestinationPlan.SOURCE));
     }

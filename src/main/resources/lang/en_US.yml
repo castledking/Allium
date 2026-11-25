@@ -2974,3 +2974,33 @@ glow:
     - "{prefix} &7It shows while you are in spectator."
   overridden:
     - "{prefix} &7In restricted creative you show the creative glow; yours comes back when you leave it."
+pvp:
+  toggle:
+    "on":
+      - "{prefix} &aPvP is now enabled for you."
+      - "[sound] block.note_block.pling 1.4"
+    "off":
+      - "{prefix} &cPvP is now disabled for you."
+      - "[sound] block.note_block.bass 0.85"
+    other-on:
+      - "{prefix} &aPvP is now enabled for &f{player}&a."
+      - "[sound] block.note_block.pling 1.35"
+    other-off:
+      - "{prefix} &cPvP is now disabled for &f{player}&c."
+      - "[sound] block.note_block.bass 0.85"
+    disabled:
+      - "{prefix} &cPvP preferences are disabled on this server."
+      - "[sound] entity.villager.no 0.9"
+  blocked:
+    self:
+      - "{prefix} &cYou have PvP disabled. Use &f/pvp on &cto enable it."
+      - "[sound] block.note_block.bass 0.8"
+    target:
+      - "{prefix} &c{player} &ehas PvP disabled."
+      - "[sound] block.note_block.bass 0.8"
+    alt:
+      - "{prefix} &cYou cannot attack an alt account sharing your IP."
+      - "[sound] entity.villager.no 0.9"
+    loading:
+      - "{prefix} &ePvP is temporarily blocked while player preferences load."
+      - "[sound] block.note_block.bass 0.8"

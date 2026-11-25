@@ -21,7 +21,7 @@ public record LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<S
                                    long unnamedHomes, List<LogoutRow> logouts, long supersededLogouts, List<WarpRow> warps,
                                    List<MaxHomesRow> maxHomes, Map<String, Long> otherLocationTypes, List<String> notes,
                                    List<BalanceRow> balances, List<NoteRow> staffNotes, List<MailRow> mailMessages,
-                                   Map<String, Long> historicalInventoryCounts) {
+                                   Map<String, Long> historicalInventoryCounts, List<PvpRow> pvpPreferences) {
 
     public LegacyAlliumSnapshot {
         homes = List.copyOf(homes);
@@ -35,13 +35,23 @@ public record LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<S
         staffNotes = staffNotes == null ? List.of() : List.copyOf(staffNotes);
         mailMessages = mailMessages == null ? List.of() : List.copyOf(mailMessages);
         historicalInventoryCounts = historicalInventoryCounts == null ? Map.of() : Map.copyOf(historicalInventoryCounts);
+        pvpPreferences = pvpPreferences == null ? List.of() : List.copyOf(pvpPreferences);
+    }
+
+    public LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<SupersededHome> supersededHomes,
+                                long unnamedHomes, List<LogoutRow> logouts, long supersededLogouts, List<WarpRow> warps,
+                                List<MaxHomesRow> maxHomes, Map<String, Long> otherLocationTypes, List<String> notes,
+                                List<BalanceRow> balances, List<NoteRow> staffNotes, List<MailRow> mailMessages,
+                                Map<String, Long> historicalInventoryCounts) {
+        this(h2Version, homes, supersededHomes, unnamedHomes, logouts, supersededLogouts, warps, maxHomes,
+                otherLocationTypes, notes, balances, staffNotes, mailMessages, historicalInventoryCounts, List.of());
     }
 
     public LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<SupersededHome> supersededHomes,
                                 long unnamedHomes, List<LogoutRow> logouts, long supersededLogouts, List<WarpRow> warps,
                                 List<MaxHomesRow> maxHomes, Map<String, Long> otherLocationTypes, List<String> notes) {
         this(h2Version, homes, supersededHomes, unnamedHomes, logouts, supersededLogouts, warps, maxHomes,
-                otherLocationTypes, notes, List.of(), List.of(), List.of(), Map.of());
+                otherLocationTypes, notes, List.of(), List.of(), List.of(), Map.of(), List.of());
     }
 
     /** A position as legacy stored it: a world name, never a world UUID. */
@@ -75,5 +85,9 @@ public record LegacyAlliumSnapshot(String h2Version, List<HomeRow> homes, List<S
 
     /** {@code mail_messages}: historical text mail (item gifts live in {@code mail_gifts} and are inspected read-only). */
     public record MailRow(long id, String recipient, String sender, String senderName, String message, long sentAt, boolean read) {
+    }
+
+    /** {@code player_data.pvp_enabled}: legacy per-player PvP preference. */
+    public record PvpRow(String owner, boolean pvpEnabled) {
     }
 }

@@ -2974,3 +2974,33 @@ glow:
     - "{prefix} &7Se ve mientras estés en modo espectador."
   overridden:
     - "{prefix} &7En creativo restringido muestras el brillo de creativo; el tuyo vuelve al salir."
+pvp:
+  toggle:
+    "on":
+      - "{prefix} &aEl PvP está ahora activado para ti."
+      - "[sound] block.note_block.pling 1.4"
+    "off":
+      - "{prefix} &cEl PvP está ahora desactivado para ti."
+      - "[sound] block.note_block.bass 0.85"
+    other-on:
+      - "{prefix} &aEl PvP está ahora activado para &f{player}&a."
+      - "[sound] block.note_block.pling 1.35"
+    other-off:
+      - "{prefix} &cEl PvP está ahora desactivado para &f{player}&c."
+      - "[sound] block.note_block.bass 0.85"
+    disabled:
+      - "{prefix} &cLas preferencias de PvP están desactivadas en este servidor."
+      - "[sound] entity.villager.no 0.9"
+  blocked:
+    self:
+      - "{prefix} &cTienes el PvP desactivado. Usa &f/pvp on &cpara activarlo."
+      - "[sound] block.note_block.bass 0.8"
+    target:
+      - "{prefix} &c{player} &etiene el PvP desactivado."
+      - "[sound] block.note_block.bass 0.8"
+    alt:
+      - "{prefix} &cNo puedes atacar a una cuenta secundaria que comparte tu IP."
+      - "[sound] entity.villager.no 0.9"
+    loading:
+      - "{prefix} &eEl PvP está bloqueado temporalmente mientras cargan las preferencias."
+      - "[sound] block.note_block.bass 0.8"

@@ -12,6 +12,7 @@ public enum PreferenceKey {
     ACCEPT_TELEPORT_REQUESTS("accept-teleport-requests", "accept_teleport_requests", Kind.BOOLEAN),
     PAY_CONFIRM("pay-confirm", "pay_confirm", Kind.BOOLEAN),
     TP_AUTO("tp-auto", "tp_auto", Kind.BOOLEAN),
+    PVP_ENABLED("pvp-enabled", "pvp_enabled", Kind.BOOLEAN),
     /** Message sound volume override in [0, 1]; unset follows the configured fallback. */
     MESSAGE_SOUND_VOLUME("message-sound-volume", "message_sound_volume", Kind.VOLUME),
     /**

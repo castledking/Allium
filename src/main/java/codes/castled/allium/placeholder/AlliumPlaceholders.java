@@ -206,6 +206,8 @@ public final class AlliumPlaceholders {
             case "playtime_short" -> PlaceholderFormats.durationShort(codes.castled.allium.info.Playtime.seconds(p));
             case "firstjoindate" -> codes.castled.allium.info.Playtime.date(plugin, codes.castled.allium.info.Playtime.firstJoin(plugin, p));
             case "god" -> yesNo(GodModeCompatProvider.current().isGodMode(p));
+            case "pvp" -> yesNo(preferences().flatMap(prefs -> prefs.effective(p.getUniqueId())).map(EffectivePreferences::pvpEnabled).orElse(true));
+            case "pvp_enabled" -> Boolean.toString(preferences().flatMap(prefs -> prefs.effective(p.getUniqueId())).map(EffectivePreferences::pvpEnabled).orElse(true));
             case "vanished" -> yesNo(PlayerNameVisibility.isVanished(p));
             case "afk" -> yesNo(plugin.getModuleManager().getModule("info") instanceof PlayerInfoModule info
                     && info.isEnabled() && info.info() != null && info.info().isAfk(p));

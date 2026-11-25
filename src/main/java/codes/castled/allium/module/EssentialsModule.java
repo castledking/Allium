@@ -50,9 +50,14 @@ public final class EssentialsModule extends AbstractModule {
     private codes.castled.allium.glow.GlowService glow;
     private codes.castled.allium.recipe.RecipeViewer recipes;
     private codes.castled.allium.economy.PaidCommandService paidCommands;
+    private codes.castled.allium.player.PvpService pvp;
 
     public codes.castled.allium.economy.PaidCommandService paidCommands() {
         return paidCommands;
+    }
+
+    public codes.castled.allium.player.PvpService pvp() {
+        return pvp;
     }
 
     /** Glow colours (/glow, spectator and restricted-creative glow). */
@@ -95,6 +100,9 @@ public final class EssentialsModule extends AbstractModule {
         if (glow != null) {
             glow.reload();
         }
+        if (pvp != null) {
+            pvp.reloadSettings();
+        }
     }
     private SkullProfiles fallbackSkulls;
 
@@ -126,6 +134,9 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new FeedCommand(plugin, () -> paidCommands));
         plugin.getCommandManager().register(new FlyCommand(plugin, () -> timedFlight));
         plugin.getCommandManager().register(new GodCommand(plugin));
+        pvp = new codes.castled.allium.player.PvpService(plugin);
+        pvp.enable();
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.PvpCommand(plugin));
         plugin.getCommandManager().register(new GamemodeCommand(plugin));
 
         plugin.getCommandManager().register(new SpeedCommand(plugin));
@@ -266,6 +277,10 @@ public final class EssentialsModule extends AbstractModule {
             paidCommands.close();
             paidCommands = null;
         }
+        if (pvp != null) {
+            pvp.close();
+            pvp = null;
+        }
         if(glow!=null){glow.close();glow=null;}
         if(recipes!=null){recipes.close();recipes=null;}
         if(flights!=null){flights.close();flights=null;}
@@ -327,8 +342,10 @@ public final class EssentialsModule extends AbstractModule {
     @Override
     public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
         var policyReload = paidCommands == null ? null : paidCommands.prepareReload(candidateRoot);
+        var pvpReload = pvp == null ? null : pvp.prepareReload(candidateRoot);
         return () -> {
             if (policyReload != null) policyReload.publish();
+            if (pvpReload != null) pvpReload.publish();
             reloadSettings();
             return java.util.List.of();
         };

@@ -9,6 +9,7 @@ import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.MailRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.MaxHomesRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.NoteRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.Point;
+import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.PvpRow;
 import codes.castled.allium.importer.legacy.LegacyAlliumSnapshot.WarpRow;
 import codes.castled.allium.teleport.SavedLocation;
 import codes.castled.allium.travel.HomePolicy;
@@ -54,7 +55,7 @@ public final class LegacyDestinationPlan {
     public static final String SOURCE = "legacy-allium";
     static final double HORIZONTAL_LIMIT = 30_000_000;
 
-    public enum Domain { HOME, WARP, LOGOUT, BALANCE, NOTE, MAIL;
+    public enum Domain { HOME, WARP, LOGOUT, BALANCE, NOTE, MAIL, PVP;
         public String id() { return name().toLowerCase(java.util.Locale.ROOT); }
     }
 
@@ -75,10 +76,17 @@ public final class LegacyDestinationPlan {
      */
     public record Record(Domain domain, String key, Status status, String reason, String payloadHash,
                          UUID owner, String name, SavedLocation location, String legacy,
-                         @Nullable Money money, @Nullable NotePayload note, @Nullable MailPayload mail) {
+                         @Nullable Money money, @Nullable NotePayload note, @Nullable MailPayload mail,
+                         @Nullable Boolean pvpEnabled) {
+        public Record(Domain domain, String key, Status status, String reason, String payloadHash,
+                      UUID owner, String name, SavedLocation location, String legacy,
+                      @Nullable Money money, @Nullable NotePayload note, @Nullable MailPayload mail) {
+            this(domain, key, status, reason, payloadHash, owner, name, location, legacy, money, note, mail, null);
+        }
+
         public Record(Domain domain, String key, Status status, String reason, String payloadHash,
                       UUID owner, String name, SavedLocation location, String legacy) {
-            this(domain, key, status, reason, payloadHash, owner, name, location, legacy, null, null, null);
+            this(domain, key, status, reason, payloadHash, owner, name, location, legacy, null, null, null, null);
         }
     }
 
@@ -93,14 +101,21 @@ public final class LegacyDestinationPlan {
     /** What the destination and the ledger hold before the import. */
     public record Destination(Map<UUID, Map<String, SavedLocation>> homes, Map<String, SavedLocation> warps,
                               Map<UUID, SavedLocation> logouts, Map<UUID, ExistingAccount> balances,
-                              Set<String> noteFingerprints, Set<String> mailSourceRefs, Map<String, String> ledger) {
+                              Set<String> noteFingerprints, Set<String> mailSourceRefs,
+                              Map<UUID, Boolean> pvpPreferences, Map<String, String> ledger) {
+        public Destination(Map<UUID, Map<String, SavedLocation>> homes, Map<String, SavedLocation> warps,
+                           Map<UUID, SavedLocation> logouts, Map<UUID, ExistingAccount> balances,
+                           Set<String> noteFingerprints, Set<String> mailSourceRefs, Map<String, String> ledger) {
+            this(homes, warps, logouts, balances, noteFingerprints, mailSourceRefs, Map.of(), ledger);
+        }
+
         public Destination(Map<UUID, Map<String, SavedLocation>> homes, Map<String, SavedLocation> warps,
                            Map<UUID, SavedLocation> logouts, Map<String, String> ledger) {
-            this(homes, warps, logouts, Map.of(), Set.of(), Set.of(), ledger);
+            this(homes, warps, logouts, Map.of(), Set.of(), Set.of(), Map.of(), ledger);
         }
 
         public static Destination empty() {
-            return new Destination(Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), Set.of(), Map.of());
+            return new Destination(Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), Set.of(), Map.of(), Map.of());
         }
 
         static String ledgerKey(Domain domain, String key) {
@@ -161,8 +176,43 @@ public final class LegacyDestinationPlan {
         planBalances(snapshot, destination, balanceSettings, out);
         planNotes(snapshot, destination, nowMillis, out);
         planMail(snapshot, destination, nowMillis, out);
+        planPvp(snapshot, destination, out);
         List<MaxHomesRow> limits = snapshot.maxHomes().stream().filter(r -> r.maxHomes() >= 1 && uuid(r.owner()) != null).toList();
         return new LegacyDestinationPlan(out, limits);
+    }
+
+    private static void planPvp(LegacyAlliumSnapshot snapshot, Destination destination, List<Record> out) {
+        for (PvpRow row : snapshot.pvpPreferences()) {
+            String legacy = "player_data " + row.owner() + " (pvp_enabled=" + row.pvpEnabled() + ")";
+            UUID owner = uuid(row.owner());
+            if (owner == null) {
+                out.add(blocked(Domain.PVP, String.valueOf(row.owner()), "invalid player UUID", null, null, legacy));
+                continue;
+            }
+            String key = owner.toString();
+            String hash = sha256("pvp|" + key + "|" + row.pvpEnabled());
+            String ledgered = destination.ledger().get(Destination.ledgerKey(Domain.PVP, key));
+            Status status;
+            String reason;
+            if (ledgered != null) {
+                status = ledgered.equals(hash) ? Status.REPLAYED : Status.CONFLICT;
+                reason = status == Status.REPLAYED ? "already imported" : "imported earlier with different PvP state";
+            } else {
+                Boolean existing = destination.pvpPreferences().get(owner);
+                if (existing == null) {
+                    status = Status.IMPORT;
+                    reason = "";
+                } else if (existing.booleanValue() == row.pvpEnabled()) {
+                    status = Status.PRESENT;
+                    reason = "matches existing PvP preference";
+                } else {
+                    status = Status.CONFLICT;
+                    reason = "player already has different PvP preference; existing kept";
+                }
+            }
+            out.add(new Record(Domain.PVP, key, status, reason, hash, owner, null, null, legacy,
+                    null, null, null, row.pvpEnabled()));
+        }
     }
 
     private static void planBalances(LegacyAlliumSnapshot snapshot, Destination destination,

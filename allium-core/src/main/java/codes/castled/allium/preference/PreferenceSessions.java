@@ -259,6 +259,7 @@ public final class PreferenceSessions {
             case ACCEPT_MESSAGES -> effective.acceptMessages();
             case ACCEPT_PAYMENTS -> effective.acceptPayments();
             case ACCEPT_TELEPORT_REQUESTS -> effective.acceptTeleportRequests();
+            case PVP_ENABLED -> effective.pvpEnabled();
             default -> throw new IllegalArgumentException(flag + " is not an accept flag");
         };
         return accepts ? Acceptance.ACCEPTS : Acceptance.REFUSES;

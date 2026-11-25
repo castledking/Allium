@@ -134,6 +134,7 @@ preferences:
     accept-messages: true
     accept-payments: true
     accept-teleport-requests: true
+    pvp-enabled: true
   # How long a joining player's login waits (off the server thread) for preferences to load,
   # 0 to 10000. A slower load finishes after join; nothing is enforced from defaults meanwhile.
   preload-wait-millis: 2000
@@ -838,6 +839,15 @@ alts:
   # Skip players connecting from a loopback address (127.0.0.1, ::1). Behind a proxy without IP
   # forwarding every player shares the proxy's address and would otherwise all be "alts".
   ignore-local-addresses: true
+
+# Player PvP toggle (/pvp) and optional same-IP alt protection.
+pvp:
+  # Block PvP between players sharing an IP when the victim is in the alt group (alts.group).
+  protect-same-ip-alts: true
+  # Notify the attacker (rate-limited) when a hit is blocked by /pvp off or alt protection.
+  notify-blocked: true
+  # Minimum milliseconds between blocked-PvP notifications per attacker.
+  notify-cooldown-millis: 2500
 
 # Inventory snapshots and /restore (modules.restore).
 restore:

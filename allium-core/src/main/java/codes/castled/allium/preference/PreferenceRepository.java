@@ -50,7 +50,10 @@ public final class PreferenceRepository {
                     List.of("ALTER TABLE " + TABLE + " ADD COLUMN pay_confirm BOOLEAN NULL",
                             "ALTER TABLE " + TABLE + " ADD COLUMN tp_auto BOOLEAN NULL"),
                     List.of("ALTER TABLE " + TABLE + " ADD COLUMN pay_confirm BOOLEAN NULL",
-                            "ALTER TABLE " + TABLE + " ADD COLUMN tp_auto BOOLEAN NULL")));
+                            "ALTER TABLE " + TABLE + " ADD COLUMN tp_auto BOOLEAN NULL")),
+            Migration.of(4, "add pvp enabled preference",
+                    List.of("ALTER TABLE " + TABLE + " ADD COLUMN pvp_enabled BOOLEAN NULL"),
+                    List.of("ALTER TABLE " + TABLE + " ADD COLUMN pvp_enabled BOOLEAN NULL")));
 
     private volatile codes.castled.allium.economy.EconomyCoordinator economyCoordinator;
     public void coordinateWritesWith(codes.castled.allium.economy.EconomyCoordinator coordinator) { this.economyCoordinator=coordinator; }
@@ -83,14 +86,14 @@ public final class PreferenceRepository {
     private static Optional<StoredPreferences> load(Connection connection, UUID uuid) throws SQLException {
         try (PreparedStatement select = connection.prepareStatement("SELECT accept_messages, accept_payments, "
                 + "accept_teleport_requests, message_sound_volume, message_sound_restore, social_spy, "
-                + "pay_confirm, tp_auto, version FROM " + TABLE + " WHERE uuid = ?")) {
+                + "pay_confirm, tp_auto, pvp_enabled, version FROM " + TABLE + " WHERE uuid = ?")) {
             select.setString(1, uuid.toString());
             try (ResultSet row = select.executeQuery()) {
                 if (!row.next()) {
                     return Optional.empty();
                 }
                 return Optional.of(new StoredPreferences(uuid, bool(row, 1), bool(row, 2), bool(row, 3),
-                        dbl(row, 4), dbl(row, 5), bool(row, 6), bool(row, 7), bool(row, 8), row.getLong(9)));
+                        dbl(row, 4), dbl(row, 5), bool(row, 6), bool(row, 7), bool(row, 8), bool(row, 9), row.getLong(10)));
             }
         }
     }

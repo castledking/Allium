@@ -14,6 +14,9 @@ import codes.castled.allium.mail.MailRecord;
 import codes.castled.allium.mail.MailRepository;
 import codes.castled.allium.mail.MailState;
 import codes.castled.allium.moderation.ModerationRepository;
+import codes.castled.allium.preference.PreferenceChange;
+import codes.castled.allium.preference.PreferenceKey;
+import codes.castled.allium.preference.PreferenceRepository;
 import codes.castled.allium.storage.SqlDialect;
 import codes.castled.allium.teleport.TeleportRepository;
 import codes.castled.allium.travel.TravelRepository;
@@ -50,8 +53,20 @@ public final class LegacyDestinationApplier {
             TravelRepository travel,
             TeleportRepository teleports,
             @Nullable ModerationRepository moderation,
-            @Nullable MailRepository mail
-    ) {}
+            @Nullable MailRepository mail,
+            @Nullable PreferenceRepository preferences
+    ) {
+        public Targets(
+                String serverOrigin,
+                @Nullable EconomyEngine economy,
+                TravelRepository travel,
+                TeleportRepository teleports,
+                @Nullable ModerationRepository moderation,
+                @Nullable MailRepository mail
+        ) {
+            this(serverOrigin, economy, travel, teleports, moderation, mail, null);
+        }
+    }
 
     private LegacyDestinationApplier() {
     }
@@ -137,6 +152,12 @@ public final class LegacyDestinationApplier {
                 targets.mail().send(c, mailRecord, MailLimits.DEFAULTS, true);
                 yield Result.APPLIED;
             }
+            case PVP -> {
+                if (r.status() == Status.PRESENT) yield Result.ADOPTED;
+                if (targets.preferences() == null || r.pvpEnabled() == null) yield Result.SKIPPED;
+                targets.preferences().apply(c, r.owner(), PreferenceChange.set(PreferenceKey.PVP_ENABLED, r.pvpEnabled()));
+                yield Result.APPLIED;
+            }
             default -> Result.SKIPPED;
         };
         if (result == Result.APPLIED || result == Result.ADOPTED) {
@@ -204,6 +225,6 @@ public final class LegacyDestinationApplier {
 
     /** Domains in report order. */
     public static List<Domain> domains() {
-        return List.of(Domain.HOME, Domain.WARP, Domain.LOGOUT, Domain.BALANCE, Domain.NOTE, Domain.MAIL);
+        return List.of(Domain.HOME, Domain.WARP, Domain.LOGOUT, Domain.BALANCE, Domain.NOTE, Domain.MAIL, Domain.PVP);
     }
 }

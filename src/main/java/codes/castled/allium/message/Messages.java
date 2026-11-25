@@ -945,6 +945,17 @@ public enum Messages {
     MSGTOGGLE_OTHER_OFF("messaging.toggle.other-off", "{prefix} &f{player} &cno longer accepts private messages."),
     MSGTOGGLE_DISABLED("messaging.toggle.disabled", "{prefix} &cMessage preferences are disabled on this server."),
 
+    // -- PvP toggle (/pvp) --
+    PVP_ON("pvp.toggle.on", "{prefix} &aPvP is now enabled for you."),
+    PVP_OFF("pvp.toggle.off", "{prefix} &cPvP is now disabled for you."),
+    PVP_OTHER_ON("pvp.toggle.other-on", "{prefix} &aPvP is now enabled for &f{player}&a."),
+    PVP_OTHER_OFF("pvp.toggle.other-off", "{prefix} &cPvP is now disabled for &f{player}&c."),
+    PVP_DISABLED("pvp.toggle.disabled", "{prefix} &cPvP preferences are disabled on this server."),
+    PVP_BLOCKED_SELF("pvp.blocked.self", "{prefix} &cYou have PvP disabled. Use &f/pvp on &cto enable it."),
+    PVP_BLOCKED_TARGET("pvp.blocked.target", "{prefix} &c{player} &ehas PvP disabled."),
+    PVP_BLOCKED_ALT("pvp.blocked.alt", "{prefix} &cYou cannot attack an alt account sharing your IP."),
+    PVP_BLOCKED_LOADING("pvp.blocked.loading", "{prefix} &ePvP is temporarily blocked while player preferences load."),
+
     // -- Message sounds (/messagesounds, /msounds, /mfx) --
     SOUNDS_STATUS_OVERRIDE("messaging.sounds.status-override", "{prefix} &7Message sound volume: &f{volume} &7(your setting)."),
     SOUNDS_STATUS_DEFAULT("messaging.sounds.status-default", "{prefix} &7Message sound volume: &f{volume} &7(the server default)."),

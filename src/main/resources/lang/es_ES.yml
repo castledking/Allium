@@ -2600,6 +2600,47 @@ signs:
     - "{prefix} &aVendiste &f{amount}x {item} &apor &e{price}&a."
   sell-not-enough:
     - "{prefix} &cNecesitas &f{amount}x {item} &cpara usar este cartel (tienes &f{available}&c)."
+  trade-created:
+    - "{prefix} &aCartel de intercambio creado con &f{stock} &aen inventario."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  trade-out-of-stock:
+    - "{prefix} &cEste cartel de intercambio no tiene existencias."
+    - "[sound] block.note_block.bass 0.85"
+  trade-missing:
+    - "{prefix} &cEste cartel de intercambio ya no está registrado."
+    - "[sound] entity.villager.no 0.9"
+  trade-storage-error:
+    - "{prefix} &cEl almacenamiento de carteles de intercambio no está disponible. No se perdió nada."
+    - "[sound] entity.villager.no 0.9"
+  trade-not-owner:
+    - "{prefix} &cSolo el propietario de este cartel de intercambio puede romperlo."
+    - "[sound] entity.villager.no 0.9"
+  trade-break-collect-first:
+    - "{prefix} &cHaz espacio en tu inventario o recoge este cartel antes de romperlo."
+    - "[sound] entity.villager.no 0.9"
+  trade-break-not-empty-other:
+    - "{prefix} &cEl cartel de intercambio de {owner} todavía tiene existencias o ganancias."
+    - "[sound] entity.villager.no 0.9"
+  trade-reclaimed:
+    - "{prefix} &aRecuperaste las existencias y ganancias restantes de tu cartel."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  trade-restocked:
+    - "{prefix} &aAñadiste &f{added}x {item} &aa tu cartel (stock: &f{stock}&a)."
+    - "[sound] entity.item.pickup 1.1"
+  trade-funded:
+    - "{prefix} &aDepositaste &e{amount} &aen tu cartel de intercambio."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  trade-status:
+    - "{prefix} &7Stock: &f{stock} &7| Ganancias: &f{earned}&7. Agáchate + clic derecho para reponer."
+  trade-collected-money:
+    - "{prefix} &aRecogiste &e{amount} &ade tu cartel de intercambio."
+    - "[sound] entity.experience_orb.pickup 1.3"
+  trade-collected-items:
+    - "{prefix} &aRecogiste &f{amount}x {item} &ade tu cartel de intercambio."
+    - "[sound] entity.item.pickup 1.2"
+  trade-traded:
+    - "{prefix} &aIntercambiaste &f{pay_amount}x {pay_item} &apor &f{give_amount}x {give_item}&a."
+    - "[sound] entity.experience_orb.pickup 1.25"
   repair-paid:
     - "{prefix} &aReparado &f{items} &apor &e{price}&a."
     - "[sound] block.anvil.use 1.2"

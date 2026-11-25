@@ -66,6 +66,7 @@ class EssentialsConfigReportTest {
                   - sell
                   - warp
                   - trade
+                  - protection
                 sign-use-per-second: 4
                 permission-based-item-spawn: true
                 item-spawn-blacklist: 'bedrock,tnt'
@@ -125,7 +126,7 @@ class EssentialsConfigReportTest {
         assertEquals("command-policy.actions.heal.cooldown-seconds", findConfig(report, "command-cooldowns.heal").targetKey());
         assertEquals(Outcome.UNSUPPORTED, findConfig(report, "command-cooldowns").outcome());
         assertEquals(Outcome.MAPPED, findConfig(report, "newbies.kit").outcome());
-        assertEquals(Outcome.UNSUPPORTED, findConfig(report, "enabledSigns.trade").outcome());
+        assertEquals(Outcome.UNSUPPORTED, findConfig(report, "enabledSigns.protection").outcome());
         assertEquals(Outcome.UNSUPPORTED, findConfig(report, "chat.format").outcome());
         assertEquals(Outcome.MANUAL, findConfig(report, "custom-join-message").outcome());
 
@@ -135,7 +136,8 @@ class EssentialsConfigReportTest {
         assertEquals("allium.warps.vip_lounge", findPerm(report, "essentials.warps.vip_lounge").alliumNode());
         assertEquals("allium.kits.starter", findPerm(report, "essentials.kits.starter").alliumNode());
         assertEquals("allium.signs.use.buy", findPerm(report, "essentials.signs.use.buy").alliumNode());
-        assertEquals(Outcome.UNSUPPORTED, findPerm(report, "essentials.signs.use.trade").outcome());
+        assertEquals("allium.signs.use.trade", findPerm(report, "essentials.signs.use.trade").alliumNode());
+        assertEquals(Outcome.UNSUPPORTED, findPerm(report, "essentials.signs.use.protection").outcome());
 
         String text = report.renderText("essentials-20261124-095000");
         assertTrue(text.contains("Existing Allium settings remain authoritative on CONFLICT"));

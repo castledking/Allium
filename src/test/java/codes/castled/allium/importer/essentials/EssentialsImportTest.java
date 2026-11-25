@@ -424,7 +424,7 @@ class EssentialsImportTest {
     }
 
     @Test
-    void enabledSignsImportRecognizesBuyAndSellAsSupported(@TempDir Path source) throws Exception {
+    void enabledSignsImportRecognizesBuySellAndTradeAsSupported(@TempDir Path source) throws Exception {
         Files.writeString(source.resolve("config.yml"), """
                 enabledSigns:
                   - color
@@ -432,12 +432,13 @@ class EssentialsImportTest {
                   - sell
                   - warp
                   - trade
+                  - protection
                 """);
         var snapshot = EssentialsSnapshot.read(source);
         var plan = EssentialsImportPlan.build(snapshot, (id, name) -> Optional.empty(),
                 Destination.empty(), 1_800_000_000_000L, EconomySettings.defaults());
-        assertEquals(List.of("color", "buy", "sell", "warp"), plan.supportedSigns());
-        assertEquals(List.of("trade"), plan.unsupportedSigns());
+        assertEquals(List.of("color", "buy", "sell", "warp", "trade"), plan.supportedSigns());
+        assertEquals(List.of("protection"), plan.unsupportedSigns());
     }
 
     @Test

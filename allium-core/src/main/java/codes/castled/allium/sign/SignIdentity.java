@@ -9,7 +9,7 @@ public record SignIdentity(UUID id,Type type,String argument,boolean publicWarp,
     public enum Type {
         COLOR, WARP, KIT, BALANCE, HEAL, REPAIR, DISPOSAL, WORKBENCH, ANVIL,
         CARTOGRAPHY, GRINDSTONE, LOOM, SMITHING, MAIL, INFO,
-        GAMEMODE, TIME, WEATHER, RANDOMTELEPORT, FREE, ENCHANT, SPAWNMOB, BUY, SELL;
+        GAMEMODE, TIME, WEATHER, RANDOMTELEPORT, FREE, ENCHANT, SPAWNMOB, BUY, SELL, TRADE;
 
         public static Type parse(String text) {
             String trimmed = text.trim();
@@ -67,6 +67,10 @@ public record SignIdentity(UUID id,Type type,String argument,boolean publicWarp,
             if(amount<1||amount>2304)throw new IllegalArgumentException("invalid "+type.key()+" amount");
             if(argument.substring(sep+1).isBlank())throw new IllegalArgumentException(type.key()+" sign requires item");
             if(price.minor()<=0)throw new IllegalArgumentException(type.key()+" sign requires positive price");
+        }
+        if(type==Type.TRADE){
+            TradeSignSpec.decodeArgument(argument);
+            if(price.minor()!=0||priceOverride)throw new IllegalArgumentException("trade sign carries price inside its trade spec");
         }
         if(type==Type.RANDOMTELEPORT&&!argument.isEmpty()&&!argument.matches("[a-zA-Z0-9_-]{1,32}")){
             throw new IllegalArgumentException("invalid randomteleport zone");

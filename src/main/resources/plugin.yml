@@ -2528,6 +2528,9 @@ permissions:
     default: op
   allium.signs.create.sell:
     default: op
+  allium.signs.create.trade:
+    description: Allows creating player-owned [Trade] signs
+    default: true
   allium.signs.enchant.allowunsafe:
     description: Allows creating or using unsafe levels/enchantments on [Enchant] signs when allow-unsafe-enchants is true
     default: false
@@ -2579,6 +2582,9 @@ permissions:
     default: op
   allium.signs.use.sell:
     default: op
+  allium.signs.use.trade:
+    description: Allows using player-owned [Trade] signs
+    default: true
   allium.signs.break.color:
     default: op
   allium.signs.break.warp:
@@ -2626,6 +2632,12 @@ permissions:
   allium.signs.break.buy:
     default: op
   allium.signs.break.sell:
+    default: op
+  allium.signs.break.trade:
+    description: Allows breaking your own [Trade] signs
+    default: true
+  allium.signs.break.trade.others:
+    description: Allows breaking other players' empty [Trade] signs
     default: op
 
   allium.nick:

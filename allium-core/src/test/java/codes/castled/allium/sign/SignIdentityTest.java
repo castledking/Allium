@@ -16,6 +16,9 @@ class SignIdentityTest {
                 case ENCHANT->"*|sharpness:1";
                 case SPAWNMOB->"1|wolf:tamed";
                 case BUY,SELL->"4|stone";
+                case TRADE->TradeSignSpec.encodeArgument(UUID.randomUUID(),
+                        TradeSignSpec.Offer.money(new codes.castled.allium.economy.Money(500)),
+                        TradeSignSpec.Offer.item("stone",4));
                 case RANDOMTELEPORT->"wild";
                 default->"spawn";
             };

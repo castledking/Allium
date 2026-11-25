@@ -79,6 +79,7 @@ class SignServiceMatrixTest {
         final PaidSignService paidSigns=mock(PaidSignService.class);
         final World world=mock(World.class);
         final SignIdentity.Type type;
+        final TradeSignService tradeSigns=mock(TradeSignService.class);
         final SignService service;
         Fixture(SignIdentity.Type type,boolean waxed){
             when(plugin.getMessageManager()).thenReturn(mock(codes.castled.allium.message.MessageManager.class));
@@ -118,17 +119,24 @@ class SignServiceMatrixTest {
             var economy=mock(EconomyModule.class);when(economy.isEnabled()).thenReturn(true);when(modules.getModule("economy")).thenReturn(economy);
             var warps=mock(TravelModule.class);when(warps.isEnabled()).thenReturn(true);when(warps.travel()).thenReturn(travel);when(modules.getModule("travel")).thenReturn(warps);
             var rtp=mock(RtpModule.class);when(rtp.isEnabled()).thenReturn(true);when(modules.getModule("rtp")).thenReturn(rtp);
-            service=new SignService(plugin,null,paidSigns);
+            var signsModule=mock(SignsModule.class);when(signsModule.isEnabled()).thenReturn(true);when(modules.getModule("signs")).thenReturn(signsModule);
+            when(player.getName()).thenReturn("Alice");
+            when(tradeSigns.handleBreak(any(),any(),any())).thenAnswer(call->((Player)call.getArgument(0)).hasPermission("allium.signs.break.trade"));
+            service=new SignService(plugin,null,paidSigns,tradeSigns);
         }
         String defaultArg(){return switch(type){
             case REPAIR->"hand";case GAMEMODE->"creative";case TIME->"day";case WEATHER->"sun";
-            case FREE->"stone";case ENCHANT->"*|sharpness:1";case SPAWNMOB->"2|zombie";case BUY,SELL->"4|stone";case RANDOMTELEPORT->"wild";
+            case FREE->"stone";case ENCHANT->"*|sharpness:1";case SPAWNMOB->"2|zombie";case BUY,SELL->"4|stone";
+            case TRADE->TradeSignSpec.encodeArgument(UUID.randomUUID(),
+                    TradeSignSpec.Offer.money(new codes.castled.allium.economy.Money(500)),
+                    TradeSignSpec.Offer.item("stone",4));
+            case RANDOMTELEPORT->"wild";
             default->"paid";
         };}
         String command(){return switch(type){
             case COLOR->"color";case CARTOGRAPHY->"cartographytable";case RANDOMTELEPORT->"rtp";default->type.key();
         };}
-        String module(){return switch(type){case WARP->"travel";case KIT->"kits";case MAIL->"mail";case BALANCE,BUY,SELL->"economy";case RANDOMTELEPORT->"rtp";default->"essentials";};}
+        String module(){return switch(type){case WARP->"travel";case KIT->"kits";case MAIL->"mail";case BALANCE,BUY,SELL->"economy";case RANDOMTELEPORT->"rtp";case TRADE->"signs";default->"essentials";};}
         PlayerInteractEvent click(){return new PlayerInteractEvent(player,Action.RIGHT_CLICK_BLOCK,null,block,BlockFace.SOUTH,EquipmentSlot.HAND);}
         SignChangeEvent edit(){
             data.clear();
@@ -137,13 +145,14 @@ class SignServiceMatrixTest {
                 case SPAWNMOB->new String[]{"[spawnmob]","2","zombie",""};
                 case BUY->new String[]{"[buy]","4","stone","$5"};
                 case SELL->new String[]{"[sell]","4","stone","$5"};
+                case TRADE->new String[]{"[trade]","$5","4 stone:4",""};
                 default->new String[]{"["+type.key()+"]",defaultArg(),"",""};
             };
             var event=new SignChangeEvent(block,player,lines,Side.FRONT);
             var face=mock(SignSide.class);when(face.getLines()).thenAnswer(call->event.getLines());when(sign.getSide(Side.FRONT)).thenReturn(face);return event;
         }
         void drain(){while(!callbacks.isEmpty())callbacks.remove().run();}
-        void noAction(){verifyNoInteractions(renderer,travel,paidSigns);verify(player,never()).openInventory(any(org.bukkit.inventory.Inventory.class));}
+        void noAction(){verifyNoInteractions(renderer,travel,paidSigns,tradeSigns);verify(player,never()).openInventory(any(org.bukkit.inventory.Inventory.class));}
         void action(){
             if(type==SignIdentity.Type.COLOR){noAction();return;}
             if(type==SignIdentity.Type.FREE){verify(player).openInventory(freeInventory);return;}
@@ -151,6 +160,7 @@ class SignServiceMatrixTest {
             if(type==SignIdentity.Type.SPAWNMOB){verify(plugin.getMessageManager()).send(eq(player),eq(codes.castled.allium.message.Messages.SPAWNMOB_SPAWNED),eq("{count}"),eq("2"),eq("{mob}"),eq("zombie"));return;}
             if(type==SignIdentity.Type.BUY){verify(paidSigns).startBuy(eq(player),any(),any(),eq(4),eq("Stone"),any());return;}
             if(type==SignIdentity.Type.SELL){verify(paidSigns).startSell(eq(player),any(),any(),eq(4),eq("Stone"),any());return;}
+            if(type==SignIdentity.Type.TRADE){verify(tradeSigns).interact(eq(player),eq(block),eq(Side.FRONT),any(),any(),any());return;}
             if(type==SignIdentity.Type.WARP)verify(travel).useSign(player,"paid",false);
             else verify(renderer).onCommand(eq(player),any(),eq(command()),aryEq(switch(type){
                 case KIT->new String[]{"paid"};

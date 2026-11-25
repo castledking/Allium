@@ -2600,6 +2600,47 @@ signs:
     - "{prefix} &aSold &f{amount}x {item} &afor &e{price}&a."
   sell-not-enough:
     - "{prefix} &cYou need &f{amount}x {item} &cto use this sign (you have &f{available}&c)."
+  trade-created:
+    - "{prefix} &aTrade sign created with &f{stock} &ain stock."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  trade-out-of-stock:
+    - "{prefix} &cThis trade sign is currently out of stock."
+    - "[sound] block.note_block.bass 0.85"
+  trade-missing:
+    - "{prefix} &cThis trade sign is no longer registered."
+    - "[sound] entity.villager.no 0.9"
+  trade-storage-error:
+    - "{prefix} &cTrade sign storage is temporarily unavailable. Nothing was lost."
+    - "[sound] entity.villager.no 0.9"
+  trade-not-owner:
+    - "{prefix} &cOnly the owner of this trade sign may break it."
+    - "[sound] entity.villager.no 0.9"
+  trade-break-collect-first:
+    - "{prefix} &cMake room in your inventory or collect this trade sign before breaking it."
+    - "[sound] entity.villager.no 0.9"
+  trade-break-not-empty-other:
+    - "{prefix} &c{owner}'s trade sign still holds stock or earnings."
+    - "[sound] entity.villager.no 0.9"
+  trade-reclaimed:
+    - "{prefix} &aReclaimed remaining stock and earnings from your trade sign."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  trade-restocked:
+    - "{prefix} &aAdded &f{added}x {item} &ato your trade sign (stock: &f{stock}&a)."
+    - "[sound] entity.item.pickup 1.1"
+  trade-funded:
+    - "{prefix} &aFunded your trade sign with &e{amount}&a."
+    - "[sound] entity.experience_orb.pickup 1.2"
+  trade-status:
+    - "{prefix} &7Trade sign stock: &f{stock} &7| Earned: &f{earned}&7. Sneak + right-click to restock."
+  trade-collected-money:
+    - "{prefix} &aCollected &e{amount} &afrom your trade sign."
+    - "[sound] entity.experience_orb.pickup 1.3"
+  trade-collected-items:
+    - "{prefix} &aCollected &f{amount}x {item} &afrom your trade sign."
+    - "[sound] entity.item.pickup 1.2"
+  trade-traded:
+    - "{prefix} &aTraded &f{pay_amount}x {pay_item} &afor &f{give_amount}x {give_item}&a."
+    - "[sound] entity.experience_orb.pickup 1.25"
   repair-paid:
     - "{prefix} &aRepaired &f{items} &afor &e{price}&a."
     - "[sound] block.anvil.use 1.2"

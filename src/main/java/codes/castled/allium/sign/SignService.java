@@ -40,10 +40,12 @@ public final class SignService implements Listener,AutoCloseable {
     private SignEditorGuard editorGuard;
     private final PaidRepairService paidRepairs;
     private final PaidSignService paidSigns;
-    public SignService(PluginStart plugin){this(plugin,null,null);}
-    public SignService(PluginStart plugin,PaidRepairService paidRepairs){this(plugin,paidRepairs,null);}
-    public SignService(PluginStart plugin,PaidRepairService paidRepairs,PaidSignService paidSigns){
-        this.plugin=plugin;this.paidRepairs=paidRepairs;this.paidSigns=paidSigns;
+    private final TradeSignService tradeSigns;
+    public SignService(PluginStart plugin){this(plugin,null,null,null);}
+    public SignService(PluginStart plugin,PaidRepairService paidRepairs){this(plugin,paidRepairs,null,null);}
+    public SignService(PluginStart plugin,PaidRepairService paidRepairs,PaidSignService paidSigns){this(plugin,paidRepairs,paidSigns,null);}
+    public SignService(PluginStart plugin,PaidRepairService paidRepairs,PaidSignService paidSigns,TradeSignService tradeSigns){
+        this.plugin=plugin;this.paidRepairs=paidRepairs;this.paidSigns=paidSigns;this.tradeSigns=tradeSigns;
         for(String raw:plugin.getConfig().getStringList("enabledSigns"))enabled.add(SignIdentity.Type.parse(raw));
         limit=plugin.getConfig().getInt("sign-use-per-second",4);if(limit<1||limit>100)throw new IllegalArgumentException("sign-use-per-second must be 1..100");
         shortSignPrices=plugin.getConfig().getBoolean("sign-short-prices",true);
@@ -184,6 +186,9 @@ public final class SignService implements Listener,AutoCloseable {
                 return;
             }
             argument=amount+"|"+itemSpec;
+        } else if(type==SignIdentity.Type.TRADE){
+            createTrade(event,side);
+            return;
         }
         int priceLine=switch(type){
             case COLOR->-1;
@@ -344,7 +349,7 @@ public final class SignService implements Listener,AutoCloseable {
                         || !(clicked.getState() instanceof Sign current)
                         || identity(current, side).filter(identity::equals).isEmpty()
                         || !permission(player, "use", identity.type())) return;
-                execute(player, identity, () -> !closed && !event.isCancelled()
+                execute(player, clicked, side, identity, () -> !closed && !event.isCancelled()
                         && event.useInteractedBlock() != Event.Result.DENY
                         && (region == null || region.isServerThread())
                         && world.isChunkLoaded(chunkX, chunkZ)
@@ -356,7 +361,7 @@ public final class SignService implements Listener,AutoCloseable {
         }, cleanup, TaskScheduler.MILLIS_PER_TICK);
         if (region != null && task == TaskHandle.NONE) cleanup.run();
     }
-    private void execute(Player p,SignIdentity identity,BooleanSupplier faceValid){
+    private void execute(Player p,Block clicked,Side side,SignIdentity identity,BooleanSupplier faceValid){
         String command=switch(identity.type()){
             case COLOR->null;case WARP->"warp";case KIT->"kit";case BALANCE->"balance";case MAIL->"mail";case INFO->"info";
             case CARTOGRAPHY->"cartographytable";case RANDOMTELEPORT->"rtp";case FREE->"free";
@@ -366,6 +371,7 @@ public final class SignService implements Listener,AutoCloseable {
                 ||plugin.getCommandManager().getFamilyPolicy().isDisabled(command))return;
         String module=switch(identity.type()){
             case WARP->"travel";case KIT->"kits";case BALANCE,BUY,SELL->"economy";case MAIL->"mail";case RANDOMTELEPORT->"rtp";
+            case TRADE->"signs";
             default->"essentials";
         };
         var owner=plugin.getModuleManager().getModule(module);if(owner==null||!owner.isEnabled()||!plugin.getConfig().getBoolean("modules."+module,true)||identity.type()==SignIdentity.Type.WARP&&!plugin.getConfig().getBoolean("modules.warps",true))return;
@@ -382,6 +388,14 @@ public final class SignService implements Listener,AutoCloseable {
                 && plugin.getConfig().getBoolean("modules." + module, true)
                 && (identity.type() != SignIdentity.Type.WARP || plugin.getConfig().getBoolean("modules.warps", true))
                 && !plugin.getCommandManager().getFamilyPolicy().isDisabled(command);
+        if(identity.type()==SignIdentity.Type.TRADE){
+            if(tradeSigns==null){
+                plugin.getMessageManager().send(p,Messages.SIGN_TRADE_STORAGE_ERROR);
+                return;
+            }
+            tradeSigns.interact(p,clicked,side,identity,valid,this::resolveShopItem);
+            return;
+        }
         if(identity.type()==SignIdentity.Type.FREE){
             runFree(p,identity,valid);
             return;
@@ -754,6 +768,9 @@ public final class SignService implements Listener,AutoCloseable {
             String itemSpec=Objects.toString(plain(lines[2]),"");
             if(amount<1||amount>2304||resolveShopItem(itemSpec)==null)return Optional.empty();
             argument=amount+"|"+itemSpec;
+        } else if(type==SignIdentity.Type.TRADE){
+            // Player-owned [Trade] signs require verified SQL stock and owner UUID; never auto-adopt unverified sign text.
+            return Optional.empty();
         }
         int priceLine=switch(type){
             case WARP->publicWarp?3:2;
@@ -895,10 +912,129 @@ public final class SignService implements Listener,AutoCloseable {
         }catch(RuntimeException|LinkageError ignored){}
         return org.bukkit.enchantments.Enchantment.getByName(raw.trim().toUpperCase(Locale.ROOT));
     }
+    private void createTrade(SignChangeEvent event, Side side) {
+        Player creator = event.getPlayer();
+        if (tradeSigns == null) {
+            markInvalid(event, SignIdentity.Type.TRADE, 2, "<unavailable>");
+            plugin.getMessageManager().send(creator, Messages.SIGN_TRADE_STORAGE_ERROR);
+            return;
+        }
+        EconomyDisplay display = EconomyDisplay.read(plugin.getConfig());
+        TradeSignSpec spec;
+        try {
+            spec = TradeSignSpec.parse(plain(event.getLine(1)), plain(event.getLine(2)),
+                    display.symbol(), display::parsePrice);
+        } catch (IllegalArgumentException bad) {
+            invalid(event, SignIdentity.Type.TRADE, 2, "<pay>", bad.getMessage());
+            return;
+        }
+        if (spec.pay().kind() == TradeSignSpec.Kind.ITEM && resolveShopItem(spec.pay().itemSpec()) == null) {
+            invalid(event, SignIdentity.Type.TRADE, 2, "<amount item>", "Enter a valid item name on line 2.");
+            return;
+        }
+        org.bukkit.inventory.ItemStack giveTemplate = null;
+        if (spec.give().kind() == TradeSignSpec.Kind.ITEM) {
+            giveTemplate = resolveShopItem(spec.give().itemSpec());
+            if (giveTemplate == null) {
+                invalid(event, SignIdentity.Type.TRADE, 3, "<amount item:stock>", "Enter a valid item name on line 3.");
+                return;
+            }
+            if (spec.initialStock() > Integer.MAX_VALUE) {
+                invalid(event, SignIdentity.Type.TRADE, 3, "<amount item:stock>", "Initial stock is too large.");
+                return;
+            }
+            int needed = (int) spec.initialStock();
+            int available = PaidSignService.countMatching(creator.getInventory().getStorageContents(), giveTemplate);
+            if (available < needed) {
+                markInvalid(event, SignIdentity.Type.TRADE, 3, "<stock>");
+                plugin.getMessageManager().send(creator, Messages.SIGN_SELL_NOT_ENOUGH,
+                        "{amount}", Integer.toString(needed),
+                        "{item}", shopItemLabel(giveTemplate, spec.give().itemSpec()),
+                        "{available}", Integer.toString(available));
+                return;
+            }
+        }
+
+        String arg = TradeSignSpec.encodeArgument(creator.getUniqueId(), spec.pay(), spec.give());
+        SignIdentity created;
+        try {
+            created = new SignIdentity(UUID.randomUUID(), SignIdentity.Type.TRADE, arg, false, new Money(0), false);
+        } catch (IllegalArgumentException bad) {
+            invalid(event, SignIdentity.Type.TRADE, 2, "<trade>", bad.getMessage());
+            return;
+        }
+
+        event.setLine(0, ChatColor.DARK_BLUE + displayHeader(SignIdentity.Type.TRADE));
+        event.setLine(1, TradeSignSpec.formatOffer(spec.pay(), m -> display.formatSign(m, shortSignPrices)));
+        event.setLine(2, TradeSignSpec.formatStockLine(spec.give(), spec.initialStock(), m -> display.formatSign(m, shortSignPrices)));
+        String ownerLabel = creator.getName();
+        event.setLine(3, ownerLabel.length() > 16 ? ownerLabel.substring(0, 16) : ownerLabel);
+
+        String[] expectedLines = event.getLines().clone();
+        NamespacedKey faceKey = key(side);
+        if (spec.give().kind() == TradeSignSpec.Kind.ITEM) {
+            List<org.bukkit.inventory.ItemStack> removed = PaidSignService.removeMatching(creator, giveTemplate, (int) spec.initialStock());
+            afterEdit(event, () -> {
+                if (closed || event.isCancelled()) {
+                    PaidSignService.restoreItems(creator, removed);
+                    return;
+                }
+                tradeSigns.createItemStocked(creator, event.getBlock(), side, spec, created, removed, faceKey, expectedLines);
+            });
+        } else {
+            afterEdit(event, () -> {
+                if (closed || event.isCancelled()) return;
+                tradeSigns.createMoneyStocked(creator, event.getBlock(), side, spec, created, faceKey, expectedLines);
+            });
+        }
+    }
+
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
     public void breaking(BlockBreakEvent event){
         if(!(event.getBlock().getState() instanceof Sign sign))return;
-        for(Side side:Side.values())if(identity(sign,side).filter(id->!permission(event.getPlayer(),"break",id.type())).isPresent()){event.setCancelled(true);return;}
+        for(Side side:Side.values()){
+            var found=identity(sign,side);
+            if(found.isEmpty())continue;
+            SignIdentity id=found.get();
+            if(id.type()==SignIdentity.Type.TRADE&&tradeSigns!=null){
+                if(!tradeSigns.handleBreak(event.getPlayer(),id,this::resolveShopItem)){
+                    event.setCancelled(true);
+                    return;
+                }
+                continue;
+            }
+            if(!permission(event.getPlayer(),"break",id.type())){event.setCancelled(true);return;}
+        }
+    }
+    @EventHandler(priority=EventPriority.HIGH,ignoreCancelled=true)
+    public void protectTradeSignsFromEntityExplosion(org.bukkit.event.entity.EntityExplodeEvent event){
+        protectTradeSignBlocks(event.blockList());
+    }
+    @EventHandler(priority=EventPriority.HIGH,ignoreCancelled=true)
+    public void protectTradeSignsFromBlockExplosion(BlockExplodeEvent event){
+        protectTradeSignBlocks(event.blockList());
+    }
+    private void protectTradeSignBlocks(List<Block> blocks){
+        if(blocks==null||blocks.isEmpty())return;
+        blocks.removeIf(this::isProtectedTradeSignOrSupport);
+    }
+    private boolean isProtectedTradeSignOrSupport(Block block){
+        if(hasTradeSignFace(block))return true;
+        for(BlockFace face:new BlockFace[]{BlockFace.UP,BlockFace.NORTH,BlockFace.SOUTH,BlockFace.EAST,BlockFace.WEST}){
+            Block neighbor=block.getRelative(face);
+            if(!hasTradeSignFace(neighbor))continue;
+            var data=neighbor.getBlockData();
+            if(face==BlockFace.UP&&!(data instanceof org.bukkit.block.data.type.WallSign))return true;
+            if(data instanceof org.bukkit.block.data.type.WallSign wall&&wall.getFacing()==face)return true;
+        }
+        return false;
+    }
+    private boolean hasTradeSignFace(Block block){
+        if(!(block.getState() instanceof Sign sign))return false;
+        for(Side side:Side.values()){
+            if(identity(sign,side).filter(id->id.type()==SignIdentity.Type.TRADE).isPresent())return true;
+        }
+        return false;
     }
     @EventHandler public void quit(PlayerQuitEvent event){clicks.forget(event.getPlayer().getUniqueId());pending.remove(event.getPlayer().getUniqueId());}
 }

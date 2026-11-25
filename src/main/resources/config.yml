@@ -596,7 +596,7 @@ broadcasts:
 
 # Opt-in sign types: color, warp, kit, balance, heal, repair, disposal, workbench, anvil,
 # cartography, grindstone, loom, smithing, mail, info, gamemode, time, weather,
-# randomteleport (alias rtp), free, enchant, spawnmob, buy, sell.
+# randomteleport (alias rtp), free, enchant, spawnmob, buy, sell, trade.
 # Legacy colour is accepted as color. One shared click limit across all types.
 enabledSigns:
   #- color
@@ -623,6 +623,7 @@ enabledSigns:
   #- spawnmob
   #- buy
   #- sell
+  #- trade
 sign-use-per-second: 4
 # Display sign prices above 999 in compact K/M/B/T form (for example $1K, $1.1K, $1M).
 sign-short-prices: true

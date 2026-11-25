@@ -317,19 +317,24 @@ public final class PaidSignService {
         return template.getType() == candidate.getType();
     }
 
-    static boolean canFit(ItemStack[] storage, ItemStack template, int amount) {
-        if (storage == null || template == null || amount <= 0) return false;
+    static int maxFit(ItemStack[] storage, ItemStack template) {
+        if (storage == null || template == null) return 0;
         int maxStack = Math.max(1, template.getMaxStackSize());
-        int capacity = 0;
+        long capacity = 0L;
         for (ItemStack slot : storage) {
             if (slot == null || slot.getType().isAir()) {
                 capacity += maxStack;
             } else if (matchesItem(template, slot) && slot.getAmount() < maxStack) {
                 capacity += (maxStack - slot.getAmount());
             }
-            if (capacity >= amount) return true;
+            if (capacity >= Integer.MAX_VALUE) return Integer.MAX_VALUE;
         }
-        return false;
+        return (int) capacity;
+    }
+
+    static boolean canFit(ItemStack[] storage, ItemStack template, int amount) {
+        if (storage == null || template == null || amount <= 0) return false;
+        return maxFit(storage, template) >= amount;
     }
 
     static void deliverItems(Player player, ItemStack template, int amount) {
@@ -387,7 +392,7 @@ public final class PaidSignService {
         return removed;
     }
 
-    private static void restoreItems(Player player, List<ItemStack> items) {
+    static void restoreItems(Player player, List<ItemStack> items) {
         if (items.isEmpty()) return;
         Map<Integer, ItemStack> overflow = player.getInventory().addItem(items.toArray(new ItemStack[0]));
         if (overflow != null && !overflow.isEmpty() && player.getWorld() != null) {

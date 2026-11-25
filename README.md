@@ -54,7 +54,7 @@ Every major system can be toggled independently in `config.yml`. Allium integrat
   | Addon | Jar | Description |
   | --- | --- | --- |
   | **Crops** | `Addon-Crops-1.0.0.jar` | Custom crops, fertilizers, sprinklers, Kitchen baking & pies, and Jade overlays. |
-  | **Curios** | `Addon-Curios-1.0.0.jar` | Trading cards, 7-slot Relics equipment, textured menus, morphs, `/frame`, and chat hover frames. |
+  | **Curios** | `Addon-Curios-1.0.0.jar` | Trading cards, 7-slot Relics equipment, textured menus, `/frame`, and chat hover frames. |
   | **Ores** | `Addon-Ores-1.0.0.jar` | Deterministic CraftEngine custom ore generation, `/pregen`, and Jade ore overlays. |
   | **PartyLocator** | `Addon-PartyLocator-1.0.0.jar` | `/party` groups and vanilla `1.21.6+` locator bar integration. |
   | **SpawnerCraft** | `Addon-SpawnerCraft-1.0.0.jar` | 208+ signed mob head drops, Spawner Changers, and multi-recipe slideshow guides. |

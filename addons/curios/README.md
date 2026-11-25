@@ -91,14 +91,28 @@ item name in the creative inventory, and at the end of the tooltip elsewhere.
   installed (through the `CardTradeHeads` Bukkit service), else the vanilla head (zombie,
   skeleton, piglin, ...). A mob with neither pays the card's `trade-item`. Set
   `card-menu.trade-in-pays: item` to always pay the `trade-item`.
-- `/frame list` lists styles the player can use. `/frame apply <style>` changes the held
-  curio's signed frame. On any other item it writes a `[frame:<style>]` marker as the first lore
-  line (`auto` for each viewer's own frame, `off` to remove it). `/cards frame [style]` does the
-  same, as legacy's command did. A marker written by hand, or by another plugin's lore, frames the
-  item too: with PacketEvents installed, Curios draws the frame on the copy each player is sent,
-  so the item on the server keeps its own lore. Creative players are sent the item unframed,
-  because a creative client sends items back as it was shown them. Imported
-  decorative styles retain their legacy permissions.
+- `/frame` shows your active automatic frame and why it was selected (admin override, personal
+  choice, permission default, or fallback). `/frame list` lists styles the player can use (marking
+  the active one with `*`). `/frame choose <style>` (alias `select`) saves your preferred default
+  frame among styles you have permission for (`plugins/Curios/frames-choices.yml`), and
+  `/frame reset` clears your personal choice back to the permission default.
+- `/frame apply <style|auto|off>` changes the held curio's signed frame. On any other item it
+  writes a `[frame:<style>]` marker as the first lore line (`auto` for each viewer's own frame,
+  `off` to remove it). `/cards frame [list|choose <style>|reset|<style>]` works as well. A marker
+  written by hand, or by another plugin's lore, frames the item too: with PacketEvents installed,
+  Curios draws the frame on the copy each player is sent, so the item on the server keeps its own
+  lore. Creative players are sent the item unframed, because a creative client sends items back as
+  it was shown them. Imported decorative styles retain their legacy permissions.
+- Staff with `curios.admin` or `allium.frame.admin` can override a player's frame with
+  `/frame set <player> <style>` and clear it with `/frame reset <player>` (persisted in
+  `plugins/Curios/frames-overrides.yml`, matching legacy's format). Resolution precedence is
+  admin override -> player choice (if still permitted) -> first permitted frame in priority order
+  -> `fallback-frame` (default `simple`).
+- Custom frames can be authored in optional `plugins/Curios/frames.yml` (supporting `card:` tier
+  aliases, `parent:` aliases to any bundled style, or custom `background:`/`frame:` tooltip sprites
+  cut from a `pack:` folder via `/frame build` into `assets/curios/font/custom_frames.json` and
+  `plugins/Curios/frames-built.json`). Run `/frame reload` to re-read `config.yml`, `frames.yml`,
+  `frames-built.json`, and stored player overrides/choices without restarting.
 - Right-click a held card, in the air or at a block, to open its menu. Right-clicking a card in
   your inventory works too, as does right-clicking an equipped card or any card in your inventory
   while `/relics` is open. The one exception is the creative inventory screen: the creative client
@@ -139,5 +153,17 @@ the card family, tier, level, XP, bound flag, quality, rerolls and legacy boost 
 Antiquities items are recognized by their known legacy IDs. Arbitrary third-party item components
 and slot extensions require an explicit mapping.
 
-The legacy card boost executors, quest and economy bridges, and the other Antiquities effects remain follow-up work. Chat hovers are framed through Allium's `ChatHoverFrame` service (API 1.6).
-The addon does not implement custom enchantments.
+## Feature status and legacy inventory
+
+Curios separates active equipment, card, and frame support from intentionally omitted legacy
+features and remaining follow-up bridges:
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Relics equipment (`/relics`), 7 slots, 9 Antiquities relics & effects | **Implemented** | Ring ignition, phantom/piglin truces, Echoing Circlet, Witch's Brewstone, water retaliation, attribute modifiers, legacy Relique import. |
+| Trading cards, 5 tiers, quality bands, bonus rolls, merge & trade-in | **Implemented** | 180 bundled mob cards, textured GUIs, Jade mod-name metadata, held-card action bar, economy-reserved bonus rolls, durable recovery store for trade-ins/rolls, `CardCrafting` & `CurioExperience` services. |
+| Item & chat hover frames, player choice & custom authoring | **Implemented** | 57 bundled styles, `ChatHoverFrame` service (API 1.6), PacketEvents item framing, `/frame` choice/overrides (`frames-choices.yml`, `frames-overrides.yml`), optional `frames.yml` authoring with `/frame build` and `/frame reload`. |
+| Legacy FABLED morphs (`LibsDisguises`) | **Intentionally omitted** | No disguise dependency or morph command is registered in Curios. |
+| Custom enchantments | **Intentionally omitted** | Handled outside Curios. |
+| Legacy card boost runtime executors | **Separate follow-up** | Card boost definitions, strength rolls, lore display, and legacy tag import are preserved; combat/utility runtime executors beyond equipped attributes and relic abilities remain separate follow-up work. |
+| Legacy quest and economy bridges | **Separate follow-up** | Bonus-slot roll pricing integrates directly with Allium's `AddonEconomy`; external quest/legacy economy bridges and remaining unported Antiquities relic effects remain separate follow-up work. |

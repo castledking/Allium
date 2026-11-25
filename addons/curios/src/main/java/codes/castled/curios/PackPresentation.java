@@ -92,6 +92,11 @@ final class PackPresentation {
      */
     static boolean applyCardPresentation(ItemStack stack, Catalog.Entry entry, ItemIdentity identity,
                                          CardRules rules, boolean textured) {
+        return applyCardPresentation(stack, entry, identity, rules, textured, FramePanels.bundled());
+    }
+
+    static boolean applyCardPresentation(ItemStack stack, Catalog.Entry entry, ItemIdentity identity,
+                                         CardRules rules, boolean textured, FramePanels panels) {
         ItemMeta meta = stack.getItemMeta();
         if (meta == null) return false;
         CardRules.Tier tier = CardRules.Tier.parse(entry.legacyTier());
@@ -106,7 +111,7 @@ final class PackPresentation {
 
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_UNBREAKABLE);
 
-        if (applyAdventureCard(stack, meta, entry, tier, level, xp, quality, band, frame, starting, bonuses, rules, textured)) {
+        if (applyAdventureCard(stack, meta, entry, tier, level, xp, quality, band, frame, starting, bonuses, rules, textured, panels)) {
             tagJadeModName(stack, CARD_MOD_ID);
             return true;
         }
@@ -174,7 +179,7 @@ final class PackPresentation {
                                               CardRules.QualityBand band, String frame,
                                               List<CardRules.StartingValue> starting,
                                               List<CardRules.BonusSlotData> bonuses,
-                                              CardRules rules, boolean textured) {
+                                              CardRules rules, boolean textured, FramePanels panels) {
         try {
             Class<?> componentClass = Class.forName("net.kyori.adventure.text.Component");
             Class<?> mmClass = Class.forName("net.kyori.adventure.text.minimessage.MiniMessage");
@@ -238,7 +243,8 @@ final class PackPresentation {
             if (!sep.isEmpty()) bodyLines.add(deserialize.invoke(mm, "<!italic>" + sep));
             bodyLines.add(deserialize.invoke(mm, "<!italic>" + CardRules.smallCaps("<dark_gray>Right-Click to Open Menu</dark_gray>")));
 
-            FramePanels.Panel panel = textured ? FramePanels.bundled().panel(frame, tier.name(), bodyLines.size(),
+            FramePanels activePanels = panels == null ? FramePanels.bundled() : panels;
+            FramePanels.Panel panel = textured ? activePanels.panel(frame, tier.name(), bodyLines.size(),
                     widest(bodyLines), FramePanels.CARD_WIDTH) : null;
             if (panel != null) {
                 // The panel's title is its first framed line, so the name line is left blank.

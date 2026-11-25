@@ -20,7 +20,7 @@ final class HoverFrames implements ChatHoverFrame {
     @Override
     public BaseComponent[] render(Player subject, String frame, List<BaseComponent[]> lines) {
         if (!plugin.texturedMenu()) return null;
-        FramePanels panels = FramePanels.bundled();
+        FramePanels panels = plugin.framePanels();
         int width = lines.stream().mapToInt(line -> Arrays.stream(line).mapToInt(c -> TextWidth.of(c.toPlainText())).sum())
                 .max().orElse(0);
         var panel = panels.panel(frame, plugin.automaticFrame(subject), lines.size(), width, 0);

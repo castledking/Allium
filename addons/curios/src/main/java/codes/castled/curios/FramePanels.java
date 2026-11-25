@@ -41,25 +41,66 @@ final class FramePanels {
         static final FramePanels BUNDLED = load();
     }
 
-    private final String font;
-    private final String in;
+    private static final int MAX_ALIAS_DEPTH = 8;
+
     private final Map<String, Sprite> sprites;
+    private final Map<String, String> aliases;
     private final CardArt cards;
 
     private FramePanels(JsonObject manifest, JsonObject cardPanels) {
-        this.cards = new CardArt(cardPanels);
-        this.font = manifest.get("font").getAsString();
-        this.in = manifest.get("in").getAsString();
-        Map<String, Sprite> frames = new LinkedHashMap<>();
-        for (var entry : manifest.getAsJsonObject("frames").entrySet()) {
-            JsonObject frame = entry.getValue().getAsJsonObject();
-            frames.put(entry.getKey(), new Sprite(frame.get("out").getAsString(), frame.getAsJsonObject("item")));
-        }
-        this.sprites = Collections.unmodifiableMap(frames);
+        this(new CardArt(cardPanels), parseSprites(manifest), Map.of());
+    }
+
+    private FramePanels(CardArt cards, Map<String, Sprite> sprites, Map<String, String> aliases) {
+        this.cards = cards;
+        this.sprites = Collections.unmodifiableMap(new LinkedHashMap<>(sprites));
+        this.aliases = Collections.unmodifiableMap(new LinkedHashMap<>(aliases));
     }
 
     static FramePanels bundled() {
         return Holder.BUNDLED;
+    }
+
+    /**
+     * Returns a panel set overlaying optional custom-built sprite frames and frame aliases onto this
+     * bundled set. Unknown or cyclic aliases are ignored safely.
+     */
+    FramePanels withCustom(JsonObject customManifest, Map<String, String> customAliases) {
+        Map<String, Sprite> merged = new LinkedHashMap<>(this.sprites);
+        if (customManifest != null) {
+            merged.putAll(parseSprites(customManifest));
+        }
+        Map<String, String> normalizedAliases = new LinkedHashMap<>(this.aliases);
+        if (customAliases != null) {
+            for (var entry : customAliases.entrySet()) {
+                String key = CustomFramesConfig.normalizeName(entry.getKey());
+                String target = CustomFramesConfig.normalizeName(entry.getValue());
+                if (!key.isEmpty() && !target.isEmpty() && !key.equals(target)) {
+                    normalizedAliases.put(key, target);
+                }
+            }
+        }
+        if (merged.equals(this.sprites) && normalizedAliases.equals(this.aliases)) {
+            return this;
+        }
+        return new FramePanels(this.cards, merged, normalizedAliases);
+    }
+
+    private static Map<String, Sprite> parseSprites(JsonObject manifest) {
+        Map<String, Sprite> frames = new LinkedHashMap<>();
+        if (manifest == null || !manifest.has("font") || !manifest.has("in") || !manifest.has("frames")) {
+            return frames;
+        }
+        String font = manifest.get("font").getAsString();
+        String in = manifest.get("in").getAsString();
+        for (var entry : manifest.getAsJsonObject("frames").entrySet()) {
+            JsonObject frame = entry.getValue().getAsJsonObject();
+            String name = CustomFramesConfig.normalizeName(entry.getKey());
+            if (!name.isEmpty() && frame.has("out") && frame.has("item")) {
+                frames.put(name, new Sprite(font, in, frame.get("out").getAsString(), frame.getAsJsonObject("item")));
+            }
+        }
+        return frames;
     }
 
     private static FramePanels load() {
@@ -79,9 +120,23 @@ final class FramePanels {
         return sprites.keySet();
     }
 
-    /** True when {@code frame} is a card tier or a sprite frame this panel set can draw. */
+    /** Resolves configured aliases up to {@link #MAX_ALIAS_DEPTH} hops, returning null on a cycle. */
+    String resolveName(String frame) {
+        if (frame == null) return null;
+        String current = CustomFramesConfig.normalizeName(frame);
+        if (current.isEmpty()) return null;
+        for (int hop = 0; hop < MAX_ALIAS_DEPTH; hop++) {
+            String next = aliases.get(current);
+            if (next == null) return current;
+            current = next;
+        }
+        return aliases.containsKey(current) ? null : current;
+    }
+
+    /** True when {@code frame} is a card tier, a sprite frame, or an alias to one this panel set can draw. */
     boolean draws(String frame) {
-        return tier(frame) != null || frame != null && sprites.containsKey(frame.toLowerCase(Locale.ROOT));
+        String resolved = resolveName(frame);
+        return resolved != null && (tier(resolved) != null || sprites.containsKey(resolved));
     }
 
     /**
@@ -93,12 +148,13 @@ final class FramePanels {
      */
     Panel panel(String frame, String fallback, int lines, int textWidth, int minWidth) {
         if (lines <= 0) return null;
-        for (String name : new String[]{frame, fallback}) {
-            if (name == null) continue;
-            CardRules.Tier tier = tier(name);
+        for (String candidate : new String[]{frame, fallback}) {
+            String resolved = resolveName(candidate);
+            if (resolved == null) continue;
+            CardRules.Tier tier = tier(resolved);
             if (tier != null) return cards.panel(tier, lines, panelWidth(tier, textWidth, minWidth));
-            Sprite sprite = sprites.get(name.toLowerCase(Locale.ROOT));
-            if (sprite != null) return sprite.panel(font, in, lines);
+            Sprite sprite = sprites.get(resolved);
+            if (sprite != null) return sprite.panel(lines);
         }
         return null;
     }
@@ -218,8 +274,8 @@ final class FramePanels {
     }
 
     /** One sprite frame's item layout, cut for every line count (legacy {@code SpriteFrame.item}). */
-    private record Sprite(String out, JsonObject item) {
-        Panel panel(String font, String in, int n) {
+    private record Sprite(String font, String in, String out, JsonObject item) {
+        Panel panel(int n) {
             int max = item.get("max").getAsInt();
             char header;
             String strips;

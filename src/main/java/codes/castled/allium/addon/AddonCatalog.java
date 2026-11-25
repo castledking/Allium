@@ -26,7 +26,7 @@ public final class AddonCatalog {
 
     private static final List<Entry> OFFICIAL = List.of(
             new Entry("crops", "Crops", "Custom crops, fertilizers, sprinklers, kitchen & pies", List.of("harvest")),
-            new Entry("curios", "Curios", "Trading cards, relics equipment, morphs & hover frames", List.of("tradingcards", "relics")),
+            new Entry("curios", "Curios", "Trading cards, relics equipment & item/hover frames", List.of("tradingcards", "relics")),
             new Entry("ores", "Ores", "CraftEngine custom ore generation & /pregen", List.of()),
             new Entry("partylocator", "PartyLocator", "Parties & 1.21.6+ locator bar integration", List.of("party-locator", "party")),
             new Entry("spawnercraft", "SpawnerCraft", "Mob head drops, spawner changers & recipe guides", List.of())

@@ -14,10 +14,12 @@ commands:
     description: Equip, level, merge, import and trade curios
     permission: curios.use
   frame:
-    description: List or apply item frames
+    description: View, choose, apply, or author item and hover frames
     permission: curios.use
 permissions:
   curios.use:
     default: true
   curios.admin:
+    default: op
+  allium.frame.admin:
     default: op

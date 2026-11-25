@@ -24,7 +24,6 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class CuriosPlugin extends AlliumAddon implements Listener {
-    private final Map<String, String> frames = new LinkedHashMap<>();
     private final List<org.bukkit.permissions.Permission> registeredFramePermissions = new ArrayList<>();
     private static final List<String> ICONS = List.of(
             "charm", "head", "chest", "belt", "ring", "card", "prev", "next", "up", "down",
@@ -34,6 +33,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     private CardRules cardRules;
     private CardGuiManager cardGui;
     private CuriosRecoveryStore recovery;
+    private FrameRegistry frameRegistry;
     private GiveCommand give;
     private HeldCardBar heldCardBar;
     private AutoCloseable framePackets;
@@ -55,16 +55,9 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         recovery = new CuriosRecoveryStore(this);
         cardGui = new CardGuiManager(this);
         give = new GiveCommand(catalog);
-        var choices = Objects.requireNonNull(getConfig().getConfigurationSection("frames"), "frames");
-        for (String name : choices.getKeys(false)) {
-            if (!name.matches("[a-z0-9_]{1,48}")) throw new IllegalArgumentException("Invalid frame: " + name);
-            String permission = choices.getString(name, "");
-            frames.put(name, permission);
-            if (!permission.isEmpty() && getServer().getPluginManager().getPermission(permission) == null) {
-                var node = new org.bukkit.permissions.Permission(permission, org.bukkit.permissions.PermissionDefault.FALSE);
-                getServer().getPluginManager().addPermission(node);
-                registeredFramePermissions.add(node);
-            }
+        frameRegistry = new FrameRegistry(getDataFolder());
+        for (String problem : reloadFrameRegistry()) {
+            getLogger().warning("Frames: " + problem);
         }
         importIo = core.scheduler().boundedPool("Curios-Import", 1, 32);
         for (Catalog.Entry entry : catalog.entries.values()) {
@@ -86,11 +79,9 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                 "/curios [menu|inspect|merge|trade|claim|frame|give|import]",
                 List.of("menu", "inspect", "merge", "trade", "claim", "frame", "give", "import"),
                 this::command, this::completeCurios);
-        register("frame", List.of(), "/frame [list|apply] [style]", List.of("list", "apply"),
-                (sender, label, args) -> {
-                    if (sender instanceof Player player) frame(player, args);
-                    else sender.sendMessage("This command requires a player.");
-                }, this::completeFrame);
+        register("frame", List.of(), "/frame [list|choose|reset|apply|set|build|reload]",
+                List.of("list", "choose", "select", "reset", "apply", "set", "build", "reload"),
+                this::frame, this::completeFrame);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(cardGui, this);
         getServer().getPluginManager().registerEvents(new RelicAbilities(this, core.scheduler()), this);
@@ -245,9 +236,14 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
                     name -> visiblePlayer(sender, name) != null, players);
         } else if ("frame".equals(action) && args.length == 2) {
             List<String> out = new ArrayList<>();
-            if ("list".startsWith(prefix)) out.add("list");
-            out.addAll(completeFrameStyles(sender, prefix));
+            for (String literal : List.of("list", "choose", "reset")) {
+                if (literal.startsWith(prefix)) out.add(literal);
+            }
+            out.addAll(completeFrameStyles(sender, prefix, true));
             return out;
+        } else if ("frame".equals(action) && args.length == 3
+                && ("choose".equalsIgnoreCase(args[1]) || "select".equalsIgnoreCase(args[1]))) {
+            return completeFrameStyles(sender, prefix, false);
         } else if ("import".equals(action) && admin && args.length == 2) {
             List<String> out = new ArrayList<>();
             if ("held".startsWith(prefix)) out.add("held");
@@ -265,20 +261,46 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     private List<String> completeFrame(codes.castled.allium.api.AddonCommands.Context ctx) {
         var sender = ctx.sender();
         String[] args = ctx.args();
+        boolean admin = canAdminFrames(sender);
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
-            return List.of("list", "apply").stream().filter(a -> a.startsWith(prefix)).toList();
+            List<String> actions = new ArrayList<>(List.of("list", "choose", "reset", "apply"));
+            if (admin) {
+                actions.addAll(List.of("set", "build", "reload"));
+            }
+            return actions.stream().filter(a -> a.startsWith(prefix)).toList();
         }
-        if (args.length == 2 && "apply".equalsIgnoreCase(args[0])) {
-            return completeFrameStyles(sender, args[1].toLowerCase(Locale.ROOT));
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
+        if (args.length == 2) {
+            if ("apply".equals(sub)) return completeFrameStyles(sender, prefix, true);
+            if ("choose".equals(sub) || "select".equals(sub)) return completeFrameStyles(sender, prefix, false);
+            if (admin && ("set".equals(sub) || "reset".equals(sub))) {
+                List<String> out = new ArrayList<>();
+                for (Player online : getServer().getOnlinePlayers()) {
+                    if ((!(sender instanceof Player p) || p.canSee(online))
+                            && online.getName().toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                        out.add(online.getName());
+                    }
+                }
+                return out;
+            }
+        } else if (args.length == 3 && admin && "set".equals(sub)) {
+            return frameRegistry.drawableNames().stream().filter(name -> name.startsWith(prefix)).toList();
         }
         return List.of();
     }
 
-    private List<String> completeFrameStyles(CommandSender sender, String prefix) {
-        var styles = new ArrayList<>(List.of("auto", "off"));
-        for (String name : frames.keySet()) {
-            if (!(sender instanceof Player player) || canUseFrame(player, name)) styles.add(name);
+    private List<String> completeFrameStyles(CommandSender sender, String prefix, boolean includeAutoAndOff) {
+        var styles = new ArrayList<String>();
+        if (includeAutoAndOff) {
+            styles.add("auto");
+            styles.add("off");
+        }
+        if (frameRegistry != null) {
+            styles.addAll(sender instanceof Player player
+                    ? frameRegistry.usableNames(player)
+                    : frameRegistry.drawableNames());
         }
         return styles.stream().filter(name -> name.startsWith(prefix)).toList();
     }
@@ -299,10 +321,18 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         if (args.length == 0) { open(player, 0); return; }
         String action = args[0].toLowerCase(Locale.ROOT);
         if (action.equals("frame")) {
-            // Both legacy forms operate on the held item.
-            if (args.length == 1 || args.length == 2 && args[1].equalsIgnoreCase("list")) frame(player, new String[]{"list"});
-            else if (args.length == 2) frame(player, new String[]{"apply", args[1].toLowerCase(Locale.ROOT)});
-            else tell(player, "Usage: /" + label + " frame [list|<style>]");
+            // Preserve legacy held-item forms while also accepting choose/reset.
+            if (args.length == 1 || args.length == 2 && args[1].equalsIgnoreCase("list")) {
+                frame(player, label, new String[]{"list"});
+            } else if (args.length == 2 && args[1].equalsIgnoreCase("reset")) {
+                frame(player, label, new String[]{"reset"});
+            } else if (args.length == 3 && (args[1].equalsIgnoreCase("choose") || args[1].equalsIgnoreCase("select"))) {
+                frame(player, label, new String[]{"choose", args[2]});
+            } else if (args.length == 2) {
+                frame(player, label, new String[]{"apply", args[1].toLowerCase(Locale.ROOT)});
+            } else {
+                tell(player, "Usage: /" + label + " frame [list|choose <style>|reset|<style>]");
+            }
             return;
         }
         if (action.equals("inspect")) {
@@ -378,43 +408,273 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         });
     }
 
-    private void frame(Player player, String[] args) {
-        if (args.length == 0 || args.length == 1 && args[0].equalsIgnoreCase("list")) {
-            tell(player, "Frames: " + String.join(", ", frames.keySet().stream()
-                    .filter(name -> canUseFrame(player, name)).toList()));
+    private void frame(CommandSender sender, String label, String[] args) {
+        if (args.length == 0) {
+            if (!(sender instanceof Player player)) {
+                tell(sender, "Usage: /frame <list|set|reset|build|reload>");
+                return;
+            }
+            FrameRegistry.Resolution resolved = frameRegistry.resolve(player);
+            String reason = switch (resolved.source()) {
+                case ADMIN_OVERRIDE -> " (set by admin)";
+                case PLAYER_CHOICE -> " (your choice)";
+                case PERMISSION_DEFAULT -> " (permission default)";
+                case FALLBACK -> " (fallback)";
+            };
+            tell(player, "Your active frame is " + resolved.frame() + reason
+                    + ". Use /frame list, /frame choose <style>, /frame reset, or /frame apply <style|auto|off>.");
             return;
         }
-        if (args.length != 2 || !args[0].equalsIgnoreCase("apply")) {
-            tell(player, "Usage: /frame [list|apply <style|auto|off>]");
-            return;
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "list" -> {
+                if (sender instanceof Player player) {
+                    String active = frameRegistry.automaticFrame(player);
+                    List<String> available = frameRegistry.usableNames(player).stream()
+                            .map(name -> name.equals(active) ? name + "*" : name)
+                            .toList();
+                    String summary = "Frames: " + String.join(", ", available);
+                    if (canAdminFrames(sender)) {
+                        summary += " (fallback: " + frameRegistry.fallback()
+                                + (frameRegistry.customNames().isEmpty() ? "" : ", custom: " + frameRegistry.customNames().size())
+                                + ")";
+                    }
+                    tell(player, summary);
+                } else {
+                    tell(sender, "Frames: " + String.join(", ", frameRegistry.drawableNames())
+                            + " (fallback: " + frameRegistry.fallback() + ")");
+                }
+            }
+            case "choose", "select" -> {
+                if (!(sender instanceof Player player)) { tell(sender, "This command requires a player."); return; }
+                if (args.length != 2) { tell(player, "Usage: /frame choose <style>"); return; }
+                String style = CustomFramesConfig.normalizeName(args[1]);
+                if (style.equals("auto") || style.equals("off")) {
+                    tell(player, "Use /frame reset to return to your automatic frame.");
+                    return;
+                }
+                if (!canUseFrame(player, style)) {
+                    tell(player, "You cannot use that frame.");
+                    return;
+                }
+                try {
+                    frameRegistry.setChoice(player.getUniqueId(), style);
+                    refreshPlayerFrames(player);
+                    String override = frameRegistry.overrideFor(player.getUniqueId());
+                    if (override != null && frameRegistry.isDrawable(override)) {
+                        tell(player, "Saved " + style + " as your preferred frame (an admin override for "
+                                + override + " is currently active).");
+                    } else {
+                        tell(player, "Selected the " + style + " frame as your default.");
+                    }
+                } catch (java.io.IOException e) {
+                    tell(player, "Could not save your frame choice: " + e.getMessage());
+                }
+            }
+            case "reset" -> {
+                if (args.length == 1) {
+                    if (!(sender instanceof Player player)) { tell(sender, "Usage: /frame reset <player>"); return; }
+                    try {
+                        frameRegistry.setChoice(player.getUniqueId(), null);
+                        refreshPlayerFrames(player);
+                        FrameRegistry.Resolution resolved = frameRegistry.resolve(player);
+                        if (resolved.source() == FrameRegistry.Source.ADMIN_OVERRIDE) {
+                            tell(player, "Cleared your personal frame choice (admin override " + resolved.frame() + " is still active).");
+                        } else {
+                            tell(player, "Reset your frame to " + resolved.frame() + ".");
+                        }
+                    } catch (java.io.IOException e) {
+                        tell(player, "Could not save your frame choice: " + e.getMessage());
+                    }
+                } else if (args.length == 2) {
+                    if (!canAdminFrames(sender)) { tell(sender, "You do not have permission."); return; }
+                    var target = resolveFrameTarget(sender, args[1]);
+                    if (target == null) return;
+                    try {
+                        frameRegistry.setOverride(target.uuid(), null);
+                        if (target.online() != null) refreshPlayerFrames(target.online());
+                        tell(sender, target.name() + " is back to their chosen/permission frame.");
+                    } catch (java.io.IOException e) {
+                        tell(sender, "Could not save frame override: " + e.getMessage());
+                    }
+                } else {
+                    tell(sender, canAdminFrames(sender) ? "Usage: /frame reset [player]" : "Usage: /frame reset");
+                }
+            }
+            case "set" -> {
+                if (!canAdminFrames(sender)) { tell(sender, "You do not have permission."); return; }
+                if (args.length != 3) { tell(sender, "Usage: /frame set <player> <style>"); return; }
+                String style = CustomFramesConfig.normalizeName(args[2]);
+                if (!frameRegistry.isDrawable(style)) {
+                    tell(sender, "No drawable frame called '" + args[2] + "'. See /frame list.");
+                    return;
+                }
+                var target = resolveFrameTarget(sender, args[1]);
+                if (target == null) return;
+                try {
+                    frameRegistry.setOverride(target.uuid(), style);
+                    if (target.online() != null) refreshPlayerFrames(target.online());
+                    tell(sender, target.name() + " now has the " + style + " frame.");
+                } catch (java.io.IOException e) {
+                    tell(sender, "Could not save frame override: " + e.getMessage());
+                }
+            }
+            case "apply" -> {
+                if (!(sender instanceof Player player)) { tell(sender, "This command requires a player."); return; }
+                if (args.length != 2) { tell(player, "Usage: /frame apply <style|auto|off>"); return; }
+                String style = CustomFramesConfig.normalizeName(args[1]);
+                if (!style.equals("auto") && !style.equals("off") && !canUseFrame(player, style)) {
+                    tell(player, "You cannot use that frame.");
+                    return;
+                }
+                if (!editable(player)) return;
+                ItemStack source = player.getInventory().getItemInMainHand();
+                if (source.getType().isAir()) { tell(player, "Hold the item you want to frame."); return; }
+                if (entry(source) != null) {
+                    if (style.equals("off")) { tell(player, "This curio has its own frame."); return; }
+                    ItemStack styled = changed(source, Map.of("frame", style.equals("auto") ? automaticFrame(player) : style));
+                    if (styled == null) return;
+                    player.getInventory().setItemInMainHand(styled);
+                } else {
+                    var meta = source.getItemMeta();
+                    if (meta == null || !ItemFrameMarker.apply(meta, style)) { tell(player, "That item has no frame."); return; }
+                    if (!source.setItemMeta(meta)) return;
+                    player.getInventory().setItemInMainHand(source);
+                }
+                tell(player, style.equals("off") ? "Frame removed." : "Applied the " + style + " frame.");
+            }
+            case "build" -> {
+                if (!canAdminFrames(sender)) { tell(sender, "You do not have permission."); return; }
+                CustomFramesConfig customConfig = frameRegistry.customConfig();
+                if (customConfig.spriteFrames().isEmpty()) {
+                    tell(sender, "No sprite frames are configured in frames.yml.");
+                    return;
+                }
+                var packDir = new java.io.File(customConfig.pack());
+                if (!packDir.isDirectory()) {
+                    tell(sender, "No pack folder at " + packDir.getPath() + "; set pack: in frames.yml.");
+                    return;
+                }
+                tell(sender, "Building " + customConfig.spriteFrames().size() + " custom frame(s)...");
+                try {
+                    importIo.execute(() -> {
+                        try {
+                            var result = CustomFrameBuilder.build(customConfig, packDir,
+                                    new java.io.File(getDataFolder(), FrameRegistry.MANIFEST_FILE));
+                            core.scheduler().runOnServer(() -> {
+                                List<String> problems = new ArrayList<>(result.problems());
+                                problems.addAll(reloadFrameRegistry());
+                                refreshOnlineFrames();
+                                core.onOwner(sender, () -> {
+                                    tell(sender, "Built " + result.frames() + " frame(s) from " + result.glyphs() + " glyph(s).");
+                                    for (String problem : problems) tell(sender, "Warning: " + problem);
+                                });
+                            });
+                        } catch (Exception e) {
+                            core.onOwner(sender, () -> tell(sender, "Frame build failed: " + e.getMessage()));
+                        }
+                    });
+                } catch (java.util.concurrent.RejectedExecutionException busy) {
+                    tell(sender, "A frame build or import is already queued; try again shortly.");
+                }
+            }
+            case "reload" -> {
+                if (!canAdminFrames(sender)) { tell(sender, "You do not have permission."); return; }
+                core.scheduler().runOnServer(() -> {
+                    reloadConfig();
+                    List<String> problems = reloadFrameRegistry();
+                    refreshOnlineFrames();
+                    int total = frameRegistry.drawableNames().size();
+                    int custom = frameRegistry.customNames().size();
+                    core.onOwner(sender, () -> {
+                        tell(sender, "Reloaded " + total + " frame(s)"
+                                + (custom > 0 ? " (" + custom + " from frames.yml)" : "") + ".");
+                        for (String problem : problems) tell(sender, "Warning: " + problem);
+                    });
+                });
+            }
+            default -> tell(sender, canAdminFrames(sender)
+                    ? "Usage: /frame [list|choose <style>|reset [player]|apply <style|auto|off>|set <player> <style>|build|reload]"
+                    : "Usage: /frame [list|choose <style>|reset|apply <style|auto|off>]");
         }
-        String style = args[1].toLowerCase(Locale.ROOT).replace('-', '_');
-        if (!style.equals("auto") && !style.equals("off") && !canUseFrame(player, style)) {
-            tell(player, "You cannot use that frame.");
-            return;
+    }
+
+    private record FrameTarget(UUID uuid, String name, Player online) {}
+
+    private FrameTarget resolveFrameTarget(CommandSender sender, String raw) {
+        Player online = visiblePlayer(sender, raw);
+        if (online != null) {
+            return new FrameTarget(online.getUniqueId(), online.getName(), online);
         }
-        if (!editable(player)) return;
-        ItemStack source = player.getInventory().getItemInMainHand();
-        if (source.getType().isAir()) { tell(player, "Hold the item you want to frame."); return; }
-        if (entry(source) != null) {
-            if (style.equals("off")) { tell(player, "This curio has its own frame."); return; }
-            ItemStack styled = changed(source, Map.of("frame", style.equals("auto") ? automaticFrame(player) : style));
-            if (styled == null) return;
-            player.getInventory().setItemInMainHand(styled);
-        } else {
-            var meta = source.getItemMeta();
-            if (meta == null || !ItemFrameMarker.apply(meta, style)) { tell(player, "That item has no frame."); return; }
-            if (!source.setItemMeta(meta)) return;
-            player.getInventory().setItemInMainHand(source);
+        try {
+            UUID uuid = UUID.fromString(raw);
+            var offline = getServer().getOfflinePlayer(uuid);
+            String name = offline.getName() != null ? offline.getName() : uuid.toString();
+            Player byUuid = getServer().getPlayer(uuid);
+            return new FrameTarget(uuid, name, byUuid);
+        } catch (IllegalArgumentException ignored) {
+            // Fall through to cached offline player lookup.
         }
-        tell(player, style.equals("off") ? "Frame removed." : "Applied the " + style + " frame.");
+        try {
+            var method = getServer().getClass().getMethod("getOfflinePlayerIfCached", String.class);
+            var cached = (org.bukkit.OfflinePlayer) method.invoke(getServer(), raw);
+            if (cached != null) {
+                return new FrameTarget(cached.getUniqueId(), cached.getName() != null ? cached.getName() : raw, null);
+            }
+        } catch (ReflectiveOperationException | LinkageError unavailable) {
+            // Spigot fallback: scan known offline players without blocking Mojang API calls.
+        }
+        for (org.bukkit.OfflinePlayer offline : getServer().getOfflinePlayers()) {
+            if (offline.getName() != null && offline.getName().equalsIgnoreCase(raw)) {
+                return new FrameTarget(offline.getUniqueId(), offline.getName(), null);
+            }
+        }
+        tell(sender, "Player '" + raw + "' was not found (online or cached offline; you may also pass a UUID).");
+        return null;
+    }
+
+    private List<String> reloadFrameRegistry() {
+        var configFrames = Objects.requireNonNull(getConfig().getConfigurationSection("frames"), "frames");
+        List<String> problems = frameRegistry.reload(configFrames);
+        var pm = getServer().getPluginManager();
+        for (var old : registeredFramePermissions) {
+            pm.removePermission(old);
+        }
+        registeredFramePermissions.clear();
+        for (String permission : frameRegistry.permissions().values()) {
+            if (!permission.isEmpty() && pm.getPermission(permission) == null) {
+                var node = new org.bukkit.permissions.Permission(permission, org.bukkit.permissions.PermissionDefault.FALSE);
+                pm.addPermission(node);
+                registeredFramePermissions.add(node);
+            }
+        }
+        return problems;
+    }
+
+    private void refreshPlayerFrames(Player player) {
+        if (framePackets == null || player == null || !player.isOnline()) return;
+        core.runForEntity(player, () -> {
+            if (player.isOnline()) player.updateInventory();
+        }, () -> {}, 0L);
+    }
+
+    private void refreshOnlineFrames() {
+        if (framePackets == null) return;
+        for (Player online : getServer().getOnlinePlayers()) {
+            refreshPlayerFrames(online);
+        }
+    }
+
+    private boolean canAdminFrames(CommandSender sender) {
+        return sender.hasPermission("curios.admin") || sender.hasPermission("allium.frame.admin");
+    }
+
+    FramePanels framePanels() {
+        return frameRegistry == null ? FramePanels.bundled() : frameRegistry.panels();
     }
 
     String automaticFrame(Player player) {
-        for (var frame : frames.entrySet()) {
-            if (!frame.getValue().isEmpty() && canUseFrame(player, frame.getKey())) return frame.getKey();
-        }
-        return "simple";
+        return frameRegistry == null ? "simple" : frameRegistry.automaticFrame(player);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -429,8 +689,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
     }
 
     private boolean canUseFrame(Player player, String name) {
-        String permission = frames.get(name);
-        return permission != null && (permission.isEmpty() || player.hasPermission(permission));
+        return frameRegistry != null && frameRegistry.canUse(player, name);
     }
 
     private void describe(Player player, ItemStack stack) {
@@ -604,7 +863,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         if (!core.items().updateState(copy, state)) return null;
         ItemIdentity identity = identity(copy).orElseThrow();
         if (!entry.legacyCard().isEmpty()) {
-            return PackPresentation.applyCardPresentation(copy, entry, identity, cardRules, texturedMenu()) ? copy : null;
+            return PackPresentation.applyCardPresentation(copy, entry, identity, cardRules, texturedMenu(), framePanels()) ? copy : null;
         }
         var progress = progress(identity);
         var meta = copy.getItemMeta();

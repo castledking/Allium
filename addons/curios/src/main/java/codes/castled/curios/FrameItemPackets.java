@@ -153,7 +153,7 @@ final class FrameItemPackets extends PacketListenerAbstract implements AutoClose
         }
         content.add(0, name.colorIfAbsent(NamedTextColor.WHITE).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE));
         int width = content.stream().mapToInt(line -> TextWidth.of(plain(line))).max().orElse(0);
-        var panel = FramePanels.bundled().panel(frame, plugin.automaticFrame(viewer), content.size(), width, 0);
+        var panel = plugin.framePanels().panel(frame, plugin.automaticFrame(viewer), content.size(), width, 0);
         if (panel == null) return null;
         var shown = new ArrayList<Component>();
         shown.add(glyph(panel.header(), panel.font()));

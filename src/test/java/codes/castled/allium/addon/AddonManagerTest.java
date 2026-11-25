@@ -423,4 +423,12 @@ class AddonManagerTest {
         assertTrue(validOutcome.success(), validOutcome.message());
         assertArrayEquals(Files.readAllBytes(goodCandidate), Files.readAllBytes(installedJar));
     }
+
+    @Test
+    void curiosCatalogDescriptionReflectsImplementedScopeWithoutMorphs() {
+        var curios = AddonCatalog.find("curios").orElseThrow();
+        String desc = curios.description().toLowerCase(java.util.Locale.ROOT);
+        assertFalse(desc.contains("morph"), "Curios catalog entry must not advertise unimplemented morphs: " + curios.description());
+        assertTrue(desc.contains("cards") && desc.contains("relics") && desc.contains("frames"), curios.description());
+    }
 }

@@ -53,8 +53,10 @@ class EssentialsConfigReportTest {
                 currency-symbol: '$'
                 command-costs:
                   heal: 50
+                  nick: 100
                 command-cooldowns:
                   heal: 60
+                  nick: 120
                 newbies:
                   kit: starter
                   spawnpoint: newbies
@@ -116,7 +118,11 @@ class EssentialsConfigReportTest {
         assertEquals(Outcome.MAPPED, findConfig(report, "starting-balance").outcome());
         assertEquals(Outcome.CONFLICT, findConfig(report, "min-money").outcome());
         assertEquals(Outcome.MAPPED, findConfig(report, "currency-symbol").outcome());
+        assertEquals(Outcome.CONFLICT, findConfig(report, "command-costs.heal").outcome());
+        assertEquals("command-policy.actions.heal.cost", findConfig(report, "command-costs.heal").targetKey());
         assertEquals(Outcome.UNSUPPORTED, findConfig(report, "command-costs").outcome());
+        assertEquals(Outcome.CONFLICT, findConfig(report, "command-cooldowns.heal").outcome());
+        assertEquals("command-policy.actions.heal.cooldown-seconds", findConfig(report, "command-cooldowns.heal").targetKey());
         assertEquals(Outcome.UNSUPPORTED, findConfig(report, "command-cooldowns").outcome());
         assertEquals(Outcome.MAPPED, findConfig(report, "newbies.kit").outcome());
         assertEquals(Outcome.UNSUPPORTED, findConfig(report, "enabledSigns.trade").outcome());

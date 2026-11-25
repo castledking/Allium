@@ -49,6 +49,11 @@ public final class EssentialsModule extends AbstractModule {
     private codes.castled.allium.player.TimedFlight timedFlight;
     private codes.castled.allium.glow.GlowService glow;
     private codes.castled.allium.recipe.RecipeViewer recipes;
+    private codes.castled.allium.economy.PaidCommandService paidCommands;
+
+    public codes.castled.allium.economy.PaidCommandService paidCommands() {
+        return paidCommands;
+    }
 
     /** Glow colours (/glow, spectator and restricted-creative glow). */
     public codes.castled.allium.glow.GlowService glow() {
@@ -106,6 +111,7 @@ public final class EssentialsModule extends AbstractModule {
     public void onEnable() {
         flights=new codes.castled.allium.player.FlightRestoration(plugin);flights.enable();
         timedFlight=startTimedFlight();
+        paidCommands=startPaidCommands();
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ToggleSlowFallCommand(flights));
         timePauseCoordinator = new TimePauseCoordinator(plugin);
         disposalListener = new UtilityCommand.DisposalListener();
@@ -114,10 +120,10 @@ public final class EssentialsModule extends AbstractModule {
         }
 
         for (var spec : CoreCommandSpecs.UTILITY_SPECS) {
-            plugin.getCommandManager().register(new UtilityCommand(plugin, spec));
+            plugin.getCommandManager().register(new UtilityCommand(plugin, spec, () -> paidCommands));
         }
-        plugin.getCommandManager().register(new HealCommand(plugin));
-        plugin.getCommandManager().register(new FeedCommand(plugin));
+        plugin.getCommandManager().register(new HealCommand(plugin, () -> paidCommands));
+        plugin.getCommandManager().register(new FeedCommand(plugin, () -> paidCommands));
         plugin.getCommandManager().register(new FlyCommand(plugin, () -> timedFlight));
         plugin.getCommandManager().register(new GodCommand(plugin));
         plugin.getCommandManager().register(new GamemodeCommand(plugin));
@@ -133,7 +139,7 @@ public final class EssentialsModule extends AbstractModule {
         glow = new codes.castled.allium.glow.GlowService(plugin);
         glow.enable();
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.GlowCommand(plugin, () -> glow));
-        plugin.getCommandManager().register(new ExtCommand(plugin));
+        plugin.getCommandManager().register(new ExtCommand(plugin, () -> paidCommands));
         plugin.getCommandManager().register(new BurnCommand(plugin));
         plugin.getCommandManager().register(new BlockToolCommand(plugin, BlockToolCommand.BREAK));
         plugin.getCommandManager().register(new BlockToolCommand(plugin, BlockToolCommand.SPAWNER));
@@ -161,7 +167,7 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(clearInventory);
         plugin.getCommandManager().register(clearInventory.confirmationToggle());
         plugin.getCommandManager().register(new MoreCommand(plugin));
-        plugin.getCommandManager().register(new HatCommand(plugin));
+        plugin.getCommandManager().register(new HatCommand(plugin, () -> paidCommands));
         plugin.getCommandManager().register(new SkullCommand(plugin, this::resolveSkullProfiles));
         plugin.getCommandManager().register(new ItemDbCommand(plugin));
         plugin.getCommandManager().register(new GcCommand(plugin, timePauseCoordinator));
@@ -252,7 +258,14 @@ public final class EssentialsModule extends AbstractModule {
             unlimited = null;
         }
         // Timed flight hands landing fliers to the flight restoration, so it stops first.
-        if(timedFlight!=null){timedFlight.close();timedFlight=null;}
+        if (timedFlight != null) {
+            timedFlight.close();
+            timedFlight = null;
+        }
+        if (paidCommands != null) {
+            paidCommands.close();
+            paidCommands = null;
+        }
         if(glow!=null){glow.close();glow=null;}
         if(recipes!=null){recipes.close();recipes=null;}
         if(flights!=null){flights.close();flights=null;}
@@ -286,6 +299,26 @@ public final class EssentialsModule extends AbstractModule {
         }
     }
 
+    private codes.castled.allium.economy.PaidCommandService startPaidCommands() {
+        codes.castled.allium.economy.CommandCooldownRepository repo = null;
+        if (plugin.getDatabaseManager() != null) {
+            try {
+                repo = new codes.castled.allium.economy.CommandCooldownRepository(
+                        plugin.getDatabaseManager().connectionSource(),
+                        plugin.getDatabaseManager().dialect(),
+                        System::currentTimeMillis);
+                repo.migrate();
+            } catch (java.sql.SQLException | RuntimeException failed) {
+                plugin.logger().warning("Persistent command cooldown storage unavailable (" + failed.getMessage() + "); using in-memory cooldowns.");
+                repo = null;
+            }
+        }
+        var pool = plugin.getScheduler() == null ? null : plugin.getScheduler().boundedPool("Allium-PaidCommand", 1, 256);
+        var service = new codes.castled.allium.economy.PaidCommandService(plugin, repo, pool, System::currentTimeMillis);
+        service.enable();
+        return service;
+    }
+
     @Override
     public int reloadOrder() {
         return 100;
@@ -293,6 +326,11 @@ public final class EssentialsModule extends AbstractModule {
 
     @Override
     public codes.castled.allium.config.ReloadCoordinator.Prepared prepareReload(org.bukkit.configuration.file.FileConfiguration candidateRoot) {
-        return codes.castled.allium.config.ReloadCoordinator.Prepared.of(this::reloadSettings);
+        var policyReload = paidCommands == null ? null : paidCommands.prepareReload(candidateRoot);
+        return () -> {
+            if (policyReload != null) policyReload.publish();
+            reloadSettings();
+            return java.util.List.of();
+        };
     }
 }

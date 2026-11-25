@@ -4,6 +4,7 @@ import codes.castled.allium.PluginStart;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
+import codes.castled.allium.economy.PaidCommandService;
 import codes.castled.allium.message.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -18,9 +19,15 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 
 import java.util.Locale;
+import java.util.function.Supplier;
 
 /** Shared command/sign entry point for self-service inventory utilities. */
-public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements SpecCommandHandler.Immediate {
+public record UtilityCommand(PluginStart plugin, CommandSpec spec,
+                             Supplier<PaidCommandService> paidCommands) implements SpecCommandHandler.Immediate {
+
+    public UtilityCommand(PluginStart plugin, CommandSpec spec) {
+        this(plugin, spec, () -> null);
+    }
 
     public static final class DisposalHolder implements InventoryHolder {
         private Inventory inventory;
@@ -42,6 +49,42 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
                 event.getInventory().clear();
             }
         }
+    }
+
+    @Override
+    public void execute(BukkitCommandContext context) {
+        PaidCommandService paid = paidCommands == null ? null : paidCommands.get();
+        if (paid == null || !(context.sender() instanceof Player player)) {
+            executeWithResult(context);
+            return;
+        }
+        if ("repair".equals(spec.canonicalName())) {
+            if (context.args().length > 1) {
+                context.sendInvalidArgs(spec.selfUsage());
+                return;
+            }
+            String mode = context.args().length == 0 ? "hand" : context.args()[0].toLowerCase(Locale.ROOT);
+            if (!"hand".equals(mode) && !"all".equals(mode)) {
+                context.sendInvalidArgs(spec.selfUsage());
+                return;
+            }
+            String action = "all".equals(mode) ? "repair-all" : "repair";
+            paid.execute(player, action, () -> canRepair(plugin, player, mode), () -> executeWithResult(context));
+            return;
+        }
+        if (context.args().length != 0) {
+            context.sendInvalidArgs(spec.selfUsage());
+            return;
+        }
+        paid.execute(player, spec.canonicalName(),
+                () -> {
+                    if (UtilitySupport.isInventoryBusy(plugin, player)) {
+                        UtilitySupport.send(plugin, player, Messages.UTILITY_INVENTORY_BUSY, "{player}", player.getName());
+                        return false;
+                    }
+                    return true;
+                },
+                () -> executeWithResult(context));
     }
 
     @Override
@@ -103,6 +146,27 @@ public record UtilityCommand(PluginStart plugin, CommandSpec spec) implements Sp
             UtilitySupport.send(plugin, player, Messages.WORKSTATION_UNAVAILABLE, "{workstation}", name);
             return false;
         }
+    }
+
+    private static boolean canRepair(PluginStart plugin, Player player, String mode) {
+        boolean all = "all".equals(mode);
+        if (all && !player.hasPermission("allium.repair.all")) {
+            UtilitySupport.send(plugin, player, Messages.NO_PERMISSION, "{cmd}", "repair all");
+            return false;
+        }
+        if (UtilitySupport.isInventoryBusy(plugin, player)) {
+            UtilitySupport.send(plugin, player, Messages.UTILITY_INVENTORY_BUSY, "{player}", player.getName());
+            return false;
+        }
+        var inventory = player.getInventory();
+        ItemStack[] items = all ? inventory.getContents() : new ItemStack[]{inventory.getItemInMainHand()};
+        for (ItemStack item : items) {
+            if (!UtilitySupport.isAir(item) && item.getItemMeta() instanceof Damageable damage && damage.hasDamage()) {
+                return true;
+            }
+        }
+        UtilitySupport.send(plugin, player, all ? Messages.UTILITY_REPAIR_NONE : Messages.REPAIR_HOLD_DAMAGED);
+        return false;
     }
 
     /** Plan changes before charging so refusals and undamaged inventories are free. */

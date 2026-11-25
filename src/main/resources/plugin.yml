@@ -1562,6 +1562,12 @@ permissions:
   allium.give.item.*:
     description: Allows giving any item when items.give.policy.permission-based-spawn is enabled
     default: op
+  allium.command.bypass.cost:
+    description: Bypasses all command-policy costs on convenience commands
+    default: op
+  allium.command.bypass.cooldown:
+    description: Bypasses all command-policy cooldowns on convenience commands
+    default: op
   allium.mobdisarmer.use:
     description: Allows using a Mob Disarmer
     default: true

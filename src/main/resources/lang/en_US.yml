@@ -1866,6 +1866,21 @@ utility:
   xpbottle-max-xp:
     - "{prefix} &cYour experience is already at the maximum limit."
     - "[sound] block.note_block.bass 0.8"
+  command-policy:
+    charged:
+      - "{prefix} &7Charged &f{price} &7for &f{command}&7."
+    insufficient-funds:
+      - "{prefix} &cYou need &f{price} &cto use &f{command}&c."
+      - "[sound] block.note_block.bass 0.8"
+    cooldown:
+      - "{prefix} &cWait &f{time} &cbefore using &f{command} &cagain."
+      - "[sound] block.note_block.bass 0.85"
+    busy:
+      - "{prefix} &cWait for your current paid action to finish."
+      - "[sound] block.note_block.bass 0.85"
+    loading:
+      - "{prefix} &cYour command cooldowns are still loading. Try again shortly."
+      - "[sound] block.note_block.hat 0.9"
 tool:
   mob-disarmer:
     disarmed:

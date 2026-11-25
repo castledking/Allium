@@ -308,15 +308,43 @@ public final class EssentialsConfigReport {
         }
         ConfigurationSection cmdCosts = ess.getConfigurationSection("command-costs");
         if (cmdCosts != null && !cmdCosts.getKeys(false).isEmpty()) {
-            out.add(new ConfigEntry("command-costs", cmdCosts.getKeys(false).size() + " command(s)",
-                    null, null, null, Outcome.UNSUPPORTED,
-                    "General per-command costs are not auto-imported (Allium supports paid kits and paid signs)"));
+            List<String> unsupportedCosts = new ArrayList<>();
+            for (String key : cmdCosts.getKeys(false)) {
+                String normalized = codes.castled.allium.economy.CommandActionPolicy.normalizeKey(key);
+                if (codes.castled.allium.economy.CommandActionPolicy.SUPPORTED_ACTIONS.contains(normalized)) {
+                    compareMoney(ess, "command-costs." + key, allium, "command-policy.actions." + normalized + ".cost", "0.00",
+                            "Outcomes-aware command cost for /" + normalized, out);
+                } else {
+                    unsupportedCosts.add(key);
+                }
+            }
+            if (!unsupportedCosts.isEmpty()) {
+                out.add(new ConfigEntry("command-costs", unsupportedCosts.size() + " command(s): " + String.join(", ", unsupportedCosts),
+                        null, null, null, Outcome.UNSUPPORTED,
+                        "General per-command costs outside command-policy.actions.* are not auto-imported"));
+            }
         }
         ConfigurationSection cmdCooldowns = ess.getConfigurationSection("command-cooldowns");
         if (cmdCooldowns != null && !cmdCooldowns.getKeys(false).isEmpty()) {
-            out.add(new ConfigEntry("command-cooldowns", cmdCooldowns.getKeys(false).size() + " rule(s)",
-                    null, null, null, Outcome.UNSUPPORTED,
-                    "General per-command cooldowns are not auto-imported (Allium has teleport.cooldowns.* and report cooldowns)"));
+            List<String> unsupportedCooldowns = new ArrayList<>();
+            for (String key : cmdCooldowns.getKeys(false)) {
+                String normalized = codes.castled.allium.economy.CommandActionPolicy.normalizeKey(key);
+                if (codes.castled.allium.economy.CommandActionPolicy.SUPPORTED_ACTIONS.contains(normalized)) {
+                    double val = cmdCooldowns.getDouble(key, 0);
+                    double cur = allium.getDouble("command-policy.actions." + normalized + ".cooldown-seconds", 0);
+                    compareNumeric("command-cooldowns." + key, formatNumber(val),
+                            "command-policy.actions." + normalized + ".cooldown-seconds",
+                            formatNumber(cur), formatNumber(val), Double.compare(val, cur) == 0,
+                            "Outcomes-aware persistent cooldown in seconds for /" + normalized, out);
+                } else {
+                    unsupportedCooldowns.add(key);
+                }
+            }
+            if (!unsupportedCooldowns.isEmpty()) {
+                out.add(new ConfigEntry("command-cooldowns", unsupportedCooldowns.size() + " rule(s): " + String.join(", ", unsupportedCooldowns),
+                        null, null, null, Outcome.UNSUPPORTED,
+                        "General per-command cooldowns outside command-policy.actions.* are not auto-imported"));
+            }
         }
     }
 

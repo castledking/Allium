@@ -375,6 +375,41 @@ spawnmob:
   # Maximum total entities spawned by a single /spawnmob invocation (1-256).
   limit: 10
 
+# Optional outcomes-aware costs and persistent cooldowns for self-service convenience commands.
+# Funds are reserved and captured (and cooldown recorded) ONLY when the command actually delivers
+# its effect — refusals, undamaged items, or disconnects are free.
+# Supported actions: repair, repair-all, heal, feed, ext, hat, workbench, anvil, disposal,
+# grindstone, cartographytable, stonecutter, loom, smithing.
+command-policy:
+  actions:
+    repair:
+      cost: '0.00'
+      cooldown-seconds: 0
+    repair-all:
+      cost: '0.00'
+      cooldown-seconds: 0
+    heal:
+      cost: '0.00'
+      cooldown-seconds: 0
+    feed:
+      cost: '0.00'
+      cooldown-seconds: 0
+    ext:
+      cost: '0.00'
+      cooldown-seconds: 0
+    hat:
+      cost: '0.00'
+      cooldown-seconds: 0
+    workbench:
+      cost: '0.00'
+      cooldown-seconds: 0
+    anvil:
+      cost: '0.00'
+      cooldown-seconds: 0
+    disposal:
+      cost: '0.00'
+      cooldown-seconds: 0
+
 # Homes use the highest permission grant or staff-assigned minimum, never the sum.
 homes:
   default-limit: 1

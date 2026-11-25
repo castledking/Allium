@@ -63,7 +63,7 @@ public final class EconomyRecovery {
                         else
                             require(holds.capture(row.kind(),row.id(),c->cheques.markIssued(c,row.id(),captureOp)));
                     }else require(holds.release(row.kind(),row.id(),c->cheques.markVoided(c,row.id())));
-                }else if(identity.kind()==EconomyReservations.Kind.RTP||identity.kind()==EconomyReservations.Kind.SIGN){
+                }else if(identity.kind()==EconomyReservations.Kind.RTP||identity.kind()==EconomyReservations.Kind.SIGN||identity.kind()==EconomyReservations.Kind.COMMAND){
                     // Interrupted live actions have no durable delivery receipt. Give the player
                     // the benefit of the doubt and release their hold.
                     require(holds.release(row.kind(),row.id(),c->true));

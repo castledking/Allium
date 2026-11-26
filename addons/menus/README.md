@@ -1,6 +1,6 @@
 # Menus
 
-Install `Menus.jar` in `plugins/Allium/addons/` with Allium API 1.9 or newer. Configuration lives in `plugins/Allium/Menus/`.
+Install `Menus.jar` in `plugins/Allium/addons/` with Allium API 1.9 or newer. Configuration lives in `plugins/Menus/`. On startup, Menus moves data from `plugins/Allium/Menus/` if `plugins/Menus/` has yet to be created. If both directories exist, Menus uses `plugins/Menus/`.
 
 - `/settings` opens the hub. **Toggles** contains the TPA, message and payment preferences. **Request Teleport** lists visible online players and lets players pin favorites using **Add Player to List**. Requests still go through `/tpa` and `/tpahere`. `/toggles` is available in chat.
 - **Allium** is the native Escape entry when Menus supplies the only entry. It opens public shortcuts directly and links to the personalized Settings hub through **Player Settings**. Minecraft groups entries when several packs register pause-screen buttons. Menus writes the pack to the primary world's `datapacks/allium-menus.zip`. Restart to load the pack and reconnect after installing it or changing Escape entries.

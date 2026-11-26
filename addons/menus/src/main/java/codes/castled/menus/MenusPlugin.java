@@ -58,8 +58,14 @@ public final class MenusPlugin extends AlliumAddon implements Listener {
     }
 
     @Override protected void onAddonEnable(AddonConnection connection) {
-        directory = getServer().getPluginManager().getPlugin("Allium").getDataFolder().toPath().resolve("Menus");
+        Path alliumDirectory = getServer().getPluginManager().getPlugin("Allium").getDataFolder().toPath();
+        Path legacyDirectory = alliumDirectory.resolve(getName());
+        directory = alliumDirectory.resolveSibling(getName());
         try {
+            if (Files.isDirectory(legacyDirectory) && Files.notExists(directory)) {
+                Files.move(legacyDirectory, directory);
+                getLogger().info("Moved Menus data from " + legacyDirectory + " to " + directory + ".");
+            }
             for (String name : DEFAULTS) {
                 Path path = directory.resolve(name);
                 if (Files.exists(path)) continue;

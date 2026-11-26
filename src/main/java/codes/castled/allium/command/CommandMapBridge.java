@@ -71,10 +71,11 @@ public final class CommandMapBridge {
             return false;
         }
 
-        PluginCommand alliumCommand = plugin instanceof JavaPlugin jp
+        Plugin owner = plugin instanceof codes.castled.allium.PluginStart ps ? ps.bukkitPlugin() : plugin;
+        PluginCommand alliumCommand = owner instanceof JavaPlugin jp
                 ? jp.getCommand(spec.canonicalName())
-                : null;
-        yieldFromKnownCommands(access.knownCommands(), access.commandMap(), plugin, alliumCommand, spec);
+                : (plugin instanceof codes.castled.allium.PluginStart ps ? ps.getCommand(spec.canonicalName()) : null);
+        yieldFromKnownCommands(access.knownCommands(), access.commandMap(), owner, alliumCommand, spec);
         GuardedAccessor.syncAndRefreshPlayerCommands(server, diagnosticLogger);
         return true;
     }

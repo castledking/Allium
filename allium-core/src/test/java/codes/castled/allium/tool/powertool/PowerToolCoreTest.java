@@ -57,6 +57,8 @@ class PowerToolCoreTest {
         assertFalse(PowerToolSecurity.isConsoleCommandAllowed("op Steve", allow));
         assertFalse(PowerToolSecurity.isConsoleCommandAllowed("minecraft:op Steve", allow));
         assertTrue(PowerToolSecurity.isConsoleCommandAllowed("anything here", List.of("*")));
+        assertTrue(PowerToolSecurity.isConsoleCommandAllowed("acb namdacam 1000", List.of()));
+        assertFalse(PowerToolSecurity.isConsoleCommandAllowed("/", List.of()));
 
         assertTrue(PowerToolSecurity.containsSelectors("tp @a 0 64 0"));
         assertTrue(PowerToolSecurity.containsSelectors("kill @e[type=pig]"));

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "allium",
+  "version": "${version}",
+  "name": "Allium",
+  "environment": "server",
+  "entrypoints": { "server": ["codes.castled.allium.fabric.v114.LegacyFabric"] },
+  "depends": {
+    "minecraft": "1.14",
+    "fabricloader": ">=0.16.14",
+    "fabric-commands-v0": "*"
+  }
+}

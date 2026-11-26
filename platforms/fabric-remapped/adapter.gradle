@@ -1,0 +1,40 @@
+def minecraftVersion = project.ext.minecraftVersion
+def fabricApiVersion = project.ext.fabricApiVersion
+def javaVersion = project.ext.javaVersion
+def loaderVersion = providers.gradleProperty('fabricLoaderVersion').get()
+def adapterPackage = 'v' + minecraftVersion.replace('.', '')
+
+version = rootProject.version
+base.archivesName.set("Allium-Fabric-$minecraftVersion")
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersion))
+loom.serverOnlyMinecraftJar()
+
+// Each helper is remapped against its own game, so each must keep its own class name.
+def generateUtilityCommands = tasks.register('generateUtilityCommands', Sync) {
+    inputs.property('adapterPackage', adapterPackage)
+    from('../fabric-remapped/src/main/java', '../minecraft-homes/src/main/java')
+    filter { line -> line.replace('fabric.remapped', "fabric.$adapterPackage")
+                         .replace('allium.minecraft;', "allium.fabric.$adapterPackage;") }
+    into(layout.buildDirectory.dir('generated/utility-commands'))
+}
+
+sourceSets.main {
+    java.srcDir(generateUtilityCommands)
+    java.srcDirs('../portable/src/main/java', '../brigadier/src/main/java')
+    resources.srcDir('../fabric-remapped/src/main/resources')
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:$minecraftVersion"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:$loaderVersion"
+    modImplementation fabricApi.module('fabric-command-api-v2', fabricApiVersion)
+    implementation project(':allium-core')
+}
+
+tasks.named('processResources') {
+    def metadata = [version: project.version, minecraftVersion: minecraftVersion,
+                    loaderVersion: loaderVersion, javaVersion: javaVersion, adapterPackage: adapterPackage]
+    inputs.properties(metadata)
+    filesMatching('fabric.mod.json') { expand(metadata) }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "allium",
+  "version": "${version}",
+  "name": "Allium",
+  "description": "Allium server utilities for Fabric.",
+  "environment": "server",
+  "entrypoints": {
+    "server": ["codes.castled.allium.fabric.AlliumFabric"]
+  },
+  "depends": {
+    "fabricloader": ">=${loaderVersion}",
+    "minecraft": ["${minecraftVersions}"],
+    "java": ">=${javaVersion}",
+    "fabric-command-api-v2": "*"
+  }
+}

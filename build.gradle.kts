@@ -6,7 +6,7 @@ import java.util.HexFormat
 
 plugins {
     java
-    id("com.gradleup.shadow") version "9.0.0-beta12"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 group = property("group") as String
@@ -99,6 +99,7 @@ configurations.testRuntimeClasspath {
 dependencies {
     implementation(coreProject)
     implementation(apiProject)
+    implementation(project(":allium-legacy"))
 
     add("nexoAdapterCompileOnly", "com.nexomc:nexo:1.29.1") { isTransitive = false }
     add("craftengineAdapterCompileOnly", "net.momirealms:craft-engine-core:26.9.1") { isTransitive = false }
@@ -311,10 +312,11 @@ tasks {
         hookSources.forEach { from(sourceSets[it].output) }
         paperSources.forEach { from(sourceSets[it].output) }
 
-        // Preserve HikariCP internals and all allium-core / allium-api classes
+        // Preserve HikariCP internals and all allium-core / allium-api / allium-legacy bootstrap classes
         minimize {
             exclude(project(":allium-core"))
             exclude(project(":allium-api"))
+            exclude(project(":allium-legacy"))
             exclude(dependency("com.zaxxer:HikariCP:.*"))
         }
 
@@ -336,6 +338,23 @@ tasks {
         testLogging {
             exceptionFormat = TestExceptionFormat.FULL
         }
+    }
+}
+
+val paperPlatformJar by tasks.registering(Copy::class) {
+    group = "build"
+    description = "Stages the versioned Paper artifact (also used on Spigot, Purpur and Folia)."
+    val paperJar = tasks.named<Jar>("shadowJar")
+    from(paperJar.flatMap { it.archiveFile })
+    into(layout.buildDirectory.dir("platforms"))
+    rename { "Allium-Paper-${project.version}.jar" }
+}
+
+if (findProject(":allium-fabric") != null) {
+    tasks.register("platformJars") {
+        group = "build"
+        description = "Stages the versioned Paper, Fabric and NeoForge artifacts."
+        dependsOn(paperPlatformJar, ":allium-fabric-universal:stagePlatformJar", ":allium-neoforge:stagePlatformJar")
     }
 }
 

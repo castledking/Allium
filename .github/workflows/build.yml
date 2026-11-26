@@ -45,14 +45,14 @@ jobs:
         run: |
           VERSION=$(awk -F= '$1 == "version" { print $2 }' gradle.properties)
           mkdir -p dist
-          cp build/libs/Allium.jar "dist/Allium-${VERSION}.jar"
+          cp build/libs/Allium.jar "dist/Allium-Paper-${VERSION}.jar"
           cp "addons/crops/build/libs/Addon-Crops-${VERSION}.jar" dist/
           cp "addons/curios/build/libs/Addon-Curios-${VERSION}.jar" dist/
           cp "addons/menus/build/libs/Addon-Menus-${VERSION}.jar" dist/
           cp "addons/ores/build/libs/Addon-Ores-${VERSION}.jar" dist/
           cp "addons/partylocator/build/libs/Addon-PartyLocator-${VERSION}.jar" dist/
           cp "addons/spawnercraft/build/libs/Addon-SpawnerCraft-${VERSION}.jar" dist/
-          (cd dist && sha256sum Addon-*-"${VERSION}".jar "Allium-${VERSION}.jar" | LC_ALL=C sort -k2 > SHA256SUMS.txt)
+          (cd dist && sha256sum Addon-*-"${VERSION}".jar "Allium-Paper-${VERSION}.jar" | LC_ALL=C sort -k2 > SHA256SUMS.txt)
 
       - name: Upload Allium and Addon jars
         uses: actions/upload-artifact@v4

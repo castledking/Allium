@@ -866,15 +866,9 @@ restore:
 # Interactive PowerTools (/pt, behavior: allium:powertool in plugins/Allium/tools/*.yml).
 powertools:
   enabled: true
-  # Console commands allowed in console powertool actions. Entries may be a namespace prefix
-  # ending with ':' (e.g. 'allium:'), a specific command (e.g. 'minecraft:effect'), or '*' to allow all.
-  console-allowlist:
-    - "allium:"
-    - "minecraft:effect"
-    - "minecraft:particle"
-    - "minecraft:playsound"
-    - "minecraft:title"
-    - "minecraft:tellraw"
+  # An empty list allows any console command in console powertool actions.
+  # Add exact command names or namespace prefixes ending in ':' to restrict commands.
+  console-allowlist: []
   # Reject @a/@e/@p/@r/@s target selectors inside console powertool commands.
   block-selectors: true
 

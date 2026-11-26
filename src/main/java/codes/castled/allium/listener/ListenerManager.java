@@ -18,7 +18,7 @@ public final class ListenerManager {
 
     public void register(Listener listener) {
         listeners.add(listener);
-        plugin.getServer().getPluginManager().registerEvents(listener, plugin);
+        plugin.getServer().getPluginManager().registerEvents(listener, plugin.bukkitPlugin());
     }
 
     public void registerAll() {

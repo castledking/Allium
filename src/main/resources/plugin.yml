@@ -1,7 +1,7 @@
 name: Allium
 version: '${version}'
-main: codes.castled.allium.PluginStart
-api-version: '1.20'
+main: codes.castled.allium.AlliumBootstrap
+api-version: '1.13'
 description: A modern essentials suite
 authors: [castledking]
 softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, LiteFish, GriefPrevention, GriefPrevention3D]

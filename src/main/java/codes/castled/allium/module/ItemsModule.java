@@ -189,12 +189,12 @@ public final class ItemsModule extends AbstractModule {
             plugin.getCommandManager().register(give);
             return "disabled";
         }
-        if (paperBrigadierAvailable()) {
+        if (paperBrigadierAvailable() && plugin.javaPlugin() != null) {
             try {
-                codes.castled.allium.command.CommandMapBridge.yieldCommandFamily(plugin.getServer(), plugin, give.spec());
+                codes.castled.allium.command.CommandMapBridge.yieldCommandFamily(plugin.getServer(), plugin.bukkitPlugin(), give.spec());
                 Class.forName(PAPER_GIVE).getMethod("register", org.bukkit.plugin.java.JavaPlugin.class, GiveCommand.class,
                                 String.class, java.util.function.Consumer.class)
-                        .invoke(null, plugin, give, give.spec().description(),
+                        .invoke(null, plugin.javaPlugin(), give, give.spec().description(),
                                 (java.util.function.Consumer<java.util.Set<String>>) labels ->
                                         plugin.logger().info("/give registered through Paper's command API as " + labels + "."));
                 paperGive = true;

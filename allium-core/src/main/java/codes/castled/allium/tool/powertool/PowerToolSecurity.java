@@ -47,7 +47,7 @@ public final class PowerToolSecurity {
     }
 
     /**
-     * Checks whether a console command is permitted by {@code allowlist}.
+     * Checks whether a console command is permitted by {@code allowlist}. An empty list allows any command.
      *
      * <p>An allowlist entry may be:
      * <ul>
@@ -57,12 +57,15 @@ public final class PowerToolSecurity {
      * </ul>
      */
     public static boolean isConsoleCommandAllowed(@Nullable String command, Collection<String> allowlist) {
-        if (command == null || command.isBlank() || allowlist == null || allowlist.isEmpty()) {
+        if (command == null || command.isBlank() || allowlist == null) {
             return false;
         }
         String cleaned = cleanCommand(command);
         if (cleaned.isEmpty()) {
             return false;
+        }
+        if (allowlist.isEmpty()) {
+            return true;
         }
         int space = cleaned.indexOf(' ');
         String head = (space >= 0 ? cleaned.substring(0, space) : cleaned).toLowerCase(Locale.ROOT);

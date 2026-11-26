@@ -7,7 +7,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.Plugin;
 import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskScheduler;
 
@@ -27,7 +27,7 @@ public final class ItemSigningKeyAudit implements Listener {
         this.criticalLogger = criticalLogger;
     }
 
-    public void install(JavaPlugin plugin, TaskScheduler scheduler) {
+    public void install(Plugin plugin, TaskScheduler scheduler) {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         var online = new ArrayDeque<>(plugin.getServer().getOnlinePlayers());
         if (!online.isEmpty()) {

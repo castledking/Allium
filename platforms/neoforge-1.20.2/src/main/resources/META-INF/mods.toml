@@ -1,0 +1,23 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "All rights reserved"
+
+[[mods]]
+modId = "allium"
+version = "${version}"
+displayName = "Allium"
+displayTest = "IGNORE_SERVER_VERSION"
+
+[[dependencies.allium]]
+modId = "neoforge"
+mandatory = true
+versionRange = "[20.2.93,20.3)"
+ordering = "NONE"
+side = "SERVER"
+
+[[dependencies.allium]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.2]"
+ordering = "NONE"
+side = "SERVER"

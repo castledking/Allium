@@ -13,14 +13,7 @@ public record PowerToolSettings(
         List<String> consoleAllowlist,
         boolean blockSelectors
 ) {
-    public static final List<String> DEFAULT_CONSOLE_ALLOWLIST = List.of(
-            "allium:",
-            "minecraft:effect",
-            "minecraft:particle",
-            "minecraft:playsound",
-            "minecraft:title",
-            "minecraft:tellraw"
-    );
+    public static final List<String> DEFAULT_CONSOLE_ALLOWLIST = List.of();
 
     public static final PowerToolSettings DEFAULT = new PowerToolSettings(true, DEFAULT_CONSOLE_ALLOWLIST, true);
 

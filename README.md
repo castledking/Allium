@@ -121,6 +121,8 @@ Requires JDK 17 and JDK 21:
 ./gradlew check shadowJar :addons:crops:build :addons:curios:build :addons:menus:build :addons:ores:build :addons:partylocator:build :addons:spawnercraft:build -PdistributablePack=true
 ```
 
+The native port provides player homes, `/allium version`, `/ping`, and `/coords` on supported dedicated servers. The Fabric jar covers Minecraft `1.14`, `1.20.1`, `1.21.11`, and `26.1` through `26.3`. The NeoForge jar covers `1.20.2` and `26.1` through `26.3`. On Fabric `1.20.1` and newer, install Fabric API for your server version. [Native platform build and compatibility targets](platforms/README.md)
+
 ## Support
 - [📖 Documentation Wiki](https://github.com/castledking/Allium/wiki) — Setup guides, commands, permissions, and configuration reference.
 - [🌐 Website](https://castled.codes) — Projects, updates, and downloads from CASTLED CODEX.

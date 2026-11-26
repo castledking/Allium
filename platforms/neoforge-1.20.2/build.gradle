@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.gradle.userdev' version '7.0.116'
+}
+
+// NeoForge 20.2 needs the separate Gradle 8 build supported by its MDK.
+def allium = new Properties()
+file('../../gradle.properties').withInputStream { allium.load(it) }
+version = allium.getProperty('version')
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+sourceSets.main.java.srcDirs('../portable/src/main/java', '../neoforge-bootstrap/src/main/java',
+        '../brigadier/src/main/java', '../minecraft-homes/src/main/java')
+
+tasks.withType(Jar).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+repositories { mavenCentral() }
+dependencies { implementation 'net.neoforged:neoforge:20.2.93' }
+
+processResources {
+    inputs.property('version', project.version)
+    filesMatching('META-INF/mods.toml') { expand(version: project.version) }
+}
+
+tasks.register('stagePlatformJar', Copy) {
+    from tasks.named('jar', Jar).flatMap { it.archiveFile }
+    into '../../build/platforms'
+}

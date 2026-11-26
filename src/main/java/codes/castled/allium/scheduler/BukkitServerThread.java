@@ -20,21 +20,28 @@ public final class BukkitServerThread implements ServerThread {
     private final Plugin plugin;
 
     public BukkitServerThread(Plugin plugin) {
-        this.plugin = plugin;
+        this.plugin = unwrap(plugin);
+    }
+
+    private static Plugin unwrap(Plugin plugin) {
+        return plugin instanceof codes.castled.allium.PluginStart ps ? ps.bukkitPlugin() : plugin;
     }
 
     public static boolean isFolia() { return FOLIA; }
 
     public static ServerThread global(Plugin plugin) {
-        return FOLIA ? FoliaServerThread.global(plugin) : new BukkitServerThread(plugin);
+        Plugin real = unwrap(plugin);
+        return FOLIA ? FoliaServerThread.global(real) : new BukkitServerThread(real);
     }
 
     public static ServerThread entity(Plugin plugin, Entity entity) {
-        return FOLIA ? FoliaServerThread.entity(plugin, entity) : new BukkitServerThread(plugin);
+        Plugin real = unwrap(plugin);
+        return FOLIA ? FoliaServerThread.entity(real, entity) : new BukkitServerThread(real);
     }
 
     public static ServerThread region(Plugin plugin, World world, int chunkX, int chunkZ) {
-        return FOLIA ? FoliaServerThread.region(plugin, world, chunkX, chunkZ) : new BukkitServerThread(plugin);
+        Plugin real = unwrap(plugin);
+        return FOLIA ? FoliaServerThread.region(real, world, chunkX, chunkZ) : new BukkitServerThread(real);
     }
 
     /** Paper/Folia chunk loading for the regional teleport path. An absent chunk can be returned when generation is disabled. */

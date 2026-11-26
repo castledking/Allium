@@ -24,14 +24,51 @@ import codes.castled.allium.pack.ResourcePackSettings;
 import codes.castled.allium.protection.ProtectionHookBootstrap;
 import codes.castled.allium.protection.ProtectionService;
 import codes.castled.allium.util.AlliumLogger;
+import org.bukkit.Server;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.event.HandlerList;
+import org.bukkit.generator.BiomeProvider;
+import org.bukkit.generator.ChunkGenerator;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginDescriptionFile;
+import org.bukkit.plugin.PluginLoader;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.logging.Logger;
 
-public final class PluginStart extends JavaPlugin {
+public class PluginStart implements Plugin, AlliumRuntime {
 
     private static PluginStart instance;
+
+    private final JavaPlugin host;
+
+    public PluginStart(JavaPlugin host) {
+        this.host = host;
+    }
+
+    /** Protected no-arg constructor for test mocks. */
+    protected PluginStart() {
+        this.host = null;
+    }
+
+    /** The real Bukkit {@link JavaPlugin} registered by {@code PluginClassLoader} (or {@code this} in unit tests). */
+    public Plugin bukkitPlugin() {
+        return host != null ? host : this;
+    }
+
+    /** The underlying {@link JavaPlugin} host when running on a live server, or {@code null} in unit tests. */
+    @org.jetbrains.annotations.Nullable
+    public JavaPlugin javaPlugin() {
+        return host;
+    }
 
     private AlliumLogger logger;
     private ConfigManager configManager;
@@ -84,7 +121,7 @@ public final class PluginStart extends JavaPlugin {
             hmacSigner = ItemHmacSigner.loadOrGenerate(secretFile);
         } catch (IOException e) {
             logger.severe("Failed to initialize item HMAC secret: " + e.getMessage());
-            getServer().getPluginManager().disablePlugin(this);
+            getServer().getPluginManager().disablePlugin(bukkitPlugin());
             return;
         }
         itemService = new ItemService(hmacSigner, logger::warning);
@@ -94,7 +131,7 @@ public final class PluginStart extends JavaPlugin {
             codes.castled.allium.gui.GuiIcons.init(this, packManifest);
         } catch (IOException | IllegalArgumentException e) {
             logger.severe("Failed to load the core item manifest: " + e.getMessage());
-            getServer().getPluginManager().disablePlugin(this);
+            getServer().getPluginManager().disablePlugin(bukkitPlugin());
             return;
         }
         reportCorePack();
@@ -116,7 +153,7 @@ public final class PluginStart extends JavaPlugin {
             databaseManager.connect();
         } catch (Exception e) {
             logger.severe("Failed to initialize database: " + e.getMessage());
-            getServer().getPluginManager().disablePlugin(this);
+            getServer().getPluginManager().disablePlugin(bukkitPlugin());
             return;
         }
 
@@ -160,15 +197,15 @@ public final class PluginStart extends JavaPlugin {
         }
         placeholders.start();
         new ProviderStartupDiagnostics(itemService, getServer().getPluginManager(), logger::warning).install(scheduler);
-        new ItemSigningKeyAudit(hmacSigner, logger::severe).install(this, scheduler);
+        new ItemSigningKeyAudit(hmacSigner, logger::severe).install(bukkitPlugin(), scheduler);
         // Addons (depend: [Allium]) are loaded but not yet enabled here, so each is checked before it starts.
         addonManager = new codes.castled.allium.addon.AddonManager(this);
         int downloadedOnEnable = addonManager.ensureAutoDownloaded();
         addonApi = new codes.castled.allium.addon.AlliumApiService(this);
         getServer().getServicesManager().register(codes.castled.allium.api.MenuData.class,
-                new codes.castled.allium.addon.CoreMenuData(this), this, org.bukkit.plugin.ServicePriority.Normal);
+                new codes.castled.allium.addon.CoreMenuData(this), bukkitPlugin(), org.bukkit.plugin.ServicePriority.Normal);
         getServer().getServicesManager().register(codes.castled.allium.api.TradeItemCatalog.class,
-                new codes.castled.allium.addon.CoreTradeItemCatalog(itemService), this, org.bukkit.plugin.ServicePriority.Normal);
+                new codes.castled.allium.addon.CoreTradeItemCatalog(itemService), bukkitPlugin(), org.bukkit.plugin.ServicePriority.Normal);
         addonApi.install();
         if (downloadedOnEnable > 0) {
             refreshResourcePack(logger::info);
@@ -449,9 +486,119 @@ public final class PluginStart extends JavaPlugin {
                 logger.warning("Stopped Allium worker pools that were still busy at shutdown: " + unfinished);
             }
         }
+        HandlerList.unregisterAll(this);
+        if (host != null) {
+            HandlerList.unregisterAll(host);
+            getServer().getServicesManager().unregisterAll(host);
+        }
 
         logger.info("Allium disabled.");
         instance = null;
+    }
+
+    // ==================== Plugin / JavaPlugin delegation to host ====================
+
+    public PluginCommand getCommand(String name) {
+        return host != null ? host.getCommand(name) : null;
+    }
+
+    public ClassLoader getClassLoader() {
+        return getClass().getClassLoader();
+    }
+
+    @Override
+    public File getDataFolder() {
+        return host.getDataFolder();
+    }
+
+    @Override
+    public PluginDescriptionFile getDescription() {
+        return host.getDescription();
+    }
+
+    @Override
+    public FileConfiguration getConfig() {
+        return host.getConfig();
+    }
+
+    @Override
+    public InputStream getResource(String filename) {
+        return host.getResource(filename);
+    }
+
+    @Override
+    public void saveConfig() {
+        host.saveConfig();
+    }
+
+    @Override
+    public void saveDefaultConfig() {
+        host.saveDefaultConfig();
+    }
+
+    @Override
+    public void saveResource(String resourcePath, boolean replace) {
+        host.saveResource(resourcePath, replace);
+    }
+
+    @Override
+    public void reloadConfig() {
+        host.reloadConfig();
+    }
+
+    @Override
+    public PluginLoader getPluginLoader() {
+        return host.getPluginLoader();
+    }
+
+    @Override
+    public Server getServer() {
+        return host.getServer();
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return host != null && host.isEnabled();
+    }
+
+    @Override
+    public boolean isNaggable() {
+        return host.isNaggable();
+    }
+
+    @Override
+    public void setNaggable(boolean canNag) {
+        host.setNaggable(canNag);
+    }
+
+    @Override
+    public ChunkGenerator getDefaultWorldGenerator(String worldName, String id) {
+        return host.getDefaultWorldGenerator(worldName, id);
+    }
+
+    @Override
+    public BiomeProvider getDefaultBiomeProvider(String worldName, String id) {
+        return host.getDefaultBiomeProvider(worldName, id);
+    }
+
+    @Override
+    public Logger getLogger() {
+        return host.getLogger();
+    }
+
+    @Override
+    public String getName() {
+        return host.getName();
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        return false;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        return java.util.Collections.emptyList();
     }
 
     /** {@code %allium_...%} for PlaceholderAPI; null before enable or after disable. */

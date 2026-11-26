@@ -1,6 +1,6 @@
 name: SpawnerCraft
 main: codes.castled.spawnercraft.SpawnerCraft
-version: '1.0.1'
+version: '1.0.2'
 api-version: '1.20'
 depend: [Allium]
 softdepend: [Curios, Nexo]

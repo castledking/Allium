@@ -1,0 +1,72 @@
+package codes.castled.allium.neoforge.v1202;
+
+import codes.castled.allium.minecraft.MinecraftHomes;
+import codes.castled.allium.neoforge.bootstrap.NeoForgeAdapter;
+import codes.castled.allium.portable.UtilityMessages;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+
+import java.util.Collections;
+import java.util.function.Function;
+
+public final class LegacyNeoForge implements NeoForgeAdapter {
+    @Override
+    public void initialize(String version) {
+        if (FMLEnvironment.dist == Dist.DEDICATED_SERVER) {
+            NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> registerCommands(event, version));
+        }
+    }
+
+    private void registerCommands(RegisterCommandsEvent event, String version) {
+        var dispatcher = event.getDispatcher();
+        MinecraftHomes.register(dispatcher, source -> source.hasPermission(2), ServerPlayer::serverLevel,
+                level -> level.dimension().location().toString(), (player, level, point) ->
+                        player.teleportTo(level, point.x, point.y, point.z, Collections.emptySet(),
+                                point.yaw, point.pitch));
+        register(dispatcher, Commands.literal("allium:allium")
+                .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
+                .then(Commands.literal("version").executes(ctx ->
+                        reply(ctx.getSource(), UtilityMessages.version(version, "NeoForge", "1.20.2")))), "allium", "core");
+        playerUtility(dispatcher, "ping", player -> UtilityMessages.ping(player.getScoreboardName(), player.connection.latency()), "ping", "pong");
+        playerUtility(dispatcher, "coords", player -> {
+            var pos = player.blockPosition();
+            return UtilityMessages.coordinates(player.getScoreboardName(), pos.getX(), pos.getY(), pos.getZ(),
+                    player.level().dimension().location().toString());
+        }, "coords", "getpos", "whereami", "getloc", "getlocation", "position");
+    }
+
+    private static void playerUtility(CommandDispatcher<CommandSourceStack> dispatcher, String name,
+                                      Function<ServerPlayer, String> output, String... labels) {
+        register(dispatcher, Commands.literal("allium:" + name)
+                .executes(ctx -> reply(ctx.getSource(), output.apply(ctx.getSource().getPlayerOrException())))
+                .then(Commands.argument("player", EntityArgument.player())
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> reply(ctx.getSource(), output.apply(EntityArgument.getPlayer(ctx, "player"))))), labels);
+    }
+
+    private static void register(CommandDispatcher<CommandSourceStack> dispatcher,
+                                 LiteralArgumentBuilder<CommandSourceStack> command, String... labels) {
+        var node = dispatcher.register(command);
+        for (String label : labels) {
+            for (String alias : new String[]{label, "allium:" + label}) {
+                if (dispatcher.getRoot().getChild(alias) == null) {
+                    dispatcher.register(Commands.literal(alias).executes(node.getCommand()).redirect(node));
+                }
+            }
+        }
+    }
+
+    private static int reply(CommandSourceStack source, String text) {
+        source.sendSuccess(() -> Component.literal(text), false);
+        return 1;
+    }
+}

@@ -26,7 +26,6 @@ repositories {
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://oss.sonatype.org/content/repositories/snapshots/")
-    maven("https://repo.xenondevs.xyz/releases")
     maven("https://repo.extendedclip.com/releases/")
     maven("https://repo.codemc.io/repository/maven-releases/")
     maven("https://nexus.scarsz.me/content/groups/public/")
@@ -124,17 +123,6 @@ dependencies {
 
     // Shaded runtime dependencies (audited for Java 17 bytecode compatibility)
     implementation("com.zaxxer:HikariCP:5.1.0")
-    implementation("xyz.xenondevs.invui:invui-core:1.49")
-    implementation("xyz.xenondevs.invui:inventory-access:1.49") {
-        isTransitive = false
-    }
-    // Include InvUI inventory-access revisions for 1.20 through 1.21.11+
-    // Note: r16-r18 are Java 17 bytecode; r19+ (1.20.5+) are Java 21 bytecode loaded reflectively only on 1.20.5+ servers
-    for (rev in 16..26) {
-        runtimeOnly("xyz.xenondevs.invui:inventory-access-r$rev:1.49") {
-            isTransitive = false
-        }
-    }
 
     // Testing
     testImplementation("org.spigotmc:spigot-api:$spigotApiVersion")
@@ -323,19 +311,18 @@ tasks {
         hookSources.forEach { from(sourceSets[it].output) }
         paperSources.forEach { from(sourceSets[it].output) }
 
-        // Preserve reflectively loaded InvUI version modules and HikariCP internals, and all allium-core classes
+        // Preserve HikariCP internals and all allium-core / allium-api classes
         minimize {
             exclude(project(":allium-core"))
             exclude(project(":allium-api"))
-            exclude(dependency("xyz.xenondevs.invui:.*:.*"))
             exclude(dependency("com.zaxxer:HikariCP:.*"))
         }
+
+        exclude("META-INF/maven/**", "org/jetbrains/annotations/**", "org/intellij/lang/**")
 
         mergeServiceFiles()
 
         relocate("com.zaxxer.hikari", "codes.castled.allium.lib.hikari")
-        relocate("xyz.xenondevs.invui", "codes.castled.allium.lib.invui")
-        relocate("xyz.xenondevs.inventoryaccess", "codes.castled.allium.lib.inventoryaccess")
     }
 
     build {

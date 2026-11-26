@@ -1,0 +1,10 @@
+rows: 3
+buttons:
+  toggles: {slot: 10, icon: REDSTONE_TORCH}
+  teleport: {slot: 12, icon: ENDER_PEARL}
+  homes: {slot: 14, icon: RED_BED}
+  warps: {slot: 15, icon: COMPASS}
+  rules: {slot: 16, icon: BOOK}
+  shop: {slot: 22, icon: EMERALD}
+  messages: {slot: 23, icon: WRITABLE_BOOK}
+  staff: {slot: 26, icon: SHIELD}

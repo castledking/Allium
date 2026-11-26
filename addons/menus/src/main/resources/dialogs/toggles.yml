@@ -1,0 +1,11 @@
+schema: 1
+id: allium:toggles
+title: '&dToggles'
+permission: allium.gui.settings
+presentation: auto
+open-on: [command]
+buttons:
+  tpa: {label: Teleport Requests, action: 'toggle:tpa'}
+  messages: {label: Private Messages, action: 'toggle:msg'}
+  payments: {label: Incoming Payments, action: 'toggle:pay'}
+  back: {label: '<#faf0a0><b>Back</b></#faf0a0>', action: back}

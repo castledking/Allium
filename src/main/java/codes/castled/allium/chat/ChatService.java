@@ -685,6 +685,16 @@ public final class ChatService implements Listener,AutoCloseable {
     public void dispatch(BukkitCommandContext context){
         if(!settings.enabled()){tell(context.sender(),Messages.CHAT_MODULE_DISABLED);return;}
         CommandSender sender=context.sender();String action=context.spec().canonicalName();String[] args=context.args();
+        if (action.equals("nick") && args.length == 0 && sender instanceof Player player) {
+            var menus = plugin.getServer().getServicesManager().load(codes.castled.allium.api.SettingsPresentation.class);
+            Session session = sessions.get(player.getUniqueId());
+            List<String> initial = session == null || session.nickname == null ? List.of() : List.of(session.nickname);
+            if (menus != null && menus.edit(player, "nick", null, initial, values -> {
+                if (!player.hasPermission("allium.nick") || plugin.getCommandManager().getFamilyPolicy().isDisabled("nick")) return;
+                String raw = values.get(0);
+                applyNicknameFromGui(player, player.getUniqueId(), raw.isBlank() ? null : raw);
+            })) return;
+        }
         try{switch(action){case "nick"->nick(sender,args);case "channel"->channel(sender,context.label(),args);case "delmsg"->delete(sender,args);case "action"->action(sender,args);default->throw new IllegalArgumentException();}}
         catch(UsageFailure usage){context.sendInvalidArgs(context.spec().selfUsage());}
         catch(IllegalArgumentException error){tell(sender,error instanceof ChatFailure failure?failure.message:Messages.CHAT_ARGUMENT_ERROR,"{message}",Objects.toString(error.getMessage(),"Invalid chat arguments."));}

@@ -55,7 +55,7 @@ import java.util.stream.Stream;
 public final class AlliumApiService implements AlliumApi, Listener {
 
     /** The API version this Allium provides; kept equal to {@code alliumApiVersion} in gradle.properties. */
-    public static final ApiVersion API_VERSION = new ApiVersion(1, 7, 0);
+    public static final ApiVersion API_VERSION = new ApiVersion(1, 9, 0);
 
     /** Classes whose presence in an addon's own jar means it shaded the API. */
     static final List<Class<?>> API_PROBES = List.of(AlliumApi.class, CommandSpec.class, TaskScheduler.class);

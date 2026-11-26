@@ -24,6 +24,7 @@ import java.util.*;
  */
 final class PackPresentation {
     private static final String BAR_CHAR = "\u2500";
+    private static final java.util.regex.Pattern HEX_COLOR_TAG = java.util.regex.Pattern.compile("<(#[0-9A-Fa-f]{6})>");
     /** A 1x1 transparent tooltip style: on 1.21.2+ it hides the vanilla box behind a glyph panel. */
     private static final String PANEL_TOOLTIP_STYLE = "card";
 
@@ -496,6 +497,11 @@ final class PackPresentation {
      */
     static ItemStack decorateButton(ItemStack item, String titleMini, List<String> loreMini, String frame,
                                     boolean textured) {
+        return decorateButton(item, titleMini, loreMini, frame, textured, FramePanels.bundled());
+    }
+
+    static ItemStack decorateButton(ItemStack item, String titleMini, List<String> loreMini, String frame,
+                                    boolean textured, FramePanels panels) {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_UNBREAKABLE);
@@ -514,7 +520,7 @@ final class PackPresentation {
             lines.add(nameComp);
             lines.addAll(loreComps);
             FramePanels.Panel panel = textured && frame != null
-                    ? FramePanels.bundled().panel(frame, "simple", lines.size(), widest(lines), 0) : null;
+                    ? panels.panel(frame, "simple", lines.size(), widest(lines), 0) : null;
             if (panel != null) {
                 applyPanel(meta, panel, lines);
                 item.setItemMeta(meta);
@@ -538,7 +544,9 @@ final class PackPresentation {
 
     static String miniToLegacy(String mini) {
         if (mini == null) return "";
-        return mini
+        String withHex = HEX_COLOR_TAG.matcher(mini)
+                .replaceAll(tag -> net.md_5.bungee.api.ChatColor.of(tag.group(1)).toString());
+        return withHex
                 .replace("<dark_gray>", "§8").replace("</dark_gray>", "")
                 .replace("<gray>", "§7").replace("</gray>", "")
                 .replace("<white>", "§f").replace("</white>", "")
@@ -553,7 +561,7 @@ final class PackPresentation {
                 .replace("<light_purple>", "§d").replace("</light_purple>", "")
                 .replace("<dark_purple>", "§5").replace("</dark_purple>", "")
                 .replace("<strikethrough>", "§m").replace("</strikethrough>", "§r")
-                .replaceAll("<#[0-9A-Fa-f]{6}>", "§7").replaceAll("</#[0-9A-Fa-f]{6}>", "")
+                .replaceAll("</#[0-9A-Fa-f]{6}>", "")
                 .replaceAll("</?[a-z_]+>", "");
     }
 

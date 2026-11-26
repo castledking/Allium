@@ -4,7 +4,7 @@ main: codes.castled.allium.PluginStart
 api-version: '1.20'
 description: A modern essentials suite
 authors: [castledking]
-softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, GriefPrevention, GriefPrevention3D]
+softdepend: [LuckPerms, Vault, PlaceholderAPI, Nexo, CraftEngine, Oraxen, ResourcePackManager, DiscordSRV, packetevents, InteractiveChat, LiteFish, GriefPrevention, GriefPrevention3D]
 folia-supported: true
 
 commands:
@@ -298,6 +298,18 @@ commands:
     description: Add or remove enchantments on the held item
     usage: /<command> <enchantment> <level> [player]
     permission: allium.enchant
+  itemflag:
+    aliases: [iflag, if, ie]
+    description: Edit tooltip flags and attribute modifiers on the held item
+    permission: allium.itemflag
+  toggles:
+    aliases: [settings]
+    description: View your player settings
+    permission: allium.toggles
+  toggle:
+    description: Change a player setting
+    permission: allium.toggles
+
   rename:
     description: Rename the item in your hand
     usage: /<command> <name|clear>
@@ -2419,6 +2431,21 @@ permissions:
   allium.enchant:
     default: op
   allium.enchant.others:
+    default: op
+  allium.toggles:
+    description: View and manage your own settings
+    default: true
+  allium.toggle.tpa:
+    default: true
+  allium.toggle.msg:
+    default: true
+  allium.toggle.pay:
+    default: true
+  allium.itemflag:
+    description: Edit tooltip flags on the held item
+    default: op
+  allium.itemflag.attribute:
+    description: Edit attribute modifiers on the held item
     default: op
   allium.rename:
     description: Allows /rename on the held item; includes colour codes unless allium.rename.color is negated

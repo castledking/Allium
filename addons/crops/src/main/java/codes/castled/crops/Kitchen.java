@@ -130,6 +130,19 @@ final class Kitchen implements Listener {
         }
     }
 
+    Set<String> displayModels() {
+        Set<String> displays = new LinkedHashSet<>();
+        displays.add(standardModel);
+        for (Pie pie : pies.values()) {
+            displays.add(pie.crustModel());
+            displays.add(pie.filled());
+            displays.addAll(pie.progress());
+            displays.addAll(pie.cold());
+            displays.addAll(pie.baked());
+        }
+        return displays;
+    }
+
     int pieCount() { return pies.size(); }
     List<String> pieIds() { return List.copyOf(pies.keySet()); }
 

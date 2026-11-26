@@ -142,6 +142,8 @@ public final class PluginStart extends JavaPlugin {
 
         commandManager.register(new codes.castled.allium.command.AlliumCommand(this));
         commandManager.register(new codes.castled.allium.command.HelpCommand(this));
+        commandManager.register(new codes.castled.allium.command.SettingsCommand(this, true));
+        commandManager.register(new codes.castled.allium.command.SettingsCommand(this, false));
         var redeem = new codes.castled.allium.command.RedeemCommand(this);
         commandManager.register(redeem);
         listenerManager.register(redeem);
@@ -163,6 +165,10 @@ public final class PluginStart extends JavaPlugin {
         addonManager = new codes.castled.allium.addon.AddonManager(this);
         int downloadedOnEnable = addonManager.ensureAutoDownloaded();
         addonApi = new codes.castled.allium.addon.AlliumApiService(this);
+        getServer().getServicesManager().register(codes.castled.allium.api.MenuData.class,
+                new codes.castled.allium.addon.CoreMenuData(this), this, org.bukkit.plugin.ServicePriority.Normal);
+        getServer().getServicesManager().register(codes.castled.allium.api.TradeItemCatalog.class,
+                new codes.castled.allium.addon.CoreTradeItemCatalog(itemService), this, org.bukkit.plugin.ServicePriority.Normal);
         addonApi.install();
         if (downloadedOnEnable > 0) {
             refreshResourcePack(logger::info);

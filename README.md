@@ -9,7 +9,7 @@
   <a href="https://castled.codes"><img alt="CASTLED CODEX" src="https://castled.codes/assets/logo-banner.png" width="140" height="35"></a>
 </p>
 
-**Allium** replaces fragmented essentials, economy, sign, mail, moderation, and custom-tool plugins with a modular engine for **Spigot, Paper, Purpur, and Folia**. Official addons add custom crops, trading cards and relics, custom ores, party locator bars, and spawner crafting.
+**Allium** replaces fragmented essentials, economy, sign, mail, moderation, and custom-tool plugins with a modular engine for **Spigot, Paper, Purpur, and Folia**. Official addons add custom crops, trading cards and relics, player and staff menus, custom ores, party locator bars, and spawner crafting.
 
 Every major system can be toggled independently in `config.yml`. Allium integrates with Vault, LuckPerms, PlaceholderAPI, PacketEvents, DiscordSRV, Nexo, CraftEngine, Oraxen, GriefPrevention / GriefPrevention3D, and ResourcePackManager.
 
@@ -53,11 +53,12 @@ Every major system can be toggled independently in `config.yml`. Allium integrat
   ```
   | Addon | Jar | Description |
   | --- | --- | --- |
-  | **Crops** | `Addon-Crops-1.0.0.jar` | Custom crops, fertilizers, sprinklers, Kitchen baking & pies, and Jade overlays. |
-  | **Curios** | `Addon-Curios-1.0.0.jar` | Trading cards, 7-slot Relics equipment, textured menus, `/frame`, and chat hover frames. |
-  | **Ores** | `Addon-Ores-1.0.0.jar` | Deterministic CraftEngine custom ore generation, `/pregen`, and Jade ore overlays. |
-  | **PartyLocator** | `Addon-PartyLocator-1.0.0.jar` | `/party` groups and vanilla `1.21.6+` locator bar integration. |
-  | **SpawnerCraft** | `Addon-SpawnerCraft-1.0.0.jar` | 208+ signed mob head drops, Spawner Changers, and multi-recipe slideshow guides. |
+  | **Crops** | `Addon-Crops-1.0.1.jar` | Custom crops, fertilizers, sprinklers, Kitchen baking & pies, and Jade overlays. |
+  | **Curios** | `Addon-Curios-1.0.1.jar` | Trading cards, 7-slot Relics equipment, textured menus, `/frame`, and chat hover frames. |
+  | **Menus** | `Addon-Menus-1.0.1.jar` | Player settings, homes, warps, shop, and staff panels with native dialogs and inventory fallbacks. |
+  | **Ores** | `Addon-Ores-1.0.1.jar` | Deterministic CraftEngine custom ore generation, `/pregen`, and Jade ore overlays. |
+  | **PartyLocator** | `Addon-PartyLocator-1.0.1.jar` | `/party` groups and vanilla `1.21.6+` locator bar integration. |
+  | **SpawnerCraft** | `Addon-SpawnerCraft-1.0.1.jar` | 208+ signed mob head drops, Spawner Changers, and multi-recipe slideshow guides. |
 ####
 - **Chat, Hover Tooltips, Message Deletion & Offline Mail**
   Static RGB/MiniMessage chat formatting with per-group `chat-format.groups`, hover tooltips, packet-level `/deletemsg` resync, `@mentions`, persistent `/nick`, private messaging (`/msg`, `/reply`, `/ignore`, `/msgtoggle`, `/messagesounds`, `/socialspy`), and offline text mail & atomic item gifts (`/mail`).
@@ -117,7 +118,7 @@ For full setup, configuration, commands, permissions, and addon guides, see the 
 ## Building from Source
 Requires JDK 17 and JDK 21:
 ```bash
-./gradlew check shadowJar :addons:crops:build :addons:curios:build :addons:ores:build :addons:partylocator:build :addons:spawnercraft:build -PdistributablePack=true
+./gradlew check shadowJar :addons:crops:build :addons:curios:build :addons:menus:build :addons:ores:build :addons:partylocator:build :addons:spawnercraft:build -PdistributablePack=true
 ```
 
 ## Support

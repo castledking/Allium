@@ -1,0 +1,94 @@
+title: '&8Join and Leave Messages'
+rows: 5
+packs:
+  touching_grass:
+    slot: 1
+    title: '&a&lTouching Grass Pack'
+    texture: f91209a21302f764b37060c86062a515f533b1a4f90593653ab23b33bfd7a068
+    permission: allium.messagepack.touching_grass
+    join: '&e%allium_gradientdisplayname% <gradient:#388827:#7DB654>is back from touching grass</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#388827:#7DB654>has left to touch grass</gradient>'
+  side_quest:
+    slot: 2
+    title: '&d&lSide Quest Pack'
+    texture: cd1f887d1c8a000ec88081e881f42f77cbbbb57fbf843828db7ab1a0cf9c0a58
+    permission: allium.messagepack.side_quest
+    join: '&e%allium_gradientdisplayname% <gradient:#FF6B9D:#C77DFF>has returned from their side quest</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#FF6B9D:#C77DFF>has gone on a side quest</gradient>'
+  survival:
+    slot: 3
+    title: '&a&lWilderness Pack'
+    texture: 6d95965d79ddf613f594fd20d51e765c09a2a5ff8d0e09cff19a8ea4302358ad
+    permission: allium.messagepack.survival
+    join: '&e%allium_gradientdisplayname% <gradient:#7ED957:#F9E547>has returned from the wilderness</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#7ED957:#F9E547>has wandered into the wilderness</gradient>'
+  reality:
+    slot: 4
+    title: '&c&lReality Pack'
+    texture: 69b2889020583565f88d50537870c59aad802594fabd837e1d14f5a06ae34509
+    permission: allium.messagepack.reality
+    join: '&e%allium_gradientdisplayname% <gradient:#FF4D6D:#FF8A5B>has respawned from the real world</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#FF4D6D:#FF8A5B>has logged out of reality</gradient>'
+  void:
+    slot: 5
+    title: '&5&lVoid Pack'
+    texture: b46d4e880181e6f5ad8c0e6ab084e6b1c81be4dad5eb2d4bc20c016eb03bb475
+    permission: allium.messagepack.void
+    join: '&e%allium_gradientdisplayname% <gradient:#7B61FF:#D6A4FF>has emerged from the void</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#7B61FF:#D6A4FF>has vanished into the void</gradient>'
+  sleep:
+    slot: 6
+    title: '&7&lSleep Pack'
+    texture: 5c819a42c0b1c25b9e2e0bc1ebb574b4d6690777d3e831d82d3c932116c02bdc
+    permission: allium.messagepack.sleep
+    join: '&e%allium_gradientdisplayname% <gradient:#8E9AAF:#CBC0D3>has finally woken up</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#8E9AAF:#CBC0D3>has gone back to sleep</gradient>'
+  show_up:
+    slot: 7
+    title: '&b&lShow Up Pack'
+    texture: 76c0d0459c67f2be82fbe5406ab8d1378da1f28f7a3f82f1dfc47615a955a7
+    permission: allium.messagepack.show_up
+    join: '&e%allium_gradientdisplayname% <gradient:#56CCF2:#6FCF97>finally decided to show up</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#56CCF2:#6FCF97>decided they''ve had enough</gradient>'
+  server_core:
+    slot: 10
+    title: '&b&lServer Core Pack'
+    texture: 6d0f4061bfb767a7f922a6ca7176f7a9b20709bd0512696beb15ea6fa98ca55c
+    permission: allium.messagepack.server_core
+    join: '&e%allium_gradientdisplayname% <gradient:#00E5FF:#00FFA3>has connected to Survival Fun</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#00E5FF:#00FFA3>has disconnected from Survival Fun</gradient>'
+  gamer:
+    slot: 11
+    title: '&d&lGamer Pack'
+    texture: 8c8e6f900644c9de36b80e433344b8f241d362c77012d8b8a619ad007be67854
+    permission: allium.messagepack.gamer
+    join: '&e%allium_gradientdisplayname% <gradient:#A855F7:#EC4899>has loaded back into reality</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#A855F7:#EC4899>has rage quit reality</gradient>'
+  wholesome:
+    slot: 12
+    title: '&d&lWholesome Pack'
+    texture: d585dbd10c5e1d1957bfd1c2e0b470b1eecb676b3c713f8e3346bf0b77f005e8
+    permission: allium.messagepack.wholesome
+    join: '&e%allium_gradientdisplayname% <gradient:#F9A8D4:#A7F3D0>is back! We missed you</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#F9A8D4:#A7F3D0>has left. See you soon!</gradient>'
+  bread:
+    slot: 13
+    title: '&e&lBread Pack'
+    texture: e071992422f37a3d1f4813c0494515123e9f2cf27d61ae4b448eb9af1eb578c
+    permission: allium.messagepack.bread
+    join: '&e%allium_gradientdisplayname% <gradient:#F6D365:#FDA085>has returned from acquiring bread</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#F6D365:#FDA085>has left to acquire bread</gradient>'
+  afterlife:
+    slot: 14
+    title: '&5&lAfterlife Pack'
+    texture: 5b622693b0651378512a89f7fd39f89082b4595332d3b2ce53833e2ef4d4da03
+    permission: allium.messagepack.afterlife
+    join: '&e%allium_gradientdisplayname% <gradient:#B8B8FF:#FFB8D9>has risen from the dead</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#B8B8FF:#FFB8D9>has passed into the afterlife</gradient>'
+  survival_fun:
+    slot: 15
+    title: '&a&lSurvival Fun Pack'
+    texture: 4445a940a297ae88d2f515b498796dd75f5713a7a5f83650e100e9e648f632f6
+    permission: allium.messagepack.survival_fun
+    join: '&e%allium_gradientdisplayname% <gradient:#39FF88:#B7FF5A>is back for some Survival Fun</gradient>'
+    quit: '&e%allium_gradientdisplayname% <gradient:#39FF88:#B7FF5A>has left the fun for now</gradient>'

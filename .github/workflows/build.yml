@@ -28,10 +28,12 @@ jobs:
 
       - name: Build and test Allium and all addons
         run: |
+          python3 -m pip install --disable-pip-version-check pyyaml pillow
           chmod +x gradlew
           ./gradlew check shadowJar \
             :addons:crops:build \
             :addons:curios:build \
+            :addons:menus:build \
             :addons:ores:build \
             :addons:partylocator:build \
             :addons:spawnercraft:build \
@@ -46,6 +48,7 @@ jobs:
           cp build/libs/Allium.jar "dist/Allium-${VERSION}.jar"
           cp "addons/crops/build/libs/Addon-Crops-${VERSION}.jar" dist/
           cp "addons/curios/build/libs/Addon-Curios-${VERSION}.jar" dist/
+          cp "addons/menus/build/libs/Addon-Menus-${VERSION}.jar" dist/
           cp "addons/ores/build/libs/Addon-Ores-${VERSION}.jar" dist/
           cp "addons/partylocator/build/libs/Addon-PartyLocator-${VERSION}.jar" dist/
           cp "addons/spawnercraft/build/libs/Addon-SpawnerCraft-${VERSION}.jar" dist/

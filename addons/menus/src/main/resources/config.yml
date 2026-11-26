@@ -1,0 +1,10 @@
+# Use inventories for every player if a proxy hides the client protocol.
+force-inventory: false
+# Writes an Allium-owned datapack into the primary world's datapacks directory.
+# Select a menu with open-on: [escape, command] and restart after changing an escape entry.
+escape-menu: true
+join-delay-ticks: 20
+# How many slots Show More reveals beyond the player's home allowance or staff's accessible warps.
+locked-homes: 6
+locked-warps: 6
+text-editors: true

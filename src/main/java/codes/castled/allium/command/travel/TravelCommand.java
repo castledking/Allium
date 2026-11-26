@@ -1,5 +1,6 @@
 package codes.castled.allium.command.travel;
 
+import codes.castled.allium.api.SettingsPresentation;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
@@ -23,6 +24,10 @@ public final class TravelCommand implements SpecCommandHandler {
         }
         if(!(context.sender() instanceof Player player)){context.plugin().getMessageManager().send(context.sender(),Messages.PLAYER_ONLY);return;}
         boolean warp=command.contains("warp");
+        if (args.length == 0 && (command.equals("home") || command.equals("homes") || command.equals("warp") || command.equals("warps"))) {
+            var menus = context.plugin().getServer().getServicesManager().load(SettingsPresentation.class);
+            if (menus != null && menus.open(player, warp ? SettingsPresentation.Screen.WARPS : SettingsPresentation.Screen.HOMES)) return;
+        }
         if(command.equals("bed")){
             if(args.length!=0){context.sendInvalidArgs(spec.selfUsage());return;}
             service.bed(player);return;

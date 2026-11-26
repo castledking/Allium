@@ -55,10 +55,12 @@ public final class CropsPlugin extends AlliumAddon {
             }
             itemData.setDefaults(bundledItems);
             itemData.options().copyDefaults(true);
+            world = new ModelWorld(this);
+            var kitchen = new Kitchen(this, world, kitchenConfig);
+            var displayModels = kitchen.displayModels();
             var items = itemData.getConfigurationSection("items");
             java.util.List<String> itemIds = new java.util.ArrayList<>();
             for (String id : items.getKeys(false)) {
-                itemIds.add(id);
                 var row = items.getConfigurationSection(id);
                 boolean cropStage = cropStageIds.contains(id);
                 String displayName = normalizeDisplayName(placedName(id, row.getString("name")), cropStage);
@@ -66,6 +68,11 @@ public final class CropsPlugin extends AlliumAddon {
                 var item = new ItemDefinition(id, Material.PAPER, displayName, cmd, Map.of(), true);
                 if (id.equals(bagId)) core.items().define(item);
                 else core.items().defineStackableSigned(item);
+                if (cropStage || row.getString("gui", "").contains("/crop_stage_icons/") || displayModels.contains("allium:" + id) || isBundledPieDisplay(id, row.getString("model", ""))) {
+                    core.items().hideFromGive(id);
+                } else {
+                    itemIds.add(id);
+                }
                 core.items().decorate(id, stack -> {
                     ensureNotItalic(stack);
                     JadeLabel.apply(stack, "crops:" + id);
@@ -73,13 +80,18 @@ public final class CropsPlugin extends AlliumAddon {
                 });
             }
             java.util.Collections.sort(itemIds);
-            var prices = definition("prices.yml").getConfigurationSection("prices");
+            var worth = definition("prices.yml");
+            try (var reader = new InputStreamReader(getResource("prices.yml"), StandardCharsets.UTF_8)) {
+                var bundledPrices = new YamlConfiguration();
+                bundledPrices.load(reader);
+                worth.setDefaults(bundledPrices);
+                worth.options().copyDefaults(true);
+            }
+            var prices = worth.getConfigurationSection("prices");
             for (String id : prices.getKeys(false)) core.items().setWorth(id, new BigDecimal(prices.getString(id)));
 
-            world = new ModelWorld(this);
             var farm = new FarmInputs(this, world, catalog.values(), definition("fertilizers.yml"), definition("sprinklers.yml"));
             var crops = new Planting(this, world, catalog, farm);
-            var kitchen = new Kitchen(this, world, kitchenConfig);
             kitchen.registerRecipes(definition("recipes.yml").getConfigurationSection("recipes"));
             migration = new LegacyHarvestMigrationService(this, world, crops, farm);
             migration.start();
@@ -160,6 +172,10 @@ public final class CropsPlugin extends AlliumAddon {
             return rawName;
         }
         return "&f" + rawName;
+    }
+
+    static boolean isBundledPieDisplay(String id, String model) {
+        return model.contains("/block/") && (id.endsWith("_filled") || id.matches(".*(?:_pie|_pizza|pie_crust|pizza_base)_placed(?:_slice[0-9]+)?"));
     }
 
     /**

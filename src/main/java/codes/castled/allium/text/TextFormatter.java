@@ -187,6 +187,10 @@ public final class TextFormatter {
         // Closing tags
         if (lower.startsWith("/")) {
             String closingName = lower.substring(1);
+            if (closingName.equals("c") || closingName.equals("color")) {
+                popMatchingFrame(stack, "color-tag");
+                return true;
+            }
             if (closingName.startsWith("gradient")) {
                 popMatchingFrame(stack, "gradient");
                 return true;
@@ -277,12 +281,20 @@ public final class TextFormatter {
             return true;
         }
 
-        // Opening named MiniMessage colors (<red>, <gray>, <white>, etc.)
-        char namedLegacy = namedColorLegacyChar(lower);
+        // Opening <color:gold>, <c:#rrggbb>, or named MiniMessage colors such as <gray>.
+        int colon = lower.indexOf(':');
+        boolean colorTag = lower.startsWith("c:") || lower.startsWith("color:");
+        String color = colorTag ? lower.substring(colon + 1).trim() : lower;
+        if (colorTag && color.startsWith("#") && color.length() == 7 && isHexRun(color, 1, 6)) {
+            int rgb = Integer.parseInt(color.substring(1), 16);
+            stack.push(new SpanFrame("color-tag", GlyphColorSource.solid(rgb), -1, '\0', stack.peek().decorations));
+            return true;
+        }
+        char namedLegacy = namedColorLegacyChar(color);
         if (namedLegacy != '\0') {
             SpanFrame parent = stack.peek();
             int rgb = LEGACY_RGB[legacyColorIndex(namedLegacy)];
-            stack.push(new SpanFrame("color:" + namedLegacy, null, rgb, namedLegacy, parent.decorations));
+            stack.push(new SpanFrame(colorTag ? "color-tag" : "color:" + namedLegacy, null, rgb, namedLegacy, parent.decorations));
             return true;
         }
 

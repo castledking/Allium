@@ -1,6 +1,9 @@
 package codes.castled.allium.command.essentials;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.api.SettingsPresentation;
+import org.bukkit.command.CommandSender;
+import java.util.Optional;
 import codes.castled.allium.command.BukkitCommandContext;
 import codes.castled.allium.command.SpecCommandHandler;
 import codes.castled.allium.command.spec.CommandSpec;
@@ -58,10 +61,6 @@ public final class ItemTextCommand implements SpecCommandHandler {
             return;
         }
         String[] args = context.args();
-        if (args.length == 0) {
-            context.sendInvalidArgs(spec.selfUsage());
-            return;
-        }
         if (!UtilitySupport.guardInventoryNotBusy(plugin, player, player)) {
             return;
         }
@@ -71,11 +70,105 @@ public final class ItemTextCommand implements SpecCommandHandler {
             UtilitySupport.send(plugin, player, Messages.UTILITY_HOLD_ITEM);
             return;
         }
+        if (args.length == 0) {
+            var menus = plugin.getServer().getServicesManager().load(SettingsPresentation.class);
+            if (menus != null) {
+                boolean name = spec.canonicalName().equals("rename");
+                List<String> initial = name ? (meta.hasDisplayName() ? List.of(meta.getDisplayName()) : List.of())
+                        : (meta.hasLore() && meta.getLore() != null ? List.copyOf(meta.getLore()) : List.of());
+                ItemStack expected = held.clone();
+                if (menus.edit(player, spec.canonicalName(), expected, initial,
+                        submitted -> saveEditor(context, player, expected, initial, submitted, name))) return;
+            }
+            context.sendInvalidArgs(spec.selfUsage());
+            return;
+        }
         if (spec.canonicalName().equals("rename")) {
             rename(context, player, held, meta, args);
         } else {
             lore(context, player, held, meta, args);
         }
+    }
+
+    private void saveEditor(BukkitCommandContext context, Player player, ItemStack expected, List<String> initial,
+                            List<String> values, boolean name) {
+        if (!player.hasPermission(spec.basePermission()) || plugin.getCommandManager().getFamilyPolicy().isDisabled(spec.canonicalName())
+                || !UtilitySupport.guardInventoryNotBusy(plugin, player, player)) return;
+        ItemStack held = player.getInventory().getItemInMainHand();
+        if (!expected.equals(held)) {
+            player.sendMessage("§cYour held item changed. Reopen the editor.");
+            return;
+        }
+        ItemMeta meta = held.getItemMeta();
+        if (name) {
+            String value = values.get(0);
+            if (!initial.isEmpty() && value.equals(editable(initial.get(0), true))) return;
+            if (value.isBlank()) rename(context, player, held, meta, new String[]{"clear"});
+            else setName(context, player, held, meta, value);
+            return;
+        }
+        if (values.size() > MAX_LORE_LINES) return;
+        List<String> result = new ArrayList<>();
+        for (int index = 0; index < values.size(); index++) {
+            String raw = values.get(index);
+            if (index < initial.size() && raw.equals(editable(initial.get(index), true))) {
+                result.add(initial.get(index));
+                continue;
+            }
+            if (raw.isBlank()) continue;
+            FormattedText text = format(player, raw, "allium.lore.color");
+            if (text == null || visibleLength(text) > MAX_LORE_LENGTH) {
+                UtilitySupport.send(plugin, player, Messages.UTILITY_LORE_TOO_LONG, "{max}", Integer.toString(MAX_LORE_LENGTH));
+                return;
+            }
+            result.add(text.toLegacy());
+        }
+        meta.setLore(result.isEmpty() ? null : result);
+        save(player, held, meta);
+        player.sendMessage("§aItem lore saved.");
+    }
+
+    @Override
+    public Optional<List<String>> customCompletions(CommandSender sender, String label, String[] args) {
+        if (!(sender instanceof Player player) || args.length == 0) return Optional.empty();
+        ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
+        if (spec.canonicalName().equals("rename")) {
+            List<String> suggestions = new ArrayList<>();
+            if (args.length == 1 && "clear".startsWith(args[0].toLowerCase(Locale.ROOT))) suggestions.add("clear");
+            if (meta != null && meta.hasDisplayName()) {
+                suggest(suggestions, editable(meta.getDisplayName(), player.hasPermission("allium.rename.color")), args, 0);
+            }
+            return Optional.of(suggestions);
+        }
+        if (args.length == 1) return Optional.empty();
+        var lines = meta == null ? null : meta.getLore();
+        if (lines == null) lines = List.of();
+        String action = args[0].toLowerCase(Locale.ROOT);
+        List<String> suggestions = new ArrayList<>();
+        if (args.length == 2 && List.of("set", "remove", "insert").contains(action)) {
+            int max = lines.size() + (action.equals("insert") ? 1 : 0);
+            for (int i = 1; i <= max; i++) if (Integer.toString(i).startsWith(args[1])) suggestions.add(Integer.toString(i));
+        } else if (action.equals("add")) {
+            for (String line : lines) suggest(suggestions, editable(line, player.hasPermission("allium.lore.color")), args, 1);
+        } else if (args.length >= 3 && (action.equals("set") || action.equals("insert"))) {
+            try {
+                int index = Integer.parseInt(args[1]) - 1;
+                if (index >= 0 && index < lines.size()) suggest(suggestions,
+                        editable(lines.get(index), player.hasPermission("allium.lore.color")), args, 2);
+            } catch (NumberFormatException ignored) {}
+        }
+        return Optional.of(suggestions.stream().distinct().toList());
+    }
+
+    private static void suggest(List<String> result, String text, String[] args, int start) {
+        String typed = String.join(" ", Arrays.copyOfRange(args, start, args.length));
+        if (!text.regionMatches(true, 0, typed, 0, typed.length())) return;
+        int startOfLast = typed.length() - args[args.length - 1].length();
+        result.add(text.substring(startOfLast));
+    }
+
+    private static String editable(String legacy, boolean color) {
+        return color ? legacy.replace('§', '&') : Objects.toString(ChatColor.stripColor(legacy), "");
     }
 
     private void rename(BukkitCommandContext context, Player player, ItemStack held, ItemMeta meta, String[] args) {
@@ -89,7 +182,11 @@ public final class ItemTextCommand implements SpecCommandHandler {
             UtilitySupport.send(plugin, player, Messages.UTILITY_RENAME_CLEARED, "{item}", UtilitySupport.itemName(held));
             return;
         }
-        FormattedText name = format(player, String.join(" ", args), "allium.rename.color");
+        setName(context, player, held, meta, String.join(" ", args));
+    }
+
+    private void setName(BukkitCommandContext context, Player player, ItemStack held, ItemMeta meta, String raw) {
+        FormattedText name = format(player, raw, "allium.rename.color");
         if (name == null) {
             context.sendInvalidArgs(spec.selfUsage());
             return;

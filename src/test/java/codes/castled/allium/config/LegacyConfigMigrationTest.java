@@ -256,7 +256,7 @@ class LegacyConfigMigrationTest {
         assertFalse(current.isSet("addons.enabled.modguard"));
         assertFalse(current.isSet("addons.enabled.custom-items"));
         assertEquals(
-                java.util.Set.of("crops", "curios", "ores", "partylocator", "spawnercraft"),
+                java.util.Set.of("crops", "curios", "menus", "ores", "partylocator", "spawnercraft"),
                 current.getConfigurationSection("addons.enabled").getKeys(false)
         );
         assertTrue(LegacyConfigMigration.leftovers(current, defaults).isEmpty());

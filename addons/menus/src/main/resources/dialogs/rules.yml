@@ -1,0 +1,13 @@
+schema: 1
+id: allium:rules
+title: '&eServer Rules'
+permission: allium.gui.rules
+presentation: auto
+open-on: [command]
+buttons:
+  read:
+    label: 'Read the server rules'
+    action: 'rules'
+  back:
+    label: 'Player Settings'
+    action: 'menu:allium:settings'

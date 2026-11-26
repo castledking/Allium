@@ -249,6 +249,13 @@ final class AddonSession implements AddonConnection {
         }
 
         @Override
+        public void hideFromGive(String id) {
+            requireOpen();
+            if (!definedItems.contains(id)) throw new IllegalArgumentException("Define your item first: " + id);
+            allium.getItemService().hideFromGive(id);
+        }
+
+        @Override
         public void defineVariants(String id, java.util.Collection<String> names,
                                    java.util.function.BiConsumer<ItemStack, String> initialize) {
             requireOpen();
@@ -327,8 +334,10 @@ final class AddonSession implements AddonConnection {
             requireOpen();
             ItemService service = allium.getItemService();
             ItemRef ref;
+            String[] parts;
             try {
-                ref = service.parseRef(reference).withAmount(Math.max(1, amount));
+                parts = reference.split(";", 2);
+                ref = service.parseRef(parts[0]).withAmount(Math.max(1, amount));
             } catch (RuntimeException e) {
                 return new ItemResult(ItemResult.Status.INVALID_REFERENCE, Optional.empty(), String.valueOf(e.getMessage()));
             }
@@ -342,6 +351,10 @@ final class AddonSession implements AddonConnection {
                 default -> ItemResult.Status.REJECTED;
             };
             Optional<ItemStack> stack = status == ItemResult.Status.CREATED ? result.itemStack() : Optional.empty();
+            if (parts.length == 2 && stack.isPresent()
+                    && !service.applyVariant(stack.get(), parts[1].toLowerCase(java.util.Locale.ROOT))) {
+                return new ItemResult(ItemResult.Status.REJECTED, Optional.empty(), "Unknown item variant");
+            }
             return new ItemResult(stack.isPresent() ? status : (status == ItemResult.Status.CREATED ? ItemResult.Status.REJECTED : status),
                     stack, String.valueOf(result.diagnosticMessage()));
         }

@@ -1,0 +1,7 @@
+schema: 1
+id: allium:teleport
+title: '&bRequest Teleport'
+permission: allium.gui.teleport
+presentation: auto
+open-on: [command]
+source: teleport

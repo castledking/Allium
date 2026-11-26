@@ -28,6 +28,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.Nullable;
 
+import java.math.BigDecimal;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -138,9 +139,16 @@ public final class SellService implements Listener {
     /** The plan for {@code player}, or a message already sent and null. */
     @Nullable
     public SalePlan plan(Player player, SalePlan.Scope scope, @Nullable ItemStack target, SaleQuantity quantity) {
+        return plan(player, scope, target, quantity, null);
+    }
+
+    @Nullable
+    private SalePlan plan(Player player, SalePlan.Scope scope, @Nullable ItemStack target,
+                          SaleQuantity quantity, @Nullable BigDecimal quote) {
         var inventory = player.getInventory();
         SalePlan.Outcome outcome = SalePlan.plan(inventory.getStorageContents(), inventory.getHeldItemSlot(), scope, target,
-                quantity, worth.settings(), worth.multiplier(player), worth::refusal, worth::price);
+                quantity, worth.settings(), worth.multiplier(player), item -> worth.refusal(item, quote != null),
+                item -> quote == null ? worth.price(item) : java.util.Optional.of(quote));
         if (outcome instanceof SalePlan.Planned planned) {
             return planned.plan();
         }
@@ -196,6 +204,15 @@ public final class SellService implements Listener {
      */
     public void sell(Player player, SalePlan.Scope scope, @Nullable ItemStack target, SaleQuantity quantity, String command,
                      boolean confirm) {
+        sell(player, scope, target, quantity, command, confirm, null);
+    }
+
+    public void sellQuoted(Player player, ItemStack sample, BigDecimal quote) {
+        sell(player, SalePlan.Scope.ITEM, sample, SaleQuantity.ALL, "shop sale", false, quote);
+    }
+
+    private void sell(Player player, SalePlan.Scope scope, @Nullable ItemStack target, SaleQuantity quantity, String command,
+                      boolean confirm, @Nullable BigDecimal quote) {
         if (closed || !PaidWorkflowSupport.ready(plugin)) {
             send(player, Messages.SELL_UNAVAILABLE);
             return;
@@ -208,7 +225,7 @@ public final class SellService implements Listener {
             send(player, Messages.UTILITY_INVENTORY_BUSY, "{player}", player.getName());
             return;
         }
-        SalePlan plan = plan(player, scope, target, quantity);
+        SalePlan plan = plan(player, scope, target, quantity, quote);
         if (plan == null) {
             return;
         }

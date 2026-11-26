@@ -85,6 +85,13 @@ class TextFormatterTest {
     }
 
     @Test
+    void inlineColorTagsPreserveNestedDecorationsAndRestoreOuterColor() {
+        assertBothPathsMatch("<gray>Buy <c:#DBCDF0><b><u>CLICK</u></b></c> here</gray>",
+                "§7Buy §x§d§b§c§d§f§0§l§nCLICK§7 here");
+        assertBothPathsMatch("<color:gold>Gold</color> plain", "§6Gold§r plain");
+    }
+
+    @Test
     void twoStopAndMultiStopGradientsOnBothPaths() {
         // 2-stop gradient over 3 chars: #ff0000 -> #800080 -> #0000ff
         String twoStop = "<gradient:#ff0000:#0000ff>ABC</gradient>";

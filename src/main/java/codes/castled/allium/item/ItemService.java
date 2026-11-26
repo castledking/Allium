@@ -55,6 +55,7 @@ public final class ItemService {
     private final Map<NamespacedKey, Recipe> addonRecipes = new ConcurrentHashMap<>();
     private final Map<NamespacedKey, Set<ItemRef>> addonRecipeAllowedIngredients = new ConcurrentHashMap<>();
     private final Map<String, Consumer<ItemStack>> decorations = new ConcurrentHashMap<>();
+    private final Set<String> internalItems = ConcurrentHashMap.newKeySet();
     private final Map<String, AlliumItemDefinition> alliumDefinitions = new ConcurrentHashMap<>();
     private final Map<ProviderKey, String> appearanceToBehavior = new ConcurrentHashMap<>();
     private final Set<String> stackableSignedBehaviors = ConcurrentHashMap.newKeySet();
@@ -144,6 +145,7 @@ public final class ItemService {
         if (definition == null || definition.behaviorId() == null) {
             return;
         }
+        internalItems.remove(definition.id());
         variantsByItem.remove(definition.id());
         decorations.remove(definition.id());
         appearanceToBehavior.remove(definition.providerKey(), definition.behaviorId());
@@ -396,6 +398,10 @@ public final class ItemService {
         return normalized != null && (privilegedBehaviors.contains(normalized) || signedBehaviors.contains(normalized));
     }
 
+    public boolean isStackableSignedBehavior(String behaviorId) {
+        return stackableSignedBehaviors.contains(behaviorId);
+    }
+
     public Optional<AlliumItemDefinition> getAlliumItem(String id) {
         if (id == null) return Optional.empty();
         return Optional.ofNullable(alliumDefinitions.get(id.trim().toLowerCase(Locale.ROOT)));
@@ -432,11 +438,20 @@ public final class ItemService {
         return Optional.ofNullable(appearanceToBehavior.get(appearance));
     }
 
-    /**
-     * Read-only snapshot of registered definition, alias and preferred-appearance bindings.
-     * Startup provider diagnostics use this to inspect deliberately managed items only.
-     */
-    public java.util.List<String> completionIds(){return alliumDefinitions.keySet().stream().map(id->"allium:"+id).sorted().toList();}
+    public void hideFromGive(String id) {
+        internalItems.add(id);
+    }
+
+    public boolean hiddenFromGive(ProviderKey key) {
+        return ProviderKey.ALLIUM.equals(key.provider()) && internalItems.contains(key.id());
+    }
+
+    public java.util.List<String> completionIds() {
+        return alliumDefinitions.keySet().stream().filter(id -> !internalItems.contains(id))
+                .map(id -> "allium:" + id).sorted().toList();
+    }
+
+    /** Snapshot of registered appearance bindings for startup provider diagnostics. */
     public Map<ProviderKey, String> appearanceBindings() {
         return Map.copyOf(appearanceToBehavior);
     }

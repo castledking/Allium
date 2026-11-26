@@ -2,7 +2,7 @@
 
 Curios is an Allium addon that requires Allium (API 1.1) and must be placed inside
 `plugins/Allium/addons/`. Put `Allium.jar` in the server's top-level `plugins/` directory, put
-`Addon-Curios-1.0.0.jar` in `plugins/Allium/addons/`, then restart the
+`Addon-Curios-1.0.1.jar` in `plugins/Allium/addons/`, then restart the
 server. Allium discovers, validates, and enables addons from `plugins/Allium/addons/` on startup.
 If Curios is placed directly in `plugins/`, Allium refuses it and Curios disables itself before
 registering anything; without Allium, Curios cannot load (`depend: [Allium]`). Startup should show
@@ -65,6 +65,8 @@ item name in the creative inventory, and at the end of the tooltip elsewhere.
 - `/relics` opens the equipment menu. Click a curio in your inventory to equip it in a matching
   slot. Click a filled equipment slot to return it directly to an empty inventory slot. A full
   inventory leaves the curio equipped. The menu cancels cursor, drag, hotbar and shift moves.
+- Right-click a held card or relic in the air or on a block to equip it. Both this shortcut and
+  equipping through `/relics` confirm the equip in chat.
 - In a card's bonus menu, rolling or re-rolling a slot reserves funds from Allium's economy under
   a stable operation ID, on legacy's ladder: `cost x escalation^(that slot's rolls so far) x tier multiplier`,
   rounded to 100. On a Simple card that is 500, 700, 900, 1,200, 1,700, ...; Elite is 1.5x and Fabled 5x.
@@ -113,13 +115,12 @@ item name in the creative inventory, and at the end of the tooltip elsewhere.
   cut from a `pack:` folder via `/frame build` into `assets/curios/font/custom_frames.json` and
   `plugins/Curios/frames-built.json`). Run `/frame reload` to re-read `config.yml`, `frames.yml`,
   `frames-built.json`, and stored player overrides/choices without restarting.
-- Right-click a held card, in the air or at a block, to open its menu. Right-clicking a card in
-  your inventory works too, as does right-clicking an equipped card or any card in your inventory
-  while `/relics` is open. The one exception is the creative inventory screen: the creative client
-  handles those clicks itself and only reports where items ended up, so a right click there never
-  reaches the server. Creative players right-click the held card, right-click the card under
-  `/relics`, or use `/cards menu`. Menus opened from a click open a tick later, after the cancelled
-  click has been corrected, so no ghost card is left on the inventory's cursor.
+- Right-click a trading card in your inventory, including in creative, or in an equipped slot
+  in `/relics` to open its menu. In the creative inventory, picking up a single card with either
+  mouse button opens its menu because both clicks report the same slot update. Use `/cards menu`
+  to open the held card's menu by command.
+- Relic tooltips show their current frame, configured effects and attributes. Each bundled relic
+  has a themed name color. Override `name-color` and the `description` list under `items.<id>`.
 - `/cards give [player] <entity> [rarity] [level] [quality]` gives a trading card by mob, as
   legacy's `/tradingcards give` did. Rarity defaults to simple, level to 0 and quality to 100.
   `/relics give [player] <relic> [level]` gives a relic. `/curios give` accepts both. Each label

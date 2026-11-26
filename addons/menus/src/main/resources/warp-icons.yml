@@ -1,0 +1,6 @@
+# Each entry takes one item, texture hash, or serialized stack. Conditions are optional.
+# warps:
+#   spawn:
+#     item: minecraft:compass
+#     when: 'permission:allium.warps.spawn'
+warps: {}

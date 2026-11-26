@@ -155,9 +155,15 @@ public final class JoinQuitMessages implements Listener {
     }
 
     private String format(Player player, String kind, String fallback) {
+        var server = plugin.getServer();
+        var services = server == null ? null : server.getServicesManager();
+        var provider = services == null ? null : services.load(codes.castled.allium.api.JoinQuitMessageSelection.class);
+        var selection = provider == null ? null : provider.selected(player, kind);
+        if (selection != null && selection.template() != null) return selection.template();
         String prefix = "allium." + kind + "_message.";
         for (var entry : player.getEffectivePermissions()) {
             if (!entry.getValue() || !entry.getPermission().startsWith(prefix)) continue;
+            if (selection != null && entry.getPermission().equals(prefix + "vip")) continue;
             String value = metaLookup.apply(player, entry.getPermission());
             if (value != null && !value.isEmpty()) return value;
         }

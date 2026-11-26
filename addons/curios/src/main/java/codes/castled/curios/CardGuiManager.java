@@ -10,6 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -76,11 +77,13 @@ final class CardGuiManager implements Listener {
     void openHome(Player player, CardSource source) {
         ItemStack stack = source.read(plugin, player);
         Catalog.Entry entry = plugin.entry(stack);
-        if (entry == null || entry.legacyCard().isEmpty()) {
-            plugin.tellCards(player, "Hold or click a trading card to open its menu.");
+        if (entry == null) {
+            plugin.tellCards(player, "Hold or click a curio to open its menu.");
             return;
         }
-        new HomeScreen(player, source, entry, plugin.identity(stack).orElseThrow()).open();
+        var identity = plugin.identity(stack).orElseThrow();
+        if (entry.legacyCard().isEmpty()) new RelicScreen(player, source, entry, identity).open();
+        else new HomeScreen(player, source, entry, identity).open();
     }
 
     /**
@@ -91,7 +94,7 @@ final class CardGuiManager implements Listener {
      */
     void openHomeAfterClick(Player player, CardSource source) {
         plugin.core().runForEntity(player, () -> {
-            if (!player.isOnline()) return;
+            if (!player.isOnline() || !plugin.isTradingCard(source.read(plugin, player))) return;
             player.updateInventory();
             openHome(player, source);
         }, () -> {}, 0L);
@@ -144,36 +147,38 @@ final class CardGuiManager implements Listener {
     public void onInventoryRightClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         if (!player.hasPermission("curios.use")) return;
-        if (event.getClick() != ClickType.RIGHT) return;
+        boolean creativePickup = event instanceof InventoryCreativeEvent && creativePickup(event.getCurrentItem(), event.getCursor());
+        if (event.getClick() != ClickType.RIGHT && !creativePickup) return;
         InventoryHolder topHolder = event.getView().getTopInventory().getHolder();
         if (topHolder instanceof CardScreen || plugin.isEquipmentMenu(topHolder)) return;
         if (event.getClickedInventory() == null || !event.getClickedInventory().equals(player.getInventory())) return;
-        ItemStack clicked = event.getCurrentItem();
-        Catalog.Entry entry = plugin.entry(clicked);
-        if (entry == null || entry.legacyCard().isEmpty()) return;
+        if (!plugin.isTradingCard(event.getCurrentItem())) return;
         event.setCancelled(true);
         openHomeAfterClick(player, new InventorySource(event.getSlot()));
     }
 
+    private static boolean creativePickup(ItemStack current, ItemStack replacement) {
+        if (current == null || current.getType().isAir()) return false;
+        if (replacement == null || replacement.getType().isAir()) return true;
+        return current.isSimilar(replacement) && replacement.getAmount() == current.getAmount() / 2;
+    }
+
     /**
-     * Right-clicking a held card opens its menu, in the air or at a block. This is the trigger
-     * creative players have: the creative inventory screen handles its own clicks on the client,
-     * so a right click there never reaches the server as one.
+     * Right-clicking a held curio equips it, in the air or at a block.
      *
-     * <p>Not {@code ignoreCancelled}: Bukkit reports every air click as cancelled (there is no block
-     * to use), which would leave only block clicks. A plugin that denies using the item still wins.
+     * <p>Read the item-use result because Bukkit can cancel the block side of an air click.
      */
-    @EventHandler(priority = EventPriority.NORMAL)
-    public void onRightClickHeldCard(PlayerInteractEvent event) {
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onRightClickHeldCurio(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (event.getHand() != EquipmentSlot.HAND || event.useItemInHand() == org.bukkit.event.Event.Result.DENY) return;
         Player player = event.getPlayer();
         if (!player.hasPermission("curios.use")) return;
         ItemStack held = player.getInventory().getItemInMainHand();
         Catalog.Entry entry = plugin.entry(held);
-        if (entry == null || entry.legacyCard().isEmpty()) return;
+        if (entry == null) return;
         event.setCancelled(true);
-        openHome(player, new InventorySource(player.getInventory().getHeldItemSlot()));
+        if (plugin.editable(player)) plugin.equip(player, player.getInventory().getHeldItemSlot());
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -308,6 +313,20 @@ final class CardGuiManager implements Listener {
             player.playSound(player.getLocation(),
                     success ? Sound.BLOCK_ENCHANTMENT_TABLE_USE : Sound.BLOCK_NOTE_BLOCK_BASS,
                     0.6f, success ? 1.3f : 0.7f);
+        }
+    }
+
+    private final class RelicScreen extends CardScreen {
+        RelicScreen(Player player, CardSource source, Catalog.Entry entry, ItemIdentity identity) {
+            super(player, source, entry, identity, PackPresentation.MENU_HOME_GLYPH, entry.name());
+        }
+
+        @Override void render() {
+            clear();
+            if (!refresh()) return;
+            ItemStack shown = plugin.changed(stack, Map.of());
+            set(13, shown == null ? stack.clone() : shown, null);
+            set(SLOT_CLOSE, button(Material.BARRIER, "<red>Close"), event -> player.closeInventory());
         }
     }
 

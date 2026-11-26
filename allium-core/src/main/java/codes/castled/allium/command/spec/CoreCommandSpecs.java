@@ -397,7 +397,16 @@ public final class CoreCommandSpecs {
         return new CommandNodeSpec(name, List.of(aliases), "allium.autorestart." + permission, "/ar " + name, args, List.of());
     }
 
-    public static final List<CommandSpec> CORE_SPECS = List.of(ALLIUM, HELP, REDEEM, AUTORESTART, VOTERESTART);
+    public static final CommandSpec TOGGLES = new CommandSpec(
+            "toggles", CommandSpec.DEFAULT_NAMESPACE, "core", List.of("settings"),
+            "View your player settings", "/toggles", "/toggles",
+            "allium.toggles", null, List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+    public static final CommandSpec TOGGLE = new CommandSpec(
+            "toggle", CommandSpec.DEFAULT_NAMESPACE, "core", List.of(),
+            "Change a player setting", "/toggle <tpa|msg|pay> [on|off]", "/toggle <tpa|msg|pay> [on|off]",
+            "allium.toggles", null, List.of(), List.of(), CommandMessageKeys.ofOutcomes(Map.of()));
+
+    public static final List<CommandSpec> CORE_SPECS = List.of(ALLIUM, HELP, REDEEM, AUTORESTART, VOTERESTART, TOGGLE, TOGGLES);
 
     /** {@code /msg} with Essentials' aliases. */
     public static final CommandSpec MSG = new CommandSpec(
@@ -1319,6 +1328,20 @@ public final class CoreCommandSpecs {
             List.of(), CommandMessageKeys.ofOutcomes(Map.of())
     );
 
+    public static final CommandSpec ITEMFLAG = new CommandSpec(
+            "itemflag", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("iflag", "if", "ie"),
+            "Edit tooltip flags and attribute modifiers on the item in your hand",
+            "/itemflag <hide|show|list|attribute>", "/itemflag <hide|show|list|attribute>",
+            "allium.itemflag", null, List.of(),
+            List.of(
+                    new CommandNodeSpec("hide", List.of(), null, "/itemflag hide <flag|all> [on|off]", List.of(), List.of()),
+                    new CommandNodeSpec("show", List.of(), null, "/itemflag show <flag|all>", List.of(), List.of()),
+                    new CommandNodeSpec("list", List.of(), null, "/itemflag list", List.of(), List.of()),
+                    new CommandNodeSpec("attribute", List.of("attributes"), "allium.itemflag.attribute",
+                            "/itemflag attribute <add|remove|list>", List.of(), List.of())),
+            CommandMessageKeys.ofOutcomes(Map.of())
+    );
+
     /** {@code /lore add|set|insert|remove|clear}: the held item's lore lines. */
     public static final CommandSpec LORE = new CommandSpec(
             "lore", CommandSpec.DEFAULT_NAMESPACE, "essentials", List.of("itemlore", "ilore"),
@@ -1532,7 +1555,7 @@ public final class CoreCommandSpecs {
 
     public static final List<CommandSpec> PARITY_UTILITY_SPECS = List.of(
             SPEED, SCALE, PING, COORDS, COMPASS, GLOW, EXT, BURN, SMITE, NV, CLEARINVENTORY, CLEAR_CONFIRM_TOGGLE, MORE, HAT, SKULL,
-            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, PTIME, PWEATHER, ENCHANT, RENAME, LORE, XP, XPBOTTLE, INFO, INFORM, CUSTOMTEXT, MOTD, RULES,
+            ITEMDB, GC, TIME, DAY, NIGHT, WEATHER, PTIME, PWEATHER, ENCHANT, RENAME, LORE, ITEMFLAG, XP, XPBOTTLE, INFO, INFORM, CUSTOMTEXT, MOTD, RULES,
             BROADCAST, BROADCASTWORLD, BROADCASTS, REALNAME, SPAWNMOB, RECIPE, POTION, FIREWORK, PVP
     );
 

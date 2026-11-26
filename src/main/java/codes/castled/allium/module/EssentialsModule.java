@@ -189,6 +189,7 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.PlayerTimeCommand(plugin));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.PlayerWeatherCommand(plugin));
         plugin.getCommandManager().register(new EnchantCommand(plugin));
+        plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemFlagCommand(plugin));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.RENAME));
         loreClipboard = new codes.castled.allium.command.essentials.LoreClipboard();
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {

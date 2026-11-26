@@ -277,6 +277,7 @@ tasks {
     val officialAddonProjects = listOf(
         ":addons:crops",
         ":addons:curios",
+        ":addons:menus",
         ":addons:ores",
         ":addons:partylocator",
         ":addons:spawnercraft"

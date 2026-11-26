@@ -1,0 +1,15 @@
+schema: 1
+id: allium:settings
+title: '&dPlayer Settings'
+permission: allium.gui.settings
+presentation: auto
+open-on: [command, escape]
+buttons:
+  toggles: {label: Toggles, action: 'menu:allium:toggles'}
+  teleport: {label: Request Teleport, action: 'menu:allium:teleport'}
+  homes: {label: Homes, action: 'menu:allium:homes'}
+  warps: {label: Warps, action: 'menu:allium:warps'}
+  rules: {label: Server Rules, action: 'menu:allium:rules'}
+  shop: {label: Shop, action: 'view:shop'}
+  messages: {label: Join and Leave Messages, action: 'view:messages'}
+  staff: {label: Staff Tools, action: 'view:staff'}

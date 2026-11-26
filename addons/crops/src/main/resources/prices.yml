@@ -86,3 +86,25 @@ prices:
   tomato: 5
   tomato_golden_star: 10
   tomato_silver_star: 7.5
+  baked_apple_pie: 6
+  baked_blackberry_pie: 6
+  baked_blueberry_pie: 6
+  baked_cherry_pie: 6
+  baked_chocolate_pie: 6
+  baked_cranberry_pie: 6
+  baked_deep_dish_pizza: 6
+  baked_elderberry_pie: 6
+  baked_pumpkin_pie: 6
+  baked_raspberry_pie: 6
+  baked_strawberry_pie: 6
+  cold_apple_pie: 6
+  cold_blackberry_pie: 6
+  cold_blueberry_pie: 6
+  cold_cherry_pie: 6
+  cold_chocolate_pie: 6
+  cold_cranberry_pie: 6
+  cold_deep_dish_pizza: 6
+  cold_elderberry_pie: 6
+  cold_pumpkin_pie: 6
+  cold_raspberry_pie: 6
+  cold_strawberry_pie: 6

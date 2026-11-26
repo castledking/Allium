@@ -52,6 +52,30 @@ class CropsCommandAndPackTest {
     }
 
     @Test
+    void pumpkinAndAppleHaveHeldIconsAndSeparateInternalDisplayModels() throws Exception {
+        try (var in = getClass().getClassLoader().getResourceAsStream("items.yml")) {
+            assertNotNull(in);
+            var yaml = YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
+            var items = yaml.getConfigurationSection("items");
+            Path models = Path.of("pack/assets/crops/models");
+            for (String type : List.of("pumpkin", "apple")) {
+                for (String state : List.of("baked", "cold")) {
+                    String held = state + "_" + type + "_pie";
+                    String model = items.getString(held + ".model");
+                    assertFalse(CropsPlugin.isBundledPieDisplay(held, model));
+                    assertTrue(Files.readString(models.resolve(model.substring("crops:".length()) + ".json"))
+                            .contains("minecraft:item/generated"));
+                    String placed = held + "_placed";
+                    assertTrue(CropsPlugin.isBundledPieDisplay(placed, items.getString(placed + ".model")));
+                }
+                String filled = type + "_pie_filled";
+                assertTrue(CropsPlugin.isBundledPieDisplay(filled, items.getString(filled + ".model")));
+            }
+            assertFalse(CropsPlugin.isBundledPieDisplay("pie_crust", items.getString("pie_crust.model")));
+        }
+    }
+
+    @Test
     void pitayaTextureLivesInBlocksAtlasWithMatchingModelReferences() throws Exception {
         Path packRoot = Path.of("pack/assets/crops");
         assertTrue(Files.isRegularFile(packRoot.resolve("textures/block/ce/block/crops/pitaya/stage.png")));

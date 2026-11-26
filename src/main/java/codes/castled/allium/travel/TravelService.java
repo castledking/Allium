@@ -398,6 +398,25 @@ public final class TravelService implements Listener {
         }catch(RejectedExecutionException busy){send(sender,Messages.TRAVEL_STORAGE_FAILED);}
     }
     private static String formatHomeLimit(int limit){return limit>=HomePolicy.HARD_CAP?"unlimited":Integer.toString(limit);}
+    public codes.castled.allium.api.MenuData.Travel menuEntries(Player player, boolean warp) {
+        if (warp) {
+            if (!warpsEnabled || !warpsLoaded) return new codes.castled.allium.api.MenuData.Travel(List.of(), List.of(), 0, false, false, false);
+            boolean create = player.hasPermission("allium.setwarp");
+            List<String> names = warps.keySet().stream().sorted().toList();
+            List<String> available = names.stream().filter(name -> player.hasPermission("allium.warp") && access(player, name)).toList();
+            List<String> locked = create ? names.stream().filter(name -> !available.contains(name)).toList() : List.of();
+            return new codes.castled.allium.api.MenuData.Travel(available, locked, 0, false, create, true);
+        }
+        Session session = sessions.get(player.getUniqueId());
+        if (!homesEnabled || session == null || !same(session) || !session.loaded) {
+            return new codes.castled.allium.api.MenuData.Travel(List.of(), List.of(), 0, false, false, false);
+        }
+        List<String> names = session.homes.keySet().stream().sorted().toList();
+        return new codes.castled.allium.api.MenuData.Travel(names, List.of(), limit(player),
+                player.hasPermission("allium.sethome.unlimited") || player.hasPermission("allium.sethome.*"),
+                player.hasPermission("allium.sethome"), true);
+    }
+
     public void list(Player p,boolean warp) {
         if(!permission(p,warp?"warps":"homes"))return;
         if(warp&&!warpsLoaded){send(p,Messages.TRAVEL_LOADING);return;}

@@ -48,6 +48,10 @@ public final class SellCommand implements SpecCommandHandler {
             plugin.getMessageManager().send(context.sender(), Messages.PLAYER_ONLY);
             return;
         }
+        if (args.length == 0) {
+            var menus = plugin.getServer().getServicesManager().load(codes.castled.allium.api.SettingsPresentation.class);
+            if (menus != null && menus.open(player, codes.castled.allium.api.SettingsPresentation.Screen.SELL)) return;
+        }
         if (args.length == 0 || args.length > 2) {
             context.sendInvalidArgs(spec().selfUsage());
             return;

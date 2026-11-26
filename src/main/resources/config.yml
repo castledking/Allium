@@ -253,6 +253,7 @@ addons:
   enabled:
     crops: false
     curios: false
+    menus: false
     ores: false
     partylocator: false
     spawnercraft: false

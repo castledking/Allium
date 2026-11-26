@@ -139,15 +139,13 @@ final class CropsCommand {
                     out.add(online.getName());
                 }
             }
-            for (String id : itemIds) {
-                if (id.startsWith(prefix)) out.add(id);
-            }
+            out.addAll(completeGiveItems(prefix));
             return out;
         }
         boolean firstIsPlayer = !isKnownItem(args[1]) && Bukkit.getPlayerExact(args[1]) != null;
         if (args.length == 3) {
             if (firstIsPlayer) {
-                return itemIds.stream().filter(id -> id.startsWith(prefix)).toList();
+                return completeGiveItems(prefix);
             }
             return List.of("1", "16", "64").stream().filter(s -> s.startsWith(prefix)).toList();
         }
@@ -155,6 +153,11 @@ final class CropsCommand {
             return List.of("1", "16", "64").stream().filter(s -> s.startsWith(prefix)).toList();
         }
         return List.of();
+    }
+
+    private List<String> completeGiveItems(String prefix) {
+        String namespace = prefix.contains(":") ? "allium:" : "";
+        return itemIds.stream().map(id -> namespace + id).filter(id -> id.startsWith(prefix)).toList();
     }
 
     private List<String> completePlant(String[] args, boolean admin, String prefix) {

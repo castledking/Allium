@@ -1,0 +1,7 @@
+schema: 1
+id: allium:homes
+title: '&bHomes'
+permission: allium.gui.homes
+presentation: auto
+open-on: [command]
+source: homes

@@ -75,6 +75,9 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
             }
             core.items().define(new ItemDefinition(entry.id(), Material.PAPER, "&f" + entry.name(), entry.model(),
                     defaults, true));
+            if (entry.legacyCard().isEmpty()) {
+                core.items().decorate(entry.id(), stack -> identity(stack).ifPresent(identity -> presentRelic(stack, entry, identity)));
+            }
         }
         for (Catalog.Entry entry : catalog.entries.values()) registerRecipe(entry);
         register("curios", List.of("relics", "reliques", "tradingcards", "cards"),
@@ -694,11 +697,12 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void refreshFrames(org.bukkit.event.player.PlayerGameModeChangeEvent event) {
-        if (framePackets != null && (event.getPlayer().getGameMode() == org.bukkit.GameMode.CREATIVE
-                || event.getNewGameMode() == org.bukkit.GameMode.CREATIVE)) {
+        if (event.getPlayer().getGameMode() == org.bukkit.GameMode.CREATIVE
+                || event.getNewGameMode() == org.bukkit.GameMode.CREATIVE) {
             Player player = event.getPlayer();
             core.runForEntity(player, () -> {
-                if (player.isOnline()) player.updateInventory();
+                refreshRelicPresentation(player);
+                if (player.isOnline() && framePackets != null) player.updateInventory();
             }, () -> {}, 50L);
         }
     }
@@ -852,6 +856,11 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         return identity(stack).map(item -> catalog.entries.get(item.behavior().orElseThrow().substring("curios:".length()))).orElse(null);
     }
 
+    boolean isTradingCard(ItemStack stack) {
+        Catalog.Entry entry = entry(stack);
+        return entry != null && !entry.legacyCard().isEmpty();
+    }
+
     ItemStack create(Catalog.Entry entry, Map<String, String> state) {
         var created = core.items().create("allium:" + entry.id(), 1).stack().orElse(null);
         if (created == null) return null;
@@ -880,13 +889,38 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         if (!entry.legacyCard().isEmpty()) {
             return PackPresentation.applyCardPresentation(copy, entry, identity, cardRules, texturedMenu(), framePanels()) ? copy : null;
         }
-        var progress = progress(identity);
-        var meta = copy.getItemMeta();
-        meta.setLore(List.of(ChatColor.GRAY + "Level " + progress.level() + " · " + formatXp(progress.xp()) + " XP",
-                ChatColor.DARK_GRAY + "Frame: " + identity.state().getOrDefault("frame", "simple")));
-        PackPresentation.tooltip(meta, identity.state().getOrDefault("frame", "simple"));
-        return copy.setItemMeta(meta) ? copy : null;
+        return presentRelic(copy, entry, identity);
     }
+
+    private ItemStack presentRelic(ItemStack stack, Catalog.Entry entry, ItemIdentity identity) {
+        var progress = progress(identity);
+        String frame = identity.state().getOrDefault("frame", entry.frame());
+        String path = "items." + entry.id() + ".";
+        String color = getConfig().getString(path + "name-color", "");
+        if (!color.matches("#[0-9a-fA-F]{6}")) color = RelicPresentation.defaultColor(entry.id());
+        List<String> description = getConfig().getStringList(path + "description");
+        if (description.isEmpty()) description = RelicPresentation.effects(entry);
+        var lore = new ArrayList<String>();
+        lore.add("<gray>Level " + progress.level() + " · " + formatXp(progress.xp()) + " XP</gray>");
+        for (String line : description) lore.add("<gray>" + line + "</gray>");
+        return PackPresentation.decorateButton(stack, "<" + color + ">" + entry.name() + "</" + color + ">",
+                lore, frame, texturedMenu(), framePanels());
+    }
+
+    private void refreshRelicPresentation(Player player) {
+        if (!player.isOnline() || !core.canEditInventory(player)) return;
+        var inventory = player.getInventory();
+        ItemStack[] contents = inventory.getStorageContents();
+        for (int slot = 0; slot < contents.length; slot++) {
+            var identity = identity(contents[slot]);
+            if (identity.isEmpty()) continue;
+            var entry = catalog.entries.get(identity.get().behavior().orElseThrow().substring("curios:".length()));
+            if (entry == null || !entry.legacyCard().isEmpty()) continue;
+            ItemStack updated = presentRelic(contents[slot].clone(), entry, identity.get());
+            if (!updated.equals(contents[slot])) inventory.setItem(slot, updated);
+        }
+    }
+
 
     private static Progression progress(ItemIdentity identity) {
         return new Progression(Integer.parseInt(identity.state().getOrDefault("level", "0")),
@@ -1038,19 +1072,16 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
             int slotIndex = menu.page * 7 + event.getRawSlot() - 1;
             if (slotIndex < catalog.slots.size()) {
                 Catalog.Slot eqSlot = catalog.slots.get(slotIndex);
-                Catalog.Entry eqEntry = entry(equipped(player, eqSlot));
-                if (eqEntry != null && !eqEntry.legacyCard().isEmpty()) {
+                if (isTradingCard(equipped(player, eqSlot))) {
                     cardGui.openHomeAfterClick(player, new CardGuiManager.EquippedSource(eqSlot));
-                    return;
                 }
             }
             return;
         }
-        // Right-clicking a card in your own inventory below this menu opens its card menu. Under a
+        // Right-clicking a trading card in your own inventory below this menu opens its details. Under a
         // menu like this one, creative clients send real clicks, unlike in the creative inventory.
         if (event.getClick() == ClickType.RIGHT && event.getClickedInventory() == player.getInventory()) {
-            Catalog.Entry clicked = entry(event.getCurrentItem());
-            if (clicked != null && !clicked.legacyCard().isEmpty()) {
+            if (isTradingCard(event.getCurrentItem())) {
                 cardGui.openHomeAfterClick(player, new CardGuiManager.InventorySource(event.getSlot()));
             }
             return;
@@ -1075,7 +1106,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof Menu) event.setCancelled(true);
     }
 
-    private void equip(Player player, int inventorySlot) {
+    void equip(Player player, int inventorySlot) {
         if (inventorySlot < 0 || inventorySlot >= player.getInventory().getStorageContents().length) return;
         ItemStack item = player.getInventory().getItem(inventorySlot);
         Catalog.Entry entry = entry(item);
@@ -1088,7 +1119,9 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
             loadouts.remove(player.getUniqueId());
             player.getInventory().setItem(inventorySlot, null);
             refreshAttributes(player);
-            if (!entry.legacyCard().isEmpty()) {
+            if (entry.legacyCard().isEmpty()) {
+                tell(player, entry, "&aEquipped " + entry.name() + " in a " + entry.slot() + " slot.");
+            } else {
                 tellCards(player, "&eEquipped " + cardTitle(entry) + "&e, its boosts are now active.");
             }
             return;
@@ -1272,6 +1305,7 @@ public final class CuriosPlugin extends AlliumAddon implements Listener {
         Player player = event.getPlayer();
         refreshAttributes(player);
         recoverPlayerState(player, false);
+        core.runForEntity(player, () -> refreshRelicPresentation(player), () -> {}, 0L);
     }
 
     void recoverPlayerState(Player player, boolean explicitCommand) {

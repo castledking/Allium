@@ -27,6 +27,11 @@ public interface AddonItems {
         throw new UnsupportedOperationException("Stackable signing is unavailable");
     }
 
+    /** Keeps an owned item available to addon code while excluding it from /give and /i. */
+    default void hideFromGive(String id) {
+        throw new UnsupportedOperationException("Internal item definitions are unavailable");
+    }
+
     /** Registers the accepted names and initializer for {@code allium:<id>;<variant>} in /give and /i. */
     default void defineVariants(String id, Collection<String> names, BiConsumer<ItemStack, String> initialize) {
         throw new UnsupportedOperationException("Item variants are unavailable");
@@ -59,7 +64,7 @@ public interface AddonItems {
     /**
      * Creates a stack from any item reference Allium understands: {@code allium:<id>},
      * {@code minecraft:<id>} or a bare vanilla name, or a provider reference such as
-     * {@code nexo:<id>}.
+     * {@code nexo:<id>}. Allium items with registered variants accept {@code allium:<id>;<variant>}.
      */
     ItemResult create(String reference, int amount);
 

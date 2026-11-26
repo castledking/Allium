@@ -1,0 +1,48 @@
+name: Menus
+main: codes.castled.menus.MenusPlugin
+version: '1.0.1'
+api-version: '1.20'
+depend: [Allium]
+softdepend: [ViaVersion]
+allium-api: '^1.9'
+allium-addon-dir: true
+folia-supported: true
+commands:
+  menu:
+    description: Open a configured menu
+    permission: allium.gui.use
+  menus:
+    description: Select or manage Allium menus
+    permission: allium.gui.use
+  punish:
+    description: Open the staff punishment panel
+    permission: allium.gui.punish
+  ptgui:
+    description: Open the powertool inventory
+    permission: allium.gui.powertools
+  shop:
+    description: Open the configured shop
+    permission: allium.gui.shop
+  joinmessages:
+    description: Select join and leave messages
+    aliases: [jm, qm, quitmessages]
+    permission: allium.gui.messages
+permissions:
+  allium.gui.use:
+    default: true
+  allium.gui.settings:
+    default: true
+  allium.gui.rules:
+    default: true
+  allium.gui.homes:
+    default: true
+  allium.gui.warps:
+    default: true
+  allium.gui.manage:
+    default: op
+  allium.gui.teleport: {default: true}
+  allium.gui.sell: {default: true}
+  allium.gui.shop: {default: true}
+  allium.gui.punish: {default: op}
+  allium.gui.powertools: {default: op}
+  allium.gui.messages: {default: true}

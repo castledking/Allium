@@ -47,6 +47,7 @@ public final class WorthService {
     private final NamespacedKey creativeKey;
     private final List<String> multiplierNodes = new ArrayList<>();
     private volatile WorthSettings settings;
+    private LiteFishWorth liteFish;
     private final java.util.Map<String, BigDecimal> addonPrices = new java.util.HashMap<>();
 
     public WorthService(PluginStart plugin) {
@@ -58,6 +59,14 @@ public final class WorthService {
     public void enable() throws IOException, InvalidConfigurationException {
         if (!Files.exists(file)) plugin.saveResource("worth.yml", false);
         install(parse(read()));
+        var fishing = plugin.getServer().getPluginManager().getPlugin("LiteFish");
+        if (fishing != null && fishing.isEnabled()) {
+            try {
+                liteFish = LiteFishWorth.connect(fishing);
+            } catch (ReflectiveOperationException | LinkageError failure) {
+                plugin.logger().warning("LiteFish pricing unavailable: " + failure.getMessage());
+            }
+        }
     }
 
     public void disable() {
@@ -164,6 +173,8 @@ public final class WorthService {
 
     /** A verified, registered custom item is priced by its owner instead of its vanilla carrier. */
     public Optional<BigDecimal> price(ItemStack item) {
+        var fish = fish(item);
+        if (fish.isPresent()) return fish.map(LiteFishWorth.Quote::price);
         var ref = plugin.getItemService() == null ? null : plugin.getItemService().identify(item).orElse(null);
         if (ref != null && (!ref.appearance().isVanilla() || ref.behaviorId().isPresent())) {
             return ref.behaviorId().map(addonPrices::get);
@@ -184,6 +195,10 @@ public final class WorthService {
         return material == null ? null : new ItemStack(material);
     }
 
+    private Optional<LiteFishWorth.Quote> fish(ItemStack item) {
+        return liteFish == null ? Optional.empty() : liteFish.quote(item);
+    }
+
     public String reference(ItemStack item) {
         var ref = plugin.getItemService() == null ? null : plugin.getItemService().identify(item).orElse(null);
         return ref == null || ref.appearance().isVanilla()
@@ -193,13 +208,19 @@ public final class WorthService {
     /** Why {@code item} may not be sold whatever its price, or null. */
     @Nullable
     public SalePlan.Refusal refusal(ItemStack item) {
+        return refusal(item, false);
+    }
+
+    @Nullable
+    SalePlan.Refusal refusal(ItemStack item, boolean quoted) {
         var identified = plugin.getItemService() == null ? null : plugin.getItemService().identify(item).orElse(null);
         boolean custom = identified != null && (!identified.appearance().isVanilla() || identified.behaviorId().isPresent());
-        if (custom && identified.behaviorId().filter(addonPrices::containsKey).isEmpty()) return SalePlan.Refusal.CUSTOM;
+        boolean fish = fish(item).isPresent();
+        if (!quoted && custom && !fish && identified.behaviorId().filter(addonPrices::containsKey).isEmpty()) return SalePlan.Refusal.CUSTOM;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return null;
         if (meta.getPersistentDataContainer().has(creativeKey, PersistentDataType.STRING)) return SalePlan.Refusal.CREATIVE;
-        if (!custom && meta.hasDisplayName() && !settings.allowNamedItems()) return SalePlan.Refusal.NAMED;
+        if (!quoted && !custom && !fish && meta.hasDisplayName() && !settings.allowNamedItems()) return SalePlan.Refusal.NAMED;
         if (meta instanceof BlockStateMeta block && block.hasBlockState() && block.getBlockState() instanceof Container container
                 && !container.getInventory().isEmpty()) {
             return SalePlan.Refusal.CONTAINER;

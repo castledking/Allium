@@ -148,10 +148,14 @@ public final class GiveCommand implements SpecCommandHandler {
             }
         }
         GiveItemPolicy giveItemPolicy = itemPolicy.get();
-        if (giveItemPolicy != null && !giveItemPolicy.isDefaultPermissive()) {
-            boolean bypassPolicy = !(sender instanceof Player) || sender.hasPermission(GiveItemPolicy.PERMISSION_BYPASS);
-            for (ItemReference reference : spec.items()) {
-                ProviderKey canonical = library.canonicalKey(reference);
+        for (ItemReference reference : spec.items()) {
+            ProviderKey canonical = library.canonicalKey(reference);
+            if (plugin.getItemService() != null && plugin.getItemService().hiddenFromGive(canonical)) {
+                send(sender, "policy-denied", "{item}", canonical.asString(), "{reason}", "internal display model");
+                return;
+            }
+            if (giveItemPolicy != null && !giveItemPolicy.isDefaultPermissive()) {
+                boolean bypassPolicy = !(sender instanceof Player) || sender.hasPermission(GiveItemPolicy.PERMISSION_BYPASS);
                 GiveItemPolicy.Decision decision = giveItemPolicy.evaluate(canonical, bypassPolicy, sender::hasPermission);
                 if (!decision.allowed()) {
                     send(sender, "policy-denied", "{item}", canonical.asString(), "{reason}", decision.reason());
@@ -218,7 +222,21 @@ public final class GiveCommand implements SpecCommandHandler {
         }
     }
 
-    private static String displayName(ItemStack item) {
+    private String displayName(ItemStack item) {
+        var meta = item.getItemMeta();
+        if (meta != null && meta.hasDisplayName() && org.bukkit.ChatColor.stripColor(meta.getDisplayName()).isBlank()) {
+            // Framed items may put their visible title inside the tooltip lore.
+            var items = plugin.getItemService();
+            if (items != null) {
+                return items.identify(item).map(ref -> ref.appearance())
+                        .filter(key -> key.provider().equals(ProviderKey.ALLIUM))
+                        .flatMap(key -> items.getAlliumItem(key.id()))
+                        .map(definition -> definition.displayName())
+                        .map(name -> org.bukkit.ChatColor.stripColor(org.bukkit.ChatColor.translateAlternateColorCodes('&', name)))
+                        .filter(name -> !name.isBlank())
+                        .orElseGet(() -> UtilitySupport.itemName(item));
+            }
+        }
         return UtilitySupport.itemName(item);
     }
 

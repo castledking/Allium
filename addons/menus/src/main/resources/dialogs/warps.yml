@@ -1,0 +1,7 @@
+schema: 1
+id: allium:warps
+title: '&bWarps'
+permission: allium.gui.warps
+presentation: auto
+open-on: [command]
+source: warps

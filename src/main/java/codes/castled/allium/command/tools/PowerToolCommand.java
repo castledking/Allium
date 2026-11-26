@@ -111,6 +111,9 @@ public final class PowerToolCommand implements SpecCommandHandler {
             return;
         }
         if (args.length == 0) {
+            var menus = plugin.getServer().getServicesManager().load(codes.castled.allium.api.SettingsPresentation.class);
+            if (sender instanceof Player player && menus != null
+                    && menus.open(player, codes.castled.allium.api.SettingsPresentation.Screen.POWERTOOLS)) return;
             context.sendInvalidArgs(spec().selfUsage());
             return;
         }

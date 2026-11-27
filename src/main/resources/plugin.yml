@@ -82,6 +82,7 @@ commands:
     aliases: [sign]
   unlimited:
     description: Manage replenished block items
+    usage: /<command> <list|item|clear> [player]
     permission: allium.unlimited
     aliases: [ul, unl]
   top:

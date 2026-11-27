@@ -86,6 +86,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyTextModule text;
     private final LegacyPlayerSettings settings;
     private final LegacyEditSignCommand editSign;
+    private final LegacyUnlimitedCommand unlimited;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -105,6 +106,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
         this.economy = new LegacyEconomyModule(plugin, configManager);
         this.settings = new LegacyPlayerSettings(plugin, commandManager, economy);
+        this.unlimited = new LegacyUnlimitedCommand(plugin, settings, commandManager);
         this.kits = new LegacyKitsModule(plugin);
         this.moderation = new LegacyModerationModule(plugin);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy);
@@ -144,6 +146,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(playerInfo, plugin);
         pm.registerEvents(utilities, plugin);
         pm.registerEvents(text, plugin);
+        pm.registerEvents(unlimited, plugin);
         text.reload();
         String reason = version.isAtLeast(1, 20, 0)
                 ? "Java " + javaMajor + " detected (Java 17+ required for full 1.20+ modules)"
@@ -187,6 +190,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(playerInfo);
         HandlerList.unregisterAll(utilities);
         HandlerList.unregisterAll(text);
+        HandlerList.unregisterAll(unlimited);
         text.stop();
         messageManager.disable();
         economy.disable();
@@ -316,6 +320,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return settings.execute(sender, false, args);
             case "editsign":
                 return editSign.execute(sender, args);
+            case "unlimited":
+                return unlimited.execute(sender, args);
             case "heal":
                 return handleHeal(sender, args);
             case "feed":
@@ -373,6 +379,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("editsign".equals(name)) {
             return command.testPermissionSilent(sender) ? editSign.complete(args, prefix) : Collections.emptyList();
         }
+        if ("unlimited".equals(name) && args.length == 1) return unlimited.complete(sender, prefix);
 
         if ("help".equals(name)) {
             return helpCommand.complete(sender, args);

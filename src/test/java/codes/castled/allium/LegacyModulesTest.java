@@ -3,6 +3,7 @@ package codes.castled.allium;
 import codes.castled.allium.legacy.LegacyBukkitRuntime;
 import codes.castled.allium.legacy.LegacyCompat;
 import org.bukkit.BanList;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Server;
@@ -12,17 +13,21 @@ import org.bukkit.block.Sign;
 import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
@@ -313,6 +318,58 @@ class LegacyModulesTest {
         verify(sign, never()).setLine(anyInt(), eq("bypass"));
         verify(sign, times(1)).update(false, false);
         verify(player).sendMessage(contains("cannot change that block"));
+    }
+
+    @Test
+    void compatibilityUnlimitedOnlyRestoresTheItemConsumedByAnAllowedPlacement() {
+        Harness h = createHarness();
+        Player builder = h.addPlayer("Builder", UUID.randomUUID(), true);
+        when(builder.getGameMode()).thenReturn(GameMode.SURVIVAL);
+        BukkitScheduler scheduler = mock(BukkitScheduler.class);
+        when(h.server().getScheduler()).thenReturn(scheduler);
+        ArgumentCaptor<org.bukkit.event.Listener> listeners = ArgumentCaptor.forClass(org.bukkit.event.Listener.class);
+        verify(h.server().getPluginManager(), atLeastOnce()).registerEvents(listeners.capture(), eq(h.plugin()));
+        org.bukkit.event.Listener unlimited = listeners.getAllValues().stream()
+                .filter(listener -> listener.getClass().getSimpleName().equals("LegacyUnlimitedCommand")).findFirst().orElseThrow();
+        assertTrue(h.run(builder, "unlimited", "stone"));
+
+        BlockPlaceEvent placement = mock(BlockPlaceEvent.class);
+        when(placement.getPlayer()).thenReturn(builder);
+        when(placement.getHand()).thenReturn(EquipmentSlot.HAND);
+        when(placement.canBuild()).thenReturn(true);
+        ItemStack placed = mock(ItemStack.class);
+        ItemStack restored = mock(ItemStack.class);
+        ItemStack remainder = mock(ItemStack.class);
+        when(placement.getItemInHand()).thenReturn(placed);
+        when(placed.getType()).thenReturn(Material.STONE);
+        when(placed.clone()).thenReturn(restored);
+        when(restored.getAmount()).thenReturn(2);
+        when(remainder.getAmount()).thenReturn(1);
+        when(restored.isSimilar(remainder)).thenReturn(true);
+        PlayerInventory inventory = builder.getInventory();
+        when(inventory.getItem(0)).thenReturn(remainder);
+
+        try {
+            var listener = unlimited.getClass().getDeclaredMethod("onPlace", BlockPlaceEvent.class);
+            listener.setAccessible(true);
+            listener.invoke(unlimited, placement);
+            ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+            verify(scheduler).runTask(eq(h.plugin()), task.capture());
+            when(placement.isCancelled()).thenReturn(true);
+            task.getValue().run();
+            verify(inventory, never()).setItem(eq(0), any(ItemStack.class));
+
+            when(placement.isCancelled()).thenReturn(false);
+            when(remainder.getAmount()).thenReturn(2);
+            task.getValue().run();
+            verify(inventory, never()).setItem(eq(0), any(ItemStack.class));
+
+            when(remainder.getAmount()).thenReturn(1);
+            task.getValue().run();
+            verify(inventory).setItem(0, restored);
+        } catch (ReflectiveOperationException error) {
+            throw new AssertionError(error);
+        }
     }
 
     @Test

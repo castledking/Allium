@@ -17,6 +17,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 final class LegacyPlayerSettings {
@@ -155,6 +157,14 @@ final class LegacyPlayerSettings {
 
     boolean setReplyToLastRecipient(UUID player, boolean lastRecipient) {
         return saveValue("players." + player + ".reply-to-last-recipient", lastRecipient);
+    }
+
+    Set<String> unlimitedBlocks(UUID player) {
+        return new TreeSet<>(data.getStringList("players." + player + ".unlimited-blocks"));
+    }
+
+    boolean setUnlimitedBlocks(UUID player, Set<String> blocks) {
+        return saveValue("players." + player + ".unlimited-blocks", blocks.isEmpty() ? null : new ArrayList<>(blocks));
     }
 
     private boolean saveValue(String path, Object value) {

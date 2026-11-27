@@ -106,7 +106,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.editSign = new LegacyEditSignCommand(plugin, messageManager);
         this.commandManager = new LegacyCommandManager(plugin, configManager);
         this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
-        this.economy = new LegacyEconomyModule(plugin, configManager);
+        this.economy = new LegacyEconomyModule(plugin, configManager, messageManager);
         this.settings = new LegacyPlayerSettings(plugin, commandManager, economy);
         this.unlimited = new LegacyUnlimitedCommand(plugin, settings, commandManager);
         this.kits = new LegacyKitsModule(plugin);
@@ -325,6 +325,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return settings.direct(sender, Setting.TP_AUTO, args);
             case "paytoggle":
                 return settings.direct(sender, Setting.PAY, args);
+            case "payconfirmtoggle":
+                return economy.changePayConfirmation(sender, label, args);
             case "toggle":
                 return settings.execute(sender, true, args);
             case "toggles":
@@ -387,6 +389,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
         if ("toggle".equals(name)) return settings.complete(sender, args);
+        if ("payconfirmtoggle".equals(name)) return economy.completePayConfirmation(sender, alias, args, prefix);
         if ("editsign".equals(name)) {
             return command.testPermissionSilent(sender) ? editSign.complete(args, prefix) : Collections.emptyList();
         }

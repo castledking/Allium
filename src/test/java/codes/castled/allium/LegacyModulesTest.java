@@ -32,6 +32,7 @@ import org.mockito.ArgumentCaptor;
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.logging.Logger;
@@ -81,9 +82,13 @@ class LegacyModulesTest {
         }
 
         boolean run(Player sender, String cmdName, String... args) {
+            return runAs(sender, cmdName, cmdName, args);
+        }
+
+        boolean runAs(Player sender, String cmdName, String alias, String... args) {
             Command cmd = mock(Command.class);
             when(cmd.getName()).thenReturn(cmdName);
-            return runtime.onCommand(sender, cmd, cmdName, args);
+            return runtime.onCommand(sender, cmd, alias, args);
         }
     }
 
@@ -192,6 +197,61 @@ class LegacyModulesTest {
         assertTrue(h.run(alice, "setworth", "DIAMOND", "100"));
         assertTrue(h.run(alice, "worth", "DIAMOND"));
         verify(alice, atLeastOnce()).sendMessage(contains("$100.00"));
+    }
+
+    @Test
+    void legacyPaymentConfirmationPersistsAndMatchesTheRecipientAndAmount() {
+        UUID aliceId = UUID.randomUUID();
+        Harness first = createHarness();
+        Player alice = first.addPlayer("Alice", aliceId, true);
+        Player bob = first.addPlayer("Bob", UUID.randomUUID(), true);
+        first.run(alice, "eco", "give", "Alice", "100");
+        first.runAs(alice, "payconfirmtoggle", "payconfirmon");
+        first.run(alice, "pay", "Bob", "25");
+        verify(alice).sendMessage(contains("Confirm paying"));
+        verify(bob, never()).sendMessage(contains("Received"));
+        first.runtime().onDisable();
+
+        Harness restarted = createHarness();
+        Player payer = restarted.addPlayer("Alice", aliceId, true);
+        Player recipient = restarted.addPlayer("Bob", bob.getUniqueId(), true);
+        Player other = restarted.addPlayer("Steve", UUID.randomUUID(), true);
+        restarted.run(payer, "pay", "Bob", "25");
+        restarted.run(payer, "pay", "Bob", "26");
+        restarted.run(payer, "pay", "Steve", "26");
+        verify(payer, times(3)).sendMessage(contains("Confirm paying"));
+        verify(recipient, never()).sendMessage(contains("Received"));
+        verify(other, never()).sendMessage(contains("Received"));
+        restarted.run(payer, "pay", "Steve", "26.00");
+        verify(other).sendMessage(contains("$26.00"));
+        restarted.runAs(payer, "payconfirmtoggle", "allium:payconfirmoff");
+        restarted.run(payer, "pay", "Bob", "25");
+        verify(recipient).sendMessage(contains("$25.00"));
+        restarted.runtime().onDisable();
+    }
+
+    @Test
+    void legacyPaymentDoesNotChangeEitherBalanceWhenStorageFails() throws Exception {
+        Harness h = createHarness();
+        Player alice = h.addPlayer("Alice", UUID.randomUUID(), true);
+        Player bob = h.addPlayer("Bob", UUID.randomUUID(), true);
+        h.run(alice, "eco", "give", "Alice", "100");
+        Path data = tempDir.resolve("economy-legacy.yml");
+        Path backup = Files.move(data, tempDir.resolve("economy.backup"));
+        Files.createDirectory(data);
+        try {
+            h.run(alice, "pay", "Bob", "25");
+            verify(alice).sendMessage(contains("storage is unavailable"));
+            verify(bob, never()).sendMessage(contains("Received"));
+            h.run(alice, "balance");
+            h.run(bob, "balance");
+            verify(alice).sendMessage(endsWith("$100.00"));
+            verify(bob).sendMessage(endsWith("$0.00"));
+        } finally {
+            Files.delete(data);
+            Files.move(backup, data);
+            h.runtime().onDisable();
+        }
     }
 
     @Test

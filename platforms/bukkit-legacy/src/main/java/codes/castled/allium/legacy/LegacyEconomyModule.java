@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -34,21 +35,26 @@ import java.util.UUID;
 
 /**
  * Java 8 / 1.12.2-1.19.4 economy and worth module:
- * {@code /balance}, {@code /pay}, {@code /paytoggle}, {@code /eco}, {@code /baltop},
+ * {@code /balance}, {@code /pay}, {@code /payconfirmtoggle}, {@code /eco}, {@code /baltop},
  * {@code /worth}, {@code /setworth}, {@code /sell}.
  */
 final class LegacyEconomyModule implements Listener {
 
+    private static final long CONFIRMATION_MILLIS = 30_000L;
     private final JavaPlugin plugin;
     private final LegacyConfigManager config;
+    private final LegacyMessageManager messages;
     private final Map<UUID, BigDecimal> balances = new HashMap<UUID, BigDecimal>();
     private final Map<UUID, String> knownNames = new HashMap<UUID, String>();
     private final Set<UUID> payDisabled = new HashSet<UUID>();
+    private final Set<UUID> payConfirm = new HashSet<UUID>();
+    private final Map<UUID, PendingPayment> pendingPayments = new HashMap<UUID, PendingPayment>();
     private final Map<String, BigDecimal> worthTable = new HashMap<String, BigDecimal>();
 
-    LegacyEconomyModule(JavaPlugin plugin, LegacyConfigManager config) {
+    LegacyEconomyModule(JavaPlugin plugin, LegacyConfigManager config, LegacyMessageManager messages) {
         this.plugin = plugin;
         this.config = config;
+        this.messages = messages;
     }
 
     void enable() {
@@ -62,6 +68,7 @@ final class LegacyEconomyModule implements Listener {
     }
 
     void disable() {
+        pendingPayments.clear();
         saveEconomy();
         saveWorth();
     }
@@ -73,6 +80,11 @@ final class LegacyEconomyModule implements Listener {
         if (!balances.containsKey(p.getUniqueId())) {
             balances.put(p.getUniqueId(), config != null ? config.startingBalance() : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        pendingPayments.remove(event.getPlayer().getUniqueId());
     }
 
     private String formatMoney(BigDecimal amount) {
@@ -203,17 +215,151 @@ final class LegacyEconomyModule implements Listener {
             sender.sendMessage(ChatColor.RED + "Enter a positive amount (e.g. 100, 2.5k).");
             return true;
         }
-        BigDecimal payerBal = getBalance(payer.getUniqueId());
+        UUID payerId = payer.getUniqueId();
+        UUID targetId = target.getUniqueId();
+        BigDecimal payerBal = getBalance(payerId);
         if (payerBal.compareTo(amount) < 0) {
             sender.sendMessage(ChatColor.RED + "Insufficient funds. Balance: " + formatMoney(payerBal));
             return true;
         }
-        setBalance(payer.getUniqueId(), payer.getName(), payerBal.subtract(amount));
-        setBalance(target.getUniqueId(), target.getName(), getBalance(target.getUniqueId()).add(amount));
         String formatted = formatMoney(amount);
+        if (payConfirm.contains(payerId)) {
+            long now = System.currentTimeMillis();
+            PendingPayment pending = pendingPayments.remove(payerId);
+            if (pending == null || !pending.matches(targetId, amount, now)) {
+                pendingPayments.put(payerId, new PendingPayment(targetId, amount, now + CONFIRMATION_MILLIS));
+                messages.send(payer, "economy.pay-confirm",
+                        "{prefix} &eConfirm paying &f{amount} &eto &f{player}&e? Type &f/pay {player} {raw_amount} &eagain within &f30s&e.",
+                        "{amount}", formatted, "{player}", target.getName(), "{raw_amount}", args[1]);
+                return true;
+            }
+        }
+        if (!transfer(payer, target, payerBal.subtract(amount), getBalance(targetId).add(amount))) {
+            messages.send(payer, "economy.storage-unavailable", "{prefix} &cEconomy storage is unavailable.");
+            return true;
+        }
         payer.sendMessage(ChatColor.GREEN + "Paid " + ChatColor.WHITE + formatted + ChatColor.GREEN + " to " + ChatColor.WHITE + target.getName() + ChatColor.GREEN + ".");
         target.sendMessage(ChatColor.GREEN + "Received " + ChatColor.WHITE + formatted + ChatColor.GREEN + " from " + ChatColor.WHITE + payer.getName() + ChatColor.GREEN + ".");
         return true;
+    }
+
+    private boolean transfer(Player payer, Player target, BigDecimal payerBalance, BigDecimal targetBalance) {
+        UUID payerId = payer.getUniqueId();
+        UUID targetId = target.getUniqueId();
+        BigDecimal previousPayer = balances.put(payerId, payerBalance);
+        BigDecimal previousTarget = balances.put(targetId, targetBalance);
+        String previousPayerName = knownNames.put(payerId, payer.getName());
+        String previousTargetName = knownNames.put(targetId, target.getName());
+        if (saveEconomy()) return true;
+        restore(balances, payerId, previousPayer);
+        restore(balances, targetId, previousTarget);
+        restore(knownNames, payerId, previousPayerName);
+        restore(knownNames, targetId, previousTargetName);
+        return false;
+    }
+
+    private static <V> void restore(Map<UUID, V> entries, UUID player, V value) {
+        if (value == null) entries.remove(player);
+        else entries.put(player, value);
+    }
+
+    boolean changePayConfirmation(CommandSender sender, String label, String[] args) {
+        if (!sender.hasPermission("allium.payconfirmtoggle")) {
+            messages.send(sender, "no-permission", "{prefix} &cYou do not have permission to use this command.");
+            return true;
+        }
+        Boolean desired = forcedPayConfirmation(label);
+        int targetIndex = 0;
+        if (desired == null && args.length > 0) {
+            if ("on".equalsIgnoreCase(args[0])) desired = Boolean.TRUE;
+            if ("off".equalsIgnoreCase(args[0])) desired = Boolean.FALSE;
+            if (desired != null) targetIndex++;
+        }
+        if (args.length > targetIndex + 1) return false;
+        UUID id;
+        if (args.length > targetIndex) {
+            if (!sender.hasPermission("allium.payconfirmtoggle.others")) {
+                messages.send(sender, "no-permission", "{prefix} &cYou do not have permission to use this command.");
+                return true;
+            }
+            String name = args[targetIndex];
+            id = knownAccountId(name);
+            if (id == null) {
+                sender.sendMessage(ChatColor.RED + "Player '" + name + "' not found.");
+                return true;
+            }
+        } else {
+            if (!(sender instanceof Player)) return false;
+            id = ((Player) sender).getUniqueId();
+        }
+        boolean previous = payConfirm.contains(id);
+        boolean enabled = desired == null ? !previous : desired.booleanValue();
+        if (enabled != previous) {
+            if (enabled) payConfirm.add(id);
+            else payConfirm.remove(id);
+            if (!saveEconomy()) {
+                if (previous) payConfirm.add(id);
+                else payConfirm.remove(id);
+                messages.send(sender, "economy.storage-unavailable", "{prefix} &cEconomy storage is unavailable.");
+                return true;
+            }
+        }
+        if (!enabled) pendingPayments.remove(id);
+        if (enabled) {
+            messages.send(sender, "economy.pay-confirm-on", "{prefix} &aPayment confirmation enabled.");
+        } else {
+            messages.send(sender, "economy.pay-confirm-off", "{prefix} &7Payment confirmation disabled.");
+        }
+        return true;
+    }
+
+    List<String> completePayConfirmation(CommandSender sender, String label, String[] args, String prefix) {
+        if (!sender.hasPermission("allium.payconfirmtoggle")) return Collections.emptyList();
+        boolean others = sender.hasPermission("allium.payconfirmtoggle.others");
+        if (forcedPayConfirmation(label) != null) {
+            return others && args.length == 1 ? onlinePlayers(prefix) : Collections.<String>emptyList();
+        }
+        if (args.length == 1) {
+            List<String> suggestions = new ArrayList<String>(filter(Arrays.asList("on", "off"), prefix));
+            if (others) suggestions.addAll(onlinePlayers(prefix));
+            return suggestions;
+        }
+        if (others && args.length == 2 && ("on".equalsIgnoreCase(args[0]) || "off".equalsIgnoreCase(args[0]))) {
+            return onlinePlayers(prefix);
+        }
+        return Collections.emptyList();
+    }
+
+    private static Boolean forcedPayConfirmation(String label) {
+        String alias = label.substring(label.lastIndexOf(':') + 1);
+        if ("payconfirmon".equalsIgnoreCase(alias)) return Boolean.TRUE;
+        if ("payconfirmoff".equalsIgnoreCase(alias)) return Boolean.FALSE;
+        return null;
+    }
+
+    private UUID knownAccountId(String name) {
+        Player online = plugin.getServer().getPlayerExact(name);
+        if (online != null) return online.getUniqueId();
+        for (Map.Entry<UUID, String> entry : knownNames.entrySet()) {
+            if (name.equalsIgnoreCase(entry.getValue())) return entry.getKey();
+        }
+        return null;
+    }
+
+    private static final class PendingPayment {
+        private final UUID recipient;
+        private final BigDecimal amount;
+        private final long expiresAt;
+
+        private PendingPayment(UUID recipient, BigDecimal amount, long expiresAt) {
+            this.recipient = recipient;
+            this.amount = amount;
+            this.expiresAt = expiresAt;
+        }
+
+        private boolean matches(UUID target, BigDecimal offered, long now) {
+            return now < expiresAt && recipient.equals(target) && amount.compareTo(offered) == 0;
+        }
     }
 
     boolean acceptsPayments(UUID player) {
@@ -483,6 +629,8 @@ final class LegacyEconomyModule implements Listener {
         balances.clear();
         knownNames.clear();
         payDisabled.clear();
+        payConfirm.clear();
+        pendingPayments.clear();
         File file = new File(plugin.getDataFolder(), "economy-legacy.yml");
         if (!file.isFile()) return;
         YamlConfiguration yml = YamlConfiguration.loadConfiguration(file);
@@ -499,6 +647,7 @@ final class LegacyEconomyModule implements Listener {
                     String name = s.getString("name");
                     if (name != null) knownNames.put(id, name);
                     if (s.getBoolean("pay-disabled", false)) payDisabled.add(id);
+                    if (s.getBoolean("pay-confirm", false)) payConfirm.add(id);
                 } catch (IllegalArgumentException ignored) {
                 }
             }
@@ -510,12 +659,14 @@ final class LegacyEconomyModule implements Listener {
         YamlConfiguration yml = new YamlConfiguration();
         Set<UUID> all = new HashSet<UUID>(balances.keySet());
         all.addAll(payDisabled);
+        all.addAll(payConfirm);
         for (UUID id : all) {
             String path = "accounts." + id;
             yml.set(path + ".balance", getBalance(id).toPlainString());
             String name = knownNames.get(id);
             if (name != null) yml.set(path + ".name", name);
             if (payDisabled.contains(id)) yml.set(path + ".pay-disabled", true);
+            if (payConfirm.contains(id)) yml.set(path + ".pay-confirm", true);
         }
         try {
             LegacyCompat.saveYamlAtomically(yml, file);

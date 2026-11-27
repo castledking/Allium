@@ -127,7 +127,6 @@ final class LegacyUtilitiesModule implements Listener {
             case "skull":
             case "give":
             case "i":
-            case "xp":
             case "ext":
             case "burn":
             case "smite":
@@ -181,7 +180,6 @@ final class LegacyUtilitiesModule implements Listener {
             case "skull": return handleSkull(sender, args);
             case "give": return handleGive(sender, args, false);
             case "i": return handleGive(sender, args, true);
-            case "xp": return handleXp(sender, args);
             case "ext": return handleExt(sender, args);
             case "burn": return handleBurn(sender, args);
             case "smite": return handleSmite(sender, args);
@@ -231,10 +229,6 @@ final class LegacyUtilitiesModule implements Listener {
                     for (ItemFlag f : ItemFlag.values()) flags.add(f.name().toLowerCase(Locale.ROOT));
                     return filter(flags, prefix);
                 }
-                return Collections.emptyList();
-            case "xp":
-                if (args.length == 1) return filter(Arrays.asList("show", "give", "set", "take"), prefix);
-                if (args.length == 2) return onlinePlayers(prefix);
                 return Collections.emptyList();
             case "give":
                 if (args.length == 1) return onlinePlayers(prefix);
@@ -737,71 +731,6 @@ final class LegacyUtilitiesModule implements Listener {
             }
         }
         send(sender, ChatColor.GREEN + "Gave " + amount + "x " + mat.name() + " to " + target.getName() + ".");
-        return true;
-    }
-
-    private boolean handleXp(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("allium.xp")) {
-            send(sender, ChatColor.RED + "You do not have permission to use /xp.");
-            return true;
-        }
-        if (args.length == 0) {
-            if (!(sender instanceof Player)) {
-                send(sender, ChatColor.RED + "Usage: /xp <show|give|set|take> <player> [amount[L]]");
-                return true;
-            }
-            Player p = (Player) sender;
-            send(sender, ChatColor.GREEN + "XP: level " + p.getLevel() + " (total " + p.getTotalExperience() + " points).");
-            return true;
-        }
-        String sub = args[0].toLowerCase(Locale.ROOT);
-        if (sub.equals("show")) {
-            Player target = args.length >= 2 ? findOnline(args[1]) : (sender instanceof Player ? (Player) sender : null);
-            if (target == null) {
-                send(sender, ChatColor.RED + "Player not found.");
-                return true;
-            }
-            send(sender, ChatColor.GREEN + target.getName() + "'s XP: level " + target.getLevel()
-                    + " (total " + target.getTotalExperience() + " points).");
-            return true;
-        }
-        if (args.length < 3) {
-            send(sender, ChatColor.RED + "Usage: /xp <give|set|take> <player> <amount[L]>");
-            return true;
-        }
-        Player target = findOnline(args[1]);
-        if (target == null) {
-            send(sender, ChatColor.RED + "Player '" + args[1] + "' is not online.");
-            return true;
-        }
-        String raw = args[2];
-        boolean levels = raw.endsWith("L") || raw.endsWith("l");
-        int amount;
-        try {
-            amount = Integer.parseInt(levels ? raw.substring(0, raw.length() - 1) : raw);
-        } catch (NumberFormatException e) {
-            send(sender, ChatColor.RED + "Invalid XP amount '" + raw + "'.");
-            return true;
-        }
-        if (sub.equals("give")) {
-            if (levels) target.giveExpLevels(amount);
-            else target.giveExp(amount);
-        } else if (sub.equals("take")) {
-            if (levels) target.setLevel(Math.max(0, target.getLevel() - amount));
-            else target.giveExp(-amount);
-        } else if (sub.equals("set")) {
-            if (levels) target.setLevel(Math.max(0, amount));
-            else {
-                target.setLevel(0);
-                target.setExp(0f);
-                target.setTotalExperience(0);
-                target.giveExp(Math.max(0, amount));
-            }
-        } else {
-            send(sender, ChatColor.RED + "Usage: /xp <show|give|set|take> <player> [amount[L]]");
-            return true;
-        }
-        send(sender, ChatColor.GREEN + "Updated " + target.getName() + "'s XP (now level " + target.getLevel() + ").");
         return true;
     }
 

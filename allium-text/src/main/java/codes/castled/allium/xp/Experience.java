@@ -45,7 +45,18 @@ public final class Experience {
     }
 
     /** A level and the points gained towards the next one. */
-    public record State(int level, int points) {
+    public static final class State {
+        private final int level;
+        private final int points;
+
+        public State(int level, int points) {
+            this.level = level;
+            this.points = points;
+        }
+
+        public int level() { return level; }
+        public int points() { return points; }
+
         /** The bar's fill, {@code 0 <= progress < 1}, as Bukkit's {@code setExp} takes it. */
         public float progress() {
             return points / (float) pointsToNextLevel(level);
@@ -57,6 +68,23 @@ public final class Experience {
 
         public int toNextLevel() {
             return pointsToNextLevel(level) - points;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (!(other instanceof State)) return false;
+            State state = (State) other;
+            return level == state.level && points == state.points;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * level + points;
+        }
+
+        @Override
+        public String toString() {
+            return "State[level=" + level + ", points=" + points + "]";
         }
     }
 
@@ -95,7 +123,34 @@ public final class Experience {
     }
 
     /** {@code 250}, {@code 5L}, {@code -3l}: a point or level count with an optional sign. */
-    public record Amount(long value, boolean levels) {
+    public static final class Amount {
+        private final long value;
+        private final boolean levels;
+
+        public Amount(long value, boolean levels) {
+            this.value = value;
+            this.levels = levels;
+        }
+
+        public long value() { return value; }
+        public boolean levels() { return levels; }
+
+        @Override
+        public boolean equals(Object other) {
+            if (!(other instanceof Amount)) return false;
+            Amount amount = (Amount) other;
+            return value == amount.value && levels == amount.levels;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Long.hashCode(value) + Boolean.hashCode(levels);
+        }
+
+        @Override
+        public String toString() {
+            return "Amount[value=" + value + ", levels=" + levels + "]";
+        }
     }
 
     /** Parses an amount; a trailing {@code levels}/{@code points} word ({@code /xp add @p 5 levels}) may override the unit. */

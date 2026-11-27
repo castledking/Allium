@@ -98,6 +98,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyInventoryClear inventoryClear;
     private final LegacyTimedFlight flight;
     private final LegacyFlightProtection flightProtection;
+    private final LegacyExperienceCommand experience;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -131,6 +132,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
         this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);
         this.flight = new LegacyTimedFlight(plugin, configManager, playerInfo, messageManager, flightProtection, this::canSeeTeleportTarget);
+        this.experience = new LegacyExperienceCommand(plugin, messageManager, this::canSeeTeleportTarget);
         this.chat = new LegacyChatModule(plugin, configManager, messageManager, moderation, playerInfo, version,
                 this::canSeeTeleportTarget);
         this.hide = new LegacyHideModule(plugin, configManager, messageManager, commandManager,
@@ -406,6 +408,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return flight.execute(sender, args);
             case "toggleslowfall":
                 return flightProtection.execute(sender, args);
+            case "xp":
+                return experience.execute(sender, args);
             case "god":
                 return handleGod(sender, args);
             case "gamemode":
@@ -463,6 +467,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("toggle".equals(name)) return settings.complete(sender, args);
         if ("fly".equals(name)) return flight.complete(sender, args, prefix);
         if ("toggleslowfall".equals(name)) return flightProtection.complete(sender, args, prefix);
+        if ("xp".equals(name)) return experience.complete(sender, args, prefix);
         if ("clearinventory".equals(name)) return inventoryClear.complete(sender, args, prefix);
         if ("clearinventoryconfirmtoggle".equals(name)) return Collections.emptyList();
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);

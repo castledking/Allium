@@ -277,6 +277,30 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacyExperienceUsesTheBarAndRequiresTheSpecificReadAndWritePermissions() {
+        Harness h = createHarness();
+        Player member = h.addPlayer("Member", UUID.randomUUID(), false);
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+        when(member.hasPermission("allium.xp")).thenReturn(true);
+        when(member.getLevel()).thenReturn(10);
+        when(member.getExp()).thenReturn(0.5f);
+        when(member.getTotalExperience()).thenReturn(5000);
+
+        assertTrue(h.run(member, "xp"));
+        verify(member).sendMessage(argThat((String text) -> text.contains("174") && text.contains("experience points")));
+        assertTrue(h.run(member, "xp", "show", "Staff"));
+        assertTrue(h.run(member, "xp", "give", "Member", "100"));
+        verify(member, times(2)).sendMessage(contains("permission"));
+        verify(member, never()).setTotalExperience(anyInt());
+
+        assertTrue(h.run(staff, "xp", "add", "Member", "5", "levels"));
+        verify(member).setLevel(15);
+        verify(member).setExp(19.0f / 37.0f);
+        verify(member).setTotalExperience(334);
+        h.runtime().onDisable();
+    }
+
+    @Test
     void legacySlowFallOptOutPersistsAndDisarmsThePendingLanding() {
         UUID id = UUID.randomUUID();
         Harness h = createHarness();

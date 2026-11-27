@@ -62,6 +62,22 @@ final class LegacyMessageManager {
         sendInternal(sender, key, defaultText, false, replacements);
     }
 
+    /** Returns the colored configured language prefix (e.g. {@code [Allium]}). */
+    String prefix() {
+        return LegacyCompat.color(lang.getPrefix());
+    }
+
+    /** Sends a command reply prefixed with the configured language prefix without double-prefixing. */
+    void sendPrefixed(CommandSender sender, String coloredBody) {
+        if (sender == null || coloredBody == null || coloredBody.isEmpty()) return;
+        String p = prefix();
+        if (p.isEmpty() || coloredBody.startsWith(p)) {
+            sender.sendMessage(coloredBody);
+        } else {
+            sender.sendMessage(p + " " + coloredBody);
+        }
+    }
+
     /** Sends a private-message entry whose sound scales with the player's {@code /mfx} volume. */
     void sendPrivateMessageEntry(CommandSender sender, String key, String defaultText, boolean outgoing, String... replacements) {
         boolean scale = !outgoing || config.scaleSentSound();

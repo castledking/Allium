@@ -47,11 +47,17 @@ final class LegacyKitsModule implements Listener {
     }
 
     private final JavaPlugin plugin;
+    private final LegacyMessageManager messages;
     private final Map<String, KitDef> kits = new LinkedHashMap<String, KitDef>();
     private final Map<UUID, Map<String, Long>> cooldowns = new HashMap<UUID, Map<String, Long>>();
 
-    LegacyKitsModule(JavaPlugin plugin) {
+    LegacyKitsModule(JavaPlugin plugin, LegacyMessageManager messages) {
         this.plugin = plugin;
+        this.messages = messages;
+    }
+
+    private void send(CommandSender recipient, String message) {
+        messages.sendPrefixed(recipient, message);
     }
 
     void enable() {
@@ -131,7 +137,7 @@ final class LegacyKitsModule implements Listener {
 
     private boolean handleKits(CommandSender sender) {
         if (!sender.hasPermission("allium.kits")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to list kits.");
+            send(sender, ChatColor.RED + "You do not have permission to list kits.");
             return true;
         }
         List<String> available = new ArrayList<String>();
@@ -141,10 +147,10 @@ final class LegacyKitsModule implements Listener {
             }
         }
         if (available.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + "No kits are available.");
+            send(sender, ChatColor.GRAY + "No kits are available.");
             return true;
         }
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Kits (" + available.size() + "): "
+        send(sender, ChatColor.LIGHT_PURPLE + "Kits (" + available.size() + "): "
                 + ChatColor.WHITE + join(available, ", "));
         return true;
     }
@@ -156,40 +162,40 @@ final class LegacyKitsModule implements Listener {
         String key = args[0].toLowerCase(Locale.ROOT);
         KitDef def = kits.get(key);
         if (def == null) {
-            sender.sendMessage(ChatColor.RED + "Kit '" + args[0] + "' does not exist.");
+            send(sender, ChatColor.RED + "Kit '" + args[0] + "' does not exist.");
             return true;
         }
         Player target;
         boolean givingOther = false;
         if (args.length >= 2) {
             if (!sender.hasPermission("allium.kit.others")) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to give kits to other players.");
+                send(sender, ChatColor.RED + "You do not have permission to give kits to other players.");
                 return true;
             }
             target = plugin.getServer().getPlayerExact(args[1]);
             if (target == null) target = plugin.getServer().getPlayer(args[1]);
             if (target == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[1] + "' is not online.");
+                send(sender, ChatColor.RED + "Player '" + args[1] + "' is not online.");
                 return true;
             }
             givingOther = !target.equals(sender);
         } else {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(ChatColor.RED + "Usage: /kit <name> <player>");
+                send(sender, ChatColor.RED + "Usage: /kit <name> <player>");
                 return true;
             }
             target = (Player) sender;
         }
 
         if (!givingOther && !hasKitPermission(sender, key)) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to claim kit '" + def.name + "'.");
+            send(sender, ChatColor.RED + "You do not have permission to claim kit '" + def.name + "'.");
             return true;
         }
         if (!givingOther && def.cooldownSeconds > 0 && !sender.hasPermission("allium.kit.exemptdelay")) {
             long now = System.currentTimeMillis();
             long next = getNextAvailable(target.getUniqueId(), key);
             if (next > now) {
-                sender.sendMessage(ChatColor.RED + "You can claim kit '" + def.name + "' again in "
+                send(sender, ChatColor.RED + "You can claim kit '" + def.name + "' again in "
                         + LegacyCompat.formatDuration(next - now) + ".");
                 return true;
             }
@@ -204,30 +210,30 @@ final class LegacyKitsModule implements Listener {
             }
         }
         if (givingOther) {
-            sender.sendMessage(ChatColor.GREEN + "Gave kit '" + def.name + "' to " + target.getName() + ".");
-            target.sendMessage(ChatColor.GREEN + "You received kit '" + def.name + "'.");
+            send(sender, ChatColor.GREEN + "Gave kit '" + def.name + "' to " + target.getName() + ".");
+            send(target, ChatColor.GREEN + "You received kit '" + def.name + "'.");
         } else {
-            sender.sendMessage(ChatColor.GREEN + "Claimed kit '" + def.name + "'.");
+            send(sender, ChatColor.GREEN + "Claimed kit '" + def.name + "'.");
         }
         return true;
     }
 
     private boolean handleCreateKit(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can create kits from their inventory.");
+            send(sender, ChatColor.RED + "Only players can create kits from their inventory.");
             return true;
         }
         if (!sender.hasPermission("allium.createkit")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to create kits.");
+            send(sender, ChatColor.RED + "You do not have permission to create kits.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /createkit <name> [cooldownSeconds]");
+            send(sender, ChatColor.RED + "Usage: /createkit <name> [cooldownSeconds]");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
         if (!key.matches("[a-z0-9_-]{1,32}")) {
-            sender.sendMessage(ChatColor.RED + "Kit names may contain 1-32 letters, numbers, underscores, or hyphens.");
+            send(sender, ChatColor.RED + "Kit names may contain 1-32 letters, numbers, underscores, or hyphens.");
             return true;
         }
         long cooldown = 0L;
@@ -237,7 +243,7 @@ final class LegacyKitsModule implements Listener {
             } catch (NumberFormatException e) {
                 long parsed = LegacyCompat.parseDurationMillis(args[1]);
                 if (parsed < 0L) {
-                    sender.sendMessage(ChatColor.RED + "Invalid cooldown '" + args[1] + "'.");
+                    send(sender, ChatColor.RED + "Invalid cooldown '" + args[1] + "'.");
                     return true;
                 }
                 cooldown = parsed / 1000L;
@@ -251,52 +257,52 @@ final class LegacyKitsModule implements Listener {
             }
         }
         if (items.isEmpty()) {
-            sender.sendMessage(ChatColor.RED + "Your inventory is empty.");
+            send(sender, ChatColor.RED + "Your inventory is empty.");
             return true;
         }
         kits.put(key, new KitDef(key, cooldown, items));
         saveKits();
-        sender.sendMessage(ChatColor.GREEN + "Created kit '" + key + "' with " + items.size()
+        send(sender, ChatColor.GREEN + "Created kit '" + key + "' with " + items.size()
                 + " item stack(s) (cooldown: " + cooldown + "s).");
         return true;
     }
 
     private boolean handleDelKit(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.delkit")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to delete kits.");
+            send(sender, ChatColor.RED + "You do not have permission to delete kits.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /delkit <name>");
+            send(sender, ChatColor.RED + "Usage: /delkit <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
         if (kits.remove(key) == null) {
-            sender.sendMessage(ChatColor.RED + "Kit '" + args[0] + "' does not exist.");
+            send(sender, ChatColor.RED + "Kit '" + args[0] + "' does not exist.");
             return true;
         }
         saveKits();
-        sender.sendMessage(ChatColor.GREEN + "Deleted kit '" + key + "'.");
+        send(sender, ChatColor.GREEN + "Deleted kit '" + key + "'.");
         return true;
     }
 
     private boolean handleShowKit(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can preview kits.");
+            send(sender, ChatColor.RED + "Only players can preview kits.");
             return true;
         }
         if (!sender.hasPermission("allium.showkit")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to preview kits.");
+            send(sender, ChatColor.RED + "You do not have permission to preview kits.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /showkit <name>");
+            send(sender, ChatColor.RED + "Usage: /showkit <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
         KitDef def = kits.get(key);
         if (def == null) {
-            sender.sendMessage(ChatColor.RED + "Kit '" + args[0] + "' does not exist.");
+            send(sender, ChatColor.RED + "Kit '" + args[0] + "' does not exist.");
             return true;
         }
         int size = Math.min(54, Math.max(9, ((def.items.size() + 8) / 9) * 9));
@@ -311,24 +317,24 @@ final class LegacyKitsModule implements Listener {
     @SuppressWarnings("deprecation")
     private boolean handleKitReset(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.kitreset")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to reset kit cooldowns.");
+            send(sender, ChatColor.RED + "You do not have permission to reset kit cooldowns.");
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /kitreset <player> <kit|all>");
+            send(sender, ChatColor.RED + "Usage: /kitreset <player> <kit|all>");
             return true;
         }
         Player online = plugin.getServer().getPlayerExact(args[0]);
         OfflinePlayer target = online != null ? online : plugin.getServer().getOfflinePlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
             return true;
         }
         Map<String, Long> map = cooldowns.get(target.getUniqueId());
         if (args[1].equalsIgnoreCase("all")) {
             cooldowns.remove(target.getUniqueId());
             saveCooldowns();
-            sender.sendMessage(ChatColor.GREEN + "Reset all kit cooldowns for " + args[0] + ".");
+            send(sender, ChatColor.GREEN + "Reset all kit cooldowns for " + args[0] + ".");
             return true;
         }
         String key = args[1].toLowerCase(Locale.ROOT);
@@ -336,7 +342,7 @@ final class LegacyKitsModule implements Listener {
             map.remove(key);
             saveCooldowns();
         }
-        sender.sendMessage(ChatColor.GREEN + "Reset cooldown for kit '" + key + "' on " + args[0] + ".");
+        send(sender, ChatColor.GREEN + "Reset cooldown for kit '" + key + "' on " + args[0] + ".");
         return true;
     }
 

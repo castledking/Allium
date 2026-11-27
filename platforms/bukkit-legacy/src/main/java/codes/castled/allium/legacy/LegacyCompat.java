@@ -7,6 +7,7 @@ import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.Particle;
 import org.bukkit.Server;
 import org.bukkit.Statistic;
 import org.bukkit.World;
@@ -15,6 +16,8 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
@@ -54,6 +57,12 @@ public final class LegacyCompat {
     private static final Method DAMAGEABLE_HAS_DAMAGE = DAMAGEABLE_CLASS == null ? null : findMethod(DAMAGEABLE_CLASS, "hasDamage");
     private static final Method DAMAGEABLE_SET_DAMAGE = DAMAGEABLE_CLASS == null ? null : findMethod(DAMAGEABLE_CLASS, "setDamage", int.class);
     private static final Method SKULL_SET_OWNING_PLAYER = findMethod(SkullMeta.class, "setOwningPlayer", OfflinePlayer.class);
+    private static final Method ENTITY_GET_HEIGHT = findMethod(Entity.class, "getHeight");
+    private static final Object YELLOW_DUST_OPTIONS = buildYellowDustOptions();
+    private static final Method PLAYER_SPAWN_PARTICLE_DATA = findMethod(
+            Player.class, "spawnParticle",
+            Particle.class, double.class, double.class, double.class, int.class,
+            double.class, double.class, double.class, double.class, Object.class);
 
     private static final Map<String, String> ENCHANT_ALIASES = buildEnchantAliases();
 
@@ -117,6 +126,57 @@ public final class LegacyCompat {
             }
         }
         viewer.showPlayer(target);
+    }
+
+    /** Spawns a persistent yellow dust highlight above {@code target} visible to {@code viewer} on 1.12.2-1.19.4. */
+    public static void spawnYellowSelectionDust(Player viewer, Entity target, boolean pre113) {
+        if (viewer == null || target == null || !viewer.isOnline() || !target.isValid()) return;
+        Location loc = target.getLocation();
+        if (loc == null || loc.getWorld() == null || !loc.getWorld().equals(viewer.getWorld())) return;
+        double x = loc.getX();
+        double y = entityMarkerY(target, loc);
+        double z = loc.getZ();
+        if (!pre113 && YELLOW_DUST_OPTIONS != null && PLAYER_SPAWN_PARTICLE_DATA != null) {
+            try {
+                PLAYER_SPAWN_PARTICLE_DATA.invoke(viewer, Particle.REDSTONE,
+                        x, y, z, 3, 0.14, 0.08, 0.14, 0.0, YELLOW_DUST_OPTIONS);
+                return;
+            } catch (Throwable ignored) {
+            }
+        }
+        // 1.12.2 colored REDSTONE dust: count=0 treats offsets (x,y,z) as normalized RGB with extra=1.0.
+        try {
+            viewer.spawnParticle(Particle.REDSTONE, x, y, z, 0, 1.0, 0.86, 0.16, 1.0);
+            viewer.spawnParticle(Particle.REDSTONE, x + 0.12, y + 0.06, z - 0.10, 0, 1.0, 0.86, 0.16, 1.0);
+            viewer.spawnParticle(Particle.REDSTONE, x - 0.12, y + 0.04, z + 0.10, 0, 1.0, 0.86, 0.16, 1.0);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static double entityMarkerY(Entity entity, Location loc) {
+        if (ENTITY_GET_HEIGHT != null) {
+            try {
+                Object val = ENTITY_GET_HEIGHT.invoke(entity);
+                if (val instanceof Number) {
+                    return loc.getY() + ((Number) val).doubleValue() + 0.45;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        if (entity instanceof LivingEntity) {
+            return loc.getY() + ((LivingEntity) entity).getEyeHeight() + 0.55;
+        }
+        return loc.getY() + 1.35;
+    }
+
+    private static Object buildYellowDustOptions() {
+        try {
+            Class<?> dustClass = Class.forName("org.bukkit.Particle$DustOptions");
+            return dustClass.getConstructor(Color.class, float.class)
+                    .newInstance(Color.fromRGB(255, 220, 40), Float.valueOf(1.3f));
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     /** Repairs {@code item} safely on both 1.12.2 (durability) and 1.13+ (Damageable meta). Returns true if repaired. */

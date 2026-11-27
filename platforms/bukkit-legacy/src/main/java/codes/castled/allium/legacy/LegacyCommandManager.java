@@ -326,7 +326,7 @@ final class LegacyCommandManager {
         for (String c : new String[]{"rtp", "settpr"}) m.put(c, "rtp");
         for (String c : new String[]{"tpa", "tpahere", "tpaccept", "tpdeny", "tpacancel", "tpaall",
                 "tptoggle", "tpauto", "tp", "tphere", "tpo", "tpohere", "tpall", "tppos", "tpoffline", "back",
-                "top", "bottom", "jump", "there", "world"}) {
+                "top", "bottom", "jump", "there", "world", "tppet", "tpent"}) {
             m.put(c, "teleport");
         }
         // Explosions

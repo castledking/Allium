@@ -38,7 +38,7 @@ final class LegacyPotionCommand {
 
     boolean execute(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /potion.");
+            messages.sendPrefixed(sender, ChatColor.RED + "Only players can use /potion.");
             return true;
         }
         Player player = (Player) sender;
@@ -220,8 +220,8 @@ final class LegacyPotionCommand {
         return values.stream().filter(value -> value.startsWith(prefix)).collect(Collectors.toList());
     }
 
-    private static boolean noPermission(Player player) {
-        player.sendMessage(ChatColor.RED + "You do not have permission to do that.");
+    private boolean noPermission(Player player) {
+        messages.sendPrefixed(player, ChatColor.RED + "You do not have permission to do that.");
         return true;
     }
 

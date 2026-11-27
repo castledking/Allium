@@ -86,6 +86,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyUtilitiesModule utilities;
     private final LegacyTextModule text;
     private final LegacyChatClear chatClear;
+    private final LegacyCompanionTeleports companions;
     private final LegacyPlayerSettings settings;
     private final LegacyEditSignCommand editSign;
     private final LegacyUnlimitedCommand unlimited;
@@ -108,14 +109,16 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.commandManager = new LegacyCommandManager(plugin, configManager);
         this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
         this.economy = new LegacyEconomyModule(plugin, configManager, messageManager);
-        this.settings = new LegacyPlayerSettings(plugin, commandManager, economy);
-        this.unlimited = new LegacyUnlimitedCommand(plugin, settings, commandManager);
-        this.kits = new LegacyKitsModule(plugin);
-        this.moderation = new LegacyModerationModule(plugin);
+        this.settings = new LegacyPlayerSettings(plugin, commandManager, economy, messageManager);
+        this.unlimited = new LegacyUnlimitedCommand(plugin, settings, commandManager, messageManager);
+        this.kits = new LegacyKitsModule(plugin, messageManager);
+        this.moderation = new LegacyModerationModule(plugin, messageManager);
         this.offlineTeleport = new LegacyOfflineTeleport(plugin, configManager, moderation, messageManager,
                 this::canSeeTeleportTarget);
         this.chatClear = new LegacyChatClear(plugin, configManager, messageManager, this::canSeeTeleportTarget);
-        this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy);
+        this.companions = new LegacyCompanionTeleports(plugin, configManager, messageManager, version,
+                this::findTeleportPlayer, this::canSeeTeleportTarget);
+        this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
         this.travel = new LegacyTravelModule(plugin, this);
         this.utilities = new LegacyUtilitiesModule(plugin, this);
         this.text = new LegacyTextModule(plugin, configManager, moderation);
@@ -155,6 +158,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(text, plugin);
         pm.registerEvents(unlimited, plugin);
         pm.registerEvents(offlineTeleport, plugin);
+        pm.registerEvents(companions, plugin);
         text.reload();
         String reason = version.isAtLeast(1, 20, 0)
                 ? "Java " + javaMajor + " detected (Java 17+ required for full 1.20+ modules)"
@@ -202,6 +206,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(offlineTeleport);
         text.stop();
         chatClear.stop();
+        companions.stop();
         messageManager.disable();
         economy.disable();
         kits.disable();
@@ -260,7 +265,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         if (commandManager.isModuleDisabled(name)) {
             String mod = commandManager.moduleOf(name);
-            sender.sendMessage(ChatColor.RED + "Module '" + mod + "' is disabled in config.yml.");
+            send(sender, ChatColor.RED + "Module '" + mod + "' is disabled in config.yml.");
             return true;
         }
         if ("help".equals(name)) {
@@ -309,6 +314,10 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return handleTp(sender, args);
             case "tphere":
                 return handleTpHere(sender, args);
+            case "tppet":
+                return companions.execute(sender, true, args);
+            case "tpent":
+                return companions.execute(sender, false, args);
             case "spectate":
                 return handleSpectate(sender, args);
             case "tpoffline":
@@ -380,7 +389,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 if (moderation.handles(name)) return moderation.onCommand(sender, name, args);
                 if (playerInfo.handles(name)) return playerInfo.onCommand(sender, name, args);
                 if (utilities.handles(name)) return utilities.onCommand(sender, name, args);
-                sender.sendMessage(ChatColor.YELLOW + "Command /" + label
+                send(sender, ChatColor.YELLOW + "Command /" + label
                         + " requires Minecraft 1.20+ with Java 17+ (running Allium compatibility mode on Minecraft "
                         + version + ").");
                 return true;
@@ -424,6 +433,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return sender.hasPermission("allium.spectate") ? teleportPlayerSuggestions(sender, prefix) : Collections.emptyList();
         }
         if ("tpoffline".equals(name) && args.length == 1) return offlineTeleport.complete(sender, prefix);
+        if ("tppet".equals(name) && args.length == 1) return companions.complete(sender, true, prefix);
+        if ("tpent".equals(name) && args.length == 1) return companions.complete(sender, false, prefix);
         if ("allium".equals(name) && args.length == 1) {
             return filterPrefix(Arrays.asList("version", "help", "reload"), prefix);
         }
@@ -473,9 +484,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private boolean handleAllium(CommandSender sender, String[] args) {
         if (args.length == 0 || "help".equalsIgnoreCase(args[0])) {
-            sender.sendMessage(ChatColor.GOLD + "Allium " + plugin.getDescription().getVersion()
+            send(sender, ChatColor.GOLD + "Allium " + plugin.getDescription().getVersion()
                     + ChatColor.GRAY + " (1.12.2-1.19.4 compatibility mode on Minecraft " + version + ")");
-            sender.sendMessage(ChatColor.YELLOW + "Commands: " + ChatColor.WHITE
+            send(sender, ChatColor.YELLOW + "Commands: " + ChatColor.WHITE
                     + "/allium version, /ping, /coords, /depth, /sethome, /home, /delhome, /homes, "
                     + "/setwarp, /warp, /delwarp, /warps, /setspawn, /spawn, /tpa, /tpahere, /tpaccept, "
                     + "/tpdeny, /tpacancel, /tp, /tphere, /back, /msg, /reply, /msgtoggle, /heal, /feed, "
@@ -484,7 +495,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return true;
         }
         if ("version".equalsIgnoreCase(args[0])) {
-            sender.sendMessage(UtilityMessages.version(
+            send(sender, UtilityMessages.version(
                     plugin.getDescription().getVersion(),
                     LegacyCompat.platformName(plugin.getServer()),
                     version.raw));
@@ -513,35 +524,35 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");
             return true;
         }
-        sender.sendMessage(ChatColor.RED + "Usage: /allium [version|help|reload]");
+        send(sender, ChatColor.RED + "Usage: /allium [version|help|reload]");
         return true;
     }
 
     private boolean handlePing(CommandSender sender, String[] args) {
         if (args.length > 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /ping [player]");
+            send(sender, ChatColor.RED + "Usage: /ping [player]");
             return true;
         }
         Player target = resolveTarget(sender, args, 0, "allium.ping.others");
         if (target == null) return true;
         int latency = LegacyCompat.ping(target);
         if (latency < 0) {
-            sender.sendMessage(ChatColor.RED + "Ping is unavailable on this server.");
+            send(sender, ChatColor.RED + "Ping is unavailable on this server.");
         } else {
-            sender.sendMessage(UtilityMessages.ping(target.getName(), latency));
+            send(sender, UtilityMessages.ping(target.getName(), latency));
         }
         return true;
     }
 
     private boolean handleCoords(CommandSender sender, String[] args) {
         if (args.length > 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /coords [player]");
+            send(sender, ChatColor.RED + "Usage: /coords [player]");
             return true;
         }
         Player target = resolveTarget(sender, args, 0, "allium.getpos.others");
         if (target == null) return true;
         Location loc = target.getLocation();
-        sender.sendMessage(UtilityMessages.coordinates(
+        send(sender, UtilityMessages.coordinates(
                 target.getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), loc.getWorld().getName()));
         return true;
     }
@@ -552,11 +563,11 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         int sea = player.getWorld().getSeaLevel();
         int diff = player.getLocation().getBlockY() - sea;
         if (diff == 0) {
-            player.sendMessage(ChatColor.GRAY + "You are at sea level (Y=" + sea + ").");
+            send(player, ChatColor.GRAY + "You are at sea level (Y=" + sea + ").");
         } else if (diff > 0) {
-            player.sendMessage(ChatColor.GRAY + "You are " + diff + " block(s) above sea level (Y=" + player.getLocation().getBlockY() + ").");
+            send(player, ChatColor.GRAY + "You are " + diff + " block(s) above sea level (Y=" + player.getLocation().getBlockY() + ").");
         } else {
-            player.sendMessage(ChatColor.GRAY + "You are " + (-diff) + " block(s) below sea level (Y=" + player.getLocation().getBlockY() + ").");
+            send(player, ChatColor.GRAY + "You are " + (-diff) + " block(s) below sea level (Y=" + player.getLocation().getBlockY() + ").");
         }
         return true;
     }
@@ -565,20 +576,20 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private boolean handleHome(CommandSender sender, Homes.Action action, String[] args) {
         if (!hasHomePermission(sender, action)) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /" + action.command + ".");
+            send(sender, ChatColor.RED + "You do not have permission to use /" + action.command + ".");
             return true;
         }
         if (!(sender instanceof Player)) {
-            sender.sendMessage(Homes.PLAYERS_ONLY);
+            send(sender, Homes.PLAYERS_ONLY);
             return true;
         }
         if (args.length > (action.acceptsName() ? 1 : 0)) {
-            sender.sendMessage(ChatColor.RED + "Usage: /" + action.command + (action.acceptsName() ? " [name]" : ""));
+            send(sender, ChatColor.RED + "Usage: /" + action.command + (action.acceptsName() ? " [name]" : ""));
             return true;
         }
         Player player = (Player) sender;
         homes(player, action == Homes.Action.SET).execute(
-                action, args.length == 0 ? null : args[0], sender::sendMessage);
+                action, args.length == 0 ? null : args[0], msg -> send(sender, msg));
         return true;
     }
 
@@ -644,17 +655,17 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         Player player = requirePlayer(sender);
         if (player == null) return true;
         if (!sender.hasPermission("allium.setwarp") && !sender.isOp()) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to set warps.");
+            send(sender, ChatColor.RED + "You do not have permission to set warps.");
             return true;
         }
         if (args.length != 1 || !args[0].matches("[A-Za-z0-9_-]{1,32}")) {
-            sender.sendMessage(ChatColor.RED + "Usage: /setwarp <name>");
+            send(sender, ChatColor.RED + "Usage: /setwarp <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
         warps.put(key, player.getLocation().clone());
         saveWarps();
-        sender.sendMessage(ChatColor.GREEN + "Warp '" + key + "' set.");
+        send(sender, ChatColor.GREEN + "Warp '" + key + "' set.");
         return true;
     }
 
@@ -667,34 +678,34 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         String key = args[0].toLowerCase(Locale.ROOT);
         Location dest = warps.get(key);
         if (dest == null || dest.getWorld() == null) {
-            sender.sendMessage(ChatColor.RED + "Warp '" + key + "' was not found.");
+            send(sender, ChatColor.RED + "Warp '" + key + "' was not found.");
             return true;
         }
         if (!canUseWarp(sender, key)) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use warp '" + key + "'.");
+            send(sender, ChatColor.RED + "You do not have permission to use warp '" + key + "'.");
             return true;
         }
         player.teleport(dest);
-        sender.sendMessage(ChatColor.GREEN + "Warped to '" + key + "'.");
+        send(sender, ChatColor.GREEN + "Warped to '" + key + "'.");
         return true;
     }
 
     private boolean handleDelWarp(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.delwarp") && !sender.isOp()) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to delete warps.");
+            send(sender, ChatColor.RED + "You do not have permission to delete warps.");
             return true;
         }
         if (args.length != 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /delwarp <name>");
+            send(sender, ChatColor.RED + "Usage: /delwarp <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
         if (warps.remove(key) == null) {
-            sender.sendMessage(ChatColor.RED + "Warp '" + key + "' was not found.");
+            send(sender, ChatColor.RED + "Warp '" + key + "' was not found.");
             return true;
         }
         saveWarps();
-        sender.sendMessage(ChatColor.GREEN + "Warp '" + key + "' deleted.");
+        send(sender, ChatColor.GREEN + "Warp '" + key + "' deleted.");
         return true;
     }
 
@@ -704,7 +715,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             if (canUseWarp(sender, name)) visible.add(name);
         }
         Collections.sort(visible);
-        sender.sendMessage(visible.isEmpty()
+        send(sender, visible.isEmpty()
                 ? ChatColor.GRAY + "No warps are available."
                 : ChatColor.GOLD + "Warps: " + ChatColor.WHITE + String.join(", ", visible));
         return true;
@@ -723,13 +734,13 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         spawnLocation = player.getLocation().clone();
         player.getWorld().setSpawnLocation(spawnLocation.getBlockX(), spawnLocation.getBlockY(), spawnLocation.getBlockZ());
         saveSpawn();
-        sender.sendMessage(ChatColor.GREEN + "Server spawn set.");
+        send(sender, ChatColor.GREEN + "Server spawn set.");
         return true;
     }
 
     private boolean handleSpawn(CommandSender sender, String[] args) {
         if (args.length > 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /spawn [player]");
+            send(sender, ChatColor.RED + "Usage: /spawn [player]");
             return true;
         }
         Player target = resolveTarget(sender, args, 0, "allium.spawn.others");
@@ -738,15 +749,15 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (dest == null || dest.getWorld() == null) {
             List<World> worlds = plugin.getServer().getWorlds();
             if (worlds.isEmpty()) {
-                sender.sendMessage(ChatColor.RED + "No spawn world is loaded.");
+                send(sender, ChatColor.RED + "No spawn world is loaded.");
                 return true;
             }
             dest = worlds.get(0).getSpawnLocation();
         }
         target.teleport(dest);
-        target.sendMessage(ChatColor.GREEN + "Teleported to spawn.");
+        send(target, ChatColor.GREEN + "Teleported to spawn.");
         if (!target.equals(sender)) {
-            sender.sendMessage(ChatColor.GREEN + "Sent " + target.getName() + " to spawn.");
+            send(sender, ChatColor.GREEN + "Sent " + target.getName() + " to spawn.");
         }
         return true;
     }
@@ -757,20 +768,20 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         Player from = requirePlayer(sender);
         if (from == null) return true;
         if (args.length != 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /" + (here ? "tpahere" : "tpa") + " <player>");
+            send(sender, ChatColor.RED + "Usage: /" + (here ? "tpahere" : "tpa") + " <player>");
             return true;
         }
         Player target = findTeleportPlayer(sender, args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
         if (target.equals(from)) {
-            sender.sendMessage(ChatColor.RED + "You cannot send a teleport request to yourself.");
+            send(sender, ChatColor.RED + "You cannot send a teleport request to yourself.");
             return true;
         }
         if (!settings.enabled(target.getUniqueId(), Setting.TPA) && !from.hasPermission("allium.tptoggle.bypass")) {
-            sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting teleport requests.");
+            send(sender, ChatColor.RED + target.getName() + " is not accepting teleport requests.");
             return true;
         }
         sendTpaRequest(from, target, here);
@@ -781,19 +792,19 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (settings.enabled(target.getUniqueId(), Setting.TP_AUTO)) {
             if (here) {
                 target.teleport(from.getLocation());
-                target.sendMessage(ChatColor.GREEN + "Auto-accepted teleport to " + from.getName() + ".");
-                from.sendMessage(ChatColor.GREEN + target.getName() + " auto-accepted your teleport request.");
+                send(target, ChatColor.GREEN + "Auto-accepted teleport to " + from.getName() + ".");
+                send(from, ChatColor.GREEN + target.getName() + " auto-accepted your teleport request.");
             } else {
                 from.teleport(target.getLocation());
-                from.sendMessage(ChatColor.GREEN + "Teleported to " + target.getName() + " (auto-accepted).");
-                target.sendMessage(ChatColor.GREEN + "Auto-accepted teleport request from " + from.getName() + ".");
+                send(from, ChatColor.GREEN + "Teleported to " + target.getName() + " (auto-accepted).");
+                send(target, ChatColor.GREEN + "Auto-accepted teleport request from " + from.getName() + ".");
             }
             return;
         }
         incomingTpa.put(target.getUniqueId(), new TpaRequest(
                 from.getUniqueId(), target.getUniqueId(), here, System.currentTimeMillis() + TPA_EXPIRY_MILLIS));
-        from.sendMessage(ChatColor.GREEN + "Teleport request sent to " + target.getName() + ".");
-        target.sendMessage(ChatColor.GOLD + from.getName() + (here
+        send(from, ChatColor.GREEN + "Teleport request sent to " + target.getName() + ".");
+        send(target, ChatColor.GOLD + from.getName() + (here
                 ? " wants you to teleport to them. Use /tpaccept or /tpdeny."
                 : " wants to teleport to you. Use /tpaccept or /tpdeny."));
     }
@@ -824,22 +835,22 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (target == null) return true;
         TpaRequest req = incomingTpa.remove(target.getUniqueId());
         if (req == null || req.expiresAt < System.currentTimeMillis()) {
-            target.sendMessage(ChatColor.RED + "You have no pending teleport requests.");
+            send(target, ChatColor.RED + "You have no pending teleport requests.");
             return true;
         }
         Player from = plugin.getServer().getPlayer(req.sender);
         if (from == null || !from.isOnline()) {
-            target.sendMessage(ChatColor.RED + "That player is no longer online.");
+            send(target, ChatColor.RED + "That player is no longer online.");
             return true;
         }
         if (req.here) {
             target.teleport(from.getLocation());
-            target.sendMessage(ChatColor.GREEN + "Teleported to " + from.getName() + ".");
-            from.sendMessage(ChatColor.GREEN + target.getName() + " accepted your teleport request.");
+            send(target, ChatColor.GREEN + "Teleported to " + from.getName() + ".");
+            send(from, ChatColor.GREEN + target.getName() + " accepted your teleport request.");
         } else {
             from.teleport(target.getLocation());
-            from.sendMessage(ChatColor.GREEN + "Teleported to " + target.getName() + ".");
-            target.sendMessage(ChatColor.GREEN + "Accepted teleport request from " + from.getName() + ".");
+            send(from, ChatColor.GREEN + "Teleported to " + target.getName() + ".");
+            send(target, ChatColor.GREEN + "Accepted teleport request from " + from.getName() + ".");
         }
         return true;
     }
@@ -849,13 +860,13 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (target == null) return true;
         TpaRequest req = incomingTpa.remove(target.getUniqueId());
         if (req == null || req.expiresAt < System.currentTimeMillis()) {
-            target.sendMessage(ChatColor.RED + "You have no pending teleport requests.");
+            send(target, ChatColor.RED + "You have no pending teleport requests.");
             return true;
         }
-        target.sendMessage(ChatColor.YELLOW + "Teleport request denied.");
+        send(target, ChatColor.YELLOW + "Teleport request denied.");
         Player from = plugin.getServer().getPlayer(req.sender);
         if (from != null && from.isOnline()) {
-            from.sendMessage(ChatColor.RED + target.getName() + " denied your teleport request.");
+            send(from, ChatColor.RED + target.getName() + " denied your teleport request.");
         }
         return true;
     }
@@ -871,7 +882,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 removed++;
             }
         }
-        from.sendMessage(removed > 0
+        send(from, removed > 0
                 ? ChatColor.YELLOW + "Cancelled your pending teleport request(s)."
                 : ChatColor.RED + "You have no outgoing teleport requests.");
         return true;
@@ -883,47 +894,58 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             if (self == null) return true;
             Player dest = findTeleportPlayer(sender, args[0]);
             if (dest == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+                send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
                 return true;
             }
             self.teleport(dest.getLocation());
-            sender.sendMessage(ChatColor.GREEN + "Teleported to " + dest.getName() + ".");
+            send(sender, ChatColor.GREEN + "Teleported to " + dest.getName() + ".");
             return true;
         }
         if (args.length == 2) {
             if (!sender.hasPermission("allium.tp.others")) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to teleport other players.");
+                send(sender, ChatColor.RED + "You do not have permission to teleport other players.");
                 return true;
             }
             Player subject = findTeleportPlayer(sender, args[0]);
             Player dest = findTeleportPlayer(sender, args[1]);
             if (subject == null || dest == null) {
-                sender.sendMessage(ChatColor.RED + "Both players must be online.");
+                send(sender, ChatColor.RED + "Both players must be online.");
                 return true;
             }
             subject.teleport(dest.getLocation());
-            sender.sendMessage(ChatColor.GREEN + "Teleported " + subject.getName() + " to " + dest.getName() + ".");
+            send(sender, ChatColor.GREEN + "Teleported " + subject.getName() + " to " + dest.getName() + ".");
             return true;
         }
-        sender.sendMessage(ChatColor.RED + "Usage: /tp <player> [target]");
+        send(sender, ChatColor.RED + "Usage: /tp <player> [target]");
         return true;
     }
 
     private boolean handleTpHere(CommandSender sender, String[] args) {
         Player self = requirePlayer(sender);
         if (self == null) return true;
+        if (args.length == 0 && companions.move(self, self.getLocation())) {
+            return true;
+        }
         if (args.length != 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /tphere <player>");
+            send(sender, ChatColor.RED + "Usage: /tphere <player>");
             return true;
         }
         Player target = findTeleportPlayer(sender, args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
         target.teleport(self.getLocation());
-        sender.sendMessage(ChatColor.GREEN + "Teleported " + target.getName() + " to you.");
+        send(sender, ChatColor.GREEN + "Teleported " + target.getName() + " to you.");
         return true;
+    }
+
+    boolean moveCompanions(Player player, Location destination) {
+        return companions.move(player, destination);
+    }
+
+    void send(CommandSender sender, String message) {
+        messageManager.sendPrefixed(sender, message);
     }
 
     private boolean handleSpectate(CommandSender sender, String[] args) {
@@ -931,12 +953,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         Player staff = requirePlayer(sender);
         if (staff == null) return true;
         if (!staff.hasPermission("allium.spectate")) {
-            staff.sendMessage(ChatColor.RED + "You do not have permission to spectate players.");
+            send(staff, ChatColor.RED + "You do not have permission to spectate players.");
             return true;
         }
         Player target = plugin.getServer().getPlayerExact(args[0]);
         if (target == null || !canSeeTeleportTarget(staff, target)) {
-            staff.sendMessage(ChatColor.RED + "That player is not online.");
+            send(staff, ChatColor.RED + "That player is not online.");
             return true;
         }
         if (staff.getUniqueId().equals(target.getUniqueId())) {
@@ -946,7 +968,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         String actorName = staff.getName();
         String targetName = target.getName();
         if (!actorName.matches("[A-Za-z0-9_.-]{1,32}") || !targetName.matches("[A-Za-z0-9_.-]{1,32}")) {
-            staff.sendMessage(ChatColor.RED + "A player name cannot be used in the configured commands.");
+            send(staff, ChatColor.RED + "A player name cannot be used in the configured commands.");
             return true;
         }
         boolean dispatched = false;
@@ -960,7 +982,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             plugin.getLogger().info("Spectate audit actor=" + staff.getUniqueId() + " target=" + target.getUniqueId());
             messageManager.send(staff, "chat.spectate-started", "{prefix} &aNow spectating &f{player}&a.", "{player}", targetName);
         } else {
-            staff.sendMessage(ChatColor.RED + "None of the configured spectate commands ran.");
+            send(staff, ChatColor.RED + "None of the configured spectate commands ran.");
         }
         return true;
     }
@@ -970,11 +992,11 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (player == null) return true;
         Location loc = backLocations.get(player.getUniqueId());
         if (loc == null || loc.getWorld() == null) {
-            player.sendMessage(ChatColor.RED + "You have no previous location to return to.");
+            send(player, ChatColor.RED + "You have no previous location to return to.");
             return true;
         }
         player.teleport(loc);
-        player.sendMessage(ChatColor.GREEN + "Returned to your previous location.");
+        send(player, ChatColor.GREEN + "Returned to your previous location.");
         return true;
     }
 
@@ -982,16 +1004,16 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private boolean handleMsg(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /msg <player> <message>");
+            send(sender, ChatColor.RED + "Usage: /msg <player> <message>");
             return true;
         }
         Player target = plugin.getServer().getPlayerExact(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
         if (!settings.enabled(target.getUniqueId(), Setting.MSG) && !sender.hasPermission("allium.msg.bypass.toggle")) {
-            sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting private messages.");
+            send(sender, ChatColor.RED + target.getName() + " is not accepting private messages.");
             return true;
         }
         String text = joinArgs(args, 1);
@@ -1003,7 +1025,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         Player self = requirePlayer(sender);
         if (self == null) return true;
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /reply <message>");
+            send(sender, ChatColor.RED + "Usage: /reply <message>");
             return true;
         }
         UUID playerId = self.getUniqueId();
@@ -1012,11 +1034,11 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 .orElse(null);
         Player target = targetId == null ? null : plugin.getServer().getPlayer(targetId);
         if (target == null || !target.isOnline()) {
-            sender.sendMessage(ChatColor.RED + "No one to reply to.");
+            send(sender, ChatColor.RED + "No one to reply to.");
             return true;
         }
         if (!settings.enabled(target.getUniqueId(), Setting.MSG) && !sender.hasPermission("allium.msg.bypass.toggle")) {
-            sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting private messages.");
+            send(sender, ChatColor.RED + target.getName() + " is not accepting private messages.");
             return true;
         }
         deliverPrivateMessage(self, target, joinArgs(args, 0));
@@ -1028,13 +1050,13 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         Player player = requirePlayer(sender);
         if (player == null) return true;
         if (!player.hasPermission("allium.rtoggle")) {
-            player.sendMessage(ChatColor.RED + "You cannot change that setting.");
+            send(player, ChatColor.RED + "You cannot change that setting.");
             return true;
         }
         UUID id = player.getUniqueId();
         boolean lastRecipient = !settings.replyToLastRecipient(id).orElse(false);
         if (!settings.setReplyToLastRecipient(id, lastRecipient)) {
-            player.sendMessage(ChatColor.RED + "Your setting could not be saved.");
+            send(player, ChatColor.RED + "Your setting could not be saved.");
         } else if (lastRecipient) {
             messageManager.send(player, "utility.reply-last-recipient",
                     "{prefix} &aReply now targets the last player you messaged.");
@@ -1049,11 +1071,11 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (sender instanceof Player) {
             UUID fromId = ((Player) sender).getUniqueId();
             if (moderation.isMuted(fromId)) {
-                sender.sendMessage(ChatColor.RED + "You cannot send private messages while muted.");
+                send(sender, ChatColor.RED + "You cannot send private messages while muted.");
                 return;
             }
             if (playerInfo.isIgnoring(target.getUniqueId(), fromId) && !sender.hasPermission("allium.ignore.bypass")) {
-                sender.sendMessage(ChatColor.RED + target.getName() + " is ignoring you.");
+                send(sender, ChatColor.RED + target.getName() + " is ignoring you.");
                 return;
             }
         }
@@ -1079,8 +1101,11 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         target.setFoodLevel(20);
         target.setSaturation(20.0f);
         target.setFireTicks(0);
-        target.sendMessage(ChatColor.GREEN + "You have been healed.");
-        if (!target.equals(sender)) sender.sendMessage(ChatColor.GREEN + "Healed " + target.getName() + ".");
+        messageManager.send(target, "player.heal", "{prefix} &aYou have been healed.");
+        if (!target.equals(sender)) {
+            messageManager.send(sender, "player.heal-other", "{prefix} &aHealed &f{player}&a.",
+                    "{player}", target.getName());
+        }
         return true;
     }
 
@@ -1089,8 +1114,11 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (target == null) return true;
         target.setFoodLevel(20);
         target.setSaturation(20.0f);
-        target.sendMessage(ChatColor.GREEN + "Your appetite has been sated.");
-        if (!target.equals(sender)) sender.sendMessage(ChatColor.GREEN + "Fed " + target.getName() + ".");
+        messageManager.send(target, "player.feed", "{prefix} &aYou have been fed.");
+        if (!target.equals(sender)) {
+            messageManager.send(sender, "player.feed-other", "{prefix} &aFed &f{player}&a.",
+                    "{player}", target.getName());
+        }
         return true;
     }
 
@@ -1100,9 +1128,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         boolean enable = !target.getAllowFlight();
         target.setAllowFlight(enable);
         if (!enable) target.setFlying(false);
-        target.sendMessage((enable ? ChatColor.GREEN + "Flight enabled." : ChatColor.YELLOW + "Flight disabled."));
+        String state = enable ? "&aenabled" : "&cdisabled";
+        messageManager.send(target, "player.fly-toggle", "{prefix} &fFly mode {state} &ffor &d{player}&f.",
+                "{state}", state, "{player}", target.getName());
         if (!target.equals(sender)) {
-            sender.sendMessage(ChatColor.GREEN + "Flight " + (enable ? "enabled" : "disabled") + " for " + target.getName() + ".");
+            messageManager.send(sender, "player.fly-toggle", "{prefix} &fFly mode {state} &ffor &d{player}&f.",
+                    "{state}", state, "{player}", target.getName());
         }
         return true;
     }
@@ -1118,9 +1149,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             godPlayers.add(target.getUniqueId());
             enable = true;
         }
-        target.sendMessage(enable ? ChatColor.GREEN + "God mode enabled." : ChatColor.YELLOW + "God mode disabled.");
+        String state = enable ? "&aenabled" : "&cdisabled";
+        messageManager.send(target, "player.god-toggle", "{prefix} &fGod mode {state} &ffor &d{player}&f.",
+                "{state}", state, "{player}", target.getName());
         if (!target.equals(sender)) {
-            sender.sendMessage(ChatColor.GREEN + "God mode " + (enable ? "enabled" : "disabled") + " for " + target.getName() + ".");
+            messageManager.send(sender, "player.god-toggle", "{prefix} &fGod mode {state} &ffor &d{player}&f.",
+                    "{state}", state, "{player}", target.getName());
         }
         return true;
     }
@@ -1134,12 +1168,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             targetIndex = 0;
         } else {
             if (args.length < 1) {
-                sender.sendMessage(ChatColor.RED + "Usage: /gamemode <survival|creative|adventure|spectator> [player]");
+                send(sender, ChatColor.RED + "Usage: /gamemode <survival|creative|adventure|spectator> [player]");
                 return true;
             }
             mode = parseGameMode(args[0]);
             if (mode == null) {
-                sender.sendMessage(ChatColor.RED + "Unknown gamemode: " + args[0]);
+                send(sender, ChatColor.RED + "Unknown gamemode: " + args[0]);
                 return true;
             }
             targetIndex = 1;
@@ -1148,27 +1182,29 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (target == null) return true;
         target.setGameMode(mode);
         String modeName = mode.name().toLowerCase(Locale.ROOT);
-        target.sendMessage(ChatColor.GREEN + "Gamemode set to " + modeName + ".");
+        messageManager.send(target, "player.gamemode-self", "{prefix} &aGamemode set to &f{mode}&a.",
+                "{mode}", modeName);
         if (!target.equals(sender)) {
-            sender.sendMessage(ChatColor.GREEN + "Set " + target.getName() + "'s gamemode to " + modeName + ".");
+            messageManager.send(sender, "player.gamemode-other", "{prefix} &aSet &f{player}&a's gamemode to &f{mode}&a.",
+                    "{player}", target.getName(), "{mode}", modeName);
         }
         return true;
     }
 
     private boolean handleSpeed(CommandSender sender, String label, String[] args) {
         if (args.length < 1 || args.length > 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /speed <0-10> [player]");
+            send(sender, ChatColor.RED + "Usage: /speed <0-10> [player]");
             return true;
         }
         float value;
         try {
             value = Float.parseFloat(args[0]);
         } catch (NumberFormatException e) {
-            sender.sendMessage(ChatColor.RED + "Speed must be a number between 0 and 10.");
+            send(sender, ChatColor.RED + "Speed must be a number between 0 and 10.");
             return true;
         }
         if (!Float.isFinite(value) || value < 0.0f || value > 10.0f) {
-            sender.sendMessage(ChatColor.RED + "Speed must be between 0 and 10.");
+            send(sender, ChatColor.RED + "Speed must be between 0 and 10.");
             return true;
         }
         Player target = resolveTarget(sender, args, 1, "allium.speed.others");
@@ -1176,14 +1212,23 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         String lower = label.toLowerCase(Locale.ROOT);
         boolean fly = lower.contains("fly") || lower.equals("fspeed")
                 || (!lower.contains("walk") && !lower.equals("wspeed") && target.isFlying());
+        String type = fly ? "Fly" : "Walk";
         if (fly) {
             float real = value <= 1.0f ? 0.1f * value : 0.1f + ((value - 1.0f) / 9.0f) * 0.9f;
             target.setFlySpeed(Math.max(0.0f, Math.min(1.0f, real)));
-            sender.sendMessage(ChatColor.GREEN + "Set fly speed to " + value + " for " + target.getName() + ".");
         } else {
             float real = value <= 1.0f ? 0.2f * value : 0.2f + ((value - 1.0f) / 9.0f) * 0.8f;
             target.setWalkSpeed(Math.max(0.0f, Math.min(1.0f, real)));
-            sender.sendMessage(ChatColor.GREEN + "Set walk speed to " + value + " for " + target.getName() + ".");
+        }
+        String formattedSpeed = Float.toString(value);
+        if (target.equals(sender)) {
+            messageManager.send(target, "player.speed-set", "{prefix} &a{type} speed set to &f{speed}&a.",
+                    "{type}", type, "{speed}", formattedSpeed);
+        } else {
+            messageManager.send(sender, "player.speed-set-other", "{prefix} &aSet &f{player}&a's &f{type} &aspeed to &f{speed}&a.",
+                    "{player}", target.getName(), "{type}", type.toLowerCase(Locale.ROOT), "{speed}", formattedSpeed);
+            messageManager.send(target, "player.speed-set", "{prefix} &a{type} speed set to &f{speed}&a.",
+                    "{type}", type, "{speed}", formattedSpeed);
         }
         return true;
     }
@@ -1192,9 +1237,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         Player target = resolveTarget(sender, args, 0, "allium.clearinventory.others");
         if (target == null) return true;
         target.getInventory().clear();
-        target.sendMessage(ChatColor.YELLOW + "Your inventory has been cleared.");
+        send(target, ChatColor.YELLOW + "Your inventory has been cleared.");
         if (!target.equals(sender)) {
-            sender.sendMessage(ChatColor.GREEN + "Cleared " + target.getName() + "'s inventory.");
+            send(sender, ChatColor.GREEN + "Cleared " + target.getName() + "'s inventory.");
         }
         return true;
     }
@@ -1220,19 +1265,19 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (player == null) return true;
         ItemStack hand = player.getInventory().getItemInMainHand();
         if (hand == null || hand.getType() == Material.AIR) {
-            player.sendMessage(ChatColor.RED + "Hold an item in your main hand first.");
+            send(player, ChatColor.RED + "Hold an item in your main hand first.");
             return true;
         }
         ItemStack oldHelmet = player.getInventory().getHelmet();
         player.getInventory().setHelmet(hand);
         player.getInventory().setItemInMainHand(oldHelmet);
-        player.sendMessage(ChatColor.GREEN + "Enjoy your new hat!");
+        send(player, ChatColor.GREEN + "Enjoy your new hat!");
         return true;
     }
 
     private boolean handleTime(CommandSender sender, String[] args) {
         if (args.length < 1 || args.length > 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /time <day|noon|night|midnight|ticks> [world]");
+            send(sender, ChatColor.RED + "Usage: /time <day|noon|night|midnight|ticks> [world]");
             return true;
         }
         String token = args[0].toLowerCase(Locale.ROOT);
@@ -1246,7 +1291,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 try {
                     ticks = Long.parseLong(token);
                 } catch (NumberFormatException e) {
-                    sender.sendMessage(ChatColor.RED + "Invalid time: " + args[0]);
+                    send(sender, ChatColor.RED + "Invalid time: " + args[0]);
                     return true;
                 }
         }
@@ -1257,7 +1302,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         World world = resolveCommandWorld(sender, worldName);
         if (world == null) return true;
         world.setTime(ticks);
-        sender.sendMessage(ChatColor.GREEN + "Set time in " + world.getName() + " to " + label + ".");
+        send(sender, ChatColor.GREEN + "Set time in " + world.getName() + " to " + label + ".");
         return true;
     }
 
@@ -1267,7 +1312,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return setWorldWeather(sender, args.length > 0 ? args[0] : null, lower);
         }
         if (args.length < 1 || args.length > 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /weather <sun|rain|storm> [world]");
+            send(sender, ChatColor.RED + "Usage: /weather <sun|rain|storm> [world]");
             return true;
         }
         return setWorldWeather(sender, args.length == 2 ? args[1] : null, args[0].toLowerCase(Locale.ROOT));
@@ -1281,28 +1326,28 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             case "clear":
                 world.setStorm(false);
                 world.setThundering(false);
-                sender.sendMessage(ChatColor.GREEN + "Cleared weather in " + world.getName() + ".");
+                send(sender, ChatColor.GREEN + "Cleared weather in " + world.getName() + ".");
                 return true;
             case "rain":
                 world.setStorm(true);
                 world.setThundering(false);
-                sender.sendMessage(ChatColor.GREEN + "Set weather to rain in " + world.getName() + ".");
+                send(sender, ChatColor.GREEN + "Set weather to rain in " + world.getName() + ".");
                 return true;
             case "storm":
             case "thunder":
                 world.setStorm(true);
                 world.setThundering(true);
-                sender.sendMessage(ChatColor.GREEN + "Set weather to storm in " + world.getName() + ".");
+                send(sender, ChatColor.GREEN + "Set weather to storm in " + world.getName() + ".");
                 return true;
             default:
-                sender.sendMessage(ChatColor.RED + "Usage: /weather <sun|rain|storm> [world]");
+                send(sender, ChatColor.RED + "Usage: /weather <sun|rain|storm> [world]");
                 return true;
         }
     }
 
     private boolean handleBroadcast(CommandSender sender, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /broadcast <message>");
+            send(sender, ChatColor.RED + "Usage: /broadcast <message>");
             return true;
         }
         String text = LegacyCompat.color("&6[Broadcast] &f" + joinArgs(args, 0));
@@ -1389,7 +1434,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private Player requirePlayer(CommandSender sender) {
         if (sender instanceof Player) return (Player) sender;
-        sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+        send(sender, ChatColor.RED + "Only players can use this command.");
         return null;
     }
 
@@ -1398,12 +1443,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return requirePlayer(sender);
         }
         if (!sender.hasPermission(othersPerm) && !sender.isOp()) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to target other players.");
+            send(sender, ChatColor.RED + "You do not have permission to target other players.");
             return null;
         }
         Player target = plugin.getServer().getPlayerExact(args[index]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[index] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[index] + "' is not online.");
             return null;
         }
         return target;
@@ -1413,14 +1458,14 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (explicitWorld != null && !explicitWorld.isEmpty()) {
             World w = plugin.getServer().getWorld(explicitWorld);
             if (w == null) {
-                sender.sendMessage(ChatColor.RED + "World '" + explicitWorld + "' was not found.");
+                send(sender, ChatColor.RED + "World '" + explicitWorld + "' was not found.");
             }
             return w;
         }
         if (sender instanceof Player) return ((Player) sender).getWorld();
         List<World> worlds = plugin.getServer().getWorlds();
         if (worlds.isEmpty()) {
-            sender.sendMessage(ChatColor.RED + "No worlds are loaded.");
+            send(sender, ChatColor.RED + "No worlds are loaded.");
             return null;
         }
         return worlds.get(0);

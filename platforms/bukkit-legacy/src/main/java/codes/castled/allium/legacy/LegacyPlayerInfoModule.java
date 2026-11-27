@@ -40,6 +40,7 @@ final class LegacyPlayerInfoModule implements Listener {
     private final JavaPlugin plugin;
     private final LegacyModerationModule moderation;
     private final LegacyEconomyModule economy;
+    private final LegacyMessageManager messages;
     private final Map<UUID, String> lastNames = new HashMap<UUID, String>();
     private final Map<UUID, Long> sessionStart = new HashMap<UUID, Long>();
     private final Map<UUID, Long> savedPlaytimeMs = new HashMap<UUID, Long>();
@@ -50,10 +51,16 @@ final class LegacyPlayerInfoModule implements Listener {
     private final Map<UUID, Set<UUID>> ignores = new HashMap<UUID, Set<UUID>>();
     private final Map<UUID, List<String>> mailboxes = new HashMap<UUID, List<String>>();
 
-    LegacyPlayerInfoModule(JavaPlugin plugin, LegacyModerationModule moderation, LegacyEconomyModule economy) {
+    LegacyPlayerInfoModule(JavaPlugin plugin, LegacyModerationModule moderation, LegacyEconomyModule economy,
+                           LegacyMessageManager messages) {
         this.plugin = plugin;
         this.moderation = moderation;
         this.economy = economy;
+        this.messages = messages;
+    }
+
+    private void send(CommandSender recipient, String message) {
+        messages.sendPrefixed(recipient, message);
     }
 
     void enable() {
@@ -94,7 +101,7 @@ final class LegacyPlayerInfoModule implements Listener {
         applyNick(p);
         List<String> mail = mailboxes.get(id);
         if (mail != null && !mail.isEmpty()) {
-            p.sendMessage(ChatColor.LIGHT_PURPLE + "You have " + ChatColor.WHITE + mail.size()
+            send(p, ChatColor.LIGHT_PURPLE + "You have " + ChatColor.WHITE + mail.size()
                     + ChatColor.LIGHT_PURPLE + " unread mail message(s). Use " + ChatColor.WHITE + "/mail read" + ChatColor.LIGHT_PURPLE + ".");
         }
     }
@@ -186,7 +193,7 @@ final class LegacyPlayerInfoModule implements Listener {
 
     private boolean handleList(CommandSender sender) {
         if (!sender.hasPermission("allium.list")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /list.");
+            send(sender, ChatColor.RED + "You do not have permission to use /list.");
             return true;
         }
         boolean seeVanished = sender.hasPermission("allium.vanish.see");
@@ -199,50 +206,50 @@ final class LegacyPlayerInfoModule implements Listener {
             visible.add(label);
         }
         Collections.sort(visible);
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Online (" + visible.size() + "/" + plugin.getServer().getMaxPlayers() + "): "
+        send(sender, ChatColor.LIGHT_PURPLE + "Online (" + visible.size() + "/" + plugin.getServer().getMaxPlayers() + "): "
                 + ChatColor.WHITE + (visible.isEmpty() ? "none" : joinList(visible, ", ")));
         return true;
     }
 
     private boolean handleSeen(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.seen")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /seen.");
+            send(sender, ChatColor.RED + "You do not have permission to use /seen.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /seen <player>");
+            send(sender, ChatColor.RED + "Usage: /seen <player>");
             return true;
         }
         Player online = findOnline(args[0]);
         if (online != null && (!moderation.isVanished(online.getUniqueId()) || sender.hasPermission("allium.vanish.see"))) {
             long start = sessionStart.containsKey(online.getUniqueId()) ? sessionStart.get(online.getUniqueId()) : System.currentTimeMillis();
-            sender.sendMessage(ChatColor.GREEN + online.getName() + " is online (for "
+            send(sender, ChatColor.GREEN + online.getName() + " is online (for "
                     + LegacyCompat.formatDuration(System.currentTimeMillis() - start) + ").");
             return true;
         }
         OfflinePlayer op = resolvePlayer(args[0]);
         if (op == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' has never joined.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' has never joined.");
             return true;
         }
         long last = lastSeenMs.containsKey(op.getUniqueId()) ? lastSeenMs.get(op.getUniqueId()) : op.getLastPlayed();
         if (last <= 0L) {
-            sender.sendMessage(ChatColor.RED + "No last-seen record for '" + args[0] + "'.");
+            send(sender, ChatColor.RED + "No last-seen record for '" + args[0] + "'.");
             return true;
         }
         String name = op.getName() != null ? op.getName() : args[0];
-        sender.sendMessage(ChatColor.GRAY + name + " was last seen " + ChatColor.WHITE
+        send(sender, ChatColor.GRAY + name + " was last seen " + ChatColor.WHITE
                 + LegacyCompat.formatDuration(Math.max(0L, System.currentTimeMillis() - last)) + ChatColor.GRAY + " ago.");
         return true;
     }
 
     private boolean handleWhois(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.whois")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /whois.");
+            send(sender, ChatColor.RED + "You do not have permission to use /whois.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /whois <player>");
+            send(sender, ChatColor.RED + "Usage: /whois <player>");
             return true;
         }
         Player target = findOnline(args[0]);
@@ -274,11 +281,11 @@ final class LegacyPlayerInfoModule implements Listener {
 
     private boolean handleNear(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /near.");
+            send(sender, ChatColor.RED + "Only players can use /near.");
             return true;
         }
         if (!sender.hasPermission("allium.near")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /near.");
+            send(sender, ChatColor.RED + "You do not have permission to use /near.");
             return true;
         }
         double radius = 200.0;
@@ -286,7 +293,7 @@ final class LegacyPlayerInfoModule implements Listener {
             try {
                 radius = Math.max(1.0, Math.min(2000.0, Double.parseDouble(args[0])));
             } catch (NumberFormatException e) {
-                sender.sendMessage(ChatColor.RED + "Invalid radius '" + args[0] + "'.");
+                send(sender, ChatColor.RED + "Invalid radius '" + args[0] + "'.");
                 return true;
             }
         }
@@ -302,42 +309,42 @@ final class LegacyPlayerInfoModule implements Listener {
                 found.add(other.getName() + ChatColor.GRAY + " (" + Math.round(Math.sqrt(dSq)) + "m)" + ChatColor.WHITE);
             }
         }
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Players within " + Math.round(radius) + "m: "
+        send(sender, ChatColor.LIGHT_PURPLE + "Players within " + Math.round(radius) + "m: "
                 + ChatColor.WHITE + (found.isEmpty() ? "none" : joinList(found, ", ")));
         return true;
     }
 
     private boolean handlePlaytime(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.playtime")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /playtime.");
+            send(sender, ChatColor.RED + "You do not have permission to use /playtime.");
             return true;
         }
         OfflinePlayer target;
         if (args.length >= 1) {
             target = resolvePlayer(args[0]);
             if (target == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+                send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
                 return true;
             }
         } else if (sender instanceof Player) {
             target = (Player) sender;
         } else {
-            sender.sendMessage(ChatColor.RED + "Usage: /playtime <player>");
+            send(sender, ChatColor.RED + "Usage: /playtime <player>");
             return true;
         }
         String name = target.getName() != null ? target.getName() : args[0];
-        sender.sendMessage(ChatColor.GREEN + name + "'s playtime: " + ChatColor.WHITE
+        send(sender, ChatColor.GREEN + name + "'s playtime: " + ChatColor.WHITE
                 + LegacyCompat.formatDuration(totalPlaytimeMs(target.getUniqueId())));
         return true;
     }
 
     private boolean handleAfk(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can toggle AFK.");
+            send(sender, ChatColor.RED + "Only players can toggle AFK.");
             return true;
         }
         if (!sender.hasPermission("allium.afk")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /afk.");
+            send(sender, ChatColor.RED + "You do not have permission to use /afk.");
             return true;
         }
         Player p = (Player) sender;
@@ -354,36 +361,36 @@ final class LegacyPlayerInfoModule implements Listener {
 
     private boolean handleIgnore(CommandSender sender, String[] args, boolean add) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can ignore other players.");
+            send(sender, ChatColor.RED + "Only players can ignore other players.");
             return true;
         }
         String perm = add ? "allium.ignore" : "allium.unignore";
         if (!sender.hasPermission(perm)) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            send(sender, ChatColor.RED + "You do not have permission to use this command.");
             return true;
         }
         Player self = (Player) sender;
         if (args.length < 1) {
             Set<UUID> list = ignores.get(self.getUniqueId());
             if (list == null || list.isEmpty()) {
-                sender.sendMessage(ChatColor.GRAY + "You are not ignoring anyone.");
+                send(sender, ChatColor.GRAY + "You are not ignoring anyone.");
             } else {
                 List<String> names = new ArrayList<String>();
                 for (UUID u : list) {
                     String n = lastNames.get(u);
                     names.add(n != null ? n : u.toString());
                 }
-                sender.sendMessage(ChatColor.GRAY + "Ignoring: " + ChatColor.WHITE + joinList(names, ", "));
+                send(sender, ChatColor.GRAY + "Ignoring: " + ChatColor.WHITE + joinList(names, ", "));
             }
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
             return true;
         }
         if (target.getUniqueId().equals(self.getUniqueId())) {
-            sender.sendMessage(ChatColor.RED + "You cannot ignore yourself.");
+            send(sender, ChatColor.RED + "You cannot ignore yourself.");
             return true;
         }
         String targetName = target.getName() != null ? target.getName() : args[0];
@@ -395,35 +402,35 @@ final class LegacyPlayerInfoModule implements Listener {
             }
             set.add(target.getUniqueId());
             saveInfo();
-            sender.sendMessage(ChatColor.GREEN + "Now ignoring " + targetName + ".");
+            send(sender, ChatColor.GREEN + "Now ignoring " + targetName + ".");
         } else {
             if (set == null || !set.remove(target.getUniqueId())) {
-                sender.sendMessage(ChatColor.RED + "You are not ignoring " + targetName + ".");
+                send(sender, ChatColor.RED + "You are not ignoring " + targetName + ".");
                 return true;
             }
             if (set.isEmpty()) ignores.remove(self.getUniqueId());
             saveInfo();
-            sender.sendMessage(ChatColor.GREEN + "No longer ignoring " + targetName + ".");
+            send(sender, ChatColor.GREEN + "No longer ignoring " + targetName + ".");
         }
         return true;
     }
 
     private boolean handleMail(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.mail")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /mail.");
+            send(sender, ChatColor.RED + "You do not have permission to use /mail.");
             return true;
         }
         if (args.length == 0 || args[0].equalsIgnoreCase("read")) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(ChatColor.RED + "Usage: /mail send <player> <message>");
+                send(sender, ChatColor.RED + "Usage: /mail send <player> <message>");
                 return true;
             }
             List<String> mail = mailboxes.get(((Player) sender).getUniqueId());
             if (mail == null || mail.isEmpty()) {
-                sender.sendMessage(ChatColor.GRAY + "Your mailbox is empty.");
+                send(sender, ChatColor.GRAY + "Your mailbox is empty.");
                 return true;
             }
-            sender.sendMessage(ChatColor.LIGHT_PURPLE + "Mailbox (" + mail.size() + "):");
+            send(sender, ChatColor.LIGHT_PURPLE + "Mailbox (" + mail.size() + "):");
             for (int i = 0; i < mail.size(); i++) {
                 sender.sendMessage(ChatColor.GRAY + "" + (i + 1) + ". " + ChatColor.WHITE + mail.get(i));
             }
@@ -432,26 +439,26 @@ final class LegacyPlayerInfoModule implements Listener {
         String sub = args[0].toLowerCase(Locale.ROOT);
         if (sub.equals("clear")) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(ChatColor.RED + "Only players can clear their mailbox.");
+                send(sender, ChatColor.RED + "Only players can clear their mailbox.");
                 return true;
             }
             mailboxes.remove(((Player) sender).getUniqueId());
             saveInfo();
-            sender.sendMessage(ChatColor.GREEN + "Cleared your mailbox.");
+            send(sender, ChatColor.GREEN + "Cleared your mailbox.");
             return true;
         }
         if (sub.equals("send")) {
             if (args.length < 3) {
-                sender.sendMessage(ChatColor.RED + "Usage: /mail send <player> <message>");
+                send(sender, ChatColor.RED + "Usage: /mail send <player> <message>");
                 return true;
             }
             OfflinePlayer target = resolvePlayer(args[1]);
             if (target == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[1] + "' not found.");
+                send(sender, ChatColor.RED + "Player '" + args[1] + "' not found.");
                 return true;
             }
             if (sender instanceof Player && isIgnoring(target.getUniqueId(), ((Player) sender).getUniqueId())) {
-                sender.sendMessage(ChatColor.RED + "That player is ignoring you.");
+                send(sender, ChatColor.RED + "That player is ignoring you.");
                 return true;
             }
             String text = joinArgs(args, 2);
@@ -461,76 +468,76 @@ final class LegacyPlayerInfoModule implements Listener {
                 mailboxes.put(target.getUniqueId(), list);
             }
             if (list.size() >= 50) {
-                sender.sendMessage(ChatColor.RED + "That player's mailbox is full.");
+                send(sender, ChatColor.RED + "That player's mailbox is full.");
                 return true;
             }
             list.add(sender.getName() + ": " + text);
             saveInfo();
             String targetName = target.getName() != null ? target.getName() : args[1];
-            sender.sendMessage(ChatColor.GREEN + "Sent mail to " + targetName + ".");
+            send(sender, ChatColor.GREEN + "Sent mail to " + targetName + ".");
             if (target.isOnline() && target.getPlayer() != null) {
-                target.getPlayer().sendMessage(ChatColor.LIGHT_PURPLE + "New mail from " + ChatColor.WHITE + sender.getName()
+                send(target.getPlayer(), ChatColor.LIGHT_PURPLE + "New mail from " + ChatColor.WHITE + sender.getName()
                         + ChatColor.LIGHT_PURPLE + ". Use " + ChatColor.WHITE + "/mail read" + ChatColor.LIGHT_PURPLE + ".");
             }
             return true;
         }
-        sender.sendMessage(ChatColor.RED + "Usage: /mail <read|send|clear>");
+        send(sender, ChatColor.RED + "Usage: /mail <read|send|clear>");
         return true;
     }
 
     private boolean handleNick(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.nick")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /nick.");
+            send(sender, ChatColor.RED + "You do not have permission to use /nick.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /nick <nickname|off> [player]");
+            send(sender, ChatColor.RED + "Usage: /nick <nickname|off> [player]");
             return true;
         }
         Player target;
         if (args.length >= 2) {
             if (!sender.hasPermission("allium.nick.others")) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to change other players' nicknames.");
+                send(sender, ChatColor.RED + "You do not have permission to change other players' nicknames.");
                 return true;
             }
             target = findOnline(args[1]);
             if (target == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[1] + "' is not online.");
+                send(sender, ChatColor.RED + "Player '" + args[1] + "' is not online.");
                 return true;
             }
         } else if (sender instanceof Player) {
             target = (Player) sender;
         } else {
-            sender.sendMessage(ChatColor.RED + "Usage: /nick <nickname|off> <player>");
+            send(sender, ChatColor.RED + "Usage: /nick <nickname|off> <player>");
             return true;
         }
         if (args[0].equalsIgnoreCase("off") || args[0].equalsIgnoreCase("reset")) {
             nicknames.remove(target.getUniqueId());
             target.setDisplayName(target.getName());
             saveInfo();
-            sender.sendMessage(ChatColor.GREEN + "Reset nickname for " + target.getName() + ".");
+            send(sender, ChatColor.GREEN + "Reset nickname for " + target.getName() + ".");
             return true;
         }
         String raw = args[0];
         String plain = ChatColor.stripColor(LegacyCompat.color(raw));
         if (plain.isEmpty() || plain.length() > 32) {
-            sender.sendMessage(ChatColor.RED + "Nickname must be 1-32 visible characters.");
+            send(sender, ChatColor.RED + "Nickname must be 1-32 visible characters.");
             return true;
         }
         nicknames.put(target.getUniqueId(), raw);
         applyNick(target);
         saveInfo();
-        sender.sendMessage(ChatColor.GREEN + "Set nickname for " + target.getName() + " to " + LegacyCompat.color(raw) + ChatColor.GREEN + ".");
+        send(sender, ChatColor.GREEN + "Set nickname for " + target.getName() + " to " + LegacyCompat.color(raw) + ChatColor.GREEN + ".");
         return true;
     }
 
     private boolean handleRealName(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.realname")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /realname.");
+            send(sender, ChatColor.RED + "You do not have permission to use /realname.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /realname <nickname>");
+            send(sender, ChatColor.RED + "Usage: /realname <nickname>");
             return true;
         }
         String needle = args[0].toLowerCase(Locale.ROOT);
@@ -542,24 +549,24 @@ final class LegacyPlayerInfoModule implements Listener {
             }
         }
         if (matches.isEmpty()) {
-            sender.sendMessage(ChatColor.RED + "No online player matches '" + args[0] + "'.");
+            send(sender, ChatColor.RED + "No online player matches '" + args[0] + "'.");
             return true;
         }
-        for (String m : matches) sender.sendMessage(m);
+        for (String m : matches) send(sender, m);
         return true;
     }
 
     private boolean handleAction(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.action")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /action.");
+            send(sender, ChatColor.RED + "You do not have permission to use /action.");
             return true;
         }
         if (sender instanceof Player && moderation.isMuted(((Player) sender).getUniqueId())) {
-            sender.sendMessage(ChatColor.RED + "You cannot use /action while muted.");
+            send(sender, ChatColor.RED + "You cannot use /action while muted.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /action <message>");
+            send(sender, ChatColor.RED + "Usage: /action <message>");
             return true;
         }
         String text = joinArgs(args, 0);

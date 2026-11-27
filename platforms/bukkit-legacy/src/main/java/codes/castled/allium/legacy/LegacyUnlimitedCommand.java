@@ -30,29 +30,32 @@ final class LegacyUnlimitedCommand implements Listener {
     private final JavaPlugin plugin;
     private final LegacyPlayerSettings settings;
     private final LegacyCommandManager commands;
+    private final LegacyMessageManager messages;
 
-    LegacyUnlimitedCommand(JavaPlugin plugin, LegacyPlayerSettings settings, LegacyCommandManager commands) {
+    LegacyUnlimitedCommand(JavaPlugin plugin, LegacyPlayerSettings settings, LegacyCommandManager commands,
+                           LegacyMessageManager messages) {
         this.plugin = plugin;
         this.settings = settings;
         this.commands = commands;
+        this.messages = messages;
     }
 
     boolean execute(CommandSender sender, String[] args) {
         if (args.length < 1 || args.length > 2) return false;
         if (!sender.hasPermission(PERMISSION) || (args.length == 2 && !sender.hasPermission(PERMISSION + ".others"))) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to change these unlimited blocks.");
+            messages.sendPrefixed(sender, ChatColor.RED + "You do not have permission to change these unlimited blocks.");
             return true;
         }
         Player target = args.length == 2 ? plugin.getServer().getPlayerExact(args[1])
                 : sender instanceof Player ? (Player) sender : null;
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Specify an online player.");
+            messages.sendPrefixed(sender, ChatColor.RED + "Specify an online player.");
             return true;
         }
         Set<String> blocks = settings.unlimitedBlocks(target.getUniqueId());
         String raw = args[0].toLowerCase(Locale.ROOT);
         if ("list".equals(raw)) {
-            sender.sendMessage("Unlimited blocks for " + target.getName() + ": "
+            messages.sendPrefixed(sender, ChatColor.GRAY + "Unlimited blocks for " + target.getName() + ": "
                     + (blocks.isEmpty() ? "-" : String.join(", ", blocks)));
             return true;
         }
@@ -63,14 +66,14 @@ final class LegacyUnlimitedCommand implements Listener {
         } else {
             Material material = LegacyCompat.matchMaterial(raw);
             if (!eligible(material)) {
-                sender.sendMessage(ChatColor.RED + "Choose a placeable block.");
+                messages.sendPrefixed(sender, ChatColor.RED + "Choose a placeable block.");
                 return true;
             }
             String item = key(material);
             boolean adding = !blocks.remove(item);
             if (adding) {
                 if (!permitted(sender, item)) {
-                    sender.sendMessage(ChatColor.RED + "You do not have permission for that block.");
+                    messages.sendPrefixed(sender, ChatColor.RED + "You do not have permission for that block.");
                     return true;
                 }
                 blocks.add(item);
@@ -78,7 +81,7 @@ final class LegacyUnlimitedCommand implements Listener {
             summary = "Unlimited " + item + (adding ? " enabled for " : " disabled for ") + target.getName() + ".";
         }
         boolean saved = settings.setUnlimitedBlocks(target.getUniqueId(), blocks);
-        sender.sendMessage(saved ? ChatColor.GREEN + summary : ChatColor.RED + "Could not save unlimited blocks.");
+        messages.sendPrefixed(sender, saved ? ChatColor.GREEN + summary : ChatColor.RED + "Could not save unlimited blocks.");
         return true;
     }
 

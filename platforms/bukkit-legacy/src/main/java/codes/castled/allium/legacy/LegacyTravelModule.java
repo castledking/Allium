@@ -45,6 +45,10 @@ final class LegacyTravelModule {
         this.runtime = runtime;
     }
 
+    private void send(CommandSender recipient, String message) {
+        runtime.send(recipient, message);
+    }
+
     void enable() {
         loadRtpCenters();
     }
@@ -88,8 +92,8 @@ final class LegacyTravelModule {
             case "tppos": return handleTpPos(sender, args);
             case "top": return handleTop(sender);
             case "bottom": return handleBottom(sender);
-            case "jump":
-            case "there": return handleJump(sender);
+            case "jump": return handleJump(sender, false);
+            case "there": return handleJump(sender, true);
             case "tpo": return handleTpo(sender, args, false);
             case "tpohere": return handleTpo(sender, args, true);
             case "tpall": return handleTpAll(sender, args);
@@ -130,22 +134,22 @@ final class LegacyTravelModule {
 
     private boolean handleRenameHome(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + Homes.PLAYERS_ONLY);
+            send(sender, ChatColor.RED + Homes.PLAYERS_ONLY);
             return true;
         }
         if (!sender.hasPermission("allium.renamehome") && !sender.hasPermission("allium.sethome")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to rename homes.");
+            send(sender, ChatColor.RED + "You do not have permission to rename homes.");
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /renamehome <oldName> <newName>");
+            send(sender, ChatColor.RED + "Usage: /renamehome <oldName> <newName>");
             return true;
         }
         final Player player = (Player) sender;
         runtime.homesFor(player).rename(args[0], args[1], new java.util.function.Consumer<String>() {
             @Override
             public void accept(String msg) {
-                player.sendMessage(msg);
+                send(player, msg);
             }
         });
         return true;
@@ -153,52 +157,52 @@ final class LegacyTravelModule {
 
     private boolean handleBed(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.bed")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /bed.");
+            send(sender, ChatColor.RED + "You do not have permission to use /bed.");
             return true;
         }
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can teleport to a bed.");
+            send(sender, ChatColor.RED + "Only players can teleport to a bed.");
             return true;
         }
         Player viewer = (Player) sender;
         Player owner = viewer;
         if (args.length >= 1) {
             if (!sender.hasPermission("allium.bed.others")) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to teleport to another player's bed.");
+                send(sender, ChatColor.RED + "You do not have permission to teleport to another player's bed.");
                 return true;
             }
             owner = plugin.getServer().getPlayerExact(args[0]);
             if (owner == null) owner = plugin.getServer().getPlayer(args[0]);
             if (owner == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+                send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
                 return true;
             }
         }
         Location bed = owner.getBedSpawnLocation();
         if (bed == null) {
-            sender.sendMessage(ChatColor.RED + (owner.equals(viewer) ? "You have no bed spawn set." : owner.getName() + " has no bed spawn set."));
+            send(sender, ChatColor.RED + (owner.equals(viewer) ? "You have no bed spawn set." : owner.getName() + " has no bed spawn set."));
             return true;
         }
         viewer.teleport(bed);
-        viewer.sendMessage(ChatColor.GREEN + "Teleported to " + (owner.equals(viewer) ? "your bed." : owner.getName() + "'s bed."));
+        send(viewer, ChatColor.GREEN + "Teleported to " + (owner.equals(viewer) ? "your bed." : owner.getName() + "'s bed."));
         return true;
     }
 
     private boolean handleWarpInfo(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.warpinfo") && !sender.hasPermission("allium.warp")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to view warp info.");
+            send(sender, ChatColor.RED + "You do not have permission to view warp info.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /warpinfo <warp>");
+            send(sender, ChatColor.RED + "Usage: /warpinfo <warp>");
             return true;
         }
         Location loc = runtime.getWarp(args[0]);
         if (loc == null) {
-            sender.sendMessage(ChatColor.RED + "Warp '" + args[0] + "' does not exist.");
+            send(sender, ChatColor.RED + "Warp '" + args[0] + "' does not exist.");
             return true;
         }
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Warp '" + args[0].toLowerCase(Locale.ROOT) + "': "
+        send(sender, ChatColor.LIGHT_PURPLE + "Warp '" + args[0].toLowerCase(Locale.ROOT) + "': "
                 + ChatColor.WHITE + loc.getWorld().getName()
                 + String.format(Locale.US, " (%.1f, %.1f, %.1f)", loc.getX(), loc.getY(), loc.getZ()));
         return true;
@@ -206,15 +210,15 @@ final class LegacyTravelModule {
 
     private boolean handleTpPos(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /tppos.");
+            send(sender, ChatColor.RED + "Only players can use /tppos.");
             return true;
         }
         if (!sender.hasPermission("allium.tppos")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /tppos.");
+            send(sender, ChatColor.RED + "You do not have permission to use /tppos.");
             return true;
         }
         if (args.length < 3) {
-            sender.sendMessage(ChatColor.RED + "Usage: /tppos <x> <y> <z> [world]");
+            send(sender, ChatColor.RED + "Usage: /tppos <x> <y> <z> [world]");
             return true;
         }
         Player player = (Player) sender;
@@ -224,30 +228,30 @@ final class LegacyTravelModule {
             y = parseCoord(args[1], player.getLocation().getY());
             z = parseCoord(args[2], player.getLocation().getZ());
         } catch (NumberFormatException e) {
-            sender.sendMessage(ChatColor.RED + "Coordinates must be valid numbers.");
+            send(sender, ChatColor.RED + "Coordinates must be valid numbers.");
             return true;
         }
         World world = player.getWorld();
         if (args.length >= 4) {
             world = plugin.getServer().getWorld(args[3]);
             if (world == null) {
-                sender.sendMessage(ChatColor.RED + "Unknown world '" + args[3] + "'.");
+                send(sender, ChatColor.RED + "Unknown world '" + args[3] + "'.");
                 return true;
             }
         }
         Location dest = new Location(world, x, y, z, player.getLocation().getYaw(), player.getLocation().getPitch());
         player.teleport(dest);
-        player.sendMessage(ChatColor.GREEN + String.format(Locale.US, "Teleported to %.1f, %.1f, %.1f in %s.", x, y, z, world.getName()));
+        send(player, ChatColor.GREEN + String.format(Locale.US, "Teleported to %.1f, %.1f, %.1f in %s.", x, y, z, world.getName()));
         return true;
     }
 
     private boolean handleTop(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /top.");
+            send(sender, ChatColor.RED + "Only players can use /top.");
             return true;
         }
         if (!sender.hasPermission("allium.top")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /top.");
+            send(sender, ChatColor.RED + "You do not have permission to use /top.");
             return true;
         }
         Player player = (Player) sender;
@@ -255,17 +259,17 @@ final class LegacyTravelModule {
         int topY = loc.getWorld().getHighestBlockYAt(loc.getBlockX(), loc.getBlockZ());
         Location dest = new Location(loc.getWorld(), loc.getBlockX() + 0.5, topY + 1.0, loc.getBlockZ() + 0.5, loc.getYaw(), loc.getPitch());
         player.teleport(dest);
-        player.sendMessage(ChatColor.GREEN + "Teleported to the highest surface block.");
+        send(player, ChatColor.GREEN + "Teleported to the highest surface block.");
         return true;
     }
 
     private boolean handleBottom(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /bottom.");
+            send(sender, ChatColor.RED + "Only players can use /bottom.");
             return true;
         }
         if (!sender.hasPermission("allium.bottom")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /bottom.");
+            send(sender, ChatColor.RED + "You do not have permission to use /bottom.");
             return true;
         }
         Player player = (Player) sender;
@@ -279,103 +283,107 @@ final class LegacyTravelModule {
             Block head = w.getBlockAt(x, y + 2, z);
             if (floor.getType().isSolid() && !feet.getType().isSolid() && !head.getType().isSolid()) {
                 player.teleport(new Location(w, x + 0.5, y + 1.0, z + 0.5, loc.getYaw(), loc.getPitch()));
-                player.sendMessage(ChatColor.GREEN + "Teleported to the lowest safe spot.");
+                send(player, ChatColor.GREEN + "Teleported to the lowest safe spot.");
                 return true;
             }
         }
-        sender.sendMessage(ChatColor.RED + "No safe lower spot found below you.");
+        send(sender, ChatColor.RED + "No safe lower spot found below you.");
         return true;
     }
 
-    private boolean handleJump(CommandSender sender) {
+    private boolean handleJump(CommandSender sender, boolean there) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /jump.");
+            runtime.send(sender, ChatColor.RED + "Only players can use /" + (there ? "there" : "jump") + ".");
             return true;
         }
-        if (!sender.hasPermission("allium.jump")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /jump.");
+        String perm = there ? "allium.tpthere" : "allium.jump";
+        if (!sender.hasPermission(perm) && !(there && sender.hasPermission("allium.jump"))) {
+            runtime.send(sender, ChatColor.RED + "You do not have permission to use /" + (there ? "there" : "jump") + ".");
             return true;
         }
         Player player = (Player) sender;
         Block target = player.getTargetBlock((Set<Material>) null, 120);
         if (target == null || target.getType() == Material.AIR) {
-            sender.sendMessage(ChatColor.RED + "No block in sight within 120 blocks.");
+            runtime.send(sender, ChatColor.RED + "No block in sight within 120 blocks.");
             return true;
         }
         Location dest = target.getLocation().add(0.5, 1.0, 0.5);
         dest.setYaw(player.getLocation().getYaw());
         dest.setPitch(player.getLocation().getPitch());
+        if (there && runtime.moveCompanions(player, dest)) {
+            return true;
+        }
         player.teleport(dest);
-        player.sendMessage(ChatColor.GREEN + "Jumped to target block.");
+        runtime.send(player, ChatColor.GREEN + "Jumped to target block.");
         return true;
     }
 
     private boolean handleTpo(CommandSender sender, String[] args, boolean here) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+            send(sender, ChatColor.RED + "Only players can use this command.");
             return true;
         }
         String perm = here ? "allium.tpohere" : "allium.tpo";
         if (!sender.hasPermission(perm)) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            send(sender, ChatColor.RED + "You do not have permission to use this command.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /" + (here ? "tpohere" : "tpo") + " <player>");
+            send(sender, ChatColor.RED + "Usage: /" + (here ? "tpohere" : "tpo") + " <player>");
             return true;
         }
         Player self = (Player) sender;
         Player target = runtime.findTeleportPlayer(sender, args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
         if (here) {
             target.teleport(self.getLocation());
-            self.sendMessage(ChatColor.GREEN + "Forced teleport of " + target.getName() + " to you.");
+            send(self, ChatColor.GREEN + "Forced teleport of " + target.getName() + " to you.");
         } else {
             self.teleport(target.getLocation());
-            self.sendMessage(ChatColor.GREEN + "Forced teleport to " + target.getName() + ".");
+            send(self, ChatColor.GREEN + "Forced teleport to " + target.getName() + ".");
         }
         return true;
     }
 
     private boolean handleTpAll(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.tpall")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /tpall.");
+            send(sender, ChatColor.RED + "You do not have permission to use /tpall.");
             return true;
         }
         Player destPlayer;
         if (args.length >= 1) {
             destPlayer = runtime.findTeleportPlayer(sender, args[0]);
             if (destPlayer == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+                send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
                 return true;
             }
         } else if (sender instanceof Player) {
             destPlayer = (Player) sender;
         } else {
-            sender.sendMessage(ChatColor.RED + "Usage: /tpall <player>");
+            send(sender, ChatColor.RED + "Usage: /tpall <player>");
             return true;
         }
         int count = 0;
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             if (online.equals(destPlayer)) continue;
             online.teleport(destPlayer.getLocation());
-            online.sendMessage(ChatColor.GREEN + "Teleported to " + destPlayer.getName() + ".");
+            send(online, ChatColor.GREEN + "Teleported to " + destPlayer.getName() + ".");
             count++;
         }
-        sender.sendMessage(ChatColor.GREEN + "Teleported " + count + " player(s) to " + destPlayer.getName() + ".");
+        send(sender, ChatColor.GREEN + "Teleported " + count + " player(s) to " + destPlayer.getName() + ".");
         return true;
     }
 
     private boolean handleTpaAll(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /tpaall.");
+            send(sender, ChatColor.RED + "Only players can use /tpaall.");
             return true;
         }
         if (!sender.hasPermission("allium.tpaall")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /tpaall.");
+            send(sender, ChatColor.RED + "You do not have permission to use /tpaall.");
             return true;
         }
         Player self = (Player) sender;
@@ -385,53 +393,53 @@ final class LegacyTravelModule {
             runtime.sendTpaRequest(self, online, true);
             sent++;
         }
-        sender.sendMessage(ChatColor.GREEN + "Sent teleport requests to " + sent + " player(s).");
+        send(sender, ChatColor.GREEN + "Sent teleport requests to " + sent + " player(s).");
         return true;
     }
 
     private boolean handleWorld(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.world")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /world.");
+            send(sender, ChatColor.RED + "You do not have permission to use /world.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.LIGHT_PURPLE + "Worlds: " + ChatColor.WHITE + join(worldNames(""), ", "));
+            send(sender, ChatColor.LIGHT_PURPLE + "Worlds: " + ChatColor.WHITE + join(worldNames(""), ", "));
             return true;
         }
         World world = plugin.getServer().getWorld(args[0]);
         if (world == null) {
-            sender.sendMessage(ChatColor.RED + "Unknown world '" + args[0] + "'.");
+            send(sender, ChatColor.RED + "Unknown world '" + args[0] + "'.");
             return true;
         }
         Player target;
         if (args.length >= 2) {
             if (!sender.hasPermission("allium.world.others")) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to teleport other players between worlds.");
+                send(sender, ChatColor.RED + "You do not have permission to teleport other players between worlds.");
                 return true;
             }
             target = runtime.findTeleportPlayer(sender, args[1]);
             if (target == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[1] + "' is not online.");
+                send(sender, ChatColor.RED + "Player '" + args[1] + "' is not online.");
                 return true;
             }
         } else if (sender instanceof Player) {
             target = (Player) sender;
         } else {
-            sender.sendMessage(ChatColor.RED + "Usage: /world <world> <player>");
+            send(sender, ChatColor.RED + "Usage: /world <world> <player>");
             return true;
         }
         target.teleport(world.getSpawnLocation());
-        sender.sendMessage(ChatColor.GREEN + "Teleported " + (target.equals(sender) ? "" : target.getName() + " ") + "to world '" + world.getName() + "'.");
+        send(sender, ChatColor.GREEN + "Teleported " + (target.equals(sender) ? "" : target.getName() + " ") + "to world '" + world.getName() + "'.");
         return true;
     }
 
     private boolean handleRtp(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /rtp.");
+            send(sender, ChatColor.RED + "Only players can use /rtp.");
             return true;
         }
         if (!sender.hasPermission("allium.rtp")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /rtp.");
+            send(sender, ChatColor.RED + "You do not have permission to use /rtp.");
             return true;
         }
         Player player = (Player) sender;
@@ -439,7 +447,7 @@ final class LegacyTravelModule {
         if (args.length >= 1) {
             world = plugin.getServer().getWorld(args[0]);
             if (world == null) {
-                sender.sendMessage(ChatColor.RED + "Unknown world '" + args[0] + "'.");
+                send(sender, ChatColor.RED + "Unknown world '" + args[0] + "'.");
                 return true;
             }
         }
@@ -459,27 +467,27 @@ final class LegacyTravelModule {
             if (isSafeGround(ground.getType()) && !feet.getType().isSolid() && !head.getType().isSolid()) {
                 Location dest = new Location(world, x + 0.5, y + 0.1, z + 0.5, player.getLocation().getYaw(), player.getLocation().getPitch());
                 player.teleport(dest);
-                player.sendMessage(ChatColor.GREEN + "Randomly teleported to " + x + ", " + y + ", " + z + " in " + world.getName() + ".");
+                send(player, ChatColor.GREEN + "Randomly teleported to " + x + ", " + y + ", " + z + " in " + world.getName() + ".");
                 return true;
             }
         }
-        sender.sendMessage(ChatColor.RED + "Could not find a safe random location after " + RTP_ATTEMPTS + " attempts. Try again.");
+        send(sender, ChatColor.RED + "Could not find a safe random location after " + RTP_ATTEMPTS + " attempts. Try again.");
         return true;
     }
 
     private boolean handleSetTpr(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can set the RTP center.");
+            send(sender, ChatColor.RED + "Only players can set the RTP center.");
             return true;
         }
         if (!sender.hasPermission("allium.settpr")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /settpr.");
+            send(sender, ChatColor.RED + "You do not have permission to use /settpr.");
             return true;
         }
         Player player = (Player) sender;
         rtpCenters.put(player.getWorld().getName(), player.getLocation().clone());
         saveRtpCenters();
-        sender.sendMessage(ChatColor.GREEN + "Set RTP center for world '" + player.getWorld().getName() + "'.");
+        send(sender, ChatColor.GREEN + "Set RTP center for world '" + player.getWorld().getName() + "'.");
         return true;
     }
 

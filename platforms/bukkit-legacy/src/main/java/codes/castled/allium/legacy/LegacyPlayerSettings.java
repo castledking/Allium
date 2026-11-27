@@ -42,13 +42,16 @@ final class LegacyPlayerSettings {
     private final File file;
     private final LegacyCommandManager commands;
     private final LegacyEconomyModule economy;
+    private final LegacyMessageManager messages;
     private YamlConfiguration data = new YamlConfiguration();
     private boolean writable;
 
-    LegacyPlayerSettings(JavaPlugin plugin, LegacyCommandManager commands, LegacyEconomyModule economy) {
+    LegacyPlayerSettings(JavaPlugin plugin, LegacyCommandManager commands, LegacyEconomyModule economy,
+                         LegacyMessageManager messages) {
         this.plugin = plugin;
         this.commands = commands;
         this.economy = economy;
+        this.messages = messages;
         this.file = new File(plugin.getDataFolder(), "player-settings-legacy.yml");
     }
 
@@ -71,11 +74,11 @@ final class LegacyPlayerSettings {
 
     boolean direct(CommandSender sender, Setting setting, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can change these settings.");
+            messages.sendPrefixed(sender, ChatColor.RED + "Only players can change these settings.");
             return true;
         }
         if (!sender.hasPermission("allium." + setting.command)) {
-            sender.sendMessage(ChatColor.RED + "You cannot change that setting.");
+            messages.sendPrefixed(sender, ChatColor.RED + "You cannot change that setting.");
             return true;
         }
         if (args.length > 1 || (args.length == 1 && !isState(args[0]))) return false;
@@ -84,7 +87,7 @@ final class LegacyPlayerSettings {
 
     boolean execute(CommandSender sender, boolean change, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use these settings.");
+            messages.sendPrefixed(sender, ChatColor.RED + "Only players can use these settings.");
             return true;
         }
         Player player = (Player) sender;
@@ -104,7 +107,7 @@ final class LegacyPlayerSettings {
         Setting setting = find(args[0]);
         if (setting == null) return false;
         if (!allowed(player, setting)) {
-            player.sendMessage(ChatColor.RED + "You cannot change that setting.");
+            messages.sendPrefixed(player, ChatColor.RED + "You cannot change that setting.");
             return true;
         }
         return change(player, setting, args.length == 2 ? args[1] : null);
@@ -135,9 +138,9 @@ final class LegacyPlayerSettings {
         boolean on = state == null ? !enabled(id, setting) : "on".equalsIgnoreCase(state);
         boolean saved = setting == Setting.PAY ? economy.setAcceptsPayments(id, on) : save(id, setting, on);
         if (!saved) {
-            player.sendMessage(ChatColor.RED + "Your setting could not be saved.");
+            messages.sendPrefixed(player, ChatColor.RED + "Your setting could not be saved.");
         } else {
-            player.sendMessage((on ? ChatColor.GREEN : ChatColor.GRAY) + setting.title + (on ? " enabled." : " disabled."));
+            messages.sendPrefixed(player, (on ? ChatColor.GREEN : ChatColor.GRAY) + setting.title + (on ? " enabled." : " disabled."));
         }
         return true;
     }

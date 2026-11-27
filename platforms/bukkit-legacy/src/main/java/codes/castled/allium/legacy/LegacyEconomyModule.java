@@ -57,6 +57,10 @@ final class LegacyEconomyModule implements Listener {
         this.messages = messages;
     }
 
+    private void send(CommandSender recipient, String message) {
+        messages.sendPrefixed(recipient, message);
+    }
+
     void enable() {
         loadEconomy();
         loadWorth();
@@ -155,71 +159,71 @@ final class LegacyEconomyModule implements Listener {
 
     private boolean handleBalance(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.balance")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            send(sender, ChatColor.RED + "You do not have permission to use this command.");
             return true;
         }
         if (args.length == 0) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(ChatColor.RED + "Usage: /balance <player>");
+                send(sender, ChatColor.RED + "Usage: /balance <player>");
                 return true;
             }
             Player p = (Player) sender;
-            sender.sendMessage(ChatColor.GREEN + "Balance: " + ChatColor.WHITE + formatMoney(getBalance(p.getUniqueId())));
+            send(sender, ChatColor.GREEN + "Balance: " + ChatColor.WHITE + formatMoney(getBalance(p.getUniqueId())));
             return true;
         }
         if (!sender.hasPermission("allium.balance.others")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to check other players' balances.");
+            send(sender, ChatColor.RED + "You do not have permission to check other players' balances.");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
             return true;
         }
         String targetName = target.getName() != null ? target.getName() : args[0];
-        sender.sendMessage(ChatColor.GREEN + targetName + "'s balance: " + ChatColor.WHITE
+        send(sender, ChatColor.GREEN + targetName + "'s balance: " + ChatColor.WHITE
                 + formatMoney(getBalance(target.getUniqueId())));
         return true;
     }
 
     private boolean handlePay(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can pay other players.");
+            send(sender, ChatColor.RED + "Only players can pay other players.");
             return true;
         }
         if (!sender.hasPermission("allium.pay")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /pay.");
+            send(sender, ChatColor.RED + "You do not have permission to use /pay.");
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /pay <player> <amount>");
+            send(sender, ChatColor.RED + "Usage: /pay <player> <amount>");
             return true;
         }
         Player payer = (Player) sender;
         Player target = plugin.getServer().getPlayerExact(args[0]);
         if (target == null) target = plugin.getServer().getPlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
         if (target.getUniqueId().equals(payer.getUniqueId())) {
-            sender.sendMessage(ChatColor.RED + "You cannot pay yourself.");
+            send(sender, ChatColor.RED + "You cannot pay yourself.");
             return true;
         }
         if (!acceptsPayments(target.getUniqueId())) {
-            sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting payments right now.");
+            send(sender, ChatColor.RED + target.getName() + " is not accepting payments right now.");
             return true;
         }
         BigDecimal amount = LegacyCompat.parseMoneyAmount(args[1]);
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            sender.sendMessage(ChatColor.RED + "Enter a positive amount (e.g. 100, 2.5k).");
+            send(sender, ChatColor.RED + "Enter a positive amount (e.g. 100, 2.5k).");
             return true;
         }
         UUID payerId = payer.getUniqueId();
         UUID targetId = target.getUniqueId();
         BigDecimal payerBal = getBalance(payerId);
         if (payerBal.compareTo(amount) < 0) {
-            sender.sendMessage(ChatColor.RED + "Insufficient funds. Balance: " + formatMoney(payerBal));
+            send(sender, ChatColor.RED + "Insufficient funds. Balance: " + formatMoney(payerBal));
             return true;
         }
         String formatted = formatMoney(amount);
@@ -238,8 +242,8 @@ final class LegacyEconomyModule implements Listener {
             messages.send(payer, "economy.storage-unavailable", "{prefix} &cEconomy storage is unavailable.");
             return true;
         }
-        payer.sendMessage(ChatColor.GREEN + "Paid " + ChatColor.WHITE + formatted + ChatColor.GREEN + " to " + ChatColor.WHITE + target.getName() + ChatColor.GREEN + ".");
-        target.sendMessage(ChatColor.GREEN + "Received " + ChatColor.WHITE + formatted + ChatColor.GREEN + " from " + ChatColor.WHITE + payer.getName() + ChatColor.GREEN + ".");
+        send(payer, ChatColor.GREEN + "Paid " + ChatColor.WHITE + formatted + ChatColor.GREEN + " to " + ChatColor.WHITE + target.getName() + ChatColor.GREEN + ".");
+        send(target, ChatColor.GREEN + "Received " + ChatColor.WHITE + formatted + ChatColor.GREEN + " from " + ChatColor.WHITE + payer.getName() + ChatColor.GREEN + ".");
         return true;
     }
 
@@ -285,7 +289,7 @@ final class LegacyEconomyModule implements Listener {
             String name = args[targetIndex];
             id = knownAccountId(name);
             if (id == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + name + "' not found.");
+                send(sender, ChatColor.RED + "Player '" + name + "' not found.");
                 return true;
             }
         } else {
@@ -378,33 +382,33 @@ final class LegacyEconomyModule implements Listener {
 
     private boolean handleEco(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.eco")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /eco.");
+            send(sender, ChatColor.RED + "You do not have permission to use /eco.");
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /eco <give|take|set|reset> <player> [amount]");
+            send(sender, ChatColor.RED + "Usage: /eco <give|take|set|reset> <player> [amount]");
             return true;
         }
         String action = args[0].toLowerCase(Locale.ROOT);
         OfflinePlayer target = resolvePlayer(args[1]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[1] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[1] + "' not found.");
             return true;
         }
         String targetName = target.getName() != null ? target.getName() : args[1];
         UUID id = target.getUniqueId();
         if (action.equals("reset")) {
             setBalance(id, targetName, BigDecimal.ZERO);
-            sender.sendMessage(ChatColor.GREEN + "Reset " + targetName + "'s balance to $0.00.");
+            send(sender, ChatColor.GREEN + "Reset " + targetName + "'s balance to $0.00.");
             return true;
         }
         if (args.length < 3) {
-            sender.sendMessage(ChatColor.RED + "Usage: /eco " + action + " <player> <amount>");
+            send(sender, ChatColor.RED + "Usage: /eco " + action + " <player> <amount>");
             return true;
         }
         BigDecimal amount = LegacyCompat.parseMoneyAmount(args[2]);
         if (amount == null) {
-            sender.sendMessage(ChatColor.RED + "Invalid amount '" + args[2] + "'.");
+            send(sender, ChatColor.RED + "Invalid amount '" + args[2] + "'.");
             return true;
         }
         BigDecimal current = getBalance(id);
@@ -421,20 +425,20 @@ final class LegacyEconomyModule implements Listener {
                 next = amount;
                 break;
             default:
-                sender.sendMessage(ChatColor.RED + "Usage: /eco <give|take|set|reset> <player> [amount]");
+                send(sender, ChatColor.RED + "Usage: /eco <give|take|set|reset> <player> [amount]");
                 return true;
         }
         setBalance(id, targetName, next);
-        sender.sendMessage(ChatColor.GREEN + "Set " + targetName + "'s balance to " + ChatColor.WHITE + formatMoney(next) + ChatColor.GREEN + ".");
+        send(sender, ChatColor.GREEN + "Set " + targetName + "'s balance to " + ChatColor.WHITE + formatMoney(next) + ChatColor.GREEN + ".");
         if (target.isOnline() && target.getPlayer() != null && !target.getPlayer().equals(sender)) {
-            target.getPlayer().sendMessage(ChatColor.GREEN + "Your balance is now " + ChatColor.WHITE + formatMoney(next) + ChatColor.GREEN + ".");
+            send(target.getPlayer(), ChatColor.GREEN + "Your balance is now " + ChatColor.WHITE + formatMoney(next) + ChatColor.GREEN + ".");
         }
         return true;
     }
 
     private boolean handleBaltop(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.baltop")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /baltop.");
+            send(sender, ChatColor.RED + "You do not have permission to use /baltop.");
             return true;
         }
         int page = 1;
@@ -456,7 +460,7 @@ final class LegacyEconomyModule implements Listener {
         if (page > totalPages) page = totalPages;
         sender.sendMessage(ChatColor.LIGHT_PURPLE + "Top Balances " + ChatColor.GRAY + "(Page " + page + "/" + totalPages + "):");
         if (entries.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + "No accounts recorded yet.");
+            send(sender, ChatColor.GRAY + "No accounts recorded yet.");
             return true;
         }
         int start = (page - 1) * pageSize;
@@ -476,19 +480,19 @@ final class LegacyEconomyModule implements Listener {
 
     private boolean handleWorth(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.worth")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /worth.");
+            send(sender, ChatColor.RED + "You do not have permission to use /worth.");
             return true;
         }
         Material mat;
         int amount = 1;
         if (args.length == 0 || args[0].equalsIgnoreCase("hand")) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage(ChatColor.RED + "Usage: /worth <material>");
+                send(sender, ChatColor.RED + "Usage: /worth <material>");
                 return true;
             }
             ItemStack hand = ((Player) sender).getInventory().getItemInMainHand();
             if (hand == null || hand.getType() == Material.AIR) {
-                sender.sendMessage(ChatColor.RED + "Hold an item or specify a material name.");
+                send(sender, ChatColor.RED + "Hold an item or specify a material name.");
                 return true;
             }
             mat = hand.getType();
@@ -496,17 +500,17 @@ final class LegacyEconomyModule implements Listener {
         } else {
             mat = LegacyCompat.matchMaterial(args[0]);
             if (mat == null) {
-                sender.sendMessage(ChatColor.RED + "Unknown material '" + args[0] + "'.");
+                send(sender, ChatColor.RED + "Unknown material '" + args[0] + "'.");
                 return true;
             }
         }
         BigDecimal unit = worthTable.get(mat.name());
         if (unit == null || unit.compareTo(BigDecimal.ZERO) <= 0) {
-            sender.sendMessage(ChatColor.YELLOW + mat.name() + " has no configured sell price.");
+            send(sender, ChatColor.YELLOW + mat.name() + " has no configured sell price.");
             return true;
         }
         BigDecimal total = unit.multiply(BigDecimal.valueOf(amount));
-        sender.sendMessage(ChatColor.GREEN + mat.name() + " x" + amount + " is worth "
+        send(sender, ChatColor.GREEN + mat.name() + " x" + amount + " is worth "
                 + ChatColor.WHITE + formatMoney(total)
                 + ChatColor.GRAY + " (" + formatMoney(unit) + " each).");
         return true;
@@ -514,7 +518,7 @@ final class LegacyEconomyModule implements Listener {
 
     private boolean handleSetWorth(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.setworth")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /setworth.");
+            send(sender, ChatColor.RED + "You do not have permission to use /setworth.");
             return true;
         }
         Material mat;
@@ -522,7 +526,7 @@ final class LegacyEconomyModule implements Listener {
         if (args.length == 1 && sender instanceof Player) {
             ItemStack hand = ((Player) sender).getInventory().getItemInMainHand();
             if (hand == null || hand.getType() == Material.AIR) {
-                sender.sendMessage(ChatColor.RED + "Usage: /setworth [material] <price>");
+                send(sender, ChatColor.RED + "Usage: /setworth [material] <price>");
                 return true;
             }
             mat = hand.getType();
@@ -531,38 +535,38 @@ final class LegacyEconomyModule implements Listener {
             mat = LegacyCompat.matchMaterial(args[0]);
             priceRaw = args[1];
         } else {
-            sender.sendMessage(ChatColor.RED + "Usage: /setworth [material] <price>");
+            send(sender, ChatColor.RED + "Usage: /setworth [material] <price>");
             return true;
         }
         if (mat == null) {
-            sender.sendMessage(ChatColor.RED + "Unknown material.");
+            send(sender, ChatColor.RED + "Unknown material.");
             return true;
         }
         BigDecimal price = LegacyCompat.parseMoneyAmount(priceRaw);
         if (price == null) {
-            sender.sendMessage(ChatColor.RED + "Invalid price '" + priceRaw + "'.");
+            send(sender, ChatColor.RED + "Invalid price '" + priceRaw + "'.");
             return true;
         }
         if (price.compareTo(BigDecimal.ZERO) == 0) {
             worthTable.remove(mat.name());
             saveWorth();
-            sender.sendMessage(ChatColor.GREEN + "Removed sell price for " + mat.name() + ".");
+            send(sender, ChatColor.GREEN + "Removed sell price for " + mat.name() + ".");
             return true;
         }
         worthTable.put(mat.name(), price);
         saveWorth();
-        sender.sendMessage(ChatColor.GREEN + "Set sell price for " + ChatColor.WHITE + mat.name()
+        send(sender, ChatColor.GREEN + "Set sell price for " + ChatColor.WHITE + mat.name()
                 + ChatColor.GREEN + " to " + ChatColor.WHITE + formatMoney(price) + ChatColor.GREEN + ".");
         return true;
     }
 
     private boolean handleSell(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can sell items.");
+            send(sender, ChatColor.RED + "Only players can sell items.");
             return true;
         }
         if (!sender.hasPermission("allium.sell")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /sell.");
+            send(sender, ChatColor.RED + "You do not have permission to use /sell.");
             return true;
         }
         Player player = (Player) sender;
@@ -573,12 +577,12 @@ final class LegacyEconomyModule implements Listener {
         if (!sellAll) {
             ItemStack hand = player.getInventory().getItemInMainHand();
             if (hand == null || hand.getType() == Material.AIR) {
-                sender.sendMessage(ChatColor.RED + "Hold an item to sell, or use /sell all.");
+                send(sender, ChatColor.RED + "Hold an item to sell, or use /sell all.");
                 return true;
             }
             BigDecimal unit = worthTable.get(hand.getType().name());
             if (unit == null || unit.compareTo(BigDecimal.ZERO) <= 0) {
-                sender.sendMessage(ChatColor.RED + "That item cannot be sold.");
+                send(sender, ChatColor.RED + "That item cannot be sold.");
                 return true;
             }
             totalItems = hand.getAmount();
@@ -601,11 +605,11 @@ final class LegacyEconomyModule implements Listener {
             }
         }
         if (totalItems == 0) {
-            sender.sendMessage(ChatColor.RED + "You have no sellable items.");
+            send(sender, ChatColor.RED + "You have no sellable items.");
             return true;
         }
         setBalance(player.getUniqueId(), player.getName(), getBalance(player.getUniqueId()).add(totalEarned));
-        sender.sendMessage(ChatColor.GREEN + "Sold " + ChatColor.WHITE + totalItems + ChatColor.GREEN
+        send(sender, ChatColor.GREEN + "Sold " + ChatColor.WHITE + totalItems + ChatColor.GREEN
                 + " item(s) for " + ChatColor.WHITE + formatMoney(totalEarned) + ChatColor.GREEN + ".");
         return true;
     }

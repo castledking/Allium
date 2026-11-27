@@ -137,17 +137,18 @@ class UnifiedBootstrapTest {
 
         // /allium version
         assertTrue(runtime.onCommand(alice, cmd("allium"), "allium", new String[]{"version"}));
-        verify(alice).sendMessage("Allium 1.0.2 on Spigot (Minecraft 1.12.2)");
+        verify(alice).sendMessage(argThat((String msg) -> msg.contains("[") && msg.contains("Allium")
+                && msg.endsWith("Allium 1.0.2 on Spigot (Minecraft 1.12.2)")));
 
         // /sethome, /homes, /home, /delhome
         assertTrue(runtime.onCommand(alice, cmd("sethome"), "sethome", new String[]{"base"}));
-        verify(alice).sendMessage("Home 'base' set.");
+        verify(alice).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.endsWith("Home 'base' set.")));
         assertTrue(runtime.onCommand(alice, cmd("homes"), "homes", new String[0]));
-        verify(alice).sendMessage("Homes: base");
+        verify(alice).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.endsWith("Homes: base")));
         assertTrue(runtime.onCommand(alice, cmd("home"), "home", new String[]{"base"}));
         verify(alice).teleport(any(Location.class));
         assertTrue(runtime.onCommand(alice, cmd("delhome"), "delhome", new String[]{"base"}));
-        verify(alice).sendMessage("Home 'base' deleted.");
+        verify(alice).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.endsWith("Home 'base' deleted.")));
 
         // /setwarp & /warp
         assertTrue(runtime.onCommand(alice, cmd("setwarp"), "setwarp", new String[]{"market"}));

@@ -742,4 +742,93 @@ class LegacyModulesTest {
 
         runtime.onDisable();
     }
+
+    @Test
+    void legacyUtilityCommandsIncludeAlliumPrefix() {
+        Harness h = createHarness();
+        Player admin = h.addPlayer("Admin", UUID.randomUUID(), true);
+
+        assertTrue(h.run(admin, "heal"));
+        verify(admin).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.contains("You have been healed.")));
+
+        Command gmcCmd = mock(Command.class);
+        when(gmcCmd.getName()).thenReturn("gamemode");
+        assertTrue(h.runtime().onCommand(admin, gmcCmd, "gmc", new String[0]));
+        verify(admin).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.contains("Gamemode set to")));
+
+        assertTrue(h.run(admin, "fly"));
+        verify(admin).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.contains("Fly mode")));
+
+        assertTrue(h.run(admin, "god"));
+        verify(admin).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.contains("God mode")));
+
+        h.runtime().onDisable();
+    }
+
+    @Test
+    void legacyTpmobUsesYellowDustOn112AndMovesSelectedMobs() {
+        Harness h = createHarness();
+        BukkitScheduler scheduler = mock(BukkitScheduler.class);
+        BukkitTask particleTask = mock(BukkitTask.class);
+        when(h.server().getScheduler()).thenReturn(scheduler);
+        when(scheduler.runTaskTimer(eq(h.plugin()), any(Runnable.class), eq(5L), eq(5L))).thenReturn(particleTask);
+
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+        Location dest = new Location(h.world(), 30.0, 70.0, -10.0);
+        when(staff.getLocation()).thenReturn(dest);
+
+        org.bukkit.entity.Cow cow = mock(org.bukkit.entity.Cow.class);
+        UUID cowId = UUID.randomUUID();
+        when(cow.getUniqueId()).thenReturn(cowId);
+        when(cow.getType()).thenReturn(org.bukkit.entity.EntityType.COW);
+        when(cow.isValid()).thenReturn(true);
+        when(cow.getLocation()).thenReturn(new Location(h.world(), 32.0, 70.0, -10.0));
+        when(cow.getEyeHeight()).thenReturn(1.3);
+        when(cow.teleport(any(Location.class))).thenReturn(true);
+        when(h.server().getEntity(cowId)).thenReturn(cow);
+
+        // Enable /tpmob (/tpent)
+        assertTrue(h.run(staff, "tpent"));
+        verify(staff).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.contains("Entity selection enabled.")));
+
+        // Capture registered companion listener and right-click the cow
+        var listenerCaptor = ArgumentCaptor.forClass(org.bukkit.event.Listener.class);
+        verify(h.server().getPluginManager(), atLeastOnce()).registerEvents(listenerCaptor.capture(), eq(h.plugin()));
+        Object companionListener = listenerCaptor.getAllValues().stream()
+                .filter(l -> l.getClass().getSimpleName().equals("LegacyCompanionTeleports"))
+                .findFirst().orElseThrow();
+
+        var interact = new org.bukkit.event.player.PlayerInteractEntityEvent(
+                staff, cow, org.bukkit.inventory.EquipmentSlot.HAND);
+        try {
+            var handler = companionListener.getClass().getMethod("onInteractEntity",
+                    org.bukkit.event.player.PlayerInteractEntityEvent.class);
+            handler.setAccessible(true);
+            handler.invoke(companionListener, interact);
+        } catch (Exception e) {
+            fail(e);
+        }
+        assertTrue(interact.isCancelled());
+        verify(cow, never()).setGlowing(true);
+        verify(staff, atLeastOnce()).spawnParticle(
+                eq(org.bukkit.Particle.REDSTONE), anyDouble(), anyDouble(), anyDouble(),
+                eq(0), eq(1.0), eq(0.86), eq(0.16), eq(1.0));
+
+        // Tick the persistent yellow dust highlighter
+        ArgumentCaptor<Runnable> ticker = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskTimer(eq(h.plugin()), ticker.capture(), eq(5L), eq(5L));
+        clearInvocations(staff);
+        ticker.getValue().run();
+        verify(staff, atLeastOnce()).spawnParticle(
+                eq(org.bukkit.Particle.REDSTONE), anyDouble(), anyDouble(), anyDouble(),
+                eq(0), eq(1.0), eq(0.86), eq(0.16), eq(1.0));
+
+        // /tphere with no args moves the selected mob and stops the particle task
+        assertTrue(h.run(staff, "tphere"));
+        verify(cow).teleport(any(Location.class));
+        verify(particleTask).cancel();
+        verify(staff).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.contains("Teleported 1 selected companion(s)")));
+
+        h.runtime().onDisable();
+    }
 }

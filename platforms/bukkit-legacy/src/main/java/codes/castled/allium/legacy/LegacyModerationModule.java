@@ -82,6 +82,7 @@ final class LegacyModerationModule implements Listener {
     }
 
     private final JavaPlugin plugin;
+    private final LegacyMessageManager messages;
     private final Set<UUID> vanished = new HashSet<UUID>();
     private final Set<UUID> frozen = new HashSet<UUID>();
     private final Set<UUID> socialSpy = new HashSet<UUID>();
@@ -91,8 +92,13 @@ final class LegacyModerationModule implements Listener {
     private final Map<UUID, JailRecord> jailed = new HashMap<UUID, JailRecord>();
     private final Map<UUID, List<String>> notes = new HashMap<UUID, List<String>>();
 
-    LegacyModerationModule(JavaPlugin plugin) {
+    LegacyModerationModule(JavaPlugin plugin, LegacyMessageManager messages) {
         this.plugin = plugin;
+        this.messages = messages;
+    }
+
+    private void send(CommandSender recipient, String message) {
+        messages.sendPrefixed(recipient, message);
     }
 
     void enable() {
@@ -159,7 +165,7 @@ final class LegacyModerationModule implements Listener {
                 String remaining = entry.expiresAt > 0L
                         ? " (" + LegacyCompat.formatDuration(entry.expiresAt - now) + " remaining)"
                         : " (permanent)";
-                p.sendMessage(ChatColor.RED + "You are muted" + remaining + ": " + entry.reason);
+                send(p, ChatColor.RED + "You are muted" + remaining + ": " + entry.reason);
             }
         }
     }
@@ -181,7 +187,7 @@ final class LegacyModerationModule implements Listener {
                 Location jailLoc = jails.get(record.jailName);
                 if (jailLoc != null) {
                     joining.teleport(jailLoc);
-                    joining.sendMessage(ChatColor.RED + "You are jailed in '" + record.jailName + "'.");
+                    send(joining, ChatColor.RED + "You are jailed in '" + record.jailName + "'.");
                 }
             }
         }
@@ -231,7 +237,7 @@ final class LegacyModerationModule implements Listener {
         UUID id = event.getPlayer().getUniqueId();
         if (frozen.contains(id) || isJailedActive(id)) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(ChatColor.RED + "You cannot break blocks right now.");
+            send(event.getPlayer(), ChatColor.RED + "You cannot break blocks right now.");
         }
     }
 
@@ -240,7 +246,7 @@ final class LegacyModerationModule implements Listener {
         UUID id = event.getPlayer().getUniqueId();
         if (frozen.contains(id) || isJailedActive(id)) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(ChatColor.RED + "You cannot place blocks right now.");
+            send(event.getPlayer(), ChatColor.RED + "You cannot place blocks right now.");
         }
     }
 
@@ -260,7 +266,7 @@ final class LegacyModerationModule implements Listener {
         String msg = event.getMessage();
         if (isJailedActive(p.getUniqueId()) && !msg.toLowerCase(Locale.ROOT).startsWith("/helpop")) {
             event.setCancelled(true);
-            p.sendMessage(ChatColor.RED + "You cannot run commands while jailed (use /helpop for staff).");
+            send(p, ChatColor.RED + "You cannot run commands while jailed (use /helpop for staff).");
             return;
         }
         String formatted = ChatColor.DARK_GRAY + "[CommandSpy] " + ChatColor.GRAY + p.getName()
@@ -380,24 +386,24 @@ final class LegacyModerationModule implements Listener {
 
     private boolean handleVanish(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.vanish")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /vanish.");
+            send(sender, ChatColor.RED + "You do not have permission to use /vanish.");
             return true;
         }
         Player target;
         if (args.length >= 1) {
             if (!sender.hasPermission("allium.vanish.others")) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to vanish other players.");
+                send(sender, ChatColor.RED + "You do not have permission to vanish other players.");
                 return true;
             }
             target = findOnline(args[0]);
             if (target == null) {
-                sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+                send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
                 return true;
             }
         } else if (sender instanceof Player) {
             target = (Player) sender;
         } else {
-            sender.sendMessage(ChatColor.RED + "Usage: /vanish <player>");
+            send(sender, ChatColor.RED + "Usage: /vanish <player>");
             return true;
         }
         boolean nowVanished;
@@ -416,25 +422,25 @@ final class LegacyModerationModule implements Listener {
             }
         }
         String state = nowVanished ? "enabled" : "disabled";
-        target.sendMessage(ChatColor.GREEN + "Vanish " + state + ".");
+        send(target, ChatColor.GREEN + "Vanish " + state + ".");
         if (!target.equals(sender)) {
-            sender.sendMessage(ChatColor.GREEN + "Vanish " + state + " for " + target.getName() + ".");
+            send(sender, ChatColor.GREEN + "Vanish " + state + " for " + target.getName() + ".");
         }
         return true;
     }
 
     private boolean handleMute(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.mute")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /mute.");
+            send(sender, ChatColor.RED + "You do not have permission to use /mute.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /mute <player> [duration] [reason]");
+            send(sender, ChatColor.RED + "Usage: /mute <player> [duration] [reason]");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
             return true;
         }
         long expiresAt = 0L;
@@ -451,39 +457,39 @@ final class LegacyModerationModule implements Listener {
         mutes.put(target.getUniqueId(), new MuteEntry(targetName, expiresAt, reason));
         saveModeration();
         String durLabel = expiresAt > 0L ? " for " + LegacyCompat.formatDuration(expiresAt - System.currentTimeMillis()) : " permanently";
-        sender.sendMessage(ChatColor.GREEN + "Muted " + targetName + durLabel + ": " + reason);
+        send(sender, ChatColor.GREEN + "Muted " + targetName + durLabel + ": " + reason);
         if (target.isOnline() && target.getPlayer() != null) {
-            target.getPlayer().sendMessage(ChatColor.RED + "You have been muted" + durLabel + ": " + reason);
+            send(target.getPlayer(), ChatColor.RED + "You have been muted" + durLabel + ": " + reason);
         }
         return true;
     }
 
     private boolean handleUnmute(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.unmute")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /unmute.");
+            send(sender, ChatColor.RED + "You do not have permission to use /unmute.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /unmute <player>");
+            send(sender, ChatColor.RED + "Usage: /unmute <player>");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null || mutes.remove(target.getUniqueId()) == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not muted.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not muted.");
             return true;
         }
         saveModeration();
         String targetName = target.getName() != null ? target.getName() : args[0];
-        sender.sendMessage(ChatColor.GREEN + "Unmuted " + targetName + ".");
+        send(sender, ChatColor.GREEN + "Unmuted " + targetName + ".");
         if (target.isOnline() && target.getPlayer() != null) {
-            target.getPlayer().sendMessage(ChatColor.GREEN + "You have been unmuted.");
+            send(target.getPlayer(), ChatColor.GREEN + "You have been unmuted.");
         }
         return true;
     }
 
     private boolean handleMutes(CommandSender sender) {
         if (!sender.hasPermission("allium.mutes")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to view mutes.");
+            send(sender, ChatColor.RED + "You do not have permission to view mutes.");
             return true;
         }
         long now = System.currentTimeMillis();
@@ -502,37 +508,37 @@ final class LegacyModerationModule implements Listener {
         for (UUID id : expired) mutes.remove(id);
         if (!expired.isEmpty()) saveModeration();
         if (active.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + "No players are currently muted.");
+            send(sender, ChatColor.GRAY + "No players are currently muted.");
             return true;
         }
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Muted players (" + active.size() + "): "
+        send(sender, ChatColor.LIGHT_PURPLE + "Muted players (" + active.size() + "): "
                 + ChatColor.WHITE + joinList(active, ", "));
         return true;
     }
 
     private boolean handleKick(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.kick")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /kick.");
+            send(sender, ChatColor.RED + "You do not have permission to use /kick.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /kick <player> [reason]");
+            send(sender, ChatColor.RED + "Usage: /kick <player> [reason]");
             return true;
         }
         Player target = findOnline(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
         String reason = args.length >= 2 ? LegacyCompat.color(joinArgs(args, 1)) : "Kicked by " + sender.getName();
         target.kickPlayer(reason);
-        sender.sendMessage(ChatColor.GREEN + "Kicked " + target.getName() + ": " + reason);
+        send(sender, ChatColor.GREEN + "Kicked " + target.getName() + ": " + reason);
         return true;
     }
 
     private boolean handleKickAll(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.kickall")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /kickall.");
+            send(sender, ChatColor.RED + "You do not have permission to use /kickall.");
             return true;
         }
         String reason = args.length >= 1 ? LegacyCompat.color(joinArgs(args, 0)) : "Kicked by " + sender.getName();
@@ -542,18 +548,18 @@ final class LegacyModerationModule implements Listener {
             p.kickPlayer(reason);
             count++;
         }
-        sender.sendMessage(ChatColor.GREEN + "Kicked " + count + " player(s).");
+        send(sender, ChatColor.GREEN + "Kicked " + count + " player(s).");
         return true;
     }
 
     private boolean handleBan(CommandSender sender, String[] args, boolean temp, boolean ip) {
         String perm = ip ? (temp ? "allium.tempbanip" : "allium.ipban") : (temp ? "allium.tempban" : "allium.ban");
         if (!sender.hasPermission(perm)) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            send(sender, ChatColor.RED + "You do not have permission to use this command.");
             return true;
         }
         if (args.length < (temp ? 2 : 1)) {
-            sender.sendMessage(ChatColor.RED + "Usage: /" + (temp ? (ip ? "tempbanip" : "tempban") + " <target> <duration> [reason]"
+            send(sender, ChatColor.RED + "Usage: /" + (temp ? (ip ? "tempbanip" : "tempban") + " <target> <duration> [reason]"
                     : (ip ? "ipban" : "ban") + " <target> [reason]"));
             return true;
         }
@@ -562,7 +568,7 @@ final class LegacyModerationModule implements Listener {
         if (temp) {
             long dur = LegacyCompat.parseDurationMillis(args[1]);
             if (dur <= 0L) {
-                sender.sendMessage(ChatColor.RED + "Invalid duration '" + args[1] + "' (e.g. 30m, 2h, 7d).");
+                send(sender, ChatColor.RED + "Invalid duration '" + args[1] + "' (e.g. 30m, 2h, 7d).");
                 return true;
             }
             expiry = new Date(System.currentTimeMillis() + dur);
@@ -582,7 +588,7 @@ final class LegacyModerationModule implements Listener {
                     p.kickPlayer(ChatColor.RED + "IP Banned: " + reason);
                 }
             }
-            sender.sendMessage(ChatColor.GREEN + "IP-banned " + targetKey + ": " + reason);
+            send(sender, ChatColor.GREEN + "IP-banned " + targetKey + ": " + reason);
             return true;
         }
         if (online != null) targetKey = online.getName();
@@ -590,38 +596,38 @@ final class LegacyModerationModule implements Listener {
         if (online != null) {
             online.kickPlayer(ChatColor.RED + "Banned: " + reason);
         }
-        sender.sendMessage(ChatColor.GREEN + "Banned " + targetKey + ": " + reason);
+        send(sender, ChatColor.GREEN + "Banned " + targetKey + ": " + reason);
         return true;
     }
 
     private boolean handleUnban(CommandSender sender, String[] args, boolean ip) {
         String perm = ip ? "allium.unbanip" : "allium.unban";
         if (!sender.hasPermission(perm)) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            send(sender, ChatColor.RED + "You do not have permission to use this command.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /" + (ip ? "unbanip <ip>" : "unban <player>"));
+            send(sender, ChatColor.RED + "Usage: /" + (ip ? "unbanip <ip>" : "unban <player>"));
             return true;
         }
         BanList list = plugin.getServer().getBanList(ip ? BanList.Type.IP : BanList.Type.NAME);
         if (!list.isBanned(args[0])) {
-            sender.sendMessage(ChatColor.RED + "'" + args[0] + "' is not banned.");
+            send(sender, ChatColor.RED + "'" + args[0] + "' is not banned.");
             return true;
         }
         list.pardon(args[0]);
-        sender.sendMessage(ChatColor.GREEN + "Unbanned " + args[0] + ".");
+        send(sender, ChatColor.GREEN + "Unbanned " + args[0] + ".");
         return true;
     }
 
     private boolean handleBanList(CommandSender sender) {
         if (!sender.hasPermission("allium.banlist")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to view bans.");
+            send(sender, ChatColor.RED + "You do not have permission to view bans.");
             return true;
         }
         Set<BanEntry> entries = plugin.getServer().getBanList(BanList.Type.NAME).getBanEntries();
         if (entries.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + "No players are banned.");
+            send(sender, ChatColor.GRAY + "No players are banned.");
             return true;
         }
         List<String> names = new ArrayList<String>();
@@ -629,114 +635,114 @@ final class LegacyModerationModule implements Listener {
             names.add(entry.getTarget());
         }
         Collections.sort(names);
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Banned players (" + names.size() + "): "
+        send(sender, ChatColor.LIGHT_PURPLE + "Banned players (" + names.size() + "): "
                 + ChatColor.WHITE + joinList(names, ", "));
         return true;
     }
 
     private boolean handleFreeze(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.freeze")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /freeze.");
+            send(sender, ChatColor.RED + "You do not have permission to use /freeze.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /freeze <player>");
+            send(sender, ChatColor.RED + "Usage: /freeze <player>");
             return true;
         }
         Player target = findOnline(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
         if (frozen.remove(target.getUniqueId())) {
-            target.sendMessage(ChatColor.GREEN + "You have been unfrozen.");
-            sender.sendMessage(ChatColor.GREEN + "Unfroze " + target.getName() + ".");
+            send(target, ChatColor.GREEN + "You have been unfrozen.");
+            send(sender, ChatColor.GREEN + "Unfroze " + target.getName() + ".");
         } else {
             frozen.add(target.getUniqueId());
-            target.sendMessage(ChatColor.RED + "You have been frozen by staff.");
-            sender.sendMessage(ChatColor.GREEN + "Froze " + target.getName() + ".");
+            send(target, ChatColor.RED + "You have been frozen by staff.");
+            send(sender, ChatColor.GREEN + "Froze " + target.getName() + ".");
         }
         return true;
     }
 
     private boolean handleSetJail(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can set jails.");
+            send(sender, ChatColor.RED + "Only players can set jails.");
             return true;
         }
         if (!sender.hasPermission("allium.setjail")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to set jails.");
+            send(sender, ChatColor.RED + "You do not have permission to set jails.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /setjail <name>");
+            send(sender, ChatColor.RED + "Usage: /setjail <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
         jails.put(key, ((Player) sender).getLocation().clone());
         saveModeration();
-        sender.sendMessage(ChatColor.GREEN + "Jail '" + key + "' set.");
+        send(sender, ChatColor.GREEN + "Jail '" + key + "' set.");
         return true;
     }
 
     private boolean handleDelJail(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.deljail")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to delete jails.");
+            send(sender, ChatColor.RED + "You do not have permission to delete jails.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /deljail <name>");
+            send(sender, ChatColor.RED + "Usage: /deljail <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
         if (jails.remove(key) == null) {
-            sender.sendMessage(ChatColor.RED + "Jail '" + args[0] + "' does not exist.");
+            send(sender, ChatColor.RED + "Jail '" + args[0] + "' does not exist.");
             return true;
         }
         saveModeration();
-        sender.sendMessage(ChatColor.GREEN + "Deleted jail '" + key + "'.");
+        send(sender, ChatColor.GREEN + "Deleted jail '" + key + "'.");
         return true;
     }
 
     private boolean handleJails(CommandSender sender) {
         if (!sender.hasPermission("allium.jails")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to list jails.");
+            send(sender, ChatColor.RED + "You do not have permission to list jails.");
             return true;
         }
         if (jails.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + "No jails are set.");
+            send(sender, ChatColor.GRAY + "No jails are set.");
             return true;
         }
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Jails (" + jails.size() + "): "
+        send(sender, ChatColor.LIGHT_PURPLE + "Jails (" + jails.size() + "): "
                 + ChatColor.WHITE + joinList(new ArrayList<String>(jails.keySet()), ", "));
         return true;
     }
 
     private boolean handleJail(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.jail")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /jail.");
+            send(sender, ChatColor.RED + "You do not have permission to use /jail.");
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /jail <player> <jail> [duration]");
+            send(sender, ChatColor.RED + "Usage: /jail <player> <jail> [duration]");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
             return true;
         }
         String jailKey = args[1].toLowerCase(Locale.ROOT);
         Location jailLoc = jails.get(jailKey);
         if (jailLoc == null) {
-            sender.sendMessage(ChatColor.RED + "Jail '" + args[1] + "' does not exist.");
+            send(sender, ChatColor.RED + "Jail '" + args[1] + "' does not exist.");
             return true;
         }
         long expiresAt = 0L;
         if (args.length >= 3) {
             long dur = LegacyCompat.parseDurationMillis(args[2]);
             if (dur <= 0L) {
-                sender.sendMessage(ChatColor.RED + "Invalid duration '" + args[2] + "'.");
+                send(sender, ChatColor.RED + "Invalid duration '" + args[2] + "'.");
                 return true;
             }
             expiresAt = System.currentTimeMillis() + dur;
@@ -747,38 +753,38 @@ final class LegacyModerationModule implements Listener {
         saveModeration();
         if (target.isOnline() && target.getPlayer() != null) {
             target.getPlayer().teleport(jailLoc);
-            target.getPlayer().sendMessage(ChatColor.RED + "You have been jailed in '" + jailKey + "'.");
+            send(target.getPlayer(), ChatColor.RED + "You have been jailed in '" + jailKey + "'.");
         }
-        sender.sendMessage(ChatColor.GREEN + "Jailed " + targetName + " in '" + jailKey + "'.");
+        send(sender, ChatColor.GREEN + "Jailed " + targetName + " in '" + jailKey + "'.");
         return true;
     }
 
     private boolean handleUnjail(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.unjail")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /unjail.");
+            send(sender, ChatColor.RED + "You do not have permission to use /unjail.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /unjail <player>");
+            send(sender, ChatColor.RED + "Usage: /unjail <player>");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null || !jailed.containsKey(target.getUniqueId())) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not jailed.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not jailed.");
             return true;
         }
         releaseFromJail(target.getUniqueId(), target.isOnline() ? target.getPlayer() : null);
-        sender.sendMessage(ChatColor.GREEN + "Released " + (target.getName() != null ? target.getName() : args[0]) + " from jail.");
+        send(sender, ChatColor.GREEN + "Released " + (target.getName() != null ? target.getName() : args[0]) + " from jail.");
         return true;
     }
 
     private boolean handleToggleJail(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.jail")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /togglejail.");
+            send(sender, ChatColor.RED + "You do not have permission to use /togglejail.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /togglejail <player> [jail] [duration]");
+            send(sender, ChatColor.RED + "Usage: /togglejail <player> [jail] [duration]");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -787,7 +793,7 @@ final class LegacyModerationModule implements Listener {
         }
         if (args.length < 2) {
             if (jails.isEmpty()) {
-                sender.sendMessage(ChatColor.RED + "No jails are configured.");
+                send(sender, ChatColor.RED + "No jails are configured.");
                 return true;
             }
             String firstJail = jails.keySet().iterator().next();
@@ -798,34 +804,34 @@ final class LegacyModerationModule implements Listener {
 
     private boolean handleJailedPlayers(CommandSender sender) {
         if (!sender.hasPermission("allium.jailedplayers") && !sender.hasPermission("allium.jails")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to list jailed players.");
+            send(sender, ChatColor.RED + "You do not have permission to list jailed players.");
             return true;
         }
         if (jailed.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + "No players are currently jailed.");
+            send(sender, ChatColor.GRAY + "No players are currently jailed.");
             return true;
         }
         List<String> list = new ArrayList<String>();
         for (JailRecord r : jailed.values()) {
             list.add(r.name + " (" + r.jailName + ")");
         }
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Jailed players (" + list.size() + "): "
+        send(sender, ChatColor.LIGHT_PURPLE + "Jailed players (" + list.size() + "): "
                 + ChatColor.WHITE + joinList(list, ", "));
         return true;
     }
 
     private boolean handleWarn(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.warn")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /warn.");
+            send(sender, ChatColor.RED + "You do not have permission to use /warn.");
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /warn <player> <reason>");
+            send(sender, ChatColor.RED + "Usage: /warn <player> <reason>");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
             return true;
         }
         String reason = joinArgs(args, 1);
@@ -837,25 +843,25 @@ final class LegacyModerationModule implements Listener {
         list.add("[WARN by " + sender.getName() + "] " + reason);
         saveModeration();
         String targetName = target.getName() != null ? target.getName() : args[0];
-        sender.sendMessage(ChatColor.GREEN + "Warned " + targetName + " (#" + list.size() + "): " + reason);
+        send(sender, ChatColor.GREEN + "Warned " + targetName + " (#" + list.size() + "): " + reason);
         if (target.isOnline() && target.getPlayer() != null) {
-            target.getPlayer().sendMessage(ChatColor.RED + "Warning from " + sender.getName() + ": " + ChatColor.YELLOW + reason);
+            send(target.getPlayer(), ChatColor.RED + "Warning from " + sender.getName() + ": " + ChatColor.YELLOW + reason);
         }
         return true;
     }
 
     private boolean handleNotes(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.notes")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /notes.");
+            send(sender, ChatColor.RED + "You do not have permission to use /notes.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /notes <player> [note to add]");
+            send(sender, ChatColor.RED + "Usage: /notes <player> [note to add]");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
             return true;
         }
         String targetName = target.getName() != null ? target.getName() : args[0];
@@ -867,15 +873,15 @@ final class LegacyModerationModule implements Listener {
             }
             list.add("[NOTE by " + sender.getName() + "] " + joinArgs(args, 1));
             saveModeration();
-            sender.sendMessage(ChatColor.GREEN + "Added note #" + list.size() + " for " + targetName + ".");
+            send(sender, ChatColor.GREEN + "Added note #" + list.size() + " for " + targetName + ".");
             return true;
         }
         List<String> list = notes.get(target.getUniqueId());
         if (list == null || list.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + targetName + " has no warnings or notes.");
+            send(sender, ChatColor.GRAY + targetName + " has no warnings or notes.");
             return true;
         }
-        sender.sendMessage(ChatColor.LIGHT_PURPLE + "Notes for " + targetName + " (" + list.size() + "):");
+        send(sender, ChatColor.LIGHT_PURPLE + "Notes for " + targetName + " (" + list.size() + "):");
         for (int i = 0; i < list.size(); i++) {
             sender.sendMessage(ChatColor.GRAY + "" + (i + 1) + ". " + ChatColor.WHITE + list.get(i));
         }
@@ -884,16 +890,16 @@ final class LegacyModerationModule implements Listener {
 
     private boolean handleUnnote(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.unnote") && !sender.hasPermission("allium.notes")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to remove notes.");
+            send(sender, ChatColor.RED + "You do not have permission to remove notes.");
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /unnote <player> <index>");
+            send(sender, ChatColor.RED + "Usage: /unnote <player> <index>");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' not found.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' not found.");
             return true;
         }
         List<String> list = notes.get(target.getUniqueId());
@@ -901,36 +907,36 @@ final class LegacyModerationModule implements Listener {
         try {
             idx = Integer.parseInt(args[1]) - 1;
         } catch (NumberFormatException e) {
-            sender.sendMessage(ChatColor.RED + "Enter a valid note number.");
+            send(sender, ChatColor.RED + "Enter a valid note number.");
             return true;
         }
         if (list == null || idx < 0 || idx >= list.size()) {
-            sender.sendMessage(ChatColor.RED + "No note #" + args[1] + " found.");
+            send(sender, ChatColor.RED + "No note #" + args[1] + " found.");
             return true;
         }
         list.remove(idx);
         if (list.isEmpty()) notes.remove(target.getUniqueId());
         saveModeration();
-        sender.sendMessage(ChatColor.GREEN + "Removed note #" + (idx + 1) + ".");
+        send(sender, ChatColor.GREEN + "Removed note #" + (idx + 1) + ".");
         return true;
     }
 
     private boolean handleInvsee(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /invsee.");
+            send(sender, ChatColor.RED + "Only players can use /invsee.");
             return true;
         }
         if (!sender.hasPermission("allium.invsee")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /invsee.");
+            send(sender, ChatColor.RED + "You do not have permission to use /invsee.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /invsee <player>");
+            send(sender, ChatColor.RED + "Usage: /invsee <player>");
             return true;
         }
         Player target = findOnline(args[0]);
         if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
+            send(sender, ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
         ((Player) sender).openInventory(target.getInventory());
@@ -939,11 +945,11 @@ final class LegacyModerationModule implements Listener {
 
     private boolean handleHelpop(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.helpop")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /helpop.");
+            send(sender, ChatColor.RED + "You do not have permission to use /helpop.");
             return true;
         }
         if (args.length < 1) {
-            sender.sendMessage(ChatColor.RED + "Usage: /helpop <message>");
+            send(sender, ChatColor.RED + "Usage: /helpop <message>");
             return true;
         }
         String text = joinArgs(args, 0);
@@ -956,17 +962,17 @@ final class LegacyModerationModule implements Listener {
             }
         }
         plugin.getLogger().info("[HelpOp] " + sender.getName() + ": " + text);
-        sender.sendMessage(ChatColor.GREEN + "Sent HelpOp request to " + notified + " online staff member(s).");
+        send(sender, ChatColor.GREEN + "Sent HelpOp request to " + notified + " online staff member(s).");
         return true;
     }
 
     private boolean handleReport(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.report")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /report.");
+            send(sender, ChatColor.RED + "You do not have permission to use /report.");
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /report <player> <reason>");
+            send(sender, ChatColor.RED + "Usage: /report <player> <reason>");
             return true;
         }
         String target = args[0];
@@ -976,59 +982,59 @@ final class LegacyModerationModule implements Listener {
                 + ChatColor.GRAY + ": " + ChatColor.WHITE + reason;
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             if (p.hasPermission("allium.report.receive") || p.hasPermission("allium.helpop.receive") || p.isOp()) {
-                p.sendMessage(alert);
+                send(p, alert);
             }
         }
         plugin.getLogger().info("[Report] " + sender.getName() + " reported " + target + ": " + reason);
-        sender.sendMessage(ChatColor.GREEN + "Report submitted against " + target + ".");
+        send(sender, ChatColor.GREEN + "Report submitted against " + target + ".");
         return true;
     }
 
     private boolean handleSocialSpy(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can toggle socialspy.");
+            send(sender, ChatColor.RED + "Only players can toggle socialspy.");
             return true;
         }
         if (!sender.hasPermission("allium.socialspy")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /socialspy.");
+            send(sender, ChatColor.RED + "You do not have permission to use /socialspy.");
             return true;
         }
         UUID id = ((Player) sender).getUniqueId();
         if (socialSpy.remove(id)) {
-            sender.sendMessage(ChatColor.GRAY + "SocialSpy disabled.");
+            send(sender, ChatColor.GRAY + "SocialSpy disabled.");
         } else {
             socialSpy.add(id);
-            sender.sendMessage(ChatColor.GREEN + "SocialSpy enabled.");
+            send(sender, ChatColor.GREEN + "SocialSpy enabled.");
         }
         return true;
     }
 
     private boolean handleCommandSpy(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can toggle commandspy.");
+            send(sender, ChatColor.RED + "Only players can toggle commandspy.");
             return true;
         }
         if (!sender.hasPermission("allium.commandspy")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /commandspy.");
+            send(sender, ChatColor.RED + "You do not have permission to use /commandspy.");
             return true;
         }
         UUID id = ((Player) sender).getUniqueId();
         if (commandSpy.remove(id)) {
-            sender.sendMessage(ChatColor.GRAY + "CommandSpy disabled.");
+            send(sender, ChatColor.GRAY + "CommandSpy disabled.");
         } else {
             commandSpy.add(id);
-            sender.sendMessage(ChatColor.GREEN + "CommandSpy enabled.");
+            send(sender, ChatColor.GREEN + "CommandSpy enabled.");
         }
         return true;
     }
 
     private boolean handleSpyAll(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can toggle spy.");
+            send(sender, ChatColor.RED + "Only players can toggle spy.");
             return true;
         }
         if (!sender.hasPermission("allium.spy") && !sender.hasPermission("allium.socialspy")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /spy.");
+            send(sender, ChatColor.RED + "You do not have permission to use /spy.");
             return true;
         }
         UUID id = ((Player) sender).getUniqueId();
@@ -1036,11 +1042,11 @@ final class LegacyModerationModule implements Listener {
         if (enable) {
             socialSpy.add(id);
             commandSpy.add(id);
-            sender.sendMessage(ChatColor.GREEN + "SocialSpy and CommandSpy enabled.");
+            send(sender, ChatColor.GREEN + "SocialSpy and CommandSpy enabled.");
         } else {
             socialSpy.remove(id);
             commandSpy.remove(id);
-            sender.sendMessage(ChatColor.GRAY + "SocialSpy and CommandSpy disabled.");
+            send(sender, ChatColor.GRAY + "SocialSpy and CommandSpy disabled.");
         }
         return true;
     }
@@ -1064,7 +1070,7 @@ final class LegacyModerationModule implements Listener {
             } else if (online.getWorld() != null) {
                 online.teleport(online.getWorld().getSpawnLocation());
             }
-            online.sendMessage(ChatColor.GREEN + "You have been released from jail.");
+            send(online, ChatColor.GREEN + "You have been released from jail.");
         }
     }
 

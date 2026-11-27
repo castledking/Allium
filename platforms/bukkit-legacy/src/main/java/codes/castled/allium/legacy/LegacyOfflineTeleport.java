@@ -101,7 +101,7 @@ final class LegacyOfflineTeleport implements Listener {
     boolean execute(CommandSender sender, String[] args) {
         if (args.length != 1) return false;
         if (!(sender instanceof Player) || !sender.hasPermission(PERMISSION)) {
-            sender.sendMessage(ChatColor.RED + "Only players with permission can use offline teleport.");
+            messages.sendPrefixed(sender, ChatColor.RED + "Only players with permission can use offline teleport.");
             return true;
         }
         Player mover = (Player) sender;
@@ -110,7 +110,7 @@ final class LegacyOfflineTeleport implements Listener {
         Player online = plugin.getServer().getPlayerExact(name);
         if (online != null) {
             if (!visible.test(mover, online)) return unavailable(mover);
-            if (move(mover, online.getLocation())) mover.sendMessage(ChatColor.GREEN + "Teleported to " + online.getName() + ".");
+            if (move(mover, online.getLocation())) messages.sendPrefixed(mover, ChatColor.GREEN + "Teleported to " + online.getName() + ".");
             return true;
         }
         ConfigurationSection newest = null;
@@ -170,7 +170,7 @@ final class LegacyOfflineTeleport implements Listener {
             return false;
         }
         if (mover.teleport(destination)) return true;
-        mover.sendMessage(ChatColor.RED + "The teleport was cancelled.");
+        messages.sendPrefixed(mover, ChatColor.RED + "The teleport was cancelled.");
         return false;
     }
 

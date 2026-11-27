@@ -38,6 +38,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 Teleport commands and tab completion accept partial usernames, nicknames, and close typos. Teleporting another player with `/tp <player> <target>` requires `allium.tp.others`.
 
+`/tppet [player]` and `/tpent [player]` (`/tpmob`) toggle pet and mob selection for teleportation. Selected mobs show a persistent yellow dust particle highlight above their head on 1.12.2 (and entity glow with yellow dust fallback on 1.13–1.19.4), and follow when the player teleports or uses `/tphere` or `/there`.
+
 `/spectate <player>` uses the same `spectate-commands` configuration as the modern runtime. Entries can run as the console or use `player:` to run with the staff member's permissions.
 
 `/tpoffline <player>` uses known logout locations saved in `logout-locations-legacy.yml`. Saved positions from vanished players require `allium.vanish.see`. When the named player is currently online, the command checks visibility and uses their current location.

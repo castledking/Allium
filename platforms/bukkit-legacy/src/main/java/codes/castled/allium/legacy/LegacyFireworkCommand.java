@@ -29,13 +29,13 @@ final class LegacyFireworkCommand {
 
     boolean execute(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use /firework.");
+            messages.sendPrefixed(sender, ChatColor.RED + "Only players can use /firework.");
             return true;
         }
         if (args.length == 0) return false;
         Player player = (Player) sender;
         if (!player.hasPermission("allium.firework")) {
-            player.sendMessage(ChatColor.RED + "You do not have permission to edit fireworks.");
+            messages.sendPrefixed(player, ChatColor.RED + "You do not have permission to edit fireworks.");
             return true;
         }
         ItemStack held = player.getInventory().getItemInMainHand();
@@ -76,7 +76,7 @@ final class LegacyFireworkCommand {
 
     private boolean fire(Player player, FireworkMeta meta, String[] args) {
         if (!player.hasPermission("allium.firework.fire")) {
-            player.sendMessage(ChatColor.RED + "You do not have permission to launch fireworks.");
+            messages.sendPrefixed(player, ChatColor.RED + "You do not have permission to launch fireworks.");
             return true;
         }
         if (args.length > 2) return false;

@@ -35,7 +35,7 @@ final class LegacyEditSignCommand {
 
     boolean execute(CommandSender sender, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can edit signs.");
+            messages.sendPrefixed(sender, ChatColor.RED + "Only players can edit signs.");
             return true;
         }
         Player player = (Player) sender;
@@ -48,7 +48,7 @@ final class LegacyEditSignCommand {
                 || args.length == 1 && ("copy".equals(action) || "paste".equals(action)))) return false;
         boolean hasLine = set || clear && args.length == 2;
         if (hasLine && !args[1].matches("[1-4]")) {
-            sender.sendMessage(ChatColor.RED + "Choose a sign line from 1 to 4.");
+            messages.sendPrefixed(sender, ChatColor.RED + "Choose a sign line from 1 to 4.");
             return true;
         }
         int line = hasLine ? Integer.parseInt(args[1]) - 1 : -1;

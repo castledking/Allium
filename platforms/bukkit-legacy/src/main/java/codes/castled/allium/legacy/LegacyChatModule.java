@@ -201,6 +201,8 @@ final class LegacyChatModule implements Listener {
     private final Map<UUID, PlayerChannels> playerChannels = new HashMap<UUID, PlayerChannels>();
     private volatile Settings settings;
 
+    private final LegacyChatHistory history;
+
     LegacyChatModule(
             JavaPlugin plugin,
             LegacyConfigManager configManager,
@@ -232,6 +234,11 @@ final class LegacyChatModule implements Listener {
         this.canSeeTarget = canSeeTarget;
         this.filterEngine = new ChatFilterEngine(clock);
         this.settings = readSettings(configManager.raw());
+        this.history = new LegacyChatHistory(plugin, configManager, messages);
+    }
+
+    LegacyChatHistory history() {
+        return history;
     }
 
     void enable() {
@@ -260,10 +267,11 @@ final class LegacyChatModule implements Listener {
         saveChannelPrefs();
         playerChannels.clear();
         filterEngine.clear();
+        history.clear();
     }
 
     boolean handles(String name) {
-        return "channel".equals(name) || "action".equals(name);
+        return "channel".equals(name) || "action".equals(name) || "delmsg".equals(name);
     }
 
     boolean onCommand(CommandSender sender, String name, String label, String[] args) {
@@ -272,6 +280,9 @@ final class LegacyChatModule implements Listener {
         }
         if ("action".equals(name)) {
             return handleAction(sender, args);
+        }
+        if ("delmsg".equals(name)) {
+            return history.command(sender, args);
         }
         return false;
     }
@@ -350,6 +361,7 @@ final class LegacyChatModule implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuitCleanup(PlayerQuitEvent event) {
         filterEngine.forget(event.getPlayer().getUniqueId());
+        history.forget(event.getPlayer().getUniqueId());
     }
 
     void sendChat(Player sender, String explicitChannel, String raw, Set<UUID> originalAudience) {
@@ -449,9 +461,7 @@ final class LegacyChatModule implements Listener {
         String format = chooseFormat(channel, decor.group, question, s);
         String renderedLine = renderChatLine(format, sender, decor, formattedBody);
 
-        for (Player recipient : recipients) {
-            recipient.sendMessage(renderedLine);
-        }
+        history.deliver(history.nextId(), sender.getUniqueId(), renderedLine, recipients, System.currentTimeMillis());
 
         if (!mentioned.isEmpty() && !s.mentionSound.trim().isEmpty()) {
             for (Player targetPlayer : mentioned) {
@@ -617,14 +627,16 @@ final class LegacyChatModule implements Listener {
             VaultDecor decor = queryVault(player);
             String rendered = renderChatLine(s.actionFormat, player, decor, formattedBody);
             boolean ignoreExempt = player.hasPermission(PERM_IGNORE_EXEMPT);
+            List<Player> audience = new ArrayList<Player>();
             for (Player recipient : plugin.getServer().getOnlinePlayers()) {
                 if (!recipient.getUniqueId().equals(player.getUniqueId())
                         && !ignoreExempt
                         && playerInfo.isIgnoring(recipient.getUniqueId(), player.getUniqueId())) {
                     continue;
                 }
-                recipient.sendMessage(rendered);
+                audience.add(recipient);
             }
+            history.deliver(history.nextId(), player.getUniqueId(), rendered, audience, System.currentTimeMillis());
             CommandSender console = plugin.getServer().getConsoleSender();
             if (console != null) {
                 console.sendMessage("[action] * " + player.getName() + " " + ChatColor.stripColor(formattedBody));

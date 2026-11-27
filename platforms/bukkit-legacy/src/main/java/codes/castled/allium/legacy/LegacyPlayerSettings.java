@@ -159,6 +159,15 @@ final class LegacyPlayerSettings {
         return saveValue("players." + player + ".reply-to-last-recipient", lastRecipient);
     }
 
+    boolean confirmsInventoryClear(UUID player) {
+        return !data.getBoolean("players." + player + ".inventory-clear-confirmation-disabled");
+    }
+
+    boolean setConfirmsInventoryClear(UUID player, boolean enabled) {
+        return confirmsInventoryClear(player) == enabled || saveValue(
+                "players." + player + ".inventory-clear-confirmation-disabled", enabled ? null : Boolean.TRUE);
+    }
+
     Set<String> unlimitedBlocks(UUID player) {
         return new TreeSet<>(data.getStringList("players." + player + ".unlimited-blocks"));
     }

@@ -1728,6 +1728,8 @@ utility:
     - "{prefix} &eConfirmacion de vaciado de inventario desactivada."
   clear-offline:
     - "{prefix} &aEliminados &f{count} &aobjetos de &f{players} &ainventarios sin conexion. Omitidos &f{skipped}&a."
+  clear-offline-unavailable:
+    - "{prefix} &cLa edición de datos de jugadores desconectados no está disponible en esta versión del servidor."
   clear-self:
     - "{prefix} &aSe limpiaron &f{count} &aobjeto(s) de tu inventario."
     - "[sound] block.grindstone.use 1.15"

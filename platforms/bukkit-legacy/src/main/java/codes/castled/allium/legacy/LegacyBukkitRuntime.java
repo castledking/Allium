@@ -95,6 +95,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyOfflineTeleport offlineTeleport;
     private final LegacyRedeemCommand redeem;
     private final LegacyAutoRestart autorestart;
+    private final LegacyInventoryClear inventoryClear;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -116,6 +117,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
         this.economy = new LegacyEconomyModule(plugin, configManager, messageManager);
         this.settings = new LegacyPlayerSettings(plugin, commandManager, economy, messageManager);
+        this.inventoryClear = new LegacyInventoryClear(plugin, settings, messageManager, this::canSeeTeleportTarget);
         this.unlimited = new LegacyUnlimitedCommand(plugin, settings, commandManager, messageManager);
         this.kits = new LegacyKitsModule(plugin, messageManager);
         this.moderation = new LegacyModerationModule(plugin, messageManager);
@@ -228,6 +230,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         text.stop();
         chatClear.stop();
         autorestart.close();
+        inventoryClear.reset();
         companions.stop();
         messageManager.disable();
         economy.disable();
@@ -274,6 +277,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         UUID id = event.getPlayer().getUniqueId();
         godPlayers.remove(id);
         chatClear.forget(id);
+        inventoryClear.forget(id);
         incomingTpa.remove(id);
         replyTargets.forget(id);
         editSign.forget(id);
@@ -392,7 +396,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             case "speed":
                 return handleSpeed(sender, label, args);
             case "clearinventory":
-                return handleClear(sender, args);
+                return inventoryClear.execute(sender, args);
+            case "clearinventoryconfirmtoggle":
+                return inventoryClear.toggleConfirmation(sender, label, args);
             case "enderchest":
                 return handleEnderChest(sender, args);
             case "workbench":
@@ -438,6 +444,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return autorestart.complete(sender, "voterestart".equals(name), args, prefix);
         }
         if ("toggle".equals(name)) return settings.complete(sender, args);
+        if ("clearinventory".equals(name)) return inventoryClear.complete(sender, args, prefix);
+        if ("clearinventoryconfirmtoggle".equals(name)) return Collections.emptyList();
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);
         if ("paytoggle".equals(name) || "payconfirmtoggle".equals(name)) {
             return economy.completePaymentPreference(sender, name, alias, args, prefix);
@@ -565,6 +573,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             loadSpawn();
             economy.reload();
             settings.reload();
+            inventoryClear.reset();
             offlineTeleport.reload();
             kits.reload();
             travel.reload();
@@ -1282,17 +1291,6 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                     "{player}", target.getName(), "{type}", type.toLowerCase(Locale.ROOT), "{speed}", formattedSpeed);
             messageManager.send(target, "player.speed-set", "{prefix} &a{type} speed set to &f{speed}&a.",
                     "{type}", type, "{speed}", formattedSpeed);
-        }
-        return true;
-    }
-
-    private boolean handleClear(CommandSender sender, String[] args) {
-        Player target = resolveTarget(sender, args, 0, "allium.clearinventory.others");
-        if (target == null) return true;
-        target.getInventory().clear();
-        send(target, ChatColor.YELLOW + "Your inventory has been cleared.");
-        if (!target.equals(sender)) {
-            send(sender, ChatColor.GREEN + "Cleared " + target.getName() + "'s inventory.");
         }
         return true;
     }

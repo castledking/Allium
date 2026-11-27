@@ -13,7 +13,7 @@ public final class InventoryClearFilter {
     }
 
     public static Integer parseMaxCount(String raw) {
-        if (raw == null || raw.isBlank()) {
+        if (raw == null || raw.codePoints().allMatch(Character::isWhitespace)) {
             return null;
         }
         try {
@@ -36,10 +36,10 @@ public final class InventoryClearFilter {
     }
 
     public static boolean matchesMaterialKey(String candidateKey, String filterToken) {
-        if (filterToken == null || filterToken.isBlank()) {
+        if (filterToken == null || filterToken.codePoints().allMatch(Character::isWhitespace)) {
             return true;
         }
-        if (candidateKey == null || candidateKey.isBlank()) {
+        if (candidateKey == null || candidateKey.codePoints().allMatch(Character::isWhitespace)) {
             return false;
         }
         return normalizeMaterialToken(candidateKey).equals(normalizeMaterialToken(filterToken));

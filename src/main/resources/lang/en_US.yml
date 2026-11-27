@@ -1728,6 +1728,8 @@ utility:
     - "{prefix} &eInventory clear confirmation disabled."
   clear-offline:
     - "{prefix} &aCleared &f{count} &aitem(s) from &f{players} &aoffline inventories. Skipped &f{skipped}&a."
+  clear-offline-unavailable:
+    - "{prefix} &cOffline playerdata editing is unavailable on this server version."
   clear-self:
     - "{prefix} &aCleared &f{count} &aitem(s) from your inventory."
     - "[sound] block.grindstone.use 1.15"

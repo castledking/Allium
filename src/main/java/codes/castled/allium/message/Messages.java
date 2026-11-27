@@ -835,6 +835,7 @@ public enum Messages {
     UTILITY_CLEAR_CONFIRM_ON("utility.clear-confirm-on", "{prefix} &aInventory clear confirmation enabled."),
     UTILITY_CLEAR_CONFIRM_OFF("utility.clear-confirm-off", "{prefix} &eInventory clear confirmation disabled."),
     UTILITY_CLEAR_OFFLINE("utility.clear-offline", "{prefix} &aCleared &f{count} &aitem(s) from &f{players} &aoffline inventories. Skipped &f{skipped}&a."),
+    UTILITY_CLEAR_OFFLINE_UNAVAILABLE("utility.clear-offline-unavailable", "{prefix} &cOffline playerdata editing is unavailable on this server version."),
     UTILITY_CLEAR_SELF("utility.clear-self", "{prefix} &aCleared &f{count} &aitem(s) from your inventory."),
     UTILITY_CLEAR_OTHER("utility.clear-other", "{prefix} &aCleared &f{count} &aitem(s) from &f{player}&a's inventory."),
     UTILITY_CLEAR_INVALID_MATERIAL("utility.clear-invalid-material", "{prefix} &cUnknown material &f{material}&c."),

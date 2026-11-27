@@ -276,6 +276,42 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacyClearRequiresTheSameFilterAndAmountBeforeRemovingInventoryItems() {
+        Harness h = createHarness();
+        Player actor = h.addPlayer("Staff", UUID.randomUUID(), true);
+        Player target = h.addPlayer("Member", UUID.randomUUID(), true);
+        PlayerInventory inventory = target.getInventory();
+        ItemStack stone = new ItemStack(Material.STONE, 7);
+        ItemStack dirt = new ItemStack(Material.DIRT, 3);
+        when(inventory.getContents()).thenReturn(new ItemStack[]{stone, dirt});
+
+        assertTrue(h.run(actor, "clearinventory", "Member", "stone", "5"));
+        assertTrue(h.run(actor, "clearinventory", "Member", "stone", "2"));
+        verify(inventory, never()).setContents(any(ItemStack[].class));
+        verify(actor, times(2)).sendMessage(contains("again within 30 seconds"));
+        assertTrue(h.run(actor, "clearinventory", "Member", "stone", "2"));
+        ArgumentCaptor<ItemStack[]> contents = ArgumentCaptor.forClass(ItemStack[].class);
+        verify(inventory).setContents(contents.capture());
+        assertEquals(5, contents.getValue()[0].getAmount());
+        assertEquals(7, stone.getAmount());
+        assertSame(dirt, contents.getValue()[1]);
+        h.runtime().onDisable();
+    }
+
+    @Test
+    void legacyBulkClearRequiresFreshConfirmationWhenTheAudienceChanges() {
+        Harness h = createHarness();
+        Player actor = h.addPlayer("Staff", UUID.randomUUID(), true);
+        assertTrue(h.run(actor, "clearinventory", "*"));
+        Player newcomer = h.addPlayer("Member", UUID.randomUUID(), true);
+        when(newcomer.getInventory().getContents()).thenReturn(new ItemStack[]{new ItemStack(Material.STONE, 1)});
+        assertTrue(h.run(actor, "clearinventory", "*"));
+        verify(newcomer.getInventory(), never()).setContents(any(ItemStack[].class));
+        verify(actor, times(2)).sendMessage(contains("again within 30 seconds"));
+        h.runtime().onDisable();
+    }
+
+    @Test
     void legacyPayToggleAliasesSetTheNamedStateAndRequirePermissionForOtherAccounts() {
         Harness h = createHarness();
         Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);

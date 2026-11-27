@@ -133,7 +133,6 @@ final class LegacyUtilitiesModule implements Listener {
             case "spawnmob":
             case "gc":
             case "broadcastworld":
-            case "info":
             case "fireball":
             case "antioch":
             case "nuke":
@@ -185,7 +184,6 @@ final class LegacyUtilitiesModule implements Listener {
             case "spawnmob": return handleSpawnMob(sender, args);
             case "gc": return handleGc(sender);
             case "broadcastworld": return handleBroadcastWorld(sender, args);
-            case "info": return runtime.sendTextResource(sender, "info.txt", "No info file configured.");
             case "help": return handleHelp(sender, args);
             case "fireball": return handleFireball(sender);
             case "antioch": return handleAntioch(sender);

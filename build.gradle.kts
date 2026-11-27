@@ -317,6 +317,7 @@ tasks {
             exclude(project(":allium-core"))
             exclude(project(":allium-api"))
             exclude(project(":allium-legacy"))
+            exclude(project(":allium-text"))
             exclude(dependency("com.zaxxer:HikariCP:.*"))
         }
 

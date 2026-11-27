@@ -19,6 +19,7 @@ pluginManagement {
 rootProject.name = "Allium"
 
 include("allium-core")
+include("allium-text")
 include("allium-api")
 include("allium-legacy")
 project(":allium-legacy").projectDir = file("platforms/bukkit-legacy")

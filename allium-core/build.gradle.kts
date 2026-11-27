@@ -20,6 +20,7 @@ repositories {
 // Platform-neutral domain and command-spec module:
 // Strictly no Bukkit, Spigot, or Paper dependencies allowed here.
 dependencies {
+    api(project(":allium-text"))
     compileOnly("org.jetbrains:annotations:26.0.2")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")

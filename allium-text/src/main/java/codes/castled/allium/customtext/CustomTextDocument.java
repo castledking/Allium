@@ -78,11 +78,24 @@ public final class CustomTextDocument {
 
     /** Every section name and alias, in file order, for tab completion. */
     public List<String> sectionNames() {
-        return List.copyOf(sections.keySet());
+        return Collections.unmodifiableList(new ArrayList<>(sections.keySet()));
     }
 
     /** A page of lines; one page shows everything when it fits, as Essentials does. */
-    public record Page(List<String> lines, int page, int pages) {
+    public static final class Page {
+        private final List<String> lines;
+        private final int page;
+        private final int pages;
+
+        public Page(List<String> lines, int page, int pages) {
+            this.lines = lines;
+            this.page = page;
+            this.pages = pages;
+        }
+
+        public List<String> lines() { return lines; }
+        public int page() { return page; }
+        public int pages() { return pages; }
     }
 
     public static Page page(List<String> lines, int requested) {
@@ -101,10 +114,10 @@ public final class CustomTextDocument {
 
     private static List<String> trimTrailingBlank(List<String> lines) {
         int end = lines.size();
-        while (end > 0 && lines.get(end - 1).isBlank()) {
+        while (end > 0 && lines.get(end - 1).codePoints().allMatch(Character::isWhitespace)) {
             end--;
         }
-        return List.copyOf(lines.subList(0, end));
+        return Collections.unmodifiableList(new ArrayList<>(lines.subList(0, end)));
     }
 
     private static String stripLineEnd(String raw) {

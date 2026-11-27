@@ -8,6 +8,12 @@ Fabric, NeoForge, and Bukkit 1.12.2 support `/sethome [name]`, `/home [name]`, `
 
 Homes save the world or dimension, exact position, and facing. Delete an existing name before reusing it. Teleportation requires the saved destination's world to be loaded. The native mods store homes under `allium/homes/` in the world save. Bukkit 1.12.2 stores them in `plugins/Allium/homes/`. This first port covers players' own saved homes. The Paper plugin's travel configuration and database use their existing paths and commands.
 
+## Text pages and broadcasts on Bukkit 1.12.2–1.19.4
+
+Use `/info`, `/rules`, `/motd`, or `/customtext` with `[section] [page]` to read the text files in `plugins/Allium/`. Files support `#section,alias` headers, `##` comments, and player-specific files such as `info_steve.txt`. `/inform <player> [section] [page]` displays the recipient's info page. The compatibility runtime fills `{player}`, `{displayname}`, `{online}`, `{max}`, and `{server}`. Click and hover tags render as plain text. Spigot and Paper support raw JSON components and clickable page navigation.
+
+The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadcasts read sections from `broadcasts.txt`, use `broadcasts.*` settings from `config.yml`, and respect `allium.broadcasts.receive`. Authorized staff can list them with `/broadcasts`, send one by name with `/broadcasts send <name>`, or advance the rotation with `/broadcasts next`. Text edits are read on the next use. Use `/allium reload` to apply scheduling changes.
+
 ## Development build
 
 Run Gradle with JDK 25. JDK 17 and JDK 21 are also required by the build.

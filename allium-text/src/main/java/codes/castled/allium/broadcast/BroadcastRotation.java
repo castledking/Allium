@@ -3,7 +3,7 @@ package codes.castled.allium.broadcast;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.random.RandomGenerator;
+import java.util.Random;
 
 /**
  * Which timed broadcast goes next. {@code SEQUENTIAL} follows the file's order and wraps;
@@ -20,20 +20,26 @@ public final class BroadcastRotation {
             if (raw == null) {
                 return Optional.empty();
             }
-            return switch (raw.trim().toLowerCase(Locale.ROOT)) {
-                case "sequential", "in-order", "order" -> Optional.of(SEQUENTIAL);
-                case "random", "shuffle" -> Optional.of(RANDOM);
-                default -> Optional.empty();
-            };
+            switch (raw.trim().toLowerCase(Locale.ROOT)) {
+                case "sequential":
+                case "in-order":
+                case "order":
+                    return Optional.of(SEQUENTIAL);
+                case "random":
+                case "shuffle":
+                    return Optional.of(RANDOM);
+                default:
+                    return Optional.empty();
+            }
         }
     }
 
     private final Order order;
-    private final RandomGenerator random;
+    private final Random random;
     private String last;
     private int position;
 
-    public BroadcastRotation(Order order, RandomGenerator random) {
+    public BroadcastRotation(Order order, Random random) {
         this.order = order;
         this.random = random;
     }

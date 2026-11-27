@@ -29,6 +29,8 @@ final class LegacyConfigManager {
             "rules.txt",
             "motd.txt",
             "info.txt",
+            "custom.txt",
+            "broadcasts.txt",
             "worth.yml"
     };
 
@@ -152,6 +154,7 @@ final class LegacyConfigManager {
     private void ensureResource(String resourcePath) {
         File target = new File(plugin.getDataFolder(), resourcePath);
         if (target.exists()) return;
+        if ("custom.txt".equals(resourcePath) && new File(plugin.getDataFolder(), "customtext.txt").isFile()) return;
         if (plugin.getResource(resourcePath) != null) {
             try {
                 plugin.saveResource(resourcePath, false);

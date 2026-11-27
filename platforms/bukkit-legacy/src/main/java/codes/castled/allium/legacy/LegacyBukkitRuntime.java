@@ -27,13 +27,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,6 +77,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyPlayerInfoModule playerInfo;
     private final LegacyTravelModule travel;
     private final LegacyUtilitiesModule utilities;
+    private final LegacyTextModule text;
     private final Set<UUID> godPlayers = new HashSet<>();
     private final Set<UUID> msgDisabled = new HashSet<>();
     private final Map<UUID, UUID> lastReplyTarget = new HashMap<>();
@@ -105,6 +101,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy);
         this.travel = new LegacyTravelModule(plugin, this);
         this.utilities = new LegacyUtilitiesModule(plugin, this);
+        this.text = new LegacyTextModule(plugin, configManager, moderation);
     }
 
     @Override
@@ -136,6 +133,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(moderation, plugin);
         pm.registerEvents(playerInfo, plugin);
         pm.registerEvents(utilities, plugin);
+        pm.registerEvents(text, plugin);
+        text.reload();
         String reason = version.isAtLeast(1, 20, 0)
                 ? "Java " + javaMajor + " detected (Java 17+ required for full 1.20+ modules)"
                 : "Minecraft " + version + " (full modern modules activate on 1.20+ with Java 17+)";
@@ -177,6 +176,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(moderation);
         HandlerList.unregisterAll(playerInfo);
         HandlerList.unregisterAll(utilities);
+        HandlerList.unregisterAll(text);
+        text.stop();
         messageManager.disable();
         economy.disable();
         kits.disable();
@@ -242,6 +243,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (messageManager.handles(name)) {
             return messageManager.onCommand(sender, args);
         }
+        if (text.handles(name)) return text.execute(sender, name, args);
         Homes.Action homeAction = homeAction(name);
         if (homeAction != null) {
             return handleHome(sender, homeAction, args);
@@ -321,10 +323,6 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return setWorldWeather(sender, args.length > 0 ? args[0] : null, "storm");
             case "broadcast":
                 return handleBroadcast(sender, args);
-            case "rules":
-                return sendTextResource(sender, "rules.txt", "No rules have been configured.");
-            case "motd":
-                return sendTextResource(sender, "motd.txt", "Welcome to the server!");
             default:
                 if (economy.handles(name)) return economy.onCommand(sender, name, args);
                 if (kits.handles(name)) return kits.onCommand(sender, name, args);
@@ -354,6 +352,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return messageManager.onTabComplete(args, prefix);
         }
 
+        if (text.handles(name)) {
+            return command.testPermissionSilent(sender) ? text.complete(sender, name, args) : Collections.emptyList();
+        }
         Homes.Action homeAction = homeAction(name);
         if (homeAction != null) {
             if (homeAction.suggestsNames() && args.length == 1 && sender instanceof Player
@@ -438,6 +439,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             travel.reload();
             moderation.reload();
             playerInfo.reload();
+            text.reload();
             messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");
             return true;
         }
@@ -1184,41 +1186,10 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         return true;
     }
 
-    boolean sendTextResource(CommandSender sender, String filename, String fallback) {
-        List<String> lines = readLines(filename);
-        if (lines.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + fallback);
-            return true;
-        }
-        for (String line : lines) {
-            sender.sendMessage(LegacyCompat.color(line));
-        }
-        return true;
-    }
-
     LegacyConfigManager configManager() { return configManager; }
     LegacyLanguageManager languageManager() { return languageManager; }
     LegacyMessageManager messageManager() { return messageManager; }
     LegacyCommandManager commandManager() { return commandManager; }
-
-    private List<String> readLines(String filename) {
-        File disk = new File(plugin.getDataFolder(), filename);
-        if (disk.isFile()) {
-            try {
-                return Files.readAllLines(disk.toPath(), StandardCharsets.UTF_8);
-            } catch (IOException ignored) {
-            }
-        }
-        InputStream res = plugin.getResource(filename);
-        if (res == null) return Collections.emptyList();
-        List<String> out = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(res, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) out.add(line);
-        } catch (IOException ignored) {
-        }
-        return out;
-    }
 
     // ==================== YAML persistence (warps & spawn) ====================
 

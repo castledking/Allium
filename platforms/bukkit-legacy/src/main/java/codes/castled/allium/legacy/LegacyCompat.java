@@ -461,6 +461,31 @@ public final class LegacyCompat {
         sender.sendMessage(coloredText);
     }
 
+    /** Uses Spigot's chat serializer when available, with readable console output. */
+    static boolean sendJson(org.bukkit.command.CommandSender sender, String json) {
+        try {
+            Class<?> serializer = Class.forName("net.md_5.bungee.chat.ComponentSerializer");
+            Object components = serializer.getMethod("parse", String.class).invoke(null, json);
+            if (sender instanceof Player) {
+                sendComponents((Player) sender, components);
+            } else {
+                StringBuilder text = new StringBuilder();
+                for (Object component : (Object[]) components) {
+                    text.append(component.getClass().getMethod("toLegacyText").invoke(component));
+                }
+                sender.sendMessage(text.toString());
+            }
+            return true;
+        } catch (ReflectiveOperationException | LinkageError unavailable) {
+            return false;
+        }
+    }
+
+    private static void sendComponents(Player player, Object components) throws ReflectiveOperationException {
+        Method spigot = Player.class.getMethod("spigot");
+        spigot.getReturnType().getMethod("sendMessage", components.getClass()).invoke(spigot.invoke(player), components);
+    }
+
     /** Sends a clickable Prev / Page / Next footer line on Spigot/Paper 1.12.2-1.19.4 (plain fallback otherwise). */
     public static void sendHelpFooter(org.bukkit.command.CommandSender sender, String prevLabel, String prevCmd,
                                       String pageText, String nextLabel, String nextCmd) {
@@ -561,9 +586,9 @@ public final class LegacyCompat {
             }
             for (Object c : nextComps) addExtra.invoke(root, c);
 
-            Object spigot = player.getClass().getMethod("spigot").invoke(player);
-            Method sendMsg = spigot.getClass().getMethod("sendMessage", baseCompClass);
-            sendMsg.invoke(spigot, root);
+            Object components = java.lang.reflect.Array.newInstance(baseCompClass, 1);
+            java.lang.reflect.Array.set(components, 0, root);
+            sendComponents(player, components);
             return true;
         } catch (Throwable ignored) {
             return false;

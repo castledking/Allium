@@ -14,6 +14,10 @@ Use `/info`, `/rules`, `/motd`, or `/customtext` with `[section] [page]` to read
 
 The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadcasts read sections from `broadcasts.txt`, use `broadcasts.*` settings from `config.yml`, and respect `allium.broadcasts.receive`. Authorized staff can list them with `/broadcasts`, send one by name with `/broadcasts send <name>`, or advance the rotation with `/broadcasts next`. Text edits are read on the next use. Use `/allium reload` to apply scheduling changes.
 
+## Recipe lookup on Bukkit 1.12.2–1.19.4
+
+`/recipe [item] [number]` and its aliases show the server's registered recipes in chat. Players can omit the item to look up what they are holding. Shaped recipes preserve the crafting grid rows, and recipes with alternative ingredients list the available choices when the server exposes them.
+
 ## Development build
 
 Run Gradle with JDK 25. JDK 17 and JDK 21 are also required by the build.

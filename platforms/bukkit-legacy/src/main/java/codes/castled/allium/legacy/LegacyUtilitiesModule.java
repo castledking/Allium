@@ -62,9 +62,11 @@ final class LegacyUtilitiesModule implements Listener {
 
     private final JavaPlugin plugin;
     private final LegacyBukkitRuntime runtime;
+    private final LegacyRecipeCommand recipes;
     private final Set<UUID> pvpDisabled = new HashSet<UUID>();
 
     LegacyUtilitiesModule(JavaPlugin plugin, LegacyBukkitRuntime runtime) {
+        this.recipes = new LegacyRecipeCommand(plugin.getServer());
         this.plugin = plugin;
         this.runtime = runtime;
     }
@@ -96,6 +98,7 @@ final class LegacyUtilitiesModule implements Listener {
     boolean handles(String name) {
         switch (name) {
             case "repair":
+            case "recipe":
             case "disposal":
             case "anvil":
             case "grindstone":
@@ -147,6 +150,7 @@ final class LegacyUtilitiesModule implements Listener {
     boolean onCommand(CommandSender sender, String name, String[] args) {
         switch (name) {
             case "repair": return handleRepair(sender, args);
+            case "recipe": return recipes.execute(sender, args);
             case "disposal": return handleDisposal(sender);
             case "anvil": return handleWorkstation(sender, "allium.anvil", "ANVIL", "openAnvil", "Anvil");
             case "grindstone": return handleWorkstation(sender, "allium.grindstone", "GRINDSTONE", "openGrindstone", "Grindstone");
@@ -196,6 +200,9 @@ final class LegacyUtilitiesModule implements Listener {
 
     List<String> onTabComplete(CommandSender sender, String name, String[] args, String prefix) {
         switch (name) {
+            case "recipe":
+                return args.length == 1 && sender.hasPermission("allium.recipe")
+                        ? recipes.complete(prefix) : Collections.emptyList();
             case "repair":
                 return args.length == 1 ? filter(Arrays.asList("hand", "all"), prefix) : Collections.<String>emptyList();
             case "lore":

@@ -92,6 +92,10 @@ final class LegacyPlayerInfoModule implements Listener {
         return set != null && set.contains(sender);
     }
 
+    String nicknameOf(UUID id) {
+        return nicknames.get(id);
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
@@ -125,6 +129,9 @@ final class LegacyPlayerInfoModule implements Listener {
     public void onChat(AsyncPlayerChatEvent event) {
         Player sender = event.getPlayer();
         clearAfkIfActive(sender);
+        if (sender.hasPermission("allium.chat.ignoreexempt")) {
+            return;
+        }
         Iterator<Player> it = event.getRecipients().iterator();
         while (it.hasNext()) {
             Player recipient = it.next();
@@ -147,7 +154,6 @@ final class LegacyPlayerInfoModule implements Listener {
             case "mail":
             case "nick":
             case "realname":
-            case "action":
                 return true;
             default:
                 return false;
@@ -167,7 +173,6 @@ final class LegacyPlayerInfoModule implements Listener {
             case "mail": return handleMail(sender, args);
             case "nick": return handleNick(sender, args);
             case "realname": return handleRealName(sender, args);
-            case "action": return handleAction(sender, args);
             default: return false;
         }
     }
@@ -553,29 +558,6 @@ final class LegacyPlayerInfoModule implements Listener {
             return true;
         }
         for (String m : matches) send(sender, m);
-        return true;
-    }
-
-    private boolean handleAction(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("allium.action")) {
-            send(sender, ChatColor.RED + "You do not have permission to use /action.");
-            return true;
-        }
-        if (sender instanceof Player && moderation.isMuted(((Player) sender).getUniqueId())) {
-            send(sender, ChatColor.RED + "You cannot use /action while muted.");
-            return true;
-        }
-        if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /action <message>");
-            return true;
-        }
-        String text = joinArgs(args, 0);
-        String msg = ChatColor.GRAY + "* " + sender.getName() + " " + text;
-        for (Player p : plugin.getServer().getOnlinePlayers()) {
-            if (sender instanceof Player && isIgnoring(p.getUniqueId(), ((Player) sender).getUniqueId())) continue;
-            p.sendMessage(msg);
-        }
-        plugin.getLogger().info("* " + sender.getName() + " " + text);
         return true;
     }
 

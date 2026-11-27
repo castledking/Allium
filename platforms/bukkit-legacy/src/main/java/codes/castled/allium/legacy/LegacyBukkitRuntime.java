@@ -82,6 +82,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyKitsModule kits;
     private final LegacyModerationModule moderation;
     private final LegacyPlayerInfoModule playerInfo;
+    private final LegacyChatModule chat;
     private final LegacyTravelModule travel;
     private final LegacyUtilitiesModule utilities;
     private final LegacyTextModule text;
@@ -119,6 +120,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.companions = new LegacyCompanionTeleports(plugin, configManager, messageManager, version,
                 this::findTeleportPlayer, this::canSeeTeleportTarget);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
+        this.chat = new LegacyChatModule(plugin, configManager, messageManager, moderation, playerInfo, version,
+                this::canSeeTeleportTarget);
         this.travel = new LegacyTravelModule(plugin, this);
         this.utilities = new LegacyUtilitiesModule(plugin, this);
         this.text = new LegacyTextModule(plugin, configManager, moderation);
@@ -147,6 +150,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         kits.enable();
         moderation.enable();
         playerInfo.enable();
+        chat.enable();
         travel.enable();
         org.bukkit.plugin.PluginManager pm = plugin.getServer().getPluginManager();
         pm.registerEvents(this, plugin);
@@ -154,6 +158,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(kits, plugin);
         pm.registerEvents(moderation, plugin);
         pm.registerEvents(playerInfo, plugin);
+        pm.registerEvents(chat, plugin);
         pm.registerEvents(utilities, plugin);
         pm.registerEvents(text, plugin);
         pm.registerEvents(unlimited, plugin);
@@ -200,10 +205,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(kits);
         HandlerList.unregisterAll(moderation);
         HandlerList.unregisterAll(playerInfo);
+        HandlerList.unregisterAll(chat);
         HandlerList.unregisterAll(utilities);
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);
         HandlerList.unregisterAll(offlineTeleport);
+        HandlerList.unregisterAll(companions);
         text.stop();
         chatClear.stop();
         companions.stop();
@@ -211,6 +218,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         economy.disable();
         kits.disable();
         moderation.disable();
+        chat.disable();
         playerInfo.disable();
         travel.disable();
         utilities.disable();
@@ -387,6 +395,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 if (kits.handles(name)) return kits.onCommand(sender, name, args);
                 if (travel.handles(name)) return travel.onCommand(sender, name, args);
                 if (moderation.handles(name)) return moderation.onCommand(sender, name, args);
+                if (chat.handles(name)) return chat.onCommand(sender, name, label, args);
                 if (playerInfo.handles(name)) return playerInfo.onCommand(sender, name, args);
                 if (utilities.handles(name)) return utilities.onCommand(sender, name, args);
                 send(sender, ChatColor.YELLOW + "Command /" + label
@@ -475,6 +484,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (kits.handles(name)) return kits.onTabComplete(sender, name, args, prefix);
         if (travel.handles(name)) return travel.onTabComplete(sender, name, args, prefix);
         if (moderation.handles(name)) return moderation.onTabComplete(sender, name, args, prefix);
+        if (chat.handles(name)) return chat.onTabComplete(sender, name, alias, args, prefix);
         if (playerInfo.handles(name)) return playerInfo.onTabComplete(sender, name, args, prefix);
         if (utilities.handles(name)) return utilities.onTabComplete(sender, name, args, prefix);
         return Collections.emptyList();
@@ -520,6 +530,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             travel.reload();
             moderation.reload();
             playerInfo.reload();
+            chat.reload();
             text.reload();
             messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");
             return true;

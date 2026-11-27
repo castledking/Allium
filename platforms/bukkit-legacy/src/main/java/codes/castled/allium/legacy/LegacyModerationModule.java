@@ -129,6 +129,10 @@ final class LegacyModerationModule implements Listener {
         return vanished.contains(id);
     }
 
+    boolean isJailed(UUID id) {
+        return isJailedActive(id);
+    }
+
     boolean isMuted(UUID id) {
         MuteEntry entry = mutes.get(id);
         if (entry == null) return false;

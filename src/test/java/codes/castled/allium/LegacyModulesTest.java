@@ -145,8 +145,10 @@ class LegacyModulesTest {
                 "codes.castled.allium.legacy.LegacyKitsModule",
                 "codes.castled.allium.legacy.LegacyModerationModule",
                 "codes.castled.allium.legacy.LegacyPlayerInfoModule",
+                "codes.castled.allium.legacy.LegacyChatModule",
                 "codes.castled.allium.legacy.LegacyTravelModule",
-                "codes.castled.allium.legacy.LegacyUtilitiesModule"
+                "codes.castled.allium.legacy.LegacyUtilitiesModule",
+                "codes.castled.allium.chat.ChatFilterEngine"
         };
         for (String name : classNames) {
             Class<?> clazz = Class.forName(name);
@@ -828,6 +830,262 @@ class LegacyModulesTest {
         verify(cow).teleport(any(Location.class));
         verify(particleTask).cancel();
         verify(staff).sendMessage(argThat((String msg) -> msg.contains("Allium") && msg.contains("Teleported 1 selected companion(s)")));
+
+        h.runtime().onDisable();
+    }
+
+    @Test
+    void legacyChatFormattingMentionsUrlsChannelsQuestionsAndMe() throws Exception {
+        Harness h = createHarness();
+        Player alice = h.addPlayer("Alice", UUID.randomUUID(), false);
+        Player bob = h.addPlayer("Bob", UUID.randomUUID(), false);
+        Player far = h.addPlayer("Far", UUID.randomUUID(), false);
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+
+        // Give non-op players standard chat defaults
+        for (Player p : List.of(alice, bob, far)) {
+            when(p.hasPermission("allium.channel")).thenReturn(true);
+            when(p.hasPermission("allium.channel.join.default.read")).thenReturn(true);
+            when(p.hasPermission("allium.channel.join.default.write")).thenReturn(true);
+            when(p.hasPermission("allium.channel.join.local.write")).thenReturn(true);
+            when(p.hasPermission("allium.chat.mention")).thenReturn(true);
+            when(p.hasPermission("allium.chat.receive.mention")).thenReturn(true);
+            when(p.hasPermission("allium.chat.receive.local")).thenReturn(true);
+            when(p.hasPermission("allium.chat.receive.shout")).thenReturn(true);
+            when(p.hasPermission("allium.chat.receive.question")).thenReturn(true);
+            when(p.hasPermission("allium.chat.question")).thenReturn(true);
+            when(p.hasPermission("allium.chat.shout")).thenReturn(true);
+            when(p.hasPermission("allium.me")).thenReturn(true);
+        }
+        when(alice.getLocation()).thenReturn(new Location(h.world(), 0.0, 64.0, 0.0));
+        when(bob.getLocation()).thenReturn(new Location(h.world(), 20.0, 64.0, 0.0));
+        when(far.getLocation()).thenReturn(new Location(h.world(), 500.0, 64.0, 0.0));
+        when(staff.getLocation()).thenReturn(new Location(h.world(), 500.0, 64.0, 0.0));
+
+        var listenerCaptor = ArgumentCaptor.forClass(org.bukkit.event.Listener.class);
+        verify(h.server().getPluginManager(), atLeastOnce()).registerEvents(listenerCaptor.capture(), eq(h.plugin()));
+        Object chatListener = listenerCaptor.getAllValues().stream()
+                .filter(l -> l.getClass().getSimpleName().equals("LegacyChatModule"))
+                .findFirst().orElseThrow();
+        var onChat = chatListener.getClass().getMethod("onChat", AsyncPlayerChatEvent.class);
+        onChat.setAccessible(true);
+
+        // 1. Public chat formats without color permission (literal &c) and highlights @Bob + plays mention sound
+        AsyncPlayerChatEvent hello = new AsyncPlayerChatEvent(false, alice, "hi @bob &cred", new HashSet<>(h.onlinePlayers()));
+        onChat.invoke(chatListener, hello);
+        assertTrue(hello.isCancelled());
+        verify(bob).sendMessage(argThat((String msg) -> msg.contains("Alice") && msg.contains("\u00a7e@Bob") && msg.contains("&cred")));
+        verify(bob).playSound(any(Location.class), eq("entity.experience_orb.pickup"), eq(0.8f), eq(1.5f));
+
+        // 2. URL gating denies non-url-permitted player, allows OP
+        clearInvocations(alice, bob, staff);
+        AsyncPlayerChatEvent urlDenied = new AsyncPlayerChatEvent(false, alice, "check https://example.com", new HashSet<>(h.onlinePlayers()));
+        onChat.invoke(chatListener, urlDenied);
+        assertTrue(urlDenied.isCancelled());
+        verify(alice).sendMessage(argThat((String msg) -> msg.contains("send links")));
+        verify(bob, never()).sendMessage(anyString());
+
+        // 3. Switch Alice to local channel (/l), verify radius & ?question escalation to global
+        clearInvocations(alice, bob, far, staff);
+        assertTrue(h.runAs(alice, "channel", "l"));
+        verify(alice).sendMessage(argThat((String msg) -> msg.contains("local")));
+
+        clearInvocations(alice, bob, far, staff);
+        AsyncPlayerChatEvent localMsg = new AsyncPlayerChatEvent(false, alice, "nearby hello", new HashSet<>(h.onlinePlayers()));
+        onChat.invoke(chatListener, localMsg);
+        verify(bob).sendMessage(argThat((String msg) -> msg.contains("[Local]") && msg.contains("nearby hello")));
+        verify(far, never()).sendMessage(anyString());
+
+        clearInvocations(alice, bob, far, staff);
+        AsyncPlayerChatEvent questionMsg = new AsyncPlayerChatEvent(false, alice, "?where is spawn", new HashSet<>(h.onlinePlayers()));
+        onChat.invoke(chatListener, questionMsg);
+        verify(far).sendMessage(argThat((String msg) -> msg.contains("[Question]") && msg.contains("where is spawn")));
+
+        // 4. Staff chat via /a <msg> and #shortcut reaches staff only, not Alice
+        clearInvocations(alice, staff);
+        assertTrue(h.runAs(staff, "channel", "a", "staff eyes only"));
+        verify(staff).sendMessage(argThat((String msg) -> msg.contains("[Staff]") && msg.contains("staff eyes only")));
+        verify(alice, never()).sendMessage(anyString());
+
+        // 5. /me (/action) uses action-format
+        clearInvocations(alice, bob);
+        assertTrue(h.runAs(alice, "action", "me", "waves", "hello"));
+        verify(bob).sendMessage(argThat((String msg) -> msg.contains("* ") && msg.contains("Alice") && msg.contains("waves hello")));
+
+        h.runtime().onDisable();
+    }
+
+    @Test
+    void legacyChatFilterEnforcesPhrasesRepeatsRateLimitAlertOnlyBypassAndMe() throws Exception {
+        // Pre-seed config.yml with chat.filter enabled before enabling runtime
+        Files.writeString(tempDir.resolve("config.yml"), String.join("\n",
+                "modules:",
+                "  chat: true",
+                "enable-chat-formatting: true",
+                "chat:",
+                "  urls:",
+                "    enabled: true",
+                "  filter:",
+                "    enabled: true",
+                "    mode: block",
+                "    exempt-staff-channel: true",
+                "    notify-staff: true",
+                "    phrases:",
+                "      enabled: true",
+                "      normalize-substitutions: true",
+                "      join-split-letters: true",
+                "      tokens: [badword]",
+                "      phrases: [free nitro]",
+                "      substrings: [cheatclient]",
+                "      exceptions: [badword exception]",
+                "    repeat:",
+                "      enabled: true",
+                "      window-seconds: 15",
+                "      max-similar: 1",
+                "      similarity-threshold: 0.85",
+                "      strip-flood-suffix: true",
+                "      whitelist: [gg]",
+                "    rate-limit:",
+                "      enabled: true",
+                "      min-interval-millis: 0",
+                "      burst-max: 50",
+                "      burst-window-seconds: 10"
+        ));
+
+        Harness h = createHarness();
+        Player user = h.addPlayer("User", UUID.randomUUID(), false);
+        Player listener = h.addPlayer("Listener", UUID.randomUUID(), false);
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+
+        for (Player p : List.of(user, listener)) {
+            when(p.hasPermission("allium.channel.join.default.read")).thenReturn(true);
+            when(p.hasPermission("allium.channel.join.default.write")).thenReturn(true);
+            when(p.hasPermission("allium.me")).thenReturn(true);
+        }
+
+        var listenerCaptor = ArgumentCaptor.forClass(org.bukkit.event.Listener.class);
+        verify(h.server().getPluginManager(), atLeastOnce()).registerEvents(listenerCaptor.capture(), eq(h.plugin()));
+        Object chatListener = listenerCaptor.getAllValues().stream()
+                .filter(l -> l.getClass().getSimpleName().equals("LegacyChatModule"))
+                .findFirst().orElseThrow();
+        var onChat = chatListener.getClass().getMethod("onChat", AsyncPlayerChatEvent.class);
+        onChat.setAccessible(true);
+
+        // 1. Leetspeak phrase blocked + staff alert sent
+        clearInvocations(user, listener, staff);
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, user, "that is b4dw0rd!", new HashSet<>(h.onlinePlayers())));
+        verify(user).sendMessage(argThat((String msg) -> msg.contains("blocked by the chat filter")));
+        verify(listener, never()).sendMessage(anyString());
+        verify(staff).sendMessage(argThat((String msg) -> msg.contains("[ChatFilter]") && msg.contains("User") && msg.contains("token=badword")));
+
+        // 2. Split letters blocked
+        clearInvocations(user, listener, staff);
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, user, "b a d w o r d", new HashSet<>(h.onlinePlayers())));
+        verify(user).sendMessage(argThat((String msg) -> msg.contains("blocked by the chat filter")));
+        verify(listener, never()).sendMessage(anyString());
+
+        // 3. Explicit exception allowed
+        clearInvocations(user, listener, staff);
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, user, "this is a badword exception", new HashSet<>(h.onlinePlayers())));
+        verify(listener).sendMessage(argThat((String msg) -> msg.contains("badword exception")));
+
+        // 4. Repeat filter blocks similar flood-suffixed message, allows whitelisted "gg"
+        clearInvocations(user, listener, staff);
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, user, "selling diamonds at spawn", new HashSet<>(h.onlinePlayers())));
+        verify(listener).sendMessage(argThat((String msg) -> msg.contains("selling diamonds at spawn")));
+        clearInvocations(user, listener, staff);
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, user, "selling diamondssss at spawn 123", new HashSet<>(h.onlinePlayers())));
+        verify(user).sendMessage(argThat((String msg) -> msg.contains("repeat similar messages")));
+        verify(listener, never()).sendMessage(anyString());
+        clearInvocations(user, listener);
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, user, "gg", new HashSet<>(h.onlinePlayers())));
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, user, "gg", new HashSet<>(h.onlinePlayers())));
+        verify(listener, times(2)).sendMessage(argThat((String msg) -> msg.contains("gg")));
+
+        // 5. /me is also filtered
+        clearInvocations(user, listener, staff);
+        assertTrue(h.runAs(user, "action", "me", "claims", "fr33", "n1tr0"));
+        verify(user).sendMessage(argThat((String msg) -> msg.contains("blocked by the chat filter")));
+        verify(listener, never()).sendMessage(anyString());
+
+        // 6. Staff with allium.chat.filter.bypass is exempt
+        clearInvocations(listener, staff);
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, staff, "badword test", new HashSet<>(h.onlinePlayers())));
+        verify(listener).sendMessage(argThat((String msg) -> msg.contains("badword test")));
+
+        // 7. Alert-only mode delivers message AND alerts staff after reload
+        Files.writeString(tempDir.resolve("config.yml"), String.join("\n",
+                "modules:",
+                "  chat: true",
+                "chat:",
+                "  filter:",
+                "    enabled: true",
+                "    mode: alert-only",
+                "    notify-staff: true",
+                "    phrases:",
+                "      enabled: true",
+                "      tokens: [badword]",
+                "    repeat:",
+                "      enabled: false",
+                "    rate-limit:",
+                "      enabled: false"
+        ));
+        assertTrue(h.run(staff, "allium", "reload"));
+        clearInvocations(user, listener, staff);
+        onChat.invoke(chatListener, new AsyncPlayerChatEvent(false, user, "badword shadow", new HashSet<>(h.onlinePlayers())));
+        verify(listener).sendMessage(argThat((String msg) -> msg.contains("badword shadow")));
+        verify(staff).sendMessage(argThat((String msg) -> msg.contains("[ChatFilter]") && msg.contains("[alert-only]")));
+
+        h.runtime().onDisable();
+    }
+
+    @Test
+    void legacyJoinQuitMessagesFormatAndSuppressWhenVanished() throws Exception {
+        Files.writeString(tempDir.resolve("config.yml"), String.join("\n",
+                "modules:",
+                "  chat: true",
+                "join-and-quit-messages:",
+                "  join:",
+                "    enabled: true",
+                "    format: '&a+ %name%'",
+                "  quit:",
+                "    enabled: true",
+                "    format: '&c- %name%'",
+                "  first-join:",
+                "    enabled: true",
+                "    format: '&dWelcome %name%!'",
+                "  broadcast-scope: server"
+        ));
+        Harness h = createHarness();
+        Player rookie = h.addPlayer("Rookie", UUID.randomUUID(), false);
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+        when(rookie.hasPlayedBefore()).thenReturn(false);
+        when(staff.hasPlayedBefore()).thenReturn(true);
+
+        var listenerCaptor = ArgumentCaptor.forClass(org.bukkit.event.Listener.class);
+        verify(h.server().getPluginManager(), atLeastOnce()).registerEvents(listenerCaptor.capture(), eq(h.plugin()));
+        Object chatListener = listenerCaptor.getAllValues().stream()
+                .filter(l -> l.getClass().getSimpleName().equals("LegacyChatModule"))
+                .findFirst().orElseThrow();
+        var onJoin = chatListener.getClass().getMethod("onJoin", org.bukkit.event.player.PlayerJoinEvent.class);
+        var onQuit = chatListener.getClass().getMethod("onQuit", org.bukkit.event.player.PlayerQuitEvent.class);
+        onJoin.setAccessible(true);
+        onQuit.setAccessible(true);
+
+        var joinEvent = new org.bukkit.event.player.PlayerJoinEvent(rookie, "Rookie joined the game");
+        onJoin.invoke(chatListener, joinEvent);
+        assertEquals("\u00a7a+ Rookie", joinEvent.getJoinMessage());
+        verify(staff).sendMessage("\u00a7dWelcome Rookie!");
+
+        var quitEvent = new org.bukkit.event.player.PlayerQuitEvent(rookie, "Rookie left the game");
+        onQuit.invoke(chatListener, quitEvent);
+        assertEquals("\u00a7c- Rookie", quitEvent.getQuitMessage());
+
+        // Vanished staff suppresses join/quit messages
+        assertTrue(h.run(staff, "vanish"));
+        var vanishedQuit = new org.bukkit.event.player.PlayerQuitEvent(staff, "Staff left the game");
+        onQuit.invoke(chatListener, vanishedQuit);
+        assertNull(vanishedQuit.getQuitMessage());
 
         h.runtime().onDisable();
     }

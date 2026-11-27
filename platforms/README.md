@@ -34,6 +34,12 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/clearchat [player]` clears everyone’s chat by default. Targeting another player requires `allium.clearchat.others`. Global clears honor `allium.clearchat.exempt`. The line count comes from `chat.deletion_resend.clear_lines`. A value of zero disables clearing. Previous chat messages are never replayed by this command.
 
+## Chat and chat filter on Bukkit 1.12.2–1.19.4
+
+Public chat formatting (`enable-chat-formatting`, `chat-format.default`, `chat-format.groups.*`, optional Vault prefix/suffix/group lookup), channels (`/channel`, `/g`, `/global`, `/shout`, `/l`, `/local`, `/a`, `/ac`, `/amsg`, `/staffchat`, `#staff` and `>global` shortcuts), local radius, `?` global questions (`allium.chat.question`), `@<player>` mention highlights and sounds (`allium.chat.mention`, `allium.chat.receive.mention`), URL permission gating (`chat.urls.enabled`, `allium.chat.url`), `/me` (`/action`), and `join-and-quit-messages` (including optional `first-join` and `broadcast-scope: world`) run natively on 1.12.2–1.19.4. Channel selections are saved in `chat-channels-legacy.yml`.
+
+Opt-in `chat.filter.*` rules (phrase tokens/phrases/substrings/exceptions with leetspeak normalization and split-letter detection, repeat-similarity window with flood-suffix stripping and whitelist, rate-limit min-interval and burst caps, `block` vs `alert-only` mode, `allium.chat.filter.bypass`, and `allium.chat.filter.alerts` staff notices) share the same `ChatFilterEngine` logic as 1.20–26.3 and apply to both chat and `/me`.
+
 `/rtoggle` (`/replytoggle`) switches `/reply` between the last person you messaged and the last person who messaged you. The selected mode survives a restart. Message history used to pick the recipient lasts for the current session.
 
 Teleport commands and tab completion accept partial usernames, nicknames, and close typos. Teleporting another player with `/tp <player> <target>` requires `allium.tp.others`.

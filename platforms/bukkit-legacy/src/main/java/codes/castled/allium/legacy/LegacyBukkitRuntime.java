@@ -137,6 +137,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.companions = new LegacyCompanionTeleports(plugin, configManager, messageManager, version,
                 this::findTeleportPlayer, this::canSeeTeleportTarget);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
+        this.playerInfo.alts().config = configManager::raw;
         this.staffReports = new LegacyStaffReports(plugin, configManager, messageManager, playerInfo, this::canSeeTeleportTarget);
         this.explosiveCommands = new LegacyExplosiveCommands(plugin, messageManager, this::canSeeTeleportTarget);
         this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);
@@ -189,6 +190,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(moderation, plugin);
         pm.registerEvents(playerInfo, plugin);
         pm.registerEvents(playerInfo.editor(), plugin);
+        pm.registerEvents(playerInfo.alts(), plugin);
         pm.registerEvents(chat, plugin);
         pm.registerEvents(hide, plugin);
         pm.registerEvents(utilities, plugin);
@@ -245,6 +247,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(hide);
         HandlerList.unregisterAll(utilities);
         HandlerList.unregisterAll(playerInfo.editor());
+        HandlerList.unregisterAll(playerInfo.alts());
         HandlerList.unregisterAll(explosiveCommands);
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);

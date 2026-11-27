@@ -48,6 +48,7 @@ final class LegacyPlayerInfoModule implements Listener {
     private final Map<UUID, Location> lastLocations = new HashMap<UUID, Location>();
     private final Map<UUID, String> nicknames = new HashMap<UUID, String>();
     private final LegacyNicknameEditor editor;
+    private final LegacyAlts alts;
     private final Map<UUID, String> afkReasons = new HashMap<UUID, String>();
     private final Map<UUID, Set<UUID>> ignores = new HashMap<UUID, Set<UUID>>();
     private final Map<UUID, List<String>> mailboxes = new HashMap<UUID, List<String>>();
@@ -59,6 +60,7 @@ final class LegacyPlayerInfoModule implements Listener {
         this.economy = economy;
         this.messages = messages;
         this.editor = new LegacyNicknameEditor(this, messages);
+        this.alts = new LegacyAlts(plugin, messages, this::resolvePlayer);
     }
 
     private void send(CommandSender recipient, String message) {
@@ -67,6 +69,7 @@ final class LegacyPlayerInfoModule implements Listener {
 
     void enable() {
         loadInfo();
+        alts.load();
         long now = System.currentTimeMillis();
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             sessionStart.put(p.getUniqueId(), now);
@@ -77,6 +80,20 @@ final class LegacyPlayerInfoModule implements Listener {
 
     void reload() {
         loadInfo();
+        alts.load();
+    }
+
+    LegacyAlts alts() {
+        return alts;
+    }
+
+    /** "Alt accounts: ..." for staff allowed to see them; nothing when there are none. */
+    private void sendAlts(CommandSender sender, UUID id) {
+        if (!alts.enabled()) return;
+        List<String> linked = alts.linkedNames(id);
+        if (!linked.isEmpty()) {
+            messages.send(sender, "info.whois.alts", "&7Alt accounts: &f{accounts}", "{accounts}", String.join(", ", linked));
+        }
     }
 
     void disable() {
@@ -167,6 +184,7 @@ final class LegacyPlayerInfoModule implements Listener {
             case "nick":
             case "editnick":
             case "realname":
+            case "altexempt":
                 return true;
             default:
                 return false;
@@ -186,6 +204,7 @@ final class LegacyPlayerInfoModule implements Listener {
             case "mail": return handleMail(sender, args);
             case "nick": return handleNick(sender, args);
             case "editnick": return editor.command(sender, args, this::findOnline);
+            case "altexempt": return alts.command(sender, args);
             case "realname": return handleRealName(sender, args);
             default: return false;
         }
@@ -201,6 +220,8 @@ final class LegacyPlayerInfoModule implements Listener {
                 return args.length == 1 ? onlinePlayers(prefix) : Collections.<String>emptyList();
             case "nick":
                 return args.length == 2 ? onlinePlayers(prefix) : Collections.<String>emptyList();
+            case "altexempt":
+                return alts.complete(sender, args, prefix);
             case "editnick":
                 return args.length == 1 && sender.hasPermission("allium.nick.others") ? onlinePlayers(prefix) : Collections.<String>emptyList();
             case "mail":
@@ -246,6 +267,7 @@ final class LegacyPlayerInfoModule implements Listener {
             long start = sessionStart.containsKey(online.getUniqueId()) ? sessionStart.get(online.getUniqueId()) : System.currentTimeMillis();
             send(sender, ChatColor.GREEN + online.getName() + " is online (for "
                     + LegacyCompat.formatDuration(System.currentTimeMillis() - start) + ").");
+            if (sender.hasPermission("allium.seen.alts")) sendAlts(sender, online.getUniqueId());
             return true;
         }
         OfflinePlayer op = resolvePlayer(args[0]);
@@ -261,6 +283,7 @@ final class LegacyPlayerInfoModule implements Listener {
         String name = op.getName() != null ? op.getName() : args[0];
         send(sender, ChatColor.GRAY + name + " was last seen " + ChatColor.WHITE
                 + LegacyCompat.formatDuration(Math.max(0L, System.currentTimeMillis() - last)) + ChatColor.GRAY + " ago.");
+        if (sender.hasPermission("allium.seen.alts")) sendAlts(sender, op.getUniqueId());
         return true;
     }
 
@@ -297,6 +320,7 @@ final class LegacyPlayerInfoModule implements Listener {
         if (sender.hasPermission("allium.whois.ip") && target.getAddress() != null && target.getAddress().getAddress() != null) {
             sender.sendMessage(ChatColor.GRAY + "IP: " + ChatColor.WHITE + target.getAddress().getAddress().getHostAddress());
         }
+        if (sender.hasPermission("allium.whois.extra")) sendAlts(sender, id);
         return true;
     }
 

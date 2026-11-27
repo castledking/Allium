@@ -60,6 +60,8 @@ A command typed with missing or wrong arguments shows its usage card, as on the 
 
 `/editnick [player]` (`/nickgui`) opens the nickname styling GUI: a colour (`allium.nick.color`), styles, and on 1.16+ preset gradients (`allium.nick.gradient`), with a preview; saving follows `/nick`'s rules. Versions before 1.16 cannot draw hex colours, so the gradient row is left out there. Another player's nickname needs `allium.nick.others`.
 
+Alt detection (`modules.alts`, the `alts` section) runs as on the modern platform: each join records the player's IP, and an account that first used an IP an older account already used is an alt. Alts get the `alts.group` parent group through LuckPerms' command, or Vault when LuckPerms is absent, and holders of `allium.alerts` are told. `/altexempt <add|remove|check> <player> [reason]` keeps an account out and removes the group. `/seen` (`allium.seen.alts`) and `/whois` (`allium.whois.extra`) list linked accounts. The history is stored in `alts-legacy.yml`.
+
 ## Chat and chat filter on Bukkit 1.12.2–1.19.4
 
 Public chat formatting (`enable-chat-formatting`, `chat-format.default`, `chat-format.groups.*`, optional Vault prefix/suffix/group lookup), channels (`/channel`, `/g`, `/global`, `/shout`, `/l`, `/local`, `/a`, `/ac`, `/amsg`, `/staffchat`, `#staff` and `>global` shortcuts), local radius, `?` global questions (`allium.chat.question`), `@<player>` mention highlights and sounds (`allium.chat.mention`, `allium.chat.receive.mention`), URL permission gating (`chat.urls.enabled`, `allium.chat.url`), `/me` (`/action`), and `join-and-quit-messages` (including optional `first-join` and `broadcast-scope: world`) run natively on 1.12.2–1.19.4. Channel selections are saved in `chat-channels-legacy.yml`.

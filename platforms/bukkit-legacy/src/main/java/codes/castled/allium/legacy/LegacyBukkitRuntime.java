@@ -16,6 +16,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -100,6 +101,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyFlightProtection flightProtection;
     private final LegacyExperienceCommand experience;
     private final LegacyXpBottle xpBottle;
+    private final LegacyStaffReports staffReports;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -131,6 +133,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.companions = new LegacyCompanionTeleports(plugin, configManager, messageManager, version,
                 this::findTeleportPlayer, this::canSeeTeleportTarget);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
+        this.staffReports = new LegacyStaffReports(plugin, configManager, messageManager, playerInfo, this::canSeeTeleportTarget);
         this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);
         this.flight = new LegacyTimedFlight(plugin, configManager, playerInfo, messageManager, flightProtection, this::canSeeTeleportTarget);
         this.experience = new LegacyExperienceCommand(plugin, messageManager, this::canSeeTeleportTarget);
@@ -168,6 +171,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         kits.enable();
         moderation.enable();
         playerInfo.enable();
+        staffReports.reload();
         flight.enable();
         xpBottle.enable();
         chat.enable();
@@ -417,6 +421,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return experience.execute(sender, args);
             case "xpbottle":
                 return xpBottle.execute(sender, args);
+            case "report":
+                return staffReports.report(sender, args);
+            case "helpop":
+                return staffReports.help(sender, args);
+            case "escalate":
+                return staffReports.escalate(sender, LegacyStaffReports.actor(sender), args, 0);
             case "god":
                 return handleGod(sender, args);
             case "gamemode":
@@ -476,6 +486,10 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("toggleslowfall".equals(name)) return flightProtection.complete(sender, args, prefix);
         if ("xp".equals(name)) return experience.complete(sender, args, prefix);
         if ("xpbottle".equals(name)) return xpBottle.complete(sender, args, prefix);
+        if ("report".equals(name) || "escalate".equals(name)) {
+            return args.length == 1 ? staffReports.complete(sender, name, prefix) : Collections.emptyList();
+        }
+        if ("helpop".equals(name)) return Collections.emptyList();
         if ("clearinventory".equals(name)) return inventoryClear.complete(sender, args, prefix);
         if ("clearinventoryconfirmtoggle".equals(name)) return Collections.emptyList();
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);
@@ -516,6 +530,10 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 List<String> subs = new ArrayList<String>(Arrays.asList("version", "help", "reload"));
                 if (sender.hasPermission(LegacyHideModule.ADMIN) || sender.isOp()) {
                     subs.add("hide");
+                }
+                if (sender instanceof ConsoleCommandSender && sender.hasPermission("allium.escalate")
+                        && !commandManager.isDisabled("escalate") && !commandManager.isModuleDisabled("escalate")) {
+                    subs.add("escalate");
                 }
                 return filterPrefix(subs, prefix);
             }
@@ -591,6 +609,16 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("hide".equalsIgnoreCase(args[0])) {
             return hide.handleAdmin(sender, Arrays.copyOfRange(args, 1, args.length));
         }
+        if ("escalate".equalsIgnoreCase(args[0])) {
+            if (!(sender instanceof ConsoleCommandSender)) {
+                messageManager.send(sender, "error.console-only", "{prefix} &cThis command can only be used from the console.");
+            } else if (commandManager.isDisabled("escalate") || commandManager.isModuleDisabled("escalate")) {
+                messageManager.send(sender, "error.module-disabled", "{prefix} &cThis feature is currently disabled.");
+            } else if (args.length < 4 || !staffReports.escalate(sender, args[1], args, 2)) {
+                send(sender, ChatColor.RED + "Usage: /allium escalate <staffmember> <target> <reason>");
+            }
+            return true;
+        }
         if ("reload".equalsIgnoreCase(args[0])) {
             if (!sender.hasPermission("allium.reload") && !sender.isOp()) {
                 messageManager.send(sender, "no-permission",
@@ -610,6 +638,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             kits.reload();
             travel.reload();
             moderation.reload();
+            staffReports.reload();
             playerInfo.reload();
             chat.reload();
             hide.reload();

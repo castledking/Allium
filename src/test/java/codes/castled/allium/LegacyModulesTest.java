@@ -277,6 +277,40 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacyStaffNoticesPreserveLiteralTextAndUseSeparateRecipientPermissions() {
+        Harness h = createHarness();
+        Player member = h.addPlayer("Member", UUID.randomUUID(), false);
+        Player reportStaff = h.addPlayer("Reporter", UUID.randomUUID(), false);
+        Player helpStaff = h.addPlayer("Helper", UUID.randomUUID(), false);
+        Player senior = h.addPlayer("Senior", UUID.randomUUID(), false);
+        when(member.hasPermission("allium.report")).thenReturn(true);
+        when(member.hasPermission("allium.helpop")).thenReturn(true);
+        when(reportStaff.hasPermission("allium.report.receive")).thenReturn(true);
+        when(helpStaff.hasPermission("allium.helpop.receive")).thenReturn(true);
+        when(helpStaff.hasPermission("allium.escalate")).thenReturn(true);
+        when(senior.hasPermission("allium.escalate.receive")).thenReturn(true);
+
+        assertTrue(h.run(member, "report", "Member", "self"));
+        verify(member).sendMessage(contains("report yourself"));
+        assertTrue(h.run(member, "report", "Helper", "&kproof", "{where}"));
+        verify(reportStaff).sendMessage(contains("&kproof {where}"));
+        verify(helpStaff, never()).sendMessage(contains("proof"));
+        assertTrue(h.run(member, "report", "follow-up"));
+        verify(member).sendMessage(contains("report again"));
+        assertTrue(h.run(member, "helpop", "reply-marker"));
+        verify(helpStaff).sendMessage(contains("reply-marker"));
+        verify(reportStaff, never()).sendMessage(contains("reply-marker"));
+
+        assertTrue(h.run(helpStaff, "escalate", "Member", "escalation-marker"));
+        verify(senior).sendMessage(contains("escalation-marker"));
+        verify(reportStaff, never()).sendMessage(contains("escalation-marker"));
+        assertTrue(h.run(helpStaff, "allium", "escalate", "Senior", "Member", "wrong-actor"));
+        verify(helpStaff).sendMessage(contains("from the console"));
+        verify(senior, never()).sendMessage(contains("wrong-actor"));
+        h.runtime().onDisable();
+    }
+
+    @Test
     void legacyExperienceUsesTheBarAndRequiresTheSpecificReadAndWritePermissions() {
         Harness h = createHarness();
         Player member = h.addPlayer("Member", UUID.randomUUID(), false);

@@ -42,7 +42,7 @@ import java.util.UUID;
  * {@code /ban}, {@code /tempban}, {@code /unban}, {@code /banlist}, {@code /ipban}, {@code /tempbanip},
  * {@code /unbanip}, {@code /freeze}, {@code /setjail}, {@code /deljail}, {@code /jails}, {@code /jail},
  * {@code /unjail}, {@code /togglejail}, {@code /jailedplayers}, {@code /warn}, {@code /notes},
- * {@code /unnote}, {@code /invsee}, {@code /helpop}, {@code /report}, {@code /socialspy},
+ * {@code /unnote}, {@code /invsee}, {@code /socialspy},
  * {@code /commandspy}, {@code /spy}.
  */
 final class LegacyModerationModule implements Listener {
@@ -311,8 +311,6 @@ final class LegacyModerationModule implements Listener {
             case "notes":
             case "unnote":
             case "invsee":
-            case "helpop":
-            case "report":
             case "socialspy":
             case "commandspy":
             case "spy":
@@ -349,8 +347,6 @@ final class LegacyModerationModule implements Listener {
             case "notes": return handleNotes(sender, args);
             case "unnote": return handleUnnote(sender, args);
             case "invsee": return handleInvsee(sender, args);
-            case "helpop": return handleHelpop(sender, args);
-            case "report": return handleReport(sender, args);
             case "socialspy": return handleSocialSpy(sender);
             case "commandspy": return handleCommandSpy(sender);
             case "spy": return handleSpyAll(sender);
@@ -374,7 +370,6 @@ final class LegacyModerationModule implements Listener {
             case "notes":
             case "unnote":
             case "invsee":
-            case "report":
                 return args.length == 1 ? onlinePlayers(prefix) : Collections.<String>emptyList();
             case "deljail":
                 return args.length == 1 ? filterJails(prefix) : Collections.<String>emptyList();
@@ -944,53 +939,6 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         ((Player) sender).openInventory(target.getInventory());
-        return true;
-    }
-
-    private boolean handleHelpop(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("allium.helpop")) {
-            send(sender, ChatColor.RED + "You do not have permission to use /helpop.");
-            return true;
-        }
-        if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /helpop <message>");
-            return true;
-        }
-        String text = joinArgs(args, 0);
-        String msg = ChatColor.DARK_RED + "[HelpOp] " + ChatColor.WHITE + sender.getName() + ChatColor.GRAY + ": " + ChatColor.YELLOW + text;
-        int notified = 0;
-        for (Player p : plugin.getServer().getOnlinePlayers()) {
-            if (p.hasPermission("allium.helpop.receive") || p.isOp()) {
-                p.sendMessage(msg);
-                notified++;
-            }
-        }
-        plugin.getLogger().info("[HelpOp] " + sender.getName() + ": " + text);
-        send(sender, ChatColor.GREEN + "Sent HelpOp request to " + notified + " online staff member(s).");
-        return true;
-    }
-
-    private boolean handleReport(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("allium.report")) {
-            send(sender, ChatColor.RED + "You do not have permission to use /report.");
-            return true;
-        }
-        if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /report <player> <reason>");
-            return true;
-        }
-        String target = args[0];
-        String reason = joinArgs(args, 1);
-        String alert = ChatColor.RED + "[Report] " + ChatColor.WHITE + sender.getName()
-                + ChatColor.GRAY + " reported " + ChatColor.YELLOW + target
-                + ChatColor.GRAY + ": " + ChatColor.WHITE + reason;
-        for (Player p : plugin.getServer().getOnlinePlayers()) {
-            if (p.hasPermission("allium.report.receive") || p.hasPermission("allium.helpop.receive") || p.isOp()) {
-                send(p, alert);
-            }
-        }
-        plugin.getLogger().info("[Report] " + sender.getName() + " reported " + target + ": " + reason);
-        send(sender, ChatColor.GREEN + "Report submitted against " + target + ".");
         return true;
     }
 

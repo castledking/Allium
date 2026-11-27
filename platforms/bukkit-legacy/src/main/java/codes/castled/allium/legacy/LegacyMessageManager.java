@@ -277,17 +277,27 @@ final class LegacyMessageManager {
     }
 
     private void sendInternal(CommandSender sender, String key, String defaultText, boolean scaleSound, String... replacements) {
+        sendInternal(sender, key, defaultText, scaleSound, null, replacements);
+    }
+
+    void sendWithLiteralBody(CommandSender sender, String key, String defaultText, String body, String... replacements) {
+        sendInternal(sender, key, defaultText, false, body, replacements);
+    }
+
+    private void sendInternal(CommandSender sender, String key, String defaultText, boolean scaleSound,
+                              String literalBody, String... replacements) {
         if (sender == null) return;
         String text = resolve(key, defaultText, replacements);
         if (!text.isEmpty()) {
             String colored = LegacyCompat.color(text);
             for (String line : colored.split("\n", -1)) {
-                sender.sendMessage(line);
+                sender.sendMessage(literalBody == null ? line : line.replace("{message}", literalBody));
             }
         }
         String bar = resolveActionBar(key, replacements);
         if (!bar.isEmpty() && sender instanceof Player) {
-            LegacyCompat.sendActionBar((Player) sender, LegacyCompat.color(bar));
+            String colored = LegacyCompat.color(bar);
+            LegacyCompat.sendActionBar((Player) sender, literalBody == null ? colored : colored.replace("{message}", literalBody));
         }
         if (sender instanceof Player) {
             LegacyLanguageManager.SoundSpec sound = lang.getSound(key);

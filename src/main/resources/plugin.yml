@@ -305,9 +305,11 @@ commands:
   toggles:
     aliases: [settings]
     description: View your player settings
+    usage: /<command>
     permission: allium.toggles
   toggle:
     description: Change a player setting
+    usage: /<command> <tpa|msg|pay> [on|off]
     permission: allium.toggles
 
   rename:
@@ -476,6 +478,7 @@ commands:
     permission: allium.tpaall
   tptoggle:
     description: Allow or block teleport requests to you
+    usage: /<command> [on|off]
     permission: allium.tptoggle
   tpauto:
     description: Automatically accept incoming teleport requests
@@ -875,6 +878,7 @@ commands:
     permission: allium.pay
   paytoggle:
     description: Allow or refuse incoming payments
+    usage: /<command> [on|off]
     aliases: [payon, payoff]
     permission: allium.paytoggle
   payconfirmtoggle:

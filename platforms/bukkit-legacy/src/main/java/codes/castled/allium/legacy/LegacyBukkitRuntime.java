@@ -2,6 +2,7 @@ package codes.castled.allium.legacy;
 
 import codes.castled.allium.AlliumRuntime;
 import codes.castled.allium.ServerVersion;
+import codes.castled.allium.legacy.LegacyPlayerSettings.Setting;
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.UtilityMessages;
 import org.bukkit.Bukkit;
@@ -78,8 +79,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyTravelModule travel;
     private final LegacyUtilitiesModule utilities;
     private final LegacyTextModule text;
+    private final LegacyPlayerSettings settings;
     private final Set<UUID> godPlayers = new HashSet<>();
-    private final Set<UUID> msgDisabled = new HashSet<>();
     private final Map<UUID, UUID> lastReplyTarget = new HashMap<>();
     private final Map<UUID, Location> backLocations = new HashMap<>();
     private final Map<UUID, TpaRequest> incomingTpa = new HashMap<>();
@@ -96,6 +97,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.commandManager = new LegacyCommandManager(plugin, configManager);
         this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
         this.economy = new LegacyEconomyModule(plugin, configManager);
+        this.settings = new LegacyPlayerSettings(plugin, commandManager, economy);
         this.kits = new LegacyKitsModule(plugin);
         this.moderation = new LegacyModerationModule(plugin);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy);
@@ -122,6 +124,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         loadWarps();
         loadSpawn();
         economy.enable();
+        settings.reload();
         kits.enable();
         moderation.enable();
         playerInfo.enable();
@@ -186,7 +189,6 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         travel.disable();
         utilities.disable();
         godPlayers.clear();
-        msgDisabled.clear();
         lastReplyTarget.clear();
         backLocations.clear();
         incomingTpa.clear();
@@ -290,7 +292,17 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             case "reply":
                 return handleReply(sender, args);
             case "msgtoggle":
-                return handleMsgToggle(sender);
+                return settings.direct(sender, Setting.MSG, args);
+            case "tptoggle":
+                return settings.direct(sender, Setting.TPA, args);
+            case "tpauto":
+                return settings.direct(sender, Setting.TP_AUTO, args);
+            case "paytoggle":
+                return settings.direct(sender, Setting.PAY, args);
+            case "toggle":
+                return settings.execute(sender, true, args);
+            case "toggles":
+                return settings.execute(sender, false, args);
             case "heal":
                 return handleHeal(sender, args);
             case "feed":
@@ -344,6 +356,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return Collections.emptyList();
         }
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
+        if ("toggle".equals(name)) return settings.complete(sender, args);
 
         if ("help".equals(name)) {
             return helpCommand.complete(sender, args);
@@ -435,6 +448,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             loadWarps();
             loadSpawn();
             economy.reload();
+            settings.reload();
             kits.reload();
             travel.reload();
             moderation.reload();
@@ -699,7 +713,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             sender.sendMessage(ChatColor.RED + "You cannot send a teleport request to yourself.");
             return true;
         }
-        if (travel.isTpDisabled(target.getUniqueId()) && !from.hasPermission("allium.tptoggle.bypass")) {
+        if (!settings.enabled(target.getUniqueId(), Setting.TPA) && !from.hasPermission("allium.tptoggle.bypass")) {
             sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting teleport requests.");
             return true;
         }
@@ -708,7 +722,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     }
 
     void sendTpaRequest(Player from, Player target, boolean here) {
-        if (travel.isTpAuto(target.getUniqueId())) {
+        if (settings.enabled(target.getUniqueId(), Setting.TP_AUTO)) {
             if (here) {
                 target.teleport(from.getLocation());
                 target.sendMessage(ChatColor.GREEN + "Auto-accepted teleport to " + from.getName() + ".");
@@ -877,7 +891,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
         }
-        if (msgDisabled.contains(target.getUniqueId()) && !sender.hasPermission("allium.msg.bypass.toggle")) {
+        if (!settings.enabled(target.getUniqueId(), Setting.MSG) && !sender.hasPermission("allium.msg.bypass.toggle")) {
             sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting private messages.");
             return true;
         }
@@ -899,7 +913,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             sender.sendMessage(ChatColor.RED + "No one to reply to.");
             return true;
         }
-        if (msgDisabled.contains(target.getUniqueId()) && !sender.hasPermission("allium.msg.bypass.toggle")) {
+        if (!settings.enabled(target.getUniqueId(), Setting.MSG) && !sender.hasPermission("allium.msg.bypass.toggle")) {
             sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting private messages.");
             return true;
         }
@@ -932,18 +946,6 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             lastReplyTarget.put(fromId, target.getUniqueId());
             lastReplyTarget.put(target.getUniqueId(), fromId);
         }
-    }
-
-    private boolean handleMsgToggle(CommandSender sender) {
-        Player player = requirePlayer(sender);
-        if (player == null) return true;
-        if (msgDisabled.remove(player.getUniqueId())) {
-            player.sendMessage(ChatColor.GREEN + "Private messages enabled.");
-        } else {
-            msgDisabled.add(player.getUniqueId());
-            player.sendMessage(ChatColor.YELLOW + "Private messages disabled.");
-        }
-        return true;
     }
 
     // ==================== Player & World Utilities ====================
@@ -1186,6 +1188,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         return true;
     }
 
+    LegacyPlayerSettings settings() { return settings; }
     LegacyConfigManager configManager() { return configManager; }
     LegacyLanguageManager languageManager() { return languageManager; }
     LegacyMessageManager messageManager() { return messageManager; }

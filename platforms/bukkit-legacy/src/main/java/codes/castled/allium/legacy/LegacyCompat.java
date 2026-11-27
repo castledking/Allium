@@ -546,9 +546,7 @@ public final class LegacyCompat {
                     setHover.invoke(comp, hoverEvent);
                 }
             }
-            Object spigot = player.getClass().getMethod("spigot").invoke(player);
-            Method sendMsg = spigot.getClass().getMethod("sendMessage", baseCompArrayClass);
-            sendMsg.invoke(spigot, (Object) comps);
+            sendComponents(player, comps);
             return true;
         } catch (Throwable ignored) {
             return false;

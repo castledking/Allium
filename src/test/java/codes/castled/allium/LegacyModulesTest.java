@@ -187,6 +187,41 @@ class LegacyModulesTest {
     }
 
     @Test
+    void compatibilitySettingsAndDirectTogglesSharePersistedState() {
+        Harness first = createHarness();
+        UUID targetId = UUID.randomUUID();
+        Player target = first.addPlayer("Target", targetId, true);
+        assertTrue(first.run(target, "toggle", "msg", "off"));
+        assertTrue(first.run(target, "tptoggle", "off"));
+        assertTrue(first.run(target, "toggle", "pay", "off"));
+        first.runtime().onDisable();
+
+        Harness restarted = createHarness();
+        Player sameTarget = restarted.addPlayer("Target", targetId, true);
+        Player other = restarted.addPlayer("Other", UUID.randomUUID(), false);
+        when(other.hasPermission("allium.tpa")).thenReturn(true);
+        when(other.hasPermission("allium.pay")).thenReturn(true);
+
+        assertTrue(restarted.run(sameTarget, "toggles"));
+        verify(sameTarget).sendMessage(contains("Private messages§c [Off]"));
+        verify(sameTarget).sendMessage(contains("Teleport requests§c [Off]"));
+        verify(sameTarget).sendMessage(contains("Payments§c [Off]"));
+        assertTrue(restarted.run(other, "msg", "Target", "hello"));
+        assertTrue(restarted.run(other, "tpa", "Target"));
+        assertTrue(restarted.run(other, "pay", "Target", "1"));
+        verify(other).sendMessage(contains("not accepting private messages"));
+        verify(other).sendMessage(contains("not accepting teleport requests"));
+        verify(other).sendMessage(contains("not accepting payments"));
+
+        when(sameTarget.hasPermission("allium.toggle.msg")).thenReturn(false);
+        assertTrue(restarted.run(sameTarget, "toggle", "msg", "on"));
+        verify(sameTarget).sendMessage(contains("cannot change that setting"));
+        assertTrue(restarted.run(sameTarget, "msgtoggle", "on"));
+        verify(sameTarget).sendMessage(contains("Private messages enabled"));
+        restarted.runtime().onDisable();
+    }
+
+    @Test
     void moderationMuteFreezeJailWarnBanAndSocialSpyWork() {
         Harness h = createHarness();
         Player mod = h.addPlayer("Mod", UUID.randomUUID(), true);

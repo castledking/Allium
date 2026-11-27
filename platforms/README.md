@@ -18,6 +18,10 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/recipe [item] [number]` and its aliases show the server's registered recipes in chat. Players can omit the item to look up what they are holding. Shaped recipes preserve the crafting grid rows, and recipes with alternative ingredients list the available choices when the server exposes them.
 
+## Player settings on Bukkit 1.12.2–1.19.4
+
+`/settings` or `/toggles` shows the player's permitted settings. `/toggle <tpa|msg|pay> [on|off]` changes the same settings as `/tptoggle`, `/msgtoggle`, or `/paytoggle`. Teleport auto-accept configured through `/tpauto` also survives a restart. Messaging and teleport choices are saved in `player-settings-legacy.yml`, and payments use the existing economy file.
+
 ## Development build
 
 Run Gradle with JDK 25. JDK 17 and JDK 21 are also required by the build.

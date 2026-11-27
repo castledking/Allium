@@ -1,5 +1,6 @@
 package codes.castled.allium.legacy;
 
+import codes.castled.allium.legacy.LegacyPlayerSettings.Setting;
 import codes.castled.allium.portable.Homes;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -17,13 +18,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Java 8 / 1.12.2-1.19.4 extended teleport, travel, and RTP module:
@@ -39,8 +38,6 @@ final class LegacyTravelModule {
     private final JavaPlugin plugin;
     private final LegacyBukkitRuntime runtime;
     private final Random random = new Random();
-    private final Set<UUID> tpDisabled = new HashSet<UUID>();
-    private final Set<UUID> tpAuto = new HashSet<UUID>();
     private final Map<String, Location> rtpCenters = new HashMap<String, Location>();
 
     LegacyTravelModule(JavaPlugin plugin, LegacyBukkitRuntime runtime) {
@@ -58,16 +55,6 @@ final class LegacyTravelModule {
 
     void disable() {
         saveRtpCenters();
-        tpDisabled.clear();
-        tpAuto.clear();
-    }
-
-    boolean isTpDisabled(UUID id) {
-        return tpDisabled.contains(id);
-    }
-
-    boolean isTpAuto(UUID id) {
-        return tpAuto.contains(id);
     }
 
     boolean handles(String name) {
@@ -84,8 +71,6 @@ final class LegacyTravelModule {
             case "tpohere":
             case "tpall":
             case "tpaall":
-            case "tptoggle":
-            case "tpauto":
             case "world":
             case "rtp":
             case "settpr":
@@ -109,8 +94,6 @@ final class LegacyTravelModule {
             case "tpohere": return handleTpo(sender, args, true);
             case "tpall": return handleTpAll(sender, args);
             case "tpaall": return handleTpaAll(sender);
-            case "tptoggle": return handleTpToggle(sender);
-            case "tpauto": return handleTpAuto(sender);
             case "world": return handleWorld(sender, args);
             case "rtp": return handleRtp(sender, args);
             case "settpr": return handleSetTpr(sender);
@@ -400,49 +383,11 @@ final class LegacyTravelModule {
         Player self = (Player) sender;
         int sent = 0;
         for (Player online : plugin.getServer().getOnlinePlayers()) {
-            if (online.equals(self) || tpDisabled.contains(online.getUniqueId())) continue;
+            if (online.equals(self) || !runtime.settings().enabled(online.getUniqueId(), Setting.TPA)) continue;
             runtime.sendTpaRequest(self, online, true);
             sent++;
         }
         sender.sendMessage(ChatColor.GREEN + "Sent teleport requests to " + sent + " player(s).");
-        return true;
-    }
-
-    private boolean handleTpToggle(CommandSender sender) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can toggle teleports.");
-            return true;
-        }
-        if (!sender.hasPermission("allium.tptoggle")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /tptoggle.");
-            return true;
-        }
-        Player p = (Player) sender;
-        if (tpDisabled.remove(p.getUniqueId())) {
-            sender.sendMessage(ChatColor.GREEN + "Teleport requests enabled.");
-        } else {
-            tpDisabled.add(p.getUniqueId());
-            sender.sendMessage(ChatColor.GRAY + "Teleport requests disabled.");
-        }
-        return true;
-    }
-
-    private boolean handleTpAuto(CommandSender sender) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can toggle auto-accept.");
-            return true;
-        }
-        if (!sender.hasPermission("allium.tpauto")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /tpauto.");
-            return true;
-        }
-        Player p = (Player) sender;
-        if (tpAuto.remove(p.getUniqueId())) {
-            sender.sendMessage(ChatColor.GRAY + "Auto-accepting teleport requests disabled.");
-        } else {
-            tpAuto.add(p.getUniqueId());
-            sender.sendMessage(ChatColor.GREEN + "Auto-accepting teleport requests enabled.");
-        }
         return true;
     }
 

@@ -307,6 +307,8 @@ final class LegacyCommandManager {
         // Messaging & Mail
         for (String c : new String[]{"msg", "reply", "msgtoggle", "ignore", "unignore"}) m.put(c, "messaging");
         m.put("messagesounds", "preferences");
+        m.put("toggle", "preferences");
+        m.put("toggles", "preferences");
         m.put("mail", "mail");
         // Moderation
         for (String c : new String[]{"vanish", "mute", "unmute", "mutes", "kick", "kickall", "ban", "tempban",

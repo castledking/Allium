@@ -99,7 +99,6 @@ final class LegacyEconomyModule implements Listener {
         switch (commandName) {
             case "balance":
             case "pay":
-            case "paytoggle":
             case "eco":
             case "baltop":
             case "worth":
@@ -115,7 +114,6 @@ final class LegacyEconomyModule implements Listener {
         switch (name) {
             case "balance": return handleBalance(sender, args);
             case "pay": return handlePay(sender, args);
-            case "paytoggle": return handlePayToggle(sender);
             case "eco": return handleEco(sender, args);
             case "baltop": return handleBaltop(sender, args);
             case "worth": return handleWorth(sender, args);
@@ -196,7 +194,7 @@ final class LegacyEconomyModule implements Listener {
             sender.sendMessage(ChatColor.RED + "You cannot pay yourself.");
             return true;
         }
-        if (payDisabled.contains(target.getUniqueId())) {
+        if (!acceptsPayments(target.getUniqueId())) {
             sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting payments right now.");
             return true;
         }
@@ -218,24 +216,18 @@ final class LegacyEconomyModule implements Listener {
         return true;
     }
 
-    private boolean handlePayToggle(CommandSender sender) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can toggle payments.");
-            return true;
-        }
-        if (!sender.hasPermission("allium.paytoggle")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use /paytoggle.");
-            return true;
-        }
-        Player p = (Player) sender;
-        if (payDisabled.remove(p.getUniqueId())) {
-            sender.sendMessage(ChatColor.GREEN + "Payments enabled.");
-        } else {
-            payDisabled.add(p.getUniqueId());
-            sender.sendMessage(ChatColor.GRAY + "Payments disabled.");
-        }
-        saveEconomy();
-        return true;
+    boolean acceptsPayments(UUID player) {
+        return !payDisabled.contains(player);
+    }
+
+    boolean setAcceptsPayments(UUID player, boolean enabled) {
+        if (acceptsPayments(player) == enabled) return true;
+        if (enabled) payDisabled.remove(player);
+        else payDisabled.add(player);
+        if (saveEconomy()) return true;
+        if (enabled) payDisabled.add(player);
+        else payDisabled.remove(player);
+        return false;
     }
 
     private boolean handleEco(CommandSender sender, String[] args) {
@@ -513,7 +505,7 @@ final class LegacyEconomyModule implements Listener {
         }
     }
 
-    private void saveEconomy() {
+    private boolean saveEconomy() {
         File file = new File(plugin.getDataFolder(), "economy-legacy.yml");
         YamlConfiguration yml = new YamlConfiguration();
         Set<UUID> all = new HashSet<UUID>(balances.keySet());
@@ -526,9 +518,11 @@ final class LegacyEconomyModule implements Listener {
             if (payDisabled.contains(id)) yml.set(path + ".pay-disabled", true);
         }
         try {
-            yml.save(file);
+            LegacyPlayerSettings.replaceFile(yml, file);
+            return true;
         } catch (IOException e) {
             plugin.getLogger().warning("Could not save economy-legacy.yml: " + e.getMessage());
+            return false;
         }
     }
 

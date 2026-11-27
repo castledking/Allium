@@ -7,6 +7,7 @@ import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.message.Messages;
 import codes.castled.allium.xp.Experience;
+import codes.castled.allium.xp.XpBottles;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
@@ -26,7 +27,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.OptionalInt;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntBinaryOperator;
@@ -42,8 +42,8 @@ public final class XpBottleCommand implements SpecCommandHandler, Listener {
     public static final String PERMISSION_USE = "allium.xpbottle";
     public static final String PERMISSION_OTHER = "allium.xpbottle.other";
     public static final String PERMISSION_OTHERS_ALIAS = "allium.xpbottle.others";
-    public static final String KEY_AMOUNT = "xp_voucher_amount";
-    public static final String KEY_SIGNER = "xp_voucher_signer";
+    public static final String KEY_AMOUNT = XpBottles.KEY_AMOUNT;
+    public static final String KEY_SIGNER = XpBottles.KEY_SIGNER;
 
     private final PluginStart plugin;
     private final NamespacedKey amountKey;
@@ -223,44 +223,8 @@ public final class XpBottleCommand implements SpecCommandHandler, Listener {
         return item;
     }
 
-    /**
-     * Parses a positive XP point count, level count ({@code 10L}), or {@code min-max} range when
-     * {@code allowRange} is true.
-     */
     public static OptionalInt parseAmount(String raw, boolean allowRange, IntBinaryOperator randomInRange) {
-        if (raw == null || raw.isBlank()) return OptionalInt.empty();
-        String s = raw.trim().toLowerCase(Locale.ROOT);
-        int dash = s.indexOf('-');
-        if (dash > 0) {
-            if (!allowRange) return OptionalInt.empty();
-            OptionalInt min = parseSingle(s.substring(0, dash).trim());
-            OptionalInt max = parseSingle(s.substring(dash + 1).trim());
-            if (min.isEmpty() || max.isEmpty() || min.getAsInt() > max.getAsInt()) return OptionalInt.empty();
-            return OptionalInt.of(randomInRange.applyAsInt(min.getAsInt(), max.getAsInt()));
-        }
-        return parseSingle(s);
-    }
-
-    private static OptionalInt parseSingle(String raw) {
-        if (raw.isEmpty()) return OptionalInt.empty();
-        boolean levels = raw.endsWith("l");
-        String digits = levels ? raw.substring(0, raw.length() - 1) : raw;
-        if (!digits.matches("\\d{1,10}")) return OptionalInt.empty();
-        long value;
-        try {
-            value = Long.parseLong(digits);
-        } catch (NumberFormatException ignored) {
-            return OptionalInt.empty();
-        }
-        if (value <= 0) return OptionalInt.empty();
-        if (levels) {
-            if (value > Experience.MAX_LEVEL) return OptionalInt.empty();
-            long points = Experience.totalForLevel((int) value);
-            if (points <= 0 || points > Integer.MAX_VALUE) return OptionalInt.empty();
-            return OptionalInt.of((int) points);
-        }
-        if (value > Integer.MAX_VALUE || value > Experience.MAX_POINTS) return OptionalInt.empty();
-        return OptionalInt.of((int) value);
+        return XpBottles.parseAmount(raw, allowRange, randomInRange);
     }
 
     private static boolean canGiveOthers(CommandSender sender) {

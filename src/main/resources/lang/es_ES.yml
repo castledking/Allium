@@ -1877,6 +1877,10 @@ utility:
   xpbottle-max-xp:
     - "{prefix} &cTu experiencia ya esta en el limite maximo."
     - "[sound] block.note_block.bass 0.8"
+  xpbottle-capacity:
+    - "{prefix} &cNo tienes espacio para toda la experiencia de esta botella."
+  xpbottle-unavailable:
+    - "{prefix} &cLos datos de las botellas de experiencia no están disponibles en este servidor."
   command-policy:
     charged:
       - "{prefix} &7Se cobro &f{price} &7por &f{command}&7."

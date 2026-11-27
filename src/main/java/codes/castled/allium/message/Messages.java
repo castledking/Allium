@@ -877,6 +877,8 @@ public enum Messages {
     UTILITY_XPBOTTLE_INVENTORY_FULL("utility.xpbottle-inventory-full", "{prefix} &c{player}'s inventory is full."),
     UTILITY_XPBOTTLE_REDEEMED("utility.xpbottle-redeemed", "{prefix} &aRedeemed &f{points} XP&a."),
     UTILITY_XPBOTTLE_MAX_XP("utility.xpbottle-max-xp", "{prefix} &cYour experience is already at the maximum limit."),
+    UTILITY_XPBOTTLE_CAPACITY("utility.xpbottle-capacity", "{prefix} &cYou don't have room for all the experience in this bottle."),
+    UTILITY_XPBOTTLE_UNAVAILABLE("utility.xpbottle-unavailable", "{prefix} &cXP bottle metadata is unavailable on this server."),
     COMMAND_POLICY_CHARGED("utility.command-policy.charged", "{prefix} &7Charged &f{price} &7for &f{command}&7."),
     COMMAND_POLICY_INSUFFICIENT_FUNDS("utility.command-policy.insufficient-funds", "{prefix} &cYou need &f{price} &cto use &f{command}&c."),
     COMMAND_POLICY_COOLDOWN("utility.command-policy.cooldown", "{prefix} &cWait &f{time} &cbefore using &f{command} &cagain."),

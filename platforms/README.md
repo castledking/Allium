@@ -48,6 +48,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/xp` calculates spendable points from the current level and XP bar. Players can inspect visible targets with `allium.xp.others`. Changes require `allium.xp.give`, `allium.xp.take`, or `allium.xp.set`. The command supports `add`, `remove`, `reset`, and level amounts such as `5L`. Selectors require `minecraft.command.selector`. Servers without Bukkit's selector API support plain `@s`, `@a`, `@p`, and `@r`.
 
+`/xpbottle <amount|amountL|all>` withdraws experience into a bottle that can be redeemed with a right click in either hand. `/xpbottle <amount|min-max> <player>` mints bottles for another visible online player with `allium.xpbottle.other`. XP bottles store their amount and signer in item metadata under the same keys as the modern runtime.
+
 ## Chat and chat filter on Bukkit 1.12.2–1.19.4
 
 Public chat formatting (`enable-chat-formatting`, `chat-format.default`, `chat-format.groups.*`, optional Vault prefix/suffix/group lookup), channels (`/channel`, `/g`, `/global`, `/shout`, `/l`, `/local`, `/a`, `/ac`, `/amsg`, `/staffchat`, `#staff` and `>global` shortcuts), local radius, `?` global questions (`allium.chat.question`), `@<player>` mention highlights and sounds (`allium.chat.mention`, `allium.chat.receive.mention`), URL permission gating (`chat.urls.enabled`, `allium.chat.url`), `/me` (`/action`), and `join-and-quit-messages` (including optional `first-join` and `broadcast-scope: world`) run natively on 1.12.2–1.19.4. Channel selections are saved in `chat-channels-legacy.yml`.

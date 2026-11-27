@@ -114,10 +114,10 @@ final class LegacyTravelModule {
             case "tpo":
             case "tpohere":
             case "tpall":
-                return args.length == 1 ? onlinePlayers(prefix) : Collections.<String>emptyList();
+                return args.length == 1 ? runtime.teleportPlayerSuggestions(sender, prefix) : Collections.emptyList();
             case "world":
                 if (args.length == 1) return worldNames(prefix);
-                if (args.length == 2) return onlinePlayers(prefix);
+                if (args.length == 2) return runtime.teleportPlayerSuggestions(sender, prefix);
                 return Collections.emptyList();
             case "rtp":
                 return args.length == 1 ? worldNames(prefix) : Collections.<String>emptyList();
@@ -325,8 +325,7 @@ final class LegacyTravelModule {
             return true;
         }
         Player self = (Player) sender;
-        Player target = plugin.getServer().getPlayerExact(args[0]);
-        if (target == null) target = plugin.getServer().getPlayer(args[0]);
+        Player target = runtime.findTeleportPlayer(sender, args[0]);
         if (target == null) {
             sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
@@ -348,8 +347,7 @@ final class LegacyTravelModule {
         }
         Player destPlayer;
         if (args.length >= 1) {
-            destPlayer = plugin.getServer().getPlayerExact(args[0]);
-            if (destPlayer == null) destPlayer = plugin.getServer().getPlayer(args[0]);
+            destPlayer = runtime.findTeleportPlayer(sender, args[0]);
             if (destPlayer == null) {
                 sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
                 return true;
@@ -411,8 +409,7 @@ final class LegacyTravelModule {
                 sender.sendMessage(ChatColor.RED + "You do not have permission to teleport other players between worlds.");
                 return true;
             }
-            target = plugin.getServer().getPlayerExact(args[1]);
-            if (target == null) target = plugin.getServer().getPlayer(args[1]);
+            target = runtime.findTeleportPlayer(sender, args[1]);
             if (target == null) {
                 sender.sendMessage(ChatColor.RED + "Player '" + args[1] + "' is not online.");
                 return true;
@@ -525,15 +522,6 @@ final class LegacyTravelModule {
         } catch (IOException e) {
             plugin.getLogger().warning("Could not save rtp-centers.yml: " + e.getMessage());
         }
-    }
-
-    private List<String> onlinePlayers(String prefix) {
-        List<String> out = new ArrayList<String>();
-        for (Player p : plugin.getServer().getOnlinePlayers()) {
-            if (p.getName().toLowerCase(Locale.ROOT).startsWith(prefix)) out.add(p.getName());
-        }
-        Collections.sort(out);
-        return out;
     }
 
     private List<String> worldNames(String prefix) {

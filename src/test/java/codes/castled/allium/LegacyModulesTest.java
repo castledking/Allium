@@ -54,6 +54,7 @@ class LegacyModulesTest {
             when(p.getDisplayName()).thenReturn(name);
             when(p.getUniqueId()).thenReturn(id);
             when(p.isOnline()).thenReturn(true);
+            when(p.canSee(any(Player.class))).thenReturn(true);
             when(p.isOp()).thenReturn(op);
             when(p.hasPermission(anyString())).thenReturn(op);
             when(p.getWorld()).thenReturn(world);
@@ -219,6 +220,31 @@ class LegacyModulesTest {
         assertTrue(restarted.run(sameTarget, "msgtoggle", "on"));
         verify(sameTarget).sendMessage(contains("Private messages enabled"));
         restarted.runtime().onDisable();
+    }
+
+    @Test
+    void compatibilityTeleportMatchesVisiblePlayersAndRestrictsOtherPlayerTeleports() {
+        Harness h = createHarness();
+        Player scout = h.addPlayer("Scout", UUID.randomUUID(), false);
+        Player nasty = h.addPlayer("MrNasty0627", UUID.randomUUID(), false);
+        when(scout.hasPermission("allium.tp")).thenReturn(true);
+        Command teleport = mock(Command.class);
+        when(teleport.getName()).thenReturn("tp");
+        when(teleport.testPermissionSilent(scout)).thenReturn(true);
+        assertEquals(List.of("MrNasty0627"), h.runtime().onTabComplete(scout, teleport, "tp", new String[]{"nsaty"}));
+        assertTrue(h.run(scout, "tp", "nasty"));
+        assertTrue(h.run(scout, "tp", "nsaty"));
+        verify(scout, times(2)).teleport(any(Location.class));
+
+        assertTrue(h.run(scout, "tp", "nasty", "Scout"));
+        verify(scout).sendMessage(contains("permission to teleport other players"));
+        verify(nasty, never()).teleport(any(Location.class));
+
+        when(scout.canSee(nasty)).thenReturn(false);
+        assertTrue(h.runtime().onTabComplete(scout, teleport, "tp", new String[]{"nasty"}).isEmpty());
+        assertTrue(h.run(scout, "tp", "nasty"));
+        verify(scout).sendMessage(contains("not online"));
+        verify(scout, times(2)).teleport(any(Location.class));
     }
 
     @Test

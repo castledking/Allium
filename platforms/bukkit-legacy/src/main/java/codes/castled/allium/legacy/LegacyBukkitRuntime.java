@@ -4,6 +4,7 @@ import codes.castled.allium.AlliumRuntime;
 import codes.castled.allium.ServerVersion;
 import codes.castled.allium.legacy.LegacyPlayerSettings.Setting;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.PlayerNameSearch;
 import codes.castled.allium.portable.UtilityMessages;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -25,6 +26,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -41,6 +43,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Pure Java 8 compatibility runtime for Minecraft 1.12.2 through 1.19.4 (Bukkit, Spigot, Paper,
@@ -398,11 +401,18 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("weather".equals(name) && args.length == 1) {
             return filterPrefix(Arrays.asList("sun", "rain", "storm"), prefix);
         }
-        if (args.length == 1 && Arrays.asList("ping", "coords", "tpa", "tpahere", "tp", "tphere",
-                "msg", "heal", "feed", "fly", "god", "clearinventory", "enderchest", "spawn").contains(name)) {
+        if ((args.length == 1 && Arrays.asList("tpa", "tpahere", "tp", "tphere").contains(name))
+                || (args.length == 2 && "tp".equals(name))) {
+            if (!command.testPermissionSilent(sender) || args.length == 2 && !sender.hasPermission("allium.tp.others")) {
+                return Collections.emptyList();
+            }
+            return teleportPlayerSuggestions(sender, prefix);
+        }
+        if (args.length == 1 && Arrays.asList("ping", "coords", "msg", "heal", "feed", "fly", "god",
+                "clearinventory", "enderchest", "spawn").contains(name)) {
             return onlinePlayerSuggestions(prefix);
         }
-        if (args.length == 2 && ("tp".equals(name) || "gamemode".equals(name) || "speed".equals(name))) {
+        if (args.length == 2 && ("gamemode".equals(name) || "speed".equals(name))) {
             return onlinePlayerSuggestions(prefix);
         }
         if (economy.handles(name)) return economy.onTabComplete(sender, name, args, prefix);
@@ -704,7 +714,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             sender.sendMessage(ChatColor.RED + "Usage: /" + (here ? "tpahere" : "tpa") + " <player>");
             return true;
         }
-        Player target = plugin.getServer().getPlayerExact(args[0]);
+        Player target = findTeleportPlayer(sender, args[0]);
         if (target == null) {
             sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
@@ -825,7 +835,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (args.length == 1) {
             Player self = requirePlayer(sender);
             if (self == null) return true;
-            Player dest = plugin.getServer().getPlayerExact(args[0]);
+            Player dest = findTeleportPlayer(sender, args[0]);
             if (dest == null) {
                 sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
                 return true;
@@ -835,8 +845,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return true;
         }
         if (args.length == 2) {
-            Player subject = plugin.getServer().getPlayerExact(args[0]);
-            Player dest = plugin.getServer().getPlayerExact(args[1]);
+            if (!sender.hasPermission("allium.tp.others")) {
+                sender.sendMessage(ChatColor.RED + "You do not have permission to teleport other players.");
+                return true;
+            }
+            Player subject = findTeleportPlayer(sender, args[0]);
+            Player dest = findTeleportPlayer(sender, args[1]);
             if (subject == null || dest == null) {
                 sender.sendMessage(ChatColor.RED + "Both players must be online.");
                 return true;
@@ -856,7 +870,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             sender.sendMessage(ChatColor.RED + "Usage: /tphere <player>");
             return true;
         }
-        Player target = plugin.getServer().getPlayerExact(args[0]);
+        Player target = findTeleportPlayer(sender, args[0]);
         if (target == null) {
             sender.sendMessage(ChatColor.RED + "Player '" + args[0] + "' is not online.");
             return true;
@@ -1363,6 +1377,40 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             default:
                 return null;
         }
+    }
+
+    Player findTeleportPlayer(CommandSender sender, String query) {
+        if (query.startsWith("@")) return null;
+        Player exact = plugin.getServer().getPlayerExact(query);
+        if (exact != null && canSeeTeleportTarget(sender, exact)) return exact;
+        List<Player> matches = rankedTeleportPlayers(sender, query);
+        return matches.isEmpty() ? null : matches.get(0);
+    }
+
+    List<String> teleportPlayerSuggestions(CommandSender sender, String prefix) {
+        if (prefix.startsWith("@")) return Collections.emptyList();
+        if (prefix.isEmpty()) {
+            return plugin.getServer().getOnlinePlayers().stream().filter(player -> canSeeTeleportTarget(sender, player))
+                    .map(Player::getName).sorted(String.CASE_INSENSITIVE_ORDER).limit(64).collect(Collectors.toList());
+        }
+        return rankedTeleportPlayers(sender, prefix).stream().map(Player::getName).limit(64).collect(Collectors.toList());
+    }
+
+    private List<Player> rankedTeleportPlayers(CommandSender sender, String query) {
+        return PlayerNameSearch.rankedMatches(plugin.getServer().getOnlinePlayers(), query,
+                player -> canSeeTeleportTarget(sender, player), Player::getUniqueId, Player::getName,
+                player -> ChatColor.stripColor(LegacyCompat.color(player.getDisplayName())).trim());
+    }
+
+    private boolean canSeeTeleportTarget(CommandSender sender, Player target) {
+        if (!(sender instanceof Player) || sender.equals(target)) return true;
+        if (!((Player) sender).canSee(target)) return false;
+        if (sender.hasPermission("allium.vanish.see")) return true;
+        if (moderation.isVanished(target.getUniqueId())) return false;
+        for (MetadataValue value : target.getMetadata("vanished")) {
+            if (value.asBoolean()) return false;
+        }
+        return true;
     }
 
     private List<String> onlinePlayerSuggestions(String prefix) {

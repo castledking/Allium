@@ -2908,6 +2908,8 @@ voucher:
     - "[sound] block.note_block.chime 1.35"
 
 explosion:
+  cannon-unavailable:
+    - "{prefix} &cEsta criatura no está disponible en esta versión de Minecraft."
   regenerating:
     - "[actionbar] &eEse lugar se está reconstruyendo tras una explosión."
   no-target:

@@ -102,6 +102,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyExperienceCommand experience;
     private final LegacyXpBottle xpBottle;
     private final LegacyStaffReports staffReports;
+    private final LegacyExplosiveCommands explosiveCommands;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -134,6 +135,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 this::findTeleportPlayer, this::canSeeTeleportTarget);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
         this.staffReports = new LegacyStaffReports(plugin, configManager, messageManager, playerInfo, this::canSeeTeleportTarget);
+        this.explosiveCommands = new LegacyExplosiveCommands(plugin, messageManager, this::canSeeTeleportTarget);
         this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);
         this.flight = new LegacyTimedFlight(plugin, configManager, playerInfo, messageManager, flightProtection, this::canSeeTeleportTarget);
         this.experience = new LegacyExperienceCommand(plugin, messageManager, this::canSeeTeleportTarget);
@@ -186,6 +188,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(chat, plugin);
         pm.registerEvents(hide, plugin);
         pm.registerEvents(utilities, plugin);
+        pm.registerEvents(explosiveCommands, plugin);
         pm.registerEvents(text, plugin);
         pm.registerEvents(unlimited, plugin);
         pm.registerEvents(offlineTeleport, plugin);
@@ -237,6 +240,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(chat);
         HandlerList.unregisterAll(hide);
         HandlerList.unregisterAll(utilities);
+        HandlerList.unregisterAll(explosiveCommands);
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);
         HandlerList.unregisterAll(offlineTeleport);
@@ -249,6 +253,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         inventoryClear.reset();
         flight.close();
         flightProtection.close();
+        explosiveCommands.close();
         companions.stop();
         messageManager.disable();
         economy.disable();
@@ -427,6 +432,11 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return staffReports.help(sender, args);
             case "escalate":
                 return staffReports.escalate(sender, LegacyStaffReports.actor(sender), args, 0);
+            case "beezooka":
+            case "kittycannon":
+                return explosiveCommands.cannon(sender, name, args);
+            case "nuke":
+                return explosiveCommands.nuke(sender, args);
             case "god":
                 return handleGod(sender, args);
             case "gamemode":
@@ -490,6 +500,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return args.length == 1 ? staffReports.complete(sender, name, prefix) : Collections.emptyList();
         }
         if ("helpop".equals(name)) return Collections.emptyList();
+        if ("beezooka".equals(name) || "kittycannon".equals(name)) return Collections.emptyList();
+        if ("nuke".equals(name)) return explosiveCommands.completeNuke(sender, args, prefix);
         if ("clearinventory".equals(name)) return inventoryClear.complete(sender, args, prefix);
         if ("clearinventoryconfirmtoggle".equals(name)) return Collections.emptyList();
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);

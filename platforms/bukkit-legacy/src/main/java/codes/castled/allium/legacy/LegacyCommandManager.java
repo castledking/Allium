@@ -350,7 +350,7 @@ final class LegacyCommandManager {
             m.put(c, "teleport");
         }
         // Explosions
-        for (String c : new String[]{"fireball", "antioch", "nuke", "explode", "kittycannon"}) m.put(c, "explosions");
+        for (String c : new String[]{"fireball", "antioch", "nuke", "explode", "kittycannon", "beezooka"}) m.put(c, "explosions");
         // Chat
         for (String c : new String[]{"nick", "realname", "action", "channel", "clearchat"}) m.put(c, "chat");
         return m;

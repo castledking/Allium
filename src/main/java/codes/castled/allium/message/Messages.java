@@ -655,6 +655,7 @@ public enum Messages {
     VOUCHER_RELOADED("voucher.reloaded", "{prefix} &aReloaded the powertools; &f{count} &avoucher(s) loaded."),
     EXPLOSION_REGENERATING("explosion.regenerating", "[actionbar] &eThat spot is being rebuilt after an explosion."),
     EXPLOSIVE_NO_TARGET("explosion.no-target", "{prefix} &cNo block in sight."),
+    CANNON_UNAVAILABLE("explosion.cannon-unavailable", "{prefix} &cThis mob is unavailable on this Minecraft version."),
     ANTIOCH_BROADCAST("explosion.antioch", "&f...lobbest thou thy Holy Hand Grenade of Antioch towards thy foe,\n&fwho being naughty in My sight, shall snuff it."),
     FIREBALL_UNKNOWN_TYPE("explosion.fireball.unknown-type", "{prefix} &cUnknown projectile &f{type}&c. Projectiles: &f{types}"),
     FIREBALL_NO_PERMISSION("explosion.fireball.no-permission", "{prefix} &cYou don't have permission to throw &f{type}&c."),

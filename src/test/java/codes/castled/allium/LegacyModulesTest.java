@@ -277,6 +277,20 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacyNukeValidatesAllNamedTargetsBeforeSpawningTnt() {
+        Harness h = createHarness();
+        Player actor = h.addPlayer("Staff", UUID.randomUUID(), true);
+        Player member = h.addPlayer("Member", UUID.randomUUID(), false);
+        assertTrue(h.run(actor, "nuke", "Member", "Missing"));
+        verify(actor).sendMessage(contains("was not found"));
+        verify(h.world(), never()).spawn(any(Location.class), eq(org.bukkit.entity.TNTPrimed.class));
+        assertTrue(h.run(member, "nuke", "Staff"));
+        verify(member).sendMessage(contains("permission"));
+        verify(h.world(), never()).spawn(any(Location.class), eq(org.bukkit.entity.TNTPrimed.class));
+        h.runtime().onDisable();
+    }
+
+    @Test
     void legacyStaffNoticesPreserveLiteralTextAndUseSeparateRecipientPermissions() {
         Harness h = createHarness();
         Player member = h.addPlayer("Member", UUID.randomUUID(), false);

@@ -18,7 +18,6 @@ import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Monster;
-import org.bukkit.entity.Ocelot;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.TNTPrimed;
@@ -56,7 +55,7 @@ import java.util.UUID;
  * {@code /glow}, {@code /pvp}, {@code /rest}, {@code /compass}, {@code /ptime}, {@code /pweather},
  * {@code /break}, {@code /spawner}, {@code /tree}, {@code /bigtree}, {@code /remove}, {@code /spawnmob},
  * {@code /gc}, {@code /broadcastworld}, {@code /info}, {@code /help}, {@code /fireball}, {@code /antioch},
- * {@code /nuke}, {@code /explode}, {@code /kittycannon}.
+ * {@code /explode}.
  */
 final class LegacyUtilitiesModule implements Listener {
 
@@ -147,9 +146,7 @@ final class LegacyUtilitiesModule implements Listener {
             case "broadcastworld":
             case "fireball":
             case "antioch":
-            case "nuke":
             case "explode":
-            case "kittycannon":
                 return true;
             default:
                 return false;
@@ -201,9 +198,7 @@ final class LegacyUtilitiesModule implements Listener {
             case "help": return handleHelp(sender, args);
             case "fireball": return handleFireball(sender);
             case "antioch": return handleAntioch(sender);
-            case "nuke": return handleNuke(sender, args);
             case "explode": return handleExplode(sender, args);
-            case "kittycannon": return handleKittyCannon(sender);
             default: return false;
         }
     }
@@ -241,7 +236,6 @@ final class LegacyUtilitiesModule implements Listener {
             case "pvp":
             case "rest":
             case "skull":
-            case "nuke":
             case "explode":
                 return args.length == 1 ? onlinePlayers(prefix) : Collections.<String>emptyList();
             case "ptime":
@@ -1199,23 +1193,6 @@ final class LegacyUtilitiesModule implements Listener {
         return true;
     }
 
-    private boolean handleNuke(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("allium.nuke")) {
-            send(sender, ChatColor.RED + "You do not have permission to use /nuke.");
-            return true;
-        }
-        Player target = resolveSelfOrOther(sender, args, "allium.nuke", "/nuke <player>");
-        if (target == null) return true;
-        Location base = target.getLocation();
-        for (int dx = -2; dx <= 2; dx += 2) {
-            for (int dz = -2; dz <= 2; dz += 2) {
-                base.getWorld().spawn(base.clone().add(dx, 10, dz), TNTPrimed.class);
-            }
-        }
-        send(sender, ChatColor.GREEN + "Dropped TNT above " + target.getName() + ".");
-        return true;
-    }
-
     private boolean handleExplode(CommandSender sender, String[] args) {
         if (!sender.hasPermission("allium.explode")) {
             send(sender, ChatColor.RED + "You do not have permission to use /explode.");
@@ -1231,31 +1208,6 @@ final class LegacyUtilitiesModule implements Listener {
             try { power = Math.max(0.5f, Math.min(12.0f, Float.parseFloat(args[1]))); } catch (NumberFormatException ignored) {}
         }
         target.getWorld().createExplosion(target.getLocation(), power, false);
-        return true;
-    }
-
-    private boolean handleKittyCannon(CommandSender sender) {
-        if (!(sender instanceof Player)) {
-            send(sender, ChatColor.RED + "Only players can use /kittycannon.");
-            return true;
-        }
-        if (!sender.hasPermission("allium.kittycannon")) {
-            send(sender, ChatColor.RED + "You do not have permission to use /kittycannon.");
-            return true;
-        }
-        final Player p = (Player) sender;
-        final Ocelot cat = p.getWorld().spawn(p.getEyeLocation(), Ocelot.class);
-        cat.setVelocity(p.getLocation().getDirection().multiply(2.0));
-        plugin.getServer().getScheduler().runTaskLater(plugin, new Runnable() {
-            @Override
-            public void run() {
-                if (cat.isValid()) {
-                    Location loc = cat.getLocation();
-                    cat.remove();
-                    loc.getWorld().createExplosion(loc.getX(), loc.getY(), loc.getZ(), 0.0f, false, false);
-                }
-            }
-        }, 20L);
         return true;
     }
 

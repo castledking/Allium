@@ -2,7 +2,6 @@ package codes.castled.allium.legacy;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
-import org.bukkit.DyeColor;
 import org.bukkit.FireworkEffect;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Firework;
@@ -184,20 +183,9 @@ final class LegacyFireworkCommand {
     private static List<Color> colors(String value) {
         List<Color> colors = new ArrayList<>();
         for (String field : value.split(",", -1)) {
-            String name = field.trim();
-            if (name.matches("#[0-9a-fA-F]{6}")) {
-                colors.add(Color.fromRGB(Integer.parseInt(name.substring(1), 16)));
-                continue;
-            }
-            name = name.toUpperCase(Locale.ROOT).replace('-', '_');
-            if ("GREY".equals(name)) name = "GRAY";
-            if ("LIGHT_GREY".equals(name) || "SILVER".equals(name)) name = "LIGHT_GRAY";
-            try {
-                colors.add(DyeColor.valueOf(name).getFireworkColor());
-            } catch (IllegalArgumentException failure) {
-                if (!"LIGHT_GRAY".equals(name)) return Collections.emptyList();
-                colors.add(DyeColor.valueOf("SILVER").getFireworkColor());
-            }
+            Color color = LegacyCompat.parseDyeColor(field);
+            if (color == null) return Collections.emptyList();
+            colors.add(color);
         }
         return colors;
     }

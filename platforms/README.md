@@ -22,6 +22,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/firework` edits a held rocket. It supports `power <0-4>`, `clear`, and effect options such as `color:red,blue fade:white shape:star effect:trail`. Players with `allium.firework.fire` can launch rockets with `fire [amount|aim]`.
 
+`/potion` lists effects the player can add, accepts options such as `effect:speed power:2 duration:60` and `color:#3366ff`, and can `clear` custom effects. Players with `allium.potion.apply` can apply the held item's custom effects to themselves.
+
 ## Player settings on Bukkit 1.12.2–1.19.4
 
 `/settings` or `/toggles` shows the player's permitted settings. `/toggle <tpa|msg|pay> [on|off]` changes the same settings as `/tptoggle`, `/msgtoggle`, or `/paytoggle`. Teleport auto-accept configured through `/tpauto` also survives a restart. Messaging and teleport choices are saved in `player-settings-legacy.yml`, and payments use the existing economy file.

@@ -64,11 +64,13 @@ final class LegacyUtilitiesModule implements Listener {
     private final LegacyBukkitRuntime runtime;
     private final LegacyRecipeCommand recipes;
     private final LegacyFireworkCommand fireworks;
+    private final LegacyPotionCommand potions;
     private final Set<UUID> pvpDisabled = new HashSet<UUID>();
 
     LegacyUtilitiesModule(JavaPlugin plugin, LegacyBukkitRuntime runtime) {
         this.recipes = new LegacyRecipeCommand(plugin.getServer());
         this.fireworks = new LegacyFireworkCommand(runtime.configManager(), runtime.messageManager());
+        this.potions = new LegacyPotionCommand(runtime.messageManager());
         this.plugin = plugin;
         this.runtime = runtime;
     }
@@ -102,6 +104,7 @@ final class LegacyUtilitiesModule implements Listener {
             case "repair":
             case "recipe":
             case "firework":
+            case "potion":
             case "disposal":
             case "anvil":
             case "grindstone":
@@ -155,6 +158,7 @@ final class LegacyUtilitiesModule implements Listener {
             case "repair": return handleRepair(sender, args);
             case "recipe": return recipes.execute(sender, args);
             case "firework": return fireworks.execute(sender, args);
+            case "potion": return potions.execute(sender, args);
             case "disposal": return handleDisposal(sender);
             case "anvil": return handleWorkstation(sender, "allium.anvil", "ANVIL", "openAnvil", "Anvil");
             case "grindstone": return handleWorkstation(sender, "allium.grindstone", "GRINDSTONE", "openGrindstone", "Grindstone");
@@ -209,6 +213,9 @@ final class LegacyUtilitiesModule implements Listener {
                         ? recipes.complete(prefix) : Collections.emptyList();
             case "firework":
                 return sender.hasPermission("allium.firework") ? fireworks.complete(sender, args, prefix)
+                        : Collections.emptyList();
+            case "potion":
+                return sender.hasPermission("allium.potion") ? potions.complete(sender, args, prefix)
                         : Collections.emptyList();
             case "repair":
                 return args.length == 1 ? filter(Arrays.asList("hand", "all"), prefix) : Collections.<String>emptyList();

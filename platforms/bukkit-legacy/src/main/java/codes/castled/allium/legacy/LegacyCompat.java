@@ -2,6 +2,8 @@ package codes.castled.allium.legacy;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Color;
+import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -378,6 +380,24 @@ public final class LegacyCompat {
                 (float) section.getDouble("yaw"),
                 (float) section.getDouble("pitch")
         );
+    }
+
+    static Color parseDyeColor(String value) {
+        String name = value.trim();
+        if (name.matches("#[0-9a-fA-F]{6}")) return Color.fromRGB(Integer.parseInt(name.substring(1), 16));
+        name = name.toUpperCase(Locale.ROOT).replace('-', '_');
+        if ("GREY".equals(name)) name = "GRAY";
+        if ("LIGHT_GREY".equals(name) || "SILVER".equals(name)) name = "LIGHT_GRAY";
+        try {
+            return DyeColor.valueOf(name).getFireworkColor();
+        } catch (IllegalArgumentException failure) {
+            if (!"LIGHT_GRAY".equals(name)) return null;
+            try {
+                return DyeColor.valueOf("SILVER").getFireworkColor();
+            } catch (IllegalArgumentException unavailable) {
+                return null;
+            }
+        }
     }
 
     /** Translates {@code &} color codes and {@code &#RRGGBB} hex colors (1.16+, stripped gracefully on 1.12-1.15). */

@@ -92,6 +92,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     @Override
     public void onEnable() {
+        long startupStartTime = System.currentTimeMillis();
         if (!plugin.getDataFolder().exists()) {
             plugin.getDataFolder().mkdirs();
         }
@@ -104,6 +105,17 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         plugin.getLogger().info("Allium v" + plugin.getDescription().getVersion()
                 + " enabled in 1.12.2-1.19.4 compatibility mode on "
                 + LegacyCompat.platformName(plugin.getServer()) + " — " + reason + ".");
+        codes.castled.allium.StartupHeader.StartupInfo info = codes.castled.allium.StartupHeader.StartupInfo.builder()
+                .locale("en_US")
+                .version(plugin.getDescription().getVersion())
+                .bootFinished("&7Boot finished in: &a" + Math.max(0L, System.currentTimeMillis() - startupStartTime) + "ms")
+                .hexColorSupported(codes.castled.allium.StartupHeader.supportsHexColors(plugin.getServer()))
+                .addRow("Platform:", "&a" + codes.castled.allium.StartupHeader.detectPlatformVersion(plugin.getServer()),
+                        "Runtime:", "&eLegacy (Java " + javaMajor + ")")
+                .addRow("Storage:", "&aFlatFile",
+                        "Warps:", "&a" + warps.size())
+                .build();
+        codes.castled.allium.StartupHeader.display(plugin, info);
     }
 
     @Override

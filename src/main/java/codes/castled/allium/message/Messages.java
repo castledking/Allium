@@ -167,6 +167,10 @@ public enum Messages {
     RELOAD_SUCCESS("core.reload-success", "{prefix} &aConfiguration reloaded."),
     RELOAD_FAILED("core.reload-failed", "{prefix} &cReload failed. Check console for details."),
     PLUGIN_VERSION("core.version", "{prefix} &fRunning Allium &dv{version}&f."),
+    STARTUP_AUTHOR_TAG("core.startup.author-tag", "&7by castledking"),
+    STARTUP_PLUGIN_TAG("core.startup.plugin-tag", "&dThe modern essentials suite for Minecraft servers"),
+    STARTUP_DETAILS("core.startup.details", "&fStartup details: {0}"),
+    STARTUP_BOOT_FINISHED("core.startup.boot-finished", "&7Boot finished in: &a{0}"),
 
     // -- Diagnostic and deletion feedback --
     GC_RUNTIME("utility.gc.runtime", "{prefix} &7Runtime uptime: &f{uptime}&7, TPS: &f{tps}"),

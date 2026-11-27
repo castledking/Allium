@@ -91,9 +91,11 @@ public class PluginStart implements Plugin, AlliumRuntime {
     private codes.castled.allium.addon.AlliumApiService addonApi;
     private codes.castled.allium.addon.AddonManager addonManager;
     private codes.castled.allium.importer.ImportApplyCoordinator importApplyCoordinator;
+    private long startupStartTime;
 
     @Override
     public void onEnable() {
+        startupStartTime = System.currentTimeMillis();
         instance = this;
 
         logger = new AlliumLogger(this);
@@ -215,6 +217,67 @@ public class PluginStart implements Plugin, AlliumRuntime {
                 + ". Loaded inventories are audited for unknown key IDs.");
 
         logger.info("Allium v" + getDescription().getVersion() + " enabled.");
+        displayEnabledHeader();
+    }
+
+    private void displayEnabledHeader() {
+        String langCode = languageManager != null ? languageManager.getActiveLocale() : LanguageManager.DEFAULT_LOCALE;
+        String version = getDescription() != null ? getDescription().getVersion() : "";
+        String authorTag = getStartupMessage(codes.castled.allium.message.Messages.STARTUP_AUTHOR_TAG);
+        String pluginTag = getStartupMessage(codes.castled.allium.message.Messages.STARTUP_PLUGIN_TAG);
+        String startupDetails = getStartupMessage(codes.castled.allium.message.Messages.STARTUP_DETAILS, "");
+        String bootTime = "&a" + Math.max(0L, System.currentTimeMillis() - startupStartTime) + "ms";
+        String bootFinished = getStartupMessage(codes.castled.allium.message.Messages.STARTUP_BOOT_FINISHED, bootTime);
+
+        int totalModules = moduleManager != null ? moduleManager.getModules().size() : 0;
+        int enabledModules = 0;
+        if (moduleManager != null) {
+            for (codes.castled.allium.core.AbstractModule module : moduleManager.getModules().values()) {
+                if (module.isEnabled()) enabledModules++;
+            }
+        }
+        int commandsRegistered = commandManager != null ? commandManager.getCommands().size() : 0;
+        int messageCount = codes.castled.allium.message.Messages.values().length;
+        String storageType = databaseManager != null && databaseManager.getType() != null
+                ? databaseManager.getType().name()
+                : "SQLITE";
+        int addonsInstalled = addonManager != null ? addonManager.installed().size() : 0;
+        String yes = "&aON";
+        String no = "&cOFF";
+        boolean economyOn = moduleManager != null && moduleManager.getModule("economy") != null
+                && moduleManager.getModule("economy").isEnabled();
+        boolean modGuardOn = moduleManager != null && moduleManager.getModule("modguard") != null
+                && moduleManager.getModule("modguard").isEnabled();
+
+        StartupHeader.StartupInfo info = StartupHeader.StartupInfo.builder()
+                .locale(langCode)
+                .version(version)
+                .authorTag(authorTag)
+                .pluginTag(pluginTag)
+                .startupDetailsHeader(startupDetails)
+                .bootFinished(bootFinished)
+                .hexColorSupported(StartupHeader.supportsHexColors(getServer()))
+                .addRow("Platform:", "&a" + StartupHeader.detectPlatformVersion(getServer()),
+                        "Runtime:", "&aModern (Java " + ServerVersion.currentJavaMajor() + ")")
+                .addRow("Modules:", "&a" + enabledModules + "/" + totalModules,
+                        "Commands:", "&a" + commandsRegistered)
+                .addRow("Economy:", economyOn ? yes : no,
+                        "ModGuard:", modGuardOn ? yes : no)
+                .addRow("Locale:", "&a" + langCode,
+                        "Messages loaded:", "&a" + messageCount)
+                .addRow("Storage:", "&a" + storageType,
+                        "Addons:", "&a" + addonsInstalled)
+                .build();
+        StartupHeader.display(bukkitPlugin(), info);
+    }
+
+    private String getStartupMessage(codes.castled.allium.message.Messages message, String... args) {
+        String value = languageManager != null ? languageManager.get(message) : message.getDefault();
+        if (value == null) value = message.getDefault();
+        for (int i = 0; i < args.length; i++) {
+            value = value.replace("{" + i + "}", args[i] != null ? args[i] : "");
+        }
+        return value;
     }
 
     /** Reads a bundled pack resource from the jar, or {@code null} if absent. */

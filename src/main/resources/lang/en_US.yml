@@ -12,6 +12,15 @@ core:
   version:
     - "{prefix} &fRunning Allium &dv{version}&f."
     - "[sound] ui.button.click 1.25"
+  startup:
+    author-tag:
+      - "&7by castledking"
+    plugin-tag:
+      - "&dThe modern essentials suite for Minecraft servers"
+    details:
+      - "&fStartup details: {0}"
+    boot-finished:
+      - "&7Boot finished in: &a{0}"
   modguard:
     reloaded:
       - "{prefix} &aModGuard settings reloaded."

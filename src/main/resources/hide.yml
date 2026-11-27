@@ -7,7 +7,7 @@ settings:
   hide-namespaced-commands-for-ops: false
   unknown-command-completion-help-message: "&c&lERROR &8» &7Unknown command. Type &c/help &7for a list of commands."
   remove-unsafe-commands: true
-  unsafe-commands-list: [plugins, pl, version, bukkit:plugins, bukkit:pl, bukkit:version]
+  unsafe-commands-list: [plugins, pl, version, 'bukkit:plugins', 'bukkit:pl', 'bukkit:version']
   filter-command-suggestions: true
   cancel-bare-slash-request: true
   cancel-unknown-suggestion-responses: true

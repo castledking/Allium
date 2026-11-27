@@ -35,7 +35,7 @@ import java.util.UUID;
 
 /**
  * Java 8 / 1.12.2-1.19.4 economy and worth module:
- * {@code /balance}, {@code /pay}, {@code /payconfirmtoggle}, {@code /eco}, {@code /baltop},
+ * {@code /balance}, {@code /pay}, {@code /paytoggle}, {@code /payconfirmtoggle}, {@code /eco}, {@code /baltop},
  * {@code /worth}, {@code /setworth}, {@code /sell}.
  */
 final class LegacyEconomyModule implements Listener {
@@ -267,12 +267,14 @@ final class LegacyEconomyModule implements Listener {
         else entries.put(player, value);
     }
 
-    boolean changePayConfirmation(CommandSender sender, String label, String[] args) {
-        if (!sender.hasPermission("allium.payconfirmtoggle")) {
-            messages.send(sender, "no-permission", "{prefix} &cYou do not have permission to use this command.");
+    boolean changePaymentPreference(CommandSender sender, String command, String label, String[] args) {
+        String permission = "allium." + command;
+        if (!sender.hasPermission(permission)) {
+            messages.send(sender, "no-permission", "{prefix} &cYou do not have permission to use this command.", "{cmd}", label);
             return true;
         }
-        Boolean desired = forcedPayConfirmation(label);
+        boolean confirmation = "payconfirmtoggle".equals(command);
+        Boolean desired = forcedPaymentState(label, confirmation);
         int targetIndex = 0;
         if (desired == null && args.length > 0) {
             if ("on".equalsIgnoreCase(args[0])) desired = Boolean.TRUE;
@@ -282,8 +284,8 @@ final class LegacyEconomyModule implements Listener {
         if (args.length > targetIndex + 1) return false;
         UUID id;
         if (args.length > targetIndex) {
-            if (!sender.hasPermission("allium.payconfirmtoggle.others")) {
-                messages.send(sender, "no-permission", "{prefix} &cYou do not have permission to use this command.");
+            if (!sender.hasPermission(permission + ".others")) {
+                messages.send(sender, "no-permission", "{prefix} &cYou do not have permission to use this command.", "{cmd}", label);
                 return true;
             }
             String name = args[targetIndex];
@@ -296,17 +298,20 @@ final class LegacyEconomyModule implements Listener {
             if (!(sender instanceof Player)) return false;
             id = ((Player) sender).getUniqueId();
         }
-        boolean previous = payConfirm.contains(id);
+        boolean previous = confirmation ? payConfirm.contains(id) : acceptsPayments(id);
         boolean enabled = desired == null ? !previous : desired.booleanValue();
-        if (enabled != previous) {
-            if (enabled) payConfirm.add(id);
-            else payConfirm.remove(id);
-            if (!saveEconomy()) {
-                if (previous) payConfirm.add(id);
-                else payConfirm.remove(id);
-                messages.send(sender, "economy.storage-unavailable", "{prefix} &cEconomy storage is unavailable.");
-                return true;
+        boolean saved = confirmation ? savePreference(payConfirm, id, enabled) : setAcceptsPayments(id, enabled);
+        if (!saved) {
+            messages.send(sender, "economy.storage-unavailable", "{prefix} &cEconomy storage is unavailable.");
+            return true;
+        }
+        if (!confirmation) {
+            if (enabled) {
+                messages.send(sender, "economy.payments-enabled", "{prefix} &aPayments enabled.");
+            } else {
+                messages.send(sender, "economy.payments-disabled", "{prefix} &7Payments disabled.");
             }
+            return true;
         }
         if (!enabled) pendingPayments.remove(id);
         if (enabled) {
@@ -317,27 +322,29 @@ final class LegacyEconomyModule implements Listener {
         return true;
     }
 
-    List<String> completePayConfirmation(CommandSender sender, String label, String[] args, String prefix) {
-        if (!sender.hasPermission("allium.payconfirmtoggle")) return Collections.emptyList();
-        boolean others = sender.hasPermission("allium.payconfirmtoggle.others");
-        if (forcedPayConfirmation(label) != null) {
-            return others && args.length == 1 ? onlinePlayers(prefix) : Collections.<String>emptyList();
+    List<String> completePaymentPreference(CommandSender sender, String command, String label, String[] args, String prefix) {
+        String permission = "allium." + command;
+        if (!sender.hasPermission(permission)) return Collections.emptyList();
+        boolean others = sender.hasPermission(permission + ".others");
+        if (forcedPaymentState(label, "payconfirmtoggle".equals(command)) != null) {
+            return others && args.length == 1 ? onlinePlayers(sender, prefix) : Collections.<String>emptyList();
         }
         if (args.length == 1) {
             List<String> suggestions = new ArrayList<String>(filter(Arrays.asList("on", "off"), prefix));
-            if (others) suggestions.addAll(onlinePlayers(prefix));
+            if (others) suggestions.addAll(onlinePlayers(sender, prefix));
             return suggestions;
         }
         if (others && args.length == 2 && ("on".equalsIgnoreCase(args[0]) || "off".equalsIgnoreCase(args[0]))) {
-            return onlinePlayers(prefix);
+            return onlinePlayers(sender, prefix);
         }
         return Collections.emptyList();
     }
 
-    private static Boolean forcedPayConfirmation(String label) {
+    private static Boolean forcedPaymentState(String label, boolean confirmation) {
         String alias = label.substring(label.lastIndexOf(':') + 1);
-        if ("payconfirmon".equalsIgnoreCase(alias)) return Boolean.TRUE;
-        if ("payconfirmoff".equalsIgnoreCase(alias)) return Boolean.FALSE;
+        String family = confirmation ? "payconfirm" : "pay";
+        if ((family + "on").equalsIgnoreCase(alias)) return Boolean.TRUE;
+        if ((family + "off").equalsIgnoreCase(alias)) return Boolean.FALSE;
         return null;
     }
 
@@ -371,12 +378,16 @@ final class LegacyEconomyModule implements Listener {
     }
 
     boolean setAcceptsPayments(UUID player, boolean enabled) {
-        if (acceptsPayments(player) == enabled) return true;
-        if (enabled) payDisabled.remove(player);
-        else payDisabled.add(player);
+        return savePreference(payDisabled, player, !enabled);
+    }
+
+    private boolean savePreference(Set<UUID> preference, UUID player, boolean present) {
+        if (preference.contains(player) == present) return true;
+        if (present) preference.add(player);
+        else preference.remove(player);
         if (saveEconomy()) return true;
-        if (enabled) payDisabled.add(player);
-        else payDisabled.remove(player);
+        if (present) preference.remove(player);
+        else preference.add(player);
         return false;
     }
 
@@ -726,8 +737,13 @@ final class LegacyEconomyModule implements Listener {
     }
 
     private List<String> onlinePlayers(String prefix) {
+        return onlinePlayers(null, prefix);
+    }
+
+    private List<String> onlinePlayers(CommandSender sender, String prefix) {
         List<String> out = new ArrayList<String>();
         for (Player p : plugin.getServer().getOnlinePlayers()) {
+            if (sender instanceof Player && !((Player) sender).canSee(p)) continue;
             if (p.getName().toLowerCase(Locale.ROOT).startsWith(prefix)) {
                 out.add(p.getName());
             }

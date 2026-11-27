@@ -367,9 +367,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             case "tpauto":
                 return settings.direct(sender, Setting.TP_AUTO, args);
             case "paytoggle":
-                return settings.direct(sender, Setting.PAY, args);
             case "payconfirmtoggle":
-                return economy.changePayConfirmation(sender, label, args);
+                return economy.changePaymentPreference(sender, name, label, args);
             case "toggle":
                 return settings.execute(sender, true, args);
             case "toggles":
@@ -440,7 +439,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         if ("toggle".equals(name)) return settings.complete(sender, args);
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);
-        if ("payconfirmtoggle".equals(name)) return economy.completePayConfirmation(sender, alias, args, prefix);
+        if ("paytoggle".equals(name) || "payconfirmtoggle".equals(name)) {
+            return economy.completePaymentPreference(sender, name, alias, args, prefix);
+        }
         if ("editsign".equals(name)) {
             return command.testPermissionSilent(sender) ? editSign.complete(args, prefix) : Collections.emptyList();
         }

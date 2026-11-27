@@ -884,7 +884,7 @@ commands:
     permission: allium.pay
   paytoggle:
     description: Allow or refuse incoming payments
-    usage: /<command> [on|off]
+    usage: /<command> [on|off] [player]
     aliases: [payon, payoff]
     permission: allium.paytoggle
   payconfirmtoggle:

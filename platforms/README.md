@@ -32,6 +32,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/payconfirmtoggle [on|off] ([player])` saves whether outgoing payments require confirmation. With confirmation enabled, repeat the same recipient and amount within 30 seconds to send the payment. Staff with `allium.payconfirmtoggle.others` can change the setting for another known player.
 
+`/paytoggle [on|off] [player]` controls incoming payments. The `/payon` and `/payoff` aliases always set their named state. Staff with `allium.paytoggle.others` can change the setting for another known player.
+
 `/redeem` (`/claimrank`) uses the same `redeem-settings` as the modern runtime. Allium records the UUID and rank as claimed before running its configured console commands. If a command fails, staff can review the logs and deliver any remaining rewards.
 
 `/autorestart` (`/ar`) reads daily schedules, countdowns, and pre-restart commands from `autorestart.yml`. Staff can schedule, cancel, inspect, or dry-run a restart. Players can vote with `/voterestart`. Use a server wrapper to bring the server back after the clean shutdown. Restart notices on this runtime go to the server console and players.

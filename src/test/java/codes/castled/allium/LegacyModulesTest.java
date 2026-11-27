@@ -276,6 +276,28 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacyPayToggleAliasesSetTheNamedStateAndRequirePermissionForOtherAccounts() {
+        Harness h = createHarness();
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+        Player member = h.addPlayer("Member", UUID.randomUUID(), false);
+        when(member.hasPermission("allium.paytoggle")).thenReturn(true);
+
+        h.run(staff, "eco", "set", "Staff", "100");
+        h.runAs(member, "paytoggle", "allium:payoff");
+        h.runAs(member, "paytoggle", "payoff");
+        h.run(staff, "pay", "Member", "10");
+        verify(staff).sendMessage(contains("not accepting payments"));
+        verify(member, times(2)).sendMessage(contains("Payments disabled"));
+
+        h.runAs(member, "paytoggle", "payoff", "Staff");
+        verify(member).sendMessage(contains("permission"));
+        h.runAs(staff, "paytoggle", "payon", "Member");
+        h.run(staff, "pay", "Member", "10");
+        verify(member).sendMessage(contains("Received"));
+        h.runtime().onDisable();
+    }
+
+    @Test
     void legacyPaymentConfirmationPersistsAndMatchesTheRecipientAndAmount() {
         UUID aliceId = UUID.randomUUID();
         Harness first = createHarness();

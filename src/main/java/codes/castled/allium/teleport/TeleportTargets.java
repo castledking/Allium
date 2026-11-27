@@ -2,6 +2,7 @@ package codes.castled.allium.teleport;
 
 import codes.castled.allium.PluginStart;
 import codes.castled.allium.item.spec.ItemSpecLexer;
+import codes.castled.allium.naming.OnlinePlayerMatcher;
 import codes.castled.allium.naming.PlayerNameVisibility;
 import codes.castled.allium.scheduler.BukkitServerThread;
 import codes.castled.allium.scheduler.TaskHandle;
@@ -73,9 +74,14 @@ public final class TeleportTargets {
 
     private Resolution resolveLocal(CommandSender sender, String token, int maxEntities, Entity exclude, boolean truncate) {
         if (!token.startsWith("@")) {
-            var visible = namedCandidates(token).stream()
-                    .filter(player -> PlayerNameVisibility.canSee(sender, player)).toList();
-            return namedResult(visible, exclude);
+            Player matched = OnlinePlayerMatcher.match(
+                    plugin,
+                    plugin.getServer().getOnlinePlayers(),
+                    token,
+                    player -> player != exclude && PlayerNameVisibility.canSee(sender, player));
+            return matched == null
+                    ? new Resolution(List.of(), 0, false, false)
+                    : new Resolution(List.of(matched), 1, false, false);
         }
         if (token.equalsIgnoreCase("@s")) return self(sender, exclude);
         Query query = parse(sender, token, maxEntities);
@@ -94,7 +100,7 @@ public final class TeleportTargets {
         }
         if (token.equalsIgnoreCase("@s")) return CompletableFuture.completedFuture(self(sender, exclude));
         if (!token.startsWith("@")) {
-            return collect(sender, namedCandidates(token), entity -> {
+            return collect(sender, namedCandidates(token, exclude), entity -> {
                 Player player = (Player) entity;
                 return player.isOnline() ? new Match(player, 0, hiddenFromOtherViewers(sender, player)) : null;
             }, snapshots -> namedResult(snapshots.stream().filter(match -> visible(sender, match))
@@ -107,17 +113,23 @@ public final class TeleportTargets {
         });
     }
 
-    private List<Player> namedCandidates(String token) {
+    private List<Player> namedCandidates(String token, Entity exclude) {
         Player exact = plugin.getServer().getPlayerExact(token);
-        if (exact != null) return List.of(exact);
-        String prefix = token.toLowerCase(Locale.ROOT);
-        return plugin.getServer().getOnlinePlayers().stream().filter(player -> player.getName().toLowerCase(Locale.ROOT)
-                .startsWith(prefix)).map(Player.class::cast).toList();
+        if (exact != null && exact != exclude) return List.of(exact);
+        return OnlinePlayerMatcher.rankedMatches(
+                plugin.getServer().getOnlinePlayers(),
+                token,
+                player -> player != exclude,
+                player -> OnlinePlayerMatcher.nickname(plugin, player));
     }
 
     private static Resolution namedResult(List<Player> visible, Entity exclude) {
-        if (visible.size() != 1 || visible.get(0) == exclude) return new Resolution(List.of(), 0, false, false);
-        return new Resolution(List.of(visible.get(0)), 1, false, false);
+        for (Player candidate : visible) {
+            if (candidate != null && candidate != exclude) {
+                return new Resolution(List.of(candidate), 1, false, false);
+            }
+        }
+        return new Resolution(List.of(), 0, false, false);
     }
 
     private static Resolution self(CommandSender sender, Entity exclude) {

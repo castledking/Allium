@@ -1211,12 +1211,11 @@ public final class TeleportService implements Listener {
     @Nullable private PreferencesModule preferences(){return plugin.getModuleManager().getModule("preferences") instanceof PreferencesModule p&&p.isEnabled()?p:null;}
     @Nullable private MessagingModule messaging(){return plugin.getModuleManager().getModule("messaging") instanceof MessagingModule m&&m.isEnabled()?m:null;}
     public Player find(CommandSender viewer,String name){
-        Player exact=plugin.getServer().getPlayerExact(name);if(exact!=null)return visible(viewer,exact)?exact:null;
-        Player found=null;
-        for(Player p:plugin.getServer().getOnlinePlayers())if(p.getName().toLowerCase(Locale.ROOT).startsWith(name.toLowerCase(Locale.ROOT))&&visible(viewer,p)){
-            if(found!=null)return null;found=p;
-        }
-        return found;
+        return codes.castled.allium.naming.OnlinePlayerMatcher.match(
+                plugin,
+                plugin.getServer().getOnlinePlayers(),
+                name,
+                p -> visible(viewer, p));
     }
     private SavedLocation saved(Location p){return new SavedLocation(p.getWorld().getUID(),p.getWorld().getName(),p.getX(),p.getY(),p.getZ(),p.getYaw(),p.getPitch());}
     private Location location(SavedLocation p){var w=plugin.getServer().getWorld(p.worldId());return w==null?null:new Location(w,p.x(),p.y(),p.z(),p.yaw(),p.pitch());}

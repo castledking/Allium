@@ -263,10 +263,64 @@ public final class BukkitCommandRenderer implements CommandExecutor, TabComplete
                 ? pass.args()
                 : args;
         List<String> out=spec.complete(completionContext,effectiveArgs);
+        out = appendFuzzyOnlinePlayers(spec, completionContext, sender, effectiveArgs, out);
         if(spec.canonicalName().equals("tp")&&args.length==1&&"~".startsWith(args[0])&&sender.hasPermission("allium.tp.position")){
             out=new ArrayList<>(out);out.add("~");
         }
         return out;
+    }
+
+    private List<String> appendFuzzyOnlinePlayers(
+            CommandSpec spec,
+            CommandCompletionContext context,
+            CommandSender sender,
+            String[] args,
+            List<String> existing
+    ) {
+        if (args.length == 0) return existing;
+        String token = args[args.length - 1];
+        if (token == null || token.isBlank() || token.startsWith("@")) return existing;
+        var activeArgs = spec.arguments();
+        var activeChildren = spec.children();
+        int offset = 0;
+        for (int i = 0; i < args.length - 1; i++) {
+            String current = args[i];
+            codes.castled.allium.command.spec.CommandNodeSpec matched = null;
+            for (var child : activeChildren) {
+                if (child.name().equalsIgnoreCase(current)
+                        && (child.permissionNode() == null || child.permissionNode().isEmpty()
+                        || context.hasPermission(child.permissionNode()))) {
+                    matched = child;
+                    break;
+                }
+            }
+            if (matched == null) break;
+            activeArgs = matched.arguments();
+            activeChildren = matched.children();
+            offset = i + 1;
+        }
+        int relative = (args.length - 1) - offset;
+        if (relative < 0 || relative >= activeArgs.size()) return existing;
+        var argSpec = activeArgs.get(relative);
+        if (argSpec.permissionNode() != null && !argSpec.permissionNode().isEmpty()
+                && !context.hasPermission(argSpec.permissionNode())) return existing;
+        var suggestion = argSpec.suggestion();
+        if (suggestion.requiredPermission() != null && !suggestion.requiredPermission().isEmpty()
+                && !context.hasPermission(suggestion.requiredPermission())) return existing;
+        var source = suggestion.source();
+        if (source != codes.castled.allium.command.spec.SuggestionSource.ONLINE_PLAYERS
+                && source != codes.castled.allium.command.spec.SuggestionSource.KNOWN_OR_ONLINE_PLAYERS) {
+            return existing;
+        }
+        List<String> fuzzy = codes.castled.allium.naming.OnlinePlayerMatcher.tabComplete(plugin, sender, token);
+        if (fuzzy.isEmpty()) return existing;
+        List<String> merged = new ArrayList<>(existing);
+        for (String name : fuzzy) {
+            if (merged.stream().noneMatch(name::equalsIgnoreCase)) {
+                merged.add(name);
+            }
+        }
+        return merged;
     }
 
     public static List<String> collectVisibleOnlinePlayers(Server server, CommandSender sender) {

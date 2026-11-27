@@ -172,6 +172,7 @@ class LegacyModulesTest {
         assertEquals(90_000L, LegacyCompat.parseDurationMillis("1m30s"));
         assertEquals(86_400_000L, LegacyCompat.parseDurationMillis("1d"));
         assertEquals(-1L, LegacyCompat.parseDurationMillis("abc"));
+        assertEquals(-1L, LegacyCompat.parseDurationMillis("9223372036854775807w"));
         assertEquals("1d 2h 3m 4s", LegacyCompat.formatDuration(86_400_000L + 7_200_000L + 180_000L + 4_000L));
 
         assertEquals(new BigDecimal("2500.00"), LegacyCompat.parseMoneyAmount("2.5k"));
@@ -272,6 +273,51 @@ class LegacyModulesTest {
         assertTrue(h.run(player, "redeem"));
         verify(player).sendMessage(contains("no rank rewards"));
         verify(h.server(), times(1)).dispatchCommand(console, first);
+        h.runtime().onDisable();
+    }
+
+    @Test
+    void legacyTimedFlightRequiresBankedTimeAndRevokesFlightWhenItExpires() {
+        Harness h = createHarness();
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+        Player member = h.addPlayer("Member", UUID.randomUUID(), false);
+        when(member.hasPermission("allium.tfly")).thenReturn(true);
+        when(member.getGameMode()).thenReturn(GameMode.SURVIVAL);
+        var allowsFlight = new java.util.concurrent.atomic.AtomicBoolean();
+        when(member.getAllowFlight()).thenAnswer(call -> allowsFlight.get());
+        doAnswer(call -> {
+            allowsFlight.set(call.getArgument(0));
+            return null;
+        }).when(member).setAllowFlight(anyBoolean());
+        BukkitScheduler scheduler = mock(BukkitScheduler.class);
+        BukkitTask timer = mock(BukkitTask.class);
+        when(h.server().getScheduler()).thenReturn(scheduler);
+        when(scheduler.runTaskTimer(eq(h.plugin()), any(Runnable.class), eq(1L), eq(1L))).thenReturn(timer);
+
+        assertTrue(h.run(member, "fly"));
+        verify(member).sendMessage(contains("no timed flight"));
+        assertTrue(h.run(member, "fly", "Member", "add", "5m"));
+        verify(member).sendMessage(contains("permission"));
+        verify(member, never()).setAllowFlight(true);
+
+        assertTrue(h.run(staff, "fly", "Member", "add", "1s"));
+        assertTrue(h.run(member, "fly"));
+        verify(member).setAllowFlight(true);
+        when(member.isFlying()).thenReturn(true);
+        ArgumentCaptor<Runnable> tick = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskTimer(eq(h.plugin()), tick.capture(), eq(1L), eq(1L));
+        for (int i = 0; i < 19; i++) tick.getValue().run();
+        assertTrue(allowsFlight.get());
+        tick.getValue().run();
+        assertFalse(allowsFlight.get());
+        verify(member).sendMessage(contains("flight has run out"));
+        var landing = mock(org.bukkit.event.entity.EntityDamageEvent.class);
+        when(landing.getEntity()).thenReturn(member);
+        when(landing.getCause()).thenReturn(org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL);
+        h.runtime().onDamage(landing);
+        h.runtime().onDamage(landing);
+        verify(landing, times(1)).setCancelled(true);
+        verify(timer).cancel();
         h.runtime().onDisable();
     }
 

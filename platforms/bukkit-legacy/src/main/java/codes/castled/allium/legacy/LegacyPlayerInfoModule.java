@@ -96,6 +96,16 @@ final class LegacyPlayerInfoModule implements Listener {
         return nicknames.get(id);
     }
 
+    UUID findKnownPlayerId(String name) {
+        UUID match = null;
+        for (Map.Entry<UUID, String> entry : lastNames.entrySet()) {
+            if (!name.equalsIgnoreCase(entry.getValue())) continue;
+            if (match != null) return null;
+            match = entry.getKey();
+        }
+        return match;
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();

@@ -366,7 +366,11 @@ public final class LegacyCompat {
                 case 'w': mult = 604_800_000L; break;
                 default: return -1L;
             }
-            total += value * mult;
+            try {
+                total = Math.addExact(total, Math.multiplyExact(value, mult));
+            } catch (ArithmeticException overflow) {
+                return -1L;
+            }
         }
         return matchedChars == trimmed.length() && total > 0L ? total : -1L;
     }

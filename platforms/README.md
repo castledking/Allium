@@ -42,6 +42,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/clear [player|*] [item] [maxCount]` clears online inventories. `*` targets all visible online players with `allium.clearinventory.all`. The item filter accepts vanilla material names, including comma-separated lists. By default the same request must be repeated within 30 seconds. `/clearconfirmon` and `/clearconfirmoff` save the player's confirmation preference.
 
+`/fly` grants unlimited flight with `allium.fly`. Players with `allium.tfly` can spend banked flight time in Survival or Adventure. Staff can use `/fly <player> <set|add|take> <time>` or `/fly <player> reset` with the corresponding `allium.tfly.<action>` permission, including for known offline players. Balances are saved in `timed-flight-legacy.yml`. Turn on `timed-flight.count-only-while-flying` to spend the bank only during actual flight.
+
 ## Chat and chat filter on Bukkit 1.12.2–1.19.4
 
 Public chat formatting (`enable-chat-formatting`, `chat-format.default`, `chat-format.groups.*`, optional Vault prefix/suffix/group lookup), channels (`/channel`, `/g`, `/global`, `/shout`, `/l`, `/local`, `/a`, `/ac`, `/amsg`, `/staffchat`, `#staff` and `>global` shortcuts), local radius, `?` global questions (`allium.chat.question`), `@<player>` mention highlights and sounds (`allium.chat.mention`, `allium.chat.receive.mention`), URL permission gating (`chat.urls.enabled`, `allium.chat.url`), `/me` (`/action`), and `join-and-quit-messages` (including optional `first-join` and `broadcast-scope: world`) run natively on 1.12.2–1.19.4. Channel selections are saved in `chat-channels-legacy.yml`.

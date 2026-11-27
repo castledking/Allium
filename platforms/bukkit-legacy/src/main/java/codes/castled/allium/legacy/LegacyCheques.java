@@ -189,19 +189,36 @@ final class LegacyCheques {
                     "{amount}", economy.format(amount));
             return true;
         }
+        // With economy.tax.apply-to.cheques, the writer pays the amount and the note is worth it less the tax.
+        LegacyTax.Settings tax = economy.taxSettings();
+        BigDecimal taxAmount = tax.chequeTax && !player.hasPermission("allium.tax.exempt") ? tax.tax(amount) : BigDecimal.ZERO;
+        BigDecimal face = amount.subtract(taxAmount);
+        if (face.signum() <= 0) {
+            messages.send(player, "economy.below-minimum", "{prefix} &cAmount is below the minimum payment.");
+            return true;
+        }
         String id = UUID.randomUUID().toString().replace("-", "");
-        ledger.put(id, new Entry(amount, player.getName(), System.currentTimeMillis(), false));
+        ledger.put(id, new Entry(face, player.getName(), System.currentTimeMillis(), false));
         if (!save()) {
             ledger.remove(id);
             return storageUnavailable(player);
         }
-        if (!economy.adjust(player.getUniqueId(), player.getName(), amount.negate())) {
+        boolean paid = taxAmount.signum() > 0
+                ? economy.adjust(player.getUniqueId(), player.getName(), face.negate())
+                && economy.move(player.getUniqueId(), player.getName(), tax.accountId(), tax.account, taxAmount)
+                : economy.adjust(player.getUniqueId(), player.getName(), amount.negate());
+        if (!paid) {
             ledger.remove(id);
             save();
             return storageUnavailable(player);
         }
-        player.getInventory().addItem(note(id, amount, player.getName()));
-        messages.send(player, "economy.cheque-created", "{prefix} &aCreated a cheque for &e{amount}&a.", "{amount}", economy.format(amount));
+        player.getInventory().addItem(note(id, face, player.getName()));
+        if (taxAmount.signum() > 0) {
+            messages.send(player, "economy.cheque-created-taxed", "{prefix} &aCreated a cheque for &e{amount} &7({tax} tax)&a.",
+                    "{amount}", economy.format(face), "{tax}", economy.format(taxAmount));
+        } else {
+            messages.send(player, "economy.cheque-created", "{prefix} &aCreated a cheque for &e{amount}&a.", "{amount}", economy.format(amount));
+        }
         return true;
     }
 

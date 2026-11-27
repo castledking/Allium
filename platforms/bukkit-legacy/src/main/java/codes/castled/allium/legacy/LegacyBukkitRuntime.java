@@ -138,6 +138,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 this::findTeleportPlayer, this::canSeeTeleportTarget);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
         this.playerInfo.alts().config = configManager::raw;
+        this.economy.tax().mail = (player, text) -> playerInfo.systemMail(player, economy.taxSettings().account, text);
         this.staffReports = new LegacyStaffReports(plugin, configManager, messageManager, playerInfo, this::canSeeTeleportTarget);
         this.explosiveCommands = new LegacyExplosiveCommands(plugin, messageManager, this::canSeeTeleportTarget);
         this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);

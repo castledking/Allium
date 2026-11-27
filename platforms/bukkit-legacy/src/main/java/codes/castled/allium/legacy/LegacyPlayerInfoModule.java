@@ -576,6 +576,16 @@ final class LegacyPlayerInfoModule implements Listener {
         return true;
     }
 
+    /** Leaves a mail from {@code from} (a system sender such as the tax account); false when the mailbox is full. */
+    boolean systemMail(UUID target, String from, String text) {
+        List<String> list = mailboxes.get(target);
+        if (list == null) mailboxes.put(target, list = new ArrayList<String>());
+        if (list.size() >= 50) return false;
+        list.add(from + ": " + text);
+        saveInfo();
+        return true;
+    }
+
     LegacyNicknameEditor editor() {
         return editor;
     }

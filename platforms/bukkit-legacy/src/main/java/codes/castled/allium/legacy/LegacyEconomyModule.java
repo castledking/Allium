@@ -51,12 +51,14 @@ final class LegacyEconomyModule implements Listener {
     private final Map<UUID, PendingPayment> pendingPayments = new HashMap<UUID, PendingPayment>();
     private final Map<String, BigDecimal> worthTable = new HashMap<String, BigDecimal>();
     private final LegacyCheques cheques;
+    private final LegacyTax tax;
 
     LegacyEconomyModule(JavaPlugin plugin, LegacyConfigManager config, LegacyMessageManager messages) {
         this.plugin = plugin;
         this.config = config;
         this.messages = messages;
         this.cheques = new LegacyCheques(plugin, messages, this);
+        this.tax = new LegacyTax(plugin, messages, this);
     }
 
     private void send(CommandSender recipient, String message) {
@@ -67,12 +69,14 @@ final class LegacyEconomyModule implements Listener {
         loadEconomy();
         loadWorth();
         cheques.load();
+        tax.load();
     }
 
     void reload() {
         loadEconomy();
         loadWorth();
         cheques.load();
+        tax.load();
     }
 
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGH)
@@ -144,6 +148,46 @@ final class LegacyEconomyModule implements Listener {
         return cheques;
     }
 
+    LegacyTax tax() {
+        return tax;
+    }
+
+    /** {@code economy.tax}, read fresh so /allium reload applies. */
+    LegacyTax.Settings taxSettings() {
+        return new LegacyTax.Settings(config == null ? null : config.raw().getConfigurationSection("economy.tax"));
+    }
+
+    Map<UUID, BigDecimal> balances() {
+        return Collections.unmodifiableMap(balances);
+    }
+
+    String nameOf(UUID id) {
+        String name = knownNames.get(id);
+        if (name != null) return name;
+        OfflinePlayer player = plugin.getServer().getOfflinePlayer(id);
+        return player != null && player.getName() != null ? player.getName() : id.toString().substring(0, 8);
+    }
+
+    OfflinePlayer resolveAccount(String name) {
+        return resolvePlayer(name);
+    }
+
+    /** Moves {@code amount} between two accounts in one save; false, with nothing changed, when it cannot. */
+    boolean move(UUID from, String fromName, UUID to, String toName, BigDecimal amount) {
+        BigDecimal left = getBalance(from).subtract(amount);
+        if (amount.signum() <= 0 || left.signum() < 0) return false;
+        BigDecimal previousFrom = balances.put(from, left.setScale(2, RoundingMode.HALF_UP));
+        BigDecimal previousTo = balances.put(to, getBalance(to).add(amount).setScale(2, RoundingMode.HALF_UP));
+        String previousFromName = fromName == null ? null : knownNames.put(from, fromName);
+        String previousToName = toName == null ? null : knownNames.put(to, toName);
+        if (saveEconomy()) return true;
+        restore(balances, from, previousFrom);
+        restore(balances, to, previousTo);
+        if (fromName != null) restore(knownNames, from, previousFromName);
+        if (toName != null) restore(knownNames, to, previousToName);
+        return false;
+    }
+
     boolean handles(String commandName) {
         switch (commandName) {
             case "balance":
@@ -154,6 +198,7 @@ final class LegacyEconomyModule implements Listener {
             case "setworth":
             case "sell":
             case "cheque":
+            case "tax":
                 return true;
             default:
                 return false;
@@ -170,6 +215,7 @@ final class LegacyEconomyModule implements Listener {
             case "setworth": return handleSetWorth(sender, args);
             case "sell": return handleSell(sender, args);
             case "cheque": return cheques.command(sender, args);
+            case "tax": return tax.command(sender, args);
             default: return false;
         }
     }
@@ -187,6 +233,8 @@ final class LegacyEconomyModule implements Listener {
                 return args.length == 1 ? filter(Arrays.asList("hand", "all"), prefix) : Collections.<String>emptyList();
             case "cheque":
                 return cheques.complete(sender, args, prefix);
+            case "tax":
+                return tax.complete(sender, args, prefix);
             case "worth":
                 return args.length == 1 ? filter(Arrays.asList("hand"), prefix) : Collections.<String>emptyList();
             default:
@@ -275,12 +323,30 @@ final class LegacyEconomyModule implements Listener {
                 return true;
             }
         }
-        if (!transfer(payer, target, payerBal.subtract(amount), getBalance(targetId).add(amount))) {
+        LegacyTax.Settings taxRules = taxSettings();
+        BigDecimal taxAmount = taxRules.payTax && !payer.hasPermission("allium.tax.exempt")
+                ? taxRules.tax(amount) : BigDecimal.ZERO.setScale(2);
+        BigDecimal net = amount.subtract(taxAmount);
+        if (taxAmount.signum() > 0 && net.signum() <= 0) {
+            messages.send(payer, "economy.below-minimum", "{prefix} &cAmount is below the minimum payment.");
+            return true;
+        }
+        if (taxAmount.signum() == 0) {
+            if (!transfer(payer, target, payerBal.subtract(amount), getBalance(targetId).add(amount))) {
+                messages.send(payer, "economy.storage-unavailable", "{prefix} &cEconomy storage is unavailable.");
+                return true;
+            }
+        } else if (!taxedTransfer(payer, target, amount, net, taxAmount, taxRules)) {
             messages.send(payer, "economy.storage-unavailable", "{prefix} &cEconomy storage is unavailable.");
             return true;
         }
-        send(payer, ChatColor.GREEN + "Paid " + ChatColor.WHITE + formatted + ChatColor.GREEN + " to " + ChatColor.WHITE + target.getName() + ChatColor.GREEN + ".");
-        send(target, ChatColor.GREEN + "Received " + ChatColor.WHITE + formatted + ChatColor.GREEN + " from " + ChatColor.WHITE + payer.getName() + ChatColor.GREEN + ".");
+        if (taxAmount.signum() == 0) {
+            send(payer, ChatColor.GREEN + "Paid " + ChatColor.WHITE + formatted + ChatColor.GREEN + " to " + ChatColor.WHITE + target.getName() + ChatColor.GREEN + ".");
+        } else {
+            messages.send(payer, "economy.payment-sent-taxed", "{prefix} &aPaid &f{net} &ato &f{player} &7({tax} tax)&a.",
+                    "{net}", formatMoney(net), "{player}", target.getName(), "{tax}", formatMoney(taxAmount));
+        }
+        send(target, ChatColor.GREEN + "Received " + ChatColor.WHITE + formatMoney(net) + ChatColor.GREEN + " from " + ChatColor.WHITE + payer.getName() + ChatColor.GREEN + ".");
         return true;
     }
 
@@ -296,6 +362,25 @@ final class LegacyEconomyModule implements Listener {
         restore(balances, targetId, previousTarget);
         restore(knownNames, payerId, previousPayerName);
         restore(knownNames, targetId, previousTargetName);
+        return false;
+    }
+
+    /** A payment whose tax goes to the tax account, saved once with all three balances. */
+    private boolean taxedTransfer(Player payer, Player target, BigDecimal amount, BigDecimal net, BigDecimal taxAmount,
+                                 LegacyTax.Settings rules) {
+        UUID taxId = rules.accountId();
+        UUID payerId = payer.getUniqueId(), targetId = target.getUniqueId();
+        BigDecimal previousPayer = balances.put(payerId, getBalance(payerId).subtract(amount));
+        BigDecimal previousTarget = balances.put(targetId, getBalance(targetId).add(net));
+        BigDecimal previousTax = balances.put(taxId, getBalance(taxId).add(taxAmount));
+        String previousTaxName = knownNames.put(taxId, rules.account);
+        knownNames.put(payerId, payer.getName());
+        knownNames.put(targetId, target.getName());
+        if (saveEconomy()) return true;
+        restore(balances, payerId, previousPayer);
+        restore(balances, targetId, previousTarget);
+        restore(balances, taxId, previousTax);
+        restore(knownNames, taxId, previousTaxName);
         return false;
     }
 
@@ -497,6 +582,11 @@ final class LegacyEconomyModule implements Listener {
             }
         }
         List<Map.Entry<UUID, BigDecimal>> entries = new ArrayList<Map.Entry<UUID, BigDecimal>>(balances.entrySet());
+        LegacyTax.Settings taxRules = taxSettings();
+        if (!taxRules.inBaltop) {
+            UUID taxId = taxRules.accountId();
+            entries.removeIf(entry -> entry.getKey().equals(taxId));
+        }
         Collections.sort(entries, new Comparator<Map.Entry<UUID, BigDecimal>>() {
             @Override
             public int compare(Map.Entry<UUID, BigDecimal> a, Map.Entry<UUID, BigDecimal> b) {

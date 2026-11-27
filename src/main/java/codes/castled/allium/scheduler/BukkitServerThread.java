@@ -24,7 +24,7 @@ public final class BukkitServerThread implements ServerThread {
     }
 
     private static Plugin unwrap(Plugin plugin) {
-        return plugin instanceof codes.castled.allium.PluginStart ps ? ps.bukkitPlugin() : plugin;
+        return codes.castled.allium.PluginStart.bukkitPlugin(plugin);
     }
 
     public static boolean isFolia() { return FOLIA; }

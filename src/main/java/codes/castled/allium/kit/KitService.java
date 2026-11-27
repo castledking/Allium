@@ -143,7 +143,7 @@ public final class KitService implements Listener {
         this.io = Objects.requireNonNull(io, "io");
         this.serverId = Objects.requireNonNull(serverId, "serverId");
         this.playerDataDirectory = Objects.requireNonNull(playerDataDirectory, "playerDataDirectory");
-        this.receiptKey = new NamespacedKey(plugin, "kit_receipts");
+        this.receiptKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "kit_receipts");
     }
 
     public String serverId() {
@@ -157,8 +157,8 @@ public final class KitService implements Listener {
             plugin.logger().warning("Could not install default kit definitions: " + e.getMessage());
         }
         reloadDefinitions();
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getServer().getPluginManager().registerEvents(locks, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
+        plugin.getServer().getPluginManager().registerEvents(locks, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             onPlayerNow(online, () -> joined(online), () -> {});
         }

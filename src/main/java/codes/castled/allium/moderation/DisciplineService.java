@@ -177,7 +177,7 @@ public final class DisciplineService implements Listener {
         catalogReady = false;
         long epoch = ++lifecycle;
         reloadSettings();
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         loadCatalog(epoch, 0);
         for (Player player : plugin.getServer().getOnlinePlayers()) onConnected(player);
         if (plugin.getScheduler() != null) sweep = plugin.getScheduler().repeatOnServer(() -> {

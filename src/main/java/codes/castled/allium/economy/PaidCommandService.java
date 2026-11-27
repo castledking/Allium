@@ -72,7 +72,7 @@ public final class PaidCommandService implements Listener {
 
     public void enable() {
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
-            plugin.getServer().getPluginManager().registerEvents(this, plugin);
+            plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
             for (Player online : plugin.getServer().getOnlinePlayers()) {
                 loadPlayer(online.getUniqueId());
             }

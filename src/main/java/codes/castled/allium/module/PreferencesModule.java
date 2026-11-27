@@ -94,7 +94,7 @@ public final class PreferencesModule extends AbstractModule implements Listener 
         sessions = new PreferenceSessions(store, () -> defaults, plugin.logger()::warning, retry,
                 // A retry only queues a load on the store, so it runs on the scheduler's timer thread.
                 (task, delayMillis) -> plugin.getScheduler().runAsyncLater(task, delayMillis));
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (Player online : Bukkit.getOnlinePlayers()) {
             connectionGenerations.put(online, sessions.begin(online.getUniqueId()));
         }

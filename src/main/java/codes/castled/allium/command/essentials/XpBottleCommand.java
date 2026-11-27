@@ -56,8 +56,8 @@ public final class XpBottleCommand implements SpecCommandHandler, Listener {
 
     XpBottleCommand(PluginStart plugin, java.util.function.BiFunction<Integer, String, ItemStack> bottleFactory) {
         this.plugin = plugin;
-        this.amountKey = new NamespacedKey(plugin, KEY_AMOUNT);
-        this.signerKey = new NamespacedKey(plugin, KEY_SIGNER);
+        this.amountKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), KEY_AMOUNT);
+        this.signerKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), KEY_SIGNER);
         this.bottleFactory = bottleFactory != null ? bottleFactory : this::createBottle;
     }
 

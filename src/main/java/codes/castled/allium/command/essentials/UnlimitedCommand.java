@@ -44,7 +44,7 @@ public final class UnlimitedCommand implements SpecCommandHandler, Listener {
 
     public UnlimitedCommand(PluginStart plugin) {
         this.plugin = plugin;
-        this.key = new NamespacedKey(plugin, "unlimited_blocks");
+        this.key = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "unlimited_blocks");
     }
 
     @Override

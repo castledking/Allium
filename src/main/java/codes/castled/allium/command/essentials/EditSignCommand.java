@@ -81,7 +81,7 @@ public final class EditSignCommand implements SpecCommandHandler {
             UtilitySupport.send(plugin, player, Messages.EDIT_SIGN_COPIED);
             return;
         }
-        var key = new NamespacedKey(plugin, "sign_" + side.name().toLowerCase(Locale.ROOT));
+        var key = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "sign_" + side.name().toLowerCase(Locale.ROOT));
         if (waxed(sign) || sign.getPersistentDataContainer().getKeys().contains(key)) {
             UtilitySupport.send(plugin, player, Messages.EDIT_SIGN_LOCKED);
             return;

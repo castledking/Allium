@@ -123,7 +123,7 @@ public final class NicknameEditorGui implements Listener, AutoCloseable {
 
     public void enable() {
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
-            plugin.getServer().getPluginManager().registerEvents(this, plugin);
+            plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         }
     }
 

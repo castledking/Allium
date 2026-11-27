@@ -83,7 +83,7 @@ public final class TimedFlight implements Listener, AutoCloseable {
 
     public void enable() {
         reload();
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             join(p);
         }

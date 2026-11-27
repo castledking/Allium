@@ -46,7 +46,7 @@ public final class PlayerNameService implements Listener {
     public void enable() throws SQLException {
         repository.migrate();
         enabled = true;
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         // Reloads must also index players who are already online. Visibility is checked per request.
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             record(player);

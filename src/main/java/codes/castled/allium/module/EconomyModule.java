@@ -46,7 +46,7 @@ public final class EconomyModule extends AbstractModule {
                 try{return names.byName(name).map(codes.castled.allium.naming.NameCache.Entry::uuid).orElse(null);}
                 catch(SQLException error){throw new EconomyUnavailableException("authoritative name storage unavailable",error);}
             });
-            plugin.getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class,provider,plugin,org.bukkit.plugin.ServicePriority.Highest);
+            plugin.getServer().getServicesManager().register(net.milkbowl.vault.economy.Economy.class,provider,PluginStart.bukkitPlugin(plugin),org.bukkit.plugin.ServicePriority.Highest);
             plugin.logger().info("Vault economy registered after schema and recovery checks.");
         }
         @Override public void close(){plugin.getServer().getServicesManager().unregister(net.milkbowl.vault.economy.Economy.class,provider);}

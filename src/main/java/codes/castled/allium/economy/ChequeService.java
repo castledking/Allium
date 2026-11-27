@@ -85,18 +85,18 @@ public final class ChequeService implements Listener {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.io = Objects.requireNonNull(io, "io");
         this.playerData = PlayerDataFiles.directory(plugin.getServer());
-        this.chequeIdKey = new NamespacedKey(plugin, "cheque_id");
-        this.chequeAmountKey = new NamespacedKey(plugin, "cheque_amount_minor");
-        this.chequeSignerKey = new NamespacedKey(plugin, "cheque_signer");
-        this.receiptKey = new NamespacedKey(plugin, "cheque_receipts");
+        this.chequeIdKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "cheque_id");
+        this.chequeAmountKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "cheque_amount_minor");
+        this.chequeSignerKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "cheque_signer");
+        this.receiptKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "cheque_receipts");
         if (!receiptKey.toString().equals(PlayerDataReceiptProof.CHEQUE_RECEIPTS)) {
             throw new IllegalStateException("cheque receipt key " + receiptKey + " does not match proof key");
         }
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getServer().getPluginManager().registerEvents(locks, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
+        plugin.getServer().getPluginManager().registerEvents(locks, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             onPlayerNow(online, () -> recover(online), () -> {});
         }

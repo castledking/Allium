@@ -113,7 +113,7 @@ public final class TravelService implements Listener {
         synchronized(OWNERS){TravelService previous=OWNERS.get(plugin);
             if(previous!=null&&previous!=this&&(!previous.closed||!previous.io.isTerminated()))throw new IllegalStateException("Previous travel storage has not drained");
             OWNERS.put(plugin,this);}
-        plugin.getServer().getPluginManager().registerEvents(this,plugin);loadWarps(0);
+        plugin.getServer().getPluginManager().registerEvents(this,codes.castled.allium.PluginStart.bukkitPlugin(plugin));loadWarps(0);
         for(Player p:plugin.getServer().getOnlinePlayers())join(p);
     }
     public void disable() {

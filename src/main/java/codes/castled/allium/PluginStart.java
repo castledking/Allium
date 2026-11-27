@@ -64,6 +64,29 @@ public class PluginStart implements Plugin, AlliumRuntime {
         return host != null ? host : this;
     }
 
+    /**
+     * Unwraps a live {@link PluginStart} delegate to its registered Bukkit {@link JavaPlugin} host
+     * so Paper/Canvas/Folia APIs always receive the real {@code JavaPlugin} instance.
+     * Safe for unstubbed Mockito mocks of {@code PluginStart} (returns {@code plugin} when {@code host == null}).
+     */
+    public static Plugin bukkitPlugin(Plugin plugin) {
+        if (plugin instanceof PluginStart ps && ps.host != null) {
+            return ps.host;
+        }
+        return plugin;
+    }
+
+    /** Satisfies Paper/Canvas Adventure {@code Namespaced#namespace()} on 1.21+/26.3+. */
+    public String namespace() {
+        if (host != null) {
+            String hostName = host.getName();
+            if (hostName != null && !hostName.isEmpty()) {
+                return hostName.toLowerCase(java.util.Locale.ROOT);
+            }
+        }
+        return "allium";
+    }
+
     /** The underlying {@link JavaPlugin} host when running on a live server, or {@code null} in unit tests. */
     @org.jetbrains.annotations.Nullable
     public JavaPlugin javaPlugin() {
@@ -138,7 +161,7 @@ public class PluginStart implements Plugin, AlliumRuntime {
         }
         reportCorePack();
         ProviderAdapterBootstrap.registerAll(
-                this,
+                bukkitPlugin(),
                 getServer().getPluginManager(),
                 itemService,
                 logger::info,

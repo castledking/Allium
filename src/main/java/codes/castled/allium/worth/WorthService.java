@@ -53,7 +53,7 @@ public final class WorthService {
     public WorthService(PluginStart plugin) {
         this.plugin = plugin;
         this.file = plugin.getDataFolder().toPath().resolve("worth.yml");
-        this.creativeKey = new NamespacedKey(plugin, "creative_item");
+        this.creativeKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "creative_item");
     }
 
     public void enable() throws IOException, InvalidConfigurationException {

@@ -29,7 +29,7 @@ public final class GodModeCompatProvider {
         private final NamespacedKey godModeKey;
 
         StandardGodModeCompat(PluginStart plugin) {
-            this.godModeKey = new NamespacedKey(plugin, "godmode");
+            this.godModeKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "godmode");
         }
 
         @Override

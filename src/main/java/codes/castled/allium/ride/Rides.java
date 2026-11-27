@@ -103,7 +103,7 @@ public final class Rides implements Listener {
         }
         enabled = true;
         var plugins = plugin.getServer().getPluginManager();
-        plugins.registerEvents(this, plugin);
+        plugins.registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         // Spigot 1.20 has org.spigotmc's EntityDismountEvent; later APIs moved it to org.bukkit.
         for (String name : List.of("org.bukkit.event.entity.EntityDismountEvent", "org.spigotmc.event.entity.EntityDismountEvent")) {
             try {
@@ -112,7 +112,7 @@ public final class Rides implements Listener {
                     if (event instanceof EntityEvent dismount && event instanceof Cancellable cancellable) {
                         onDismount(dismount.getEntity(), cancellable);
                     }
-                }, plugin);
+                }, PluginStart.bukkitPlugin(plugin));
                 break;
             } catch (ClassNotFoundException | ClassCastException absent) {
                 // try the other name

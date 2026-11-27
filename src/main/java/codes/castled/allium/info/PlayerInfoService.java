@@ -216,7 +216,7 @@ public final class PlayerInfoService implements Listener {
         }
 
         PluginManager pm = plugin.getServer().getPluginManager();
-        pm.registerEvents(this, plugin);
+        pm.registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
 
         long now = clock.getAsLong();
         for (Player online : plugin.getServer().getOnlinePlayers()) {

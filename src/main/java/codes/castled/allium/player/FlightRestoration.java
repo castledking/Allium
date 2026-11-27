@@ -21,9 +21,9 @@ public final class FlightRestoration implements Listener,AutoCloseable {
  private final Map<Player,boolean[]> worldFlight=Collections.synchronizedMap(new IdentityHashMap<>());
  private TaskHandle timer=TaskHandle.NONE;
  private volatile boolean closed;
- public FlightRestoration(PluginStart plugin){this.plugin=plugin;slowOff=new NamespacedKey(plugin,"slowfall_disabled_v1");allow=new NamespacedKey(plugin,"flight_allowed_v1");flying=new NamespacedKey(plugin,"flight_flying_v1");}
+ public FlightRestoration(PluginStart plugin){this.plugin=plugin;slowOff=new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin),"slowfall_disabled_v1");allow=new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin),"flight_allowed_v1");flying=new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin),"flight_flying_v1");}
  public void enable() {
-  plugin.getServer().getPluginManager().registerEvents(this, plugin);
+  plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
   if (BukkitServerThread.isFolia()) {
    plugin.getServer().getOnlinePlayers().forEach(this::watch);
   } else {

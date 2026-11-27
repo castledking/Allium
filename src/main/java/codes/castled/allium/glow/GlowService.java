@@ -103,7 +103,7 @@ public final class GlowService implements Listener, AutoCloseable {
     GlowService(PluginStart plugin, @Nullable Teams teams) {
         this.plugin = plugin;
         this.teams = teams;
-        this.spectatorOnlyKey = new NamespacedKey(plugin, "glow_spectator_only");
+        this.spectatorOnlyKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "glow_spectator_only");
         reload();
     }
 
@@ -112,7 +112,7 @@ public final class GlowService implements Listener, AutoCloseable {
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         tick = plugin.getScheduler().repeatOnServer(() -> {
             tick();
             return true;

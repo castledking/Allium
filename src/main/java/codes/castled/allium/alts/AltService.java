@@ -73,7 +73,7 @@ public final class AltService implements Listener {
 
     public void enable() throws SQLException {
         repository.migrate();
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             check(online);
         }

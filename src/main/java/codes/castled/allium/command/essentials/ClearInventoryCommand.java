@@ -46,7 +46,7 @@ public final class ClearInventoryCommand implements SpecCommandHandler {
         this.plugin = plugin;
         this.spec = spec;
         this.pending = pending;
-        confirmationDisabled = new NamespacedKey(plugin, "clear_confirmation_disabled");
+        confirmationDisabled = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "clear_confirmation_disabled");
     }
 
     public ClearInventoryCommand confirmationToggle() {

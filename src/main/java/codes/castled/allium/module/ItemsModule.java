@@ -191,7 +191,7 @@ public final class ItemsModule extends AbstractModule {
         }
         if (paperBrigadierAvailable() && plugin.javaPlugin() != null) {
             try {
-                codes.castled.allium.command.CommandMapBridge.yieldCommandFamily(plugin.getServer(), plugin.bukkitPlugin(), give.spec());
+                codes.castled.allium.command.CommandMapBridge.yieldCommandFamily(plugin.getServer(), PluginStart.bukkitPlugin(plugin), give.spec());
                 Class.forName(PAPER_GIVE).getMethod("register", org.bukkit.plugin.java.JavaPlugin.class, GiveCommand.class,
                                 String.class, java.util.function.Consumer.class)
                         .invoke(null, plugin.javaPlugin(), give, give.spec().description(),

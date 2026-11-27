@@ -51,14 +51,14 @@ public final class PaidRepairService implements Listener {
         this.actions = new PaidActionService(plugin, plugin.getScheduler().boundedPool("Allium-PaidRepair", 1, 128));
         this.receiptSpec = new PaidActionService.ReceiptSpec(
                 PlayerDataReceiptProof.REPAIR_RECEIPTS,
-                new NamespacedKey(plugin, "repair_receipts"),
+                new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "repair_receipts"),
                 FAULT_HALT_AFTER_RESERVE,
                 FAULT_HALT_AFTER_SAVE
         );
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             recover(online);
         }

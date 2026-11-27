@@ -74,8 +74,8 @@ public final class CreativePlacedBlocks implements Listener {
 
     public CreativePlacedBlocks(PluginStart plugin) {
         this.plugin = plugin;
-        this.key = new NamespacedKey(plugin, "creative_blocks");
-        this.fallingKey = new NamespacedKey(plugin, "creative_falling");
+        this.key = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "creative_blocks");
+        this.fallingKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "creative_falling");
         reload();
     }
 
@@ -84,7 +84,7 @@ public final class CreativePlacedBlocks implements Listener {
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
     }
 
     public void disable() {

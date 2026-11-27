@@ -180,7 +180,7 @@ public final class RegenerationService implements Listener {
         this.plugin = plugin;
         this.file = plugin.getDataFolder().toPath().resolve("explosions.yml");
         this.journal = new RegenJournal(plugin.getDataFolder().toPath().resolve("regeneration"));
-        this.explosiveKey = new NamespacedKey(plugin, "explosive");
+        this.explosiveKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "explosive");
     }
 
     // -- Lifecycle -------------------------------------------------------------------------------
@@ -188,7 +188,7 @@ public final class RegenerationService implements Listener {
     public void enable() throws IOException, InvalidConfigurationException {
         if (!Files.exists(file)) plugin.saveResource("explosions.yml", false);
         settings = ExplosionSettings.read(read(), plugin.logger()::warning);
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         int resumed = 0;
         for (World world : plugin.getServer().getWorlds()) resumed += resume(world);
         if (resumed > 0) {

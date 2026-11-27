@@ -110,12 +110,12 @@ public final class RestoreService implements Listener {
         this.plugin = plugin;
         this.repository = repository;
         this.io = io;
-        this.receiptKey = new NamespacedKey(plugin, "restore_receipts");
+        this.receiptKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "restore_receipts");
         this.settings = Settings.read(plugin.getConfig().getConfigurationSection("restore"));
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         scheduleAutosave();
         purge();
         for (Player online : plugin.getServer().getOnlinePlayers()) {

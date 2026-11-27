@@ -199,13 +199,13 @@ public final class CreativeManager implements Listener {
 
     public CreativeManager(PluginStart plugin) {
         this.plugin = plugin;
-        this.groupKey = new NamespacedKey(plugin, "creative_group");
-        this.lastModeKey = new NamespacedKey(plugin, "last_gamemode");
-        this.creativeItemKey = new NamespacedKey(plugin, "creative_item");
-        this.armorKey = new NamespacedKey(plugin, "creative_armor");
-        this.savedArmorKey = new NamespacedKey(plugin, "creative_saved_armor");
+        this.groupKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "creative_group");
+        this.lastModeKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "last_gamemode");
+        this.creativeItemKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "creative_item");
+        this.armorKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "creative_armor");
+        this.savedArmorKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "creative_saved_armor");
         for (Group group : Group.values()) {
-            stashKeys.put(group, new NamespacedKey(plugin, "creative_stash_" + group.id()));
+            stashKeys.put(group, new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "creative_stash_" + group.id()));
         }
         reload();
     }
@@ -218,7 +218,7 @@ public final class CreativeManager implements Listener {
 
     public void enable() {
         closed = false;
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         placedBlocks = new CreativePlacedBlocks(plugin);
         placedBlocks.enable();
         hookPickBlock();
@@ -392,7 +392,7 @@ public final class CreativeManager implements Listener {
             if (!creative(player) || can(player, "pickblock")) return;
             cancellable.setCancelled(true);
             deny(player, "use pick block", null);
-        }, plugin, true);
+        }, PluginStart.bukkitPlugin(plugin), true);
     }
 
     /**

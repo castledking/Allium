@@ -119,7 +119,7 @@ public final class TeleportService implements Listener {
                 throw new IllegalStateException("Previous teleport service still owns unfinished storage; replacement refused");
             OWNERS.put(plugin,this);
         }
-        plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        plugin.getServer().getPluginManager().registerEvents(this,codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         registerWorldPermissions();
         loadSpawn(0);
         for(Player p:plugin.getServer().getOnlinePlayers())onOwner(p,()->joined(p));

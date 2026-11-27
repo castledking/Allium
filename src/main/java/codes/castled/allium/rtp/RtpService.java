@@ -110,7 +110,7 @@ public final class RtpService implements Listener {
     public void enable() throws IOException, InvalidConfigurationException {
         if (!Files.exists(file)) plugin.saveResource("rtp.yml", false);
         configuration = new Configuration(RtpSettings.read(read()));
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
     }
 
     public void disable() {

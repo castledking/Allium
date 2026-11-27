@@ -48,7 +48,7 @@ public final class HideService implements Listener,AutoCloseable {
         }
         var access=CommandMapBridge.inspectPlatformAccess(plugin.getServer(),plugin.logger()::warning);if(access!=null&&access.knownCommands()!=null)commands=access.knownCommands();
         refreshLabels();
-        plugin.getServer().getPluginManager().registerEvents(this,plugin);installPackets();
+        plugin.getServer().getPluginManager().registerEvents(this,codes.castled.allium.PluginStart.bukkitPlugin(plugin));installPackets();
         for(Player player:List.copyOf(plugin.getServer().getOnlinePlayers())){enqueuePoll(player);refreshOnOwner(player,true,()->{});}
         timer=plugin.getScheduler().repeatOnServer(()->{if(closed)return false;tick();return true;},50,50);
         logCapability();

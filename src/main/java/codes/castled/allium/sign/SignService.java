@@ -51,9 +51,9 @@ public final class SignService implements Listener,AutoCloseable {
         shortSignPrices=plugin.getConfig().getBoolean("sign-short-prices",true);
         unsafeSignPrices=plugin.getConfig().getBoolean("unsafe-sign-prices",false);
     }
-    public void enable(){plugin.getServer().getPluginManager().registerEvents(this,plugin);editorGuard=new SignEditorGuard(plugin,this);}
+    public void enable(){plugin.getServer().getPluginManager().registerEvents(this,codes.castled.allium.PluginStart.bukkitPlugin(plugin));editorGuard=new SignEditorGuard(plugin,this);}
     public void close(){closed=true;if(editorGuard!=null)editorGuard.close();HandlerList.unregisterAll(this);}
-    private NamespacedKey key(Side side){return new NamespacedKey(plugin,"sign_"+side.name().toLowerCase(Locale.ROOT));}
+    private NamespacedKey key(Side side){return new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin),"sign_"+side.name().toLowerCase(Locale.ROOT));}
     private Optional<SignIdentity> identity(Sign sign,Side side){return SignIdentity.decode(sign.getPersistentDataContainer().get(key(side),PersistentDataType.STRING));}
     private boolean permission(Player p,String action,SignIdentity.Type type){return p.hasPermission("allium.signs."+action+"."+type.key());}
     /**

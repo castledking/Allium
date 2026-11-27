@@ -209,7 +209,7 @@ public final class EconomyRuntime implements Listener, AutoCloseable {
         return EconomyPaymentPolicy.permits(c,sender,recipient,engine.settings());
     }
     public void enable(){
-        plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        plugin.getServer().getPluginManager().registerEvents(this,codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         if(cheques!=null)cheques.enable();
         for(Player p:plugin.getServer().getOnlinePlayers())open(p.getUniqueId());
     }

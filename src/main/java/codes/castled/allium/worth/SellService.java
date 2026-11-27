@@ -100,7 +100,7 @@ public final class SellService implements Listener {
     public SellService(PluginStart plugin, WorthService worth) {
         this.plugin = plugin;
         this.worth = worth;
-        this.receiptKey = new NamespacedKey(plugin, "sale_receipts");
+        this.receiptKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "sale_receipts");
         this.io = plugin.getScheduler().boundedPool("Allium-Sell", 1, 128);
         this.playerData = PlayerDataFiles.directory(plugin.getServer());
         if (!receiptKey.toString().equals(PlayerDataReceiptProof.SALE_RECEIPTS)) {
@@ -109,7 +109,7 @@ public final class SellService implements Listener {
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             UtilitySupport.onOwner(plugin, online, () -> {
                 if (!closed) recover(online);
@@ -543,7 +543,7 @@ public final class SellService implements Listener {
     }
 
     private NamespacedKey itemsKey(UUID sale) {
-        return new NamespacedKey(plugin, "sale_items_" + sale);
+        return new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "sale_items_" + sale);
     }
 
     private static boolean unchanged(Player player, SalePlan plan) {

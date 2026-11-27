@@ -145,7 +145,7 @@ public final class MailService implements Listener {
         this.io = io;
         this.serverId = serverId;
         this.limits = limits;
-        this.receiptKey = new NamespacedKey(plugin, "mail_receipts");
+        this.receiptKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "mail_receipts");
         this.locks = new MailInventoryLock();
         this.delivery = new ItemDeliveryService(ItemDeliveryService.targetThread(plugin, plugin.getScheduler()),
                 plugin.getServer()::getPlayer, plugin.getServer().getPluginManager(),
@@ -153,8 +153,8 @@ public final class MailService implements Listener {
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getServer().getPluginManager().registerEvents(locks, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
+        plugin.getServer().getPluginManager().registerEvents(locks, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             onPlayerNow(online, () -> joined(online), () -> {});
         }

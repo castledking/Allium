@@ -168,10 +168,10 @@ public final class ToolsModule extends AbstractModule {
         powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_MOUNT, rideActions.mount());
         powerTools.actions().register(codes.castled.allium.tool.powertool.PowerToolAction.TYPE_RELEASE, rideActions.release());
         powerToolListener = new PowerToolListener(powerTools);
-        plugin.getServer().getPluginManager().registerEvents(powerToolListener, plugin);
+        plugin.getServer().getPluginManager().registerEvents(powerToolListener, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         legacyVouchers = new codes.castled.allium.tool.powertool.LegacyVoucherListener(plugin, powerTools, items,
                 plugin.getMessageManager()::send, plugin.logger()::info, plugin.logger()::warning);
-        plugin.getServer().getPluginManager().registerEvents(legacyVouchers, plugin);
+        plugin.getServer().getPluginManager().registerEvents(legacyVouchers, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         plugin.getCommandManager().register(new PowerToolCommand(plugin, () -> powerTools, () -> this));
         plugin.getCommandManager().register(new codes.castled.allium.command.tools.VoucherCommand(plugin, () -> powerTools, () -> this));
         plugin.getCommandManager().register(new codes.castled.allium.command.tools.UnrestrainCommand(plugin));
@@ -233,7 +233,7 @@ public final class ToolsModule extends AbstractModule {
         disarm = new DisarmBehavior(items, plugin.getProtectionService(), plugin.getMessageManager()::send,
                 plugin.logger()::warning, System::currentTimeMillis, new Random(), disarmTools);
         disarmListener = new DisarmListener(disarm);
-        plugin.getServer().getPluginManager().registerEvents(disarmListener, plugin);
+        plugin.getServer().getPluginManager().registerEvents(disarmListener, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (DisarmTool tool : disarmTools) {
             DisarmParameters parameters = tool.parameters();
             plugin.logger().info(tool.name() + " enabled (" + tool.definition().file() + ", " + tool.id() + " -> "
@@ -309,7 +309,7 @@ public final class ToolsModule extends AbstractModule {
         obliterate = new ObliterateBehavior(items, plugin.getProtectionService(), plugin.getMessageManager()::send,
                 plugin.logger()::warning, System::currentTimeMillis, new Random(), tools);
         obliterateListener = new ObliterateListener(obliterate);
-        plugin.getServer().getPluginManager().registerEvents(obliterateListener, plugin);
+        plugin.getServer().getPluginManager().registerEvents(obliterateListener, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (ObliterateTool tool : tools) {
             ObliterateParameters parameters = tool.parameters();
             plugin.logger().info(tool.name() + " enabled (" + tool.definition().file() + ", " + tool.id() + " -> "
@@ -328,7 +328,7 @@ public final class ToolsModule extends AbstractModule {
                 plugin.getMessageManager()::send, plugin.logger()::warning, System::currentTimeMillis,
                 new Random(), tools);
         fellTreeListener = new FellTreeListener(fellTree);
-        plugin.getServer().getPluginManager().registerEvents(fellTreeListener, plugin);
+        plugin.getServer().getPluginManager().registerEvents(fellTreeListener, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         for (FellTreeTool tool : tools) {
             FellTreeParameters parameters = tool.parameters();
             plugin.logger().info(tool.name() + " enabled (" + tool.definition().file() + ", " + tool.id() + " -> "

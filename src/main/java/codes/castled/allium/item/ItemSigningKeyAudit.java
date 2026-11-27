@@ -28,7 +28,7 @@ public final class ItemSigningKeyAudit implements Listener {
     }
 
     public void install(Plugin plugin, TaskScheduler scheduler) {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         var online = new ArrayDeque<>(plugin.getServer().getOnlinePlayers());
         if (!online.isEmpty()) {
             // One inventory per tick on late enable; avoid a large synchronous startup scan.

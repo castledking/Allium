@@ -147,8 +147,9 @@ public final class AlliumApiService implements AlliumApi, Listener {
 
     /** Registers the service and listener, checks installed plugins, and loads addons from {@code plugins/Allium/addons/}. */
     public void install() {
-        allium.getServer().getServicesManager().register(AlliumApi.class, this, allium.bukkitPlugin(), ServicePriority.Normal);
-        allium.getServer().getPluginManager().registerEvents(this, allium.bukkitPlugin());
+        Plugin hostPlugin = PluginStart.bukkitPlugin(allium);
+        allium.getServer().getServicesManager().register(AlliumApi.class, this, hostPlugin, ServicePriority.Normal);
+        allium.getServer().getPluginManager().registerEvents(this, hostPlugin);
         List<String> accepted = new ArrayList<>();
         for (Plugin plugin : allium.getServer().getPluginManager().getPlugins()) {
             if (plugin == allium) {

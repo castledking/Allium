@@ -124,7 +124,7 @@ public final class EssentialsModule extends AbstractModule {
         timePauseCoordinator = new TimePauseCoordinator(plugin);
         disposalListener = new UtilityCommand.DisposalListener();
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
-            plugin.getServer().getPluginManager().registerEvents(disposalListener, plugin);
+            plugin.getServer().getPluginManager().registerEvents(disposalListener, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         }
 
         for (var spec : CoreCommandSpecs.UTILITY_SPECS) {
@@ -165,7 +165,7 @@ public final class EssentialsModule extends AbstractModule {
         unlimited = new UnlimitedCommand(plugin);
         plugin.getCommandManager().register(unlimited);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
-            plugin.getServer().getPluginManager().registerEvents(unlimited, plugin);
+            plugin.getServer().getPluginManager().registerEvents(unlimited, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         }
         plugin.getCommandManager().register(new SmiteCommand(plugin));
         recipes = new codes.castled.allium.recipe.RecipeViewer(plugin);
@@ -193,14 +193,14 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.RENAME));
         loreClipboard = new codes.castled.allium.command.essentials.LoreClipboard();
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
-            plugin.getServer().getPluginManager().registerEvents(loreClipboard, plugin);
+            plugin.getServer().getPluginManager().registerEvents(loreClipboard, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         }
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.ItemTextCommand(plugin, CoreCommandSpecs.LORE, loreClipboard));
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.XpCommand(plugin));
         xpBottle = new codes.castled.allium.command.essentials.XpBottleCommand(plugin);
         plugin.getCommandManager().register(xpBottle);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
-            plugin.getServer().getPluginManager().registerEvents(xpBottle, plugin);
+            plugin.getServer().getPluginManager().registerEvents(xpBottle, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         }
         var motd = codes.castled.allium.command.essentials.TextFileCommand.motd(plugin);
         var info = codes.castled.allium.command.essentials.TextFileCommand.info(plugin);
@@ -220,7 +220,7 @@ public final class EssentialsModule extends AbstractModule {
         plugin.getCommandManager().register(new codes.castled.allium.command.essentials.SpawnMobCommand(plugin));
         motdOnJoin = new codes.castled.allium.command.essentials.MotdOnJoin(plugin, motd);
         if (plugin.getServer() != null && plugin.getServer().getPluginManager() != null) {
-            plugin.getServer().getPluginManager().registerEvents(motdOnJoin, plugin);
+            plugin.getServer().getPluginManager().registerEvents(motdOnJoin, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         }
     }
 

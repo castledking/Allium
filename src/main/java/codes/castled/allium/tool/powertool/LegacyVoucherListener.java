@@ -51,7 +51,7 @@ public final class LegacyVoucherListener implements Listener {
                                  PermissionGrantAction.Notifier notifier, Consumer<String> info, Consumer<String> warning) {
         this.powerTools = powerTools;
         this.items = items;
-        this.voucherKey = new NamespacedKey(plugin, "voucher_id");
+        this.voucherKey = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "voucher_id");
         this.notifier = notifier;
         this.info = info;
         this.warning = warning;

@@ -54,13 +54,14 @@ public final class ModGuard implements PluginMessageListener, Listener, AutoClos
     private final org.bukkit.NamespacedKey alertsOff;
 
     public ModGuard(Plugin plugin, TaskScheduler scheduler, YamlConfiguration config, YamlConfiguration bundled) {
-        this.plugin = plugin;
+        Plugin hostPlugin = codes.castled.allium.PluginStart.bukkitPlugin(plugin);
+        this.plugin = hostPlugin;
         this.scheduler = scheduler;
-        this.logger = plugin.getLogger();
+        this.logger = hostPlugin.getLogger();
         this.bundled = bundled;
-        this.access = new AccessPolicy(plugin, scheduler, this);
-        this.lunar = new LunarWire(plugin, scheduler, this);
-        this.alertsOff = new org.bukkit.NamespacedKey(plugin, "modguard_alerts_off");
+        this.access = new AccessPolicy(hostPlugin, scheduler, this);
+        this.lunar = new LunarWire(hostPlugin, scheduler, this);
+        this.alertsOff = new org.bukkit.NamespacedKey(hostPlugin, "modguard_alerts_off");
         configure(config);
     }
 

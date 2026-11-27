@@ -135,7 +135,7 @@ public final class PackDelivery implements Listener {
             return;
         }
         if (!listening) {
-            plugin.getServer().getPluginManager().registerEvents(this, plugin);
+            plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
             listening = true;
         }
         String serverPack = Bukkit.getServer() == null ? "" : Bukkit.getResourcePack();
@@ -219,7 +219,7 @@ public final class PackDelivery implements Listener {
             return;
         }
         if (!listening) {
-            plugin.getServer().getPluginManager().registerEvents(this, plugin);
+            plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
             listening = true;
         }
         if (next.selfHost().enabled()) {

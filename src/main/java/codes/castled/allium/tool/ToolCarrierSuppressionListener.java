@@ -62,7 +62,7 @@ public final class ToolCarrierSuppressionListener implements Listener {
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         registerCrafterHookIfAvailable();
     }
 
@@ -358,7 +358,7 @@ public final class ToolCarrierSuppressionListener implements Listener {
                         this,
                         EventPriority.HIGHEST,
                         (l, event) -> handleCrafterCraft(event),
-                        plugin
+                        codes.castled.allium.PluginStart.bukkitPlugin(plugin)
                 );
             }
         } catch (ClassNotFoundException | LinkageError ignored) {

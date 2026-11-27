@@ -292,7 +292,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
 
         PlayerNameVisibility.setVanishHooks(this::isVanished, this::syncPairVisibility);
         PluginManager pm = plugin.getServer().getPluginManager();
-        pm.registerEvents(this, plugin);
+        pm.registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         registerOptionalPaperListeners(pm);
         logSpigotVanishPlatformWarningIfApplicable();
 
@@ -391,7 +391,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         if (BukkitServerThread.isFolia()) {
             boolean canSchedule = plugin.isEnabled();
             for (Player online : onlinePlayers) {
-                online.removeMetadata(METADATA_VANISHED, plugin);
+                online.removeMetadata(METADATA_VANISHED, PluginStart.bukkitPlugin(plugin));
                 if (canSchedule) {
                     UtilitySupport.onOwner(plugin, online, () -> {
                         if (!online.isOnline()) return;
@@ -399,7 +399,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                         if (!plugin.isEnabled()) return;
                         for (Player target : onlinePlayers) {
                             if (!online.equals(target) && target.isOnline()) {
-                                online.showPlayer(plugin, target);
+                                online.showPlayer(codes.castled.allium.PluginStart.bukkitPlugin(plugin), target);
                             }
                         }
                     });
@@ -408,11 +408,11 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
             return;
         }
         for (Player online : onlinePlayers) {
-            online.removeMetadata(METADATA_VANISHED, plugin);
+            online.removeMetadata(METADATA_VANISHED, PluginStart.bukkitPlugin(plugin));
             online.setSleepingIgnored(extraSleep != null && extraSleep.test(online));
             for (Player viewer : onlinePlayers) {
                 if (!viewer.equals(online)) {
-                    viewer.showPlayer(plugin, online);
+                    viewer.showPlayer(codes.castled.allium.PluginStart.bukkitPlugin(plugin), online);
                 }
             }
         }
@@ -469,7 +469,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                 if (asyncTabClass.isInstance(event)) {
                     filterPaperAsyncTabComplete(event, getSender, getCompletions, setCompletions, completionsMethod, suggestionMethod);
                 }
-            }, plugin, true);
+            }, PluginStart.bukkitPlugin(plugin), true);
             asyncTabListenerRegistered = true;
         } catch (ClassNotFoundException | NoSuchMethodException ignored) {
             // Spigot 1.20.1 does not expose Paper's AsyncTabCompleteEvent.
@@ -490,7 +490,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                     }
                 } catch (ReflectiveOperationException ignored) {
                 }
-            }, plugin, true);
+            }, PluginStart.bukkitPlugin(plugin), true);
             xpPickupListenerRegistered = true;
         } catch (ClassNotFoundException | NoSuchMethodException ignored) {
             // Spigot 1.20.1 does not expose Paper's PlayerPickupExperienceEvent.
@@ -673,10 +673,10 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         }
         boolean vanished = vanishedPlayers.contains(player.getUniqueId());
         if (vanished) {
-            player.setMetadata(METADATA_VANISHED, new FixedMetadataValue(plugin, true));
+            player.setMetadata(METADATA_VANISHED, new FixedMetadataValue(codes.castled.allium.PluginStart.bukkitPlugin(plugin), true));
             clearMobTargetsOn(player);
         } else {
-            player.removeMetadata(METADATA_VANISHED, plugin);
+            player.removeMetadata(METADATA_VANISHED, PluginStart.bukkitPlugin(plugin));
         }
         refreshSleepingIgnoredOnOwner(player);
     }
@@ -719,7 +719,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                     }
                     UtilitySupport.onOwner(plugin, target, () -> {
                         if (!closed && target.isOnline() && vanishedPlayers.contains(target.getUniqueId())) {
-                            target.setMetadata(METADATA_VANISHED, new FixedMetadataValue(plugin, true));
+                            target.setMetadata(METADATA_VANISHED, new FixedMetadataValue(codes.castled.allium.PluginStart.bukkitPlugin(plugin), true));
                             refreshSleepingIgnoredOnOwner(target);
                         }
                     });
@@ -738,9 +738,9 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                         }
                         boolean targetVanished = vanishedPlayers.contains(target.getUniqueId());
                         if (targetVanished && !viewer.hasPermission(PERMISSION_VANISH_SEE)) {
-                            viewer.hidePlayer(plugin, target);
+                            viewer.hidePlayer(codes.castled.allium.PluginStart.bukkitPlugin(plugin), target);
                         } else {
-                            viewer.showPlayer(plugin, target);
+                            viewer.showPlayer(codes.castled.allium.PluginStart.bukkitPlugin(plugin), target);
                         }
                     }
                 });
@@ -750,7 +750,7 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
         for (Player target : onlinePlayers) {
             boolean targetVanished = vanishedPlayers.contains(target.getUniqueId());
             if (targetVanished) {
-                target.setMetadata(METADATA_VANISHED, new FixedMetadataValue(plugin, true));
+                target.setMetadata(METADATA_VANISHED, new FixedMetadataValue(codes.castled.allium.PluginStart.bukkitPlugin(plugin), true));
                 refreshSleepingIgnored(target);
                 if (target.getName() != null) {
                     vanishedLowerNames.put(target.getUniqueId(), target.getName().toLowerCase(Locale.ROOT));
@@ -763,9 +763,9 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                     continue;
                 }
                 if (targetVanished && !viewer.hasPermission(PERMISSION_VANISH_SEE)) {
-                    viewer.hidePlayer(plugin, target);
+                    viewer.hidePlayer(codes.castled.allium.PluginStart.bukkitPlugin(plugin), target);
                 } else {
-                    viewer.showPlayer(plugin, target);
+                    viewer.showPlayer(codes.castled.allium.PluginStart.bukkitPlugin(plugin), target);
                 }
             }
         }
@@ -784,9 +784,9 @@ public final class ModerationService implements Listener, VanishSource, MuteSour
                     return;
                 }
                 if (viewer.hasPermission(PERMISSION_VANISH_SEE)) {
-                    viewer.showPlayer(plugin, target);
+                    viewer.showPlayer(codes.castled.allium.PluginStart.bukkitPlugin(plugin), target);
                 } else {
-                    viewer.hidePlayer(plugin, target);
+                    viewer.hidePlayer(codes.castled.allium.PluginStart.bukkitPlugin(plugin), target);
                 }
             });
         }

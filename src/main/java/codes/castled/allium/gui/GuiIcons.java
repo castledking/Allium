@@ -39,7 +39,7 @@ public final class GuiIcons {
 
     /** Binds the marker key and reads each icon's model data from the bundled manifest. */
     public static void init(org.bukkit.plugin.Plugin plugin, @Nullable AssetManifest manifest) {
-        marker = new NamespacedKey(plugin, "gui_icon");
+        marker = new NamespacedKey(codes.castled.allium.PluginStart.bukkitPlugin(plugin), "gui_icon");
         if (manifest == null) {
             return;
         }

@@ -71,7 +71,7 @@ public final class CommandMapBridge {
             return false;
         }
 
-        Plugin owner = plugin instanceof codes.castled.allium.PluginStart ps ? ps.bukkitPlugin() : plugin;
+        Plugin owner = codes.castled.allium.PluginStart.bukkitPlugin(plugin);
         PluginCommand alliumCommand = owner instanceof JavaPlugin jp
                 ? jp.getCommand(spec.canonicalName())
                 : (plugin instanceof codes.castled.allium.PluginStart ps ? ps.getCommand(spec.canonicalName()) : null);

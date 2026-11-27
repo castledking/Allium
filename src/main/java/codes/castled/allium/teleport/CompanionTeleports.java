@@ -93,7 +93,7 @@ public final class CompanionTeleports implements Listener, AutoCloseable {
     }
 
     public void enable() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        plugin.getServer().getPluginManager().registerEvents(this, codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         timer = plugin.getScheduler().repeatOnServer(() -> {
             for (Selection selection : List.copyOf(selections.values())) {
                 onEntity(selection.owner, () -> expire(selection), () -> deferClear(selection));

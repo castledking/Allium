@@ -97,7 +97,7 @@ public final class ChatService implements Listener,AutoCloseable {
         if(relay!=null)this.relay=relay;
     }
     public void enable(){
-        plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        plugin.getServer().getPluginManager().registerEvents(this,codes.castled.allium.PluginStart.bukkitPlugin(plugin));
         paperChat=installPaperInput();installInteractiveGuard();
         try{if(plugin.getServer().getPluginManager().isPluginEnabled("packetevents")||plugin.getServer().getPluginManager().isPluginEnabled("PacketEvents"))packetMirror=new ChatPacketMirror(this);}
         catch(LinkageError|RuntimeException error){plugin.logger().warning("Optional chat packet mirror unavailable; replay covers Allium-rendered history only.");}
@@ -277,7 +277,7 @@ public final class ChatService implements Listener,AutoCloseable {
                     Set<UUID> frozenAudience=Set.copyOf(audience);
                     BukkitServerThread.runFor(plugin,plugin.getScheduler(),source,()->send(source,null,body,frozenAudience),()->{},0L);
                 }catch(ReflectiveOperationException error){((Cancellable)raw).setCancelled(true);plugin.logger().warning("Paper chat input refused: "+error.getMessage());}
-            },plugin,true);return true;
+            },PluginStart.bukkitPlugin(plugin),true);return true;
         }catch(ClassNotFoundException unavailable){return false;}
         catch(ReflectiveOperationException|LinkageError error){throw new IllegalStateException("Paper chat adapter unavailable",error);}
     }
@@ -863,7 +863,7 @@ public final class ChatService implements Listener,AutoCloseable {
                         queue.addAll((List<?>)children.invoke(node));
                     }
                 }catch(ReflectiveOperationException error){throw new org.bukkit.event.EventException(error);}
-            },plugin,false);
+            },PluginStart.bukkitPlugin(plugin),false);
         }catch(ReflectiveOperationException error){plugin.logger().warning("InteractiveChat delayed-deletion guard unavailable.");}
     }
     private void auditDeletion(CommandSender sender,List<String> ids){plugin.logger().info("Chat deletion actor="+(sender instanceof Player p?p.getUniqueId():"CONSOLE")+" messages="+String.join(",",ids));}

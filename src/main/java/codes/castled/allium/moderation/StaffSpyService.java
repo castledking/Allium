@@ -1,6 +1,7 @@
 package codes.castled.allium.moderation;
 
 import codes.castled.allium.PluginStart;
+import codes.castled.allium.portable.SpectateCommands;
 import codes.castled.allium.command.essentials.UtilitySupport;
 import codes.castled.allium.message.MessageManager;
 import codes.castled.allium.message.Messages;
@@ -50,10 +51,6 @@ public final class StaffSpyService implements Listener {
 
     private static final Set<String> SENSITIVE_COMMANDS = Set.of(
             "login", "l", "register", "reg", "changepassword", "changepass", "cp", "email", "2fa", "auth");
-
-    private static final Set<String> SELF_GAMEMODE_COMMANDS = Set.of(
-            "gmsp", "gmc", "gms", "gma", "spectator", "creative", "survival", "adventure",
-            "spectatormode", "creativemode", "survivalmode", "adventuremode");
 
     private final PluginStart plugin;
     /** Opt-in global commandspy: never auto-enabled from permission alone. */
@@ -290,68 +287,16 @@ public final class StaffSpyService implements Listener {
             return;
         }
         List<String> configured = plugin.getConfig().getStringList("spectate-commands");
-        if (configured.isEmpty()) {
-            configured = List.of("tp {player} {target}", "gmsp {player}");
-        }
         ConsoleCommandSender console = plugin.getServer().getConsoleSender();
-        for (String raw : configured) {
-            if (raw == null || raw.isBlank()) {
-                continue;
-            }
-            String template = raw.trim();
-            boolean asPlayer = false;
-            boolean explicitConsole = false;
-            if (template.regionMatches(true, 0, "player:", 0, 7)) {
-                asPlayer = true;
-                template = template.substring(7).trim();
-            } else if (template.regionMatches(true, 0, "console:", 0, 8)) {
-                explicitConsole = true;
-                template = template.substring(8).trim();
-            }
-            if (template.startsWith("/")) {
-                template = template.substring(1).trim();
-            }
-            if (template.isEmpty()) {
-                continue;
-            }
-            boolean hadPlayerPlaceholder = template.contains("{player}");
-            String expanded = template
-                    .replace("{player}", staff.getName())
-                    .replace("{target}", target.getName());
-            if (asPlayer) {
-                UtilitySupport.onOwner(plugin, staff, () -> staff.performCommand(expanded));
+        for (var invocation : SpectateCommands.expand(configured, staff.getName(), target.getName())) {
+            if (invocation.asPlayer) {
+                UtilitySupport.onOwner(plugin, staff, () -> staff.performCommand(invocation.command));
             } else {
-                String consoleCommand = (!explicitConsole && !hadPlayerPlaceholder)
-                        ? expandSelfShorthandForConsole(expanded, staff.getName())
-                        : expanded;
-                UtilitySupport.onGlobal(plugin, () -> plugin.getServer().dispatchCommand(console, consoleCommand));
+                UtilitySupport.onGlobal(plugin, () -> plugin.getServer().dispatchCommand(console, invocation.command));
             }
         }
         plugin.logger().info("Spectate audit actor=" + staff.getUniqueId() + " target=" + target.getUniqueId());
         UtilitySupport.send(plugin, staff, Messages.SPECTATE_STARTED, "{player}", target.getName());
-    }
-
-    /**
-     * Allows concise config entries like {@code tp {target}} and {@code gmsp} (without {@code {player}})
-     * to work cleanly when dispatched from console.
-     */
-    static String expandSelfShorthandForConsole(String command, String actorName) {
-        String[] parts = command.split("\\s+");
-        if (parts.length == 0) {
-            return command;
-        }
-        String head = parts[0].toLowerCase(Locale.ROOT);
-        int colon = head.lastIndexOf(':');
-        if (colon >= 0) {
-            head = head.substring(colon + 1);
-        }
-        if (parts.length == 1 && SELF_GAMEMODE_COMMANDS.contains(head)) {
-            return command + " " + actorName;
-        }
-        if (parts.length == 2 && (head.equals("tp") || head.equals("tpo"))) {
-            return parts[0] + " " + actorName + " " + parts[1];
-        }
-        return command;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

@@ -6,6 +6,7 @@ import codes.castled.allium.legacy.LegacyPlayerSettings.Setting;
 import codes.castled.allium.messaging.ReplyTargets;
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.PlayerNameSearch;
+import codes.castled.allium.portable.SpectateCommands;
 import codes.castled.allium.portable.UtilityMessages;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -298,6 +299,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return handleTp(sender, args);
             case "tphere":
                 return handleTpHere(sender, args);
+            case "spectate":
+                return handleSpectate(sender, args);
             case "back":
                 return handleBack(sender);
             case "msg":
@@ -398,6 +401,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return homes((Player) sender, false).suggestions(args[0]);
             }
             return Collections.emptyList();
+        }
+        if ("spectate".equals(name) && args.length == 1) {
+            return sender.hasPermission("allium.spectate") ? teleportPlayerSuggestions(sender, prefix) : Collections.emptyList();
         }
         if ("allium".equals(name) && args.length == 1) {
             return filterPrefix(Arrays.asList("version", "help", "reload"), prefix);
@@ -897,6 +903,45 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         target.teleport(self.getLocation());
         sender.sendMessage(ChatColor.GREEN + "Teleported " + target.getName() + " to you.");
+        return true;
+    }
+
+    private boolean handleSpectate(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        Player staff = requirePlayer(sender);
+        if (staff == null) return true;
+        if (!staff.hasPermission("allium.spectate")) {
+            staff.sendMessage(ChatColor.RED + "You do not have permission to spectate players.");
+            return true;
+        }
+        Player target = plugin.getServer().getPlayerExact(args[0]);
+        if (target == null || !canSeeTeleportTarget(staff, target)) {
+            staff.sendMessage(ChatColor.RED + "That player is not online.");
+            return true;
+        }
+        if (staff.getUniqueId().equals(target.getUniqueId())) {
+            messageManager.send(staff, "chat.spectate-self", "{prefix} &cYou cannot spectate yourself.");
+            return true;
+        }
+        String actorName = staff.getName();
+        String targetName = target.getName();
+        if (!actorName.matches("[A-Za-z0-9_.-]{1,32}") || !targetName.matches("[A-Za-z0-9_.-]{1,32}")) {
+            staff.sendMessage(ChatColor.RED + "A player name cannot be used in the configured commands.");
+            return true;
+        }
+        boolean dispatched = false;
+        for (SpectateCommands.Invocation invocation : SpectateCommands.expand(
+                configManager.raw().getStringList("spectate-commands"), actorName, targetName)) {
+            boolean accepted = invocation.asPlayer ? staff.performCommand(invocation.command)
+                    : plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), invocation.command);
+            dispatched |= accepted;
+        }
+        if (dispatched) {
+            plugin.getLogger().info("Spectate audit actor=" + staff.getUniqueId() + " target=" + target.getUniqueId());
+            messageManager.send(staff, "chat.spectate-started", "{prefix} &aNow spectating &f{player}&a.", "{player}", targetName);
+        } else {
+            staff.sendMessage(ChatColor.RED + "None of the configured spectate commands ran.");
+        }
         return true;
     }
 

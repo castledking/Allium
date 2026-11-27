@@ -314,7 +314,7 @@ final class LegacyCommandManager {
         for (String c : new String[]{"vanish", "mute", "unmute", "mutes", "kick", "kickall", "ban", "tempban",
                 "unban", "banlist", "ipban", "tempbanip", "unbanip", "freeze", "setjail", "deljail", "jails",
                 "jail", "unjail", "togglejail", "jailedplayers", "warn", "notes", "unnote", "invsee",
-                "helpop", "report", "socialspy", "commandspy", "spy"}) {
+                "helpop", "report", "socialspy", "commandspy", "spy", "spectate"}) {
             m.put(c, "moderation");
         }
         // Info

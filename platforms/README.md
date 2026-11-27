@@ -34,6 +34,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 Teleport commands and tab completion accept partial usernames, nicknames, and close typos. Teleporting another player with `/tp <player> <target>` requires `allium.tp.others`.
 
+`/spectate <player>` uses the same `spectate-commands` configuration as the modern runtime. Entries can run as the console or use `player:` to run with the staff member's permissions.
+
 ## Development build
 
 Run Gradle with JDK 25. JDK 17 and JDK 21 are also required by the build.

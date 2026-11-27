@@ -320,7 +320,7 @@ final class LegacyCommandManager {
     private static Map<String, String> buildCommandModules() {
         Map<String, String> m = new HashMap<String, String>();
         // Economy & Worth
-        for (String c : new String[]{"balance", "pay", "paytoggle", "payconfirmtoggle", "eco", "baltop"}) m.put(c, "economy");
+        for (String c : new String[]{"balance", "pay", "paytoggle", "payconfirmtoggle", "eco", "baltop", "cheque"}) m.put(c, "economy");
         for (String c : new String[]{"worth", "setworth", "sell"}) m.put(c, "worth");
         // Kits
         for (String c : new String[]{"kit", "kits", "createkit", "delkit", "showkit", "kitreset"}) m.put(c, "kits");

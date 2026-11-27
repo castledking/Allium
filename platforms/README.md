@@ -54,6 +54,10 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/kittycannon` launches a kitten, using a tamed baby ocelot on versions before standalone cats. `/beezooka` (`/beecannon`) works on versions with bees. Both mobs disappear in a harmless pop. `/nuke [player...]` drops TNT that can damage entities and leaves blocks intact. Running it without targets in game targets the sender.
 
+`/cheque <amount>` takes the amount from your balance and gives a Money Note; `/cheque <amount|min-max> <player>` mints an admin note without funds (`allium.cheque.others` or the console). Right-clicking a note pays it once. Notes on 1.12.2–1.19.4 carry only an id line; the amount, signer and whether a note was redeemed live in `cheques-legacy.yml`, so a copied or edited note pays nothing. Cheques there are not taxed.
+
+A command typed with missing or wrong arguments shows its usage card, as on the modern platform: the command's description and one clickable line per form the sender may use, narrowed to the subcommand that was wrong (`/allium hide enabled`). The lines come from `command-usages.tsv`, which the build keeps equal to the command specs.
+
 ## Chat and chat filter on Bukkit 1.12.2–1.19.4
 
 Public chat formatting (`enable-chat-formatting`, `chat-format.default`, `chat-format.groups.*`, optional Vault prefix/suffix/group lookup), channels (`/channel`, `/g`, `/global`, `/shout`, `/l`, `/local`, `/a`, `/ac`, `/amsg`, `/staffchat`, `#staff` and `>global` shortcuts), local radius, `?` global questions (`allium.chat.question`), `@<player>` mention highlights and sounds (`allium.chat.mention`, `allium.chat.receive.mention`), URL permission gating (`chat.urls.enabled`, `allium.chat.url`), `/me` (`/action`), and `join-and-quit-messages` (including optional `first-join` and `broadcast-scope: world`) run natively on 1.12.2–1.19.4. Channel selections are saved in `chat-channels-legacy.yml`.

@@ -50,11 +50,13 @@ final class LegacyEconomyModule implements Listener {
     private final Set<UUID> payConfirm = new HashSet<UUID>();
     private final Map<UUID, PendingPayment> pendingPayments = new HashMap<UUID, PendingPayment>();
     private final Map<String, BigDecimal> worthTable = new HashMap<String, BigDecimal>();
+    private final LegacyCheques cheques;
 
     LegacyEconomyModule(JavaPlugin plugin, LegacyConfigManager config, LegacyMessageManager messages) {
         this.plugin = plugin;
         this.config = config;
         this.messages = messages;
+        this.cheques = new LegacyCheques(plugin, messages, this);
     }
 
     private void send(CommandSender recipient, String message) {
@@ -64,11 +66,18 @@ final class LegacyEconomyModule implements Listener {
     void enable() {
         loadEconomy();
         loadWorth();
+        cheques.load();
     }
 
     void reload() {
         loadEconomy();
         loadWorth();
+        cheques.load();
+    }
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGH)
+    public void onInteract(org.bukkit.event.player.PlayerInteractEvent event) {
+        cheques.onInteract(event);
     }
 
     void disable() {
@@ -111,6 +120,30 @@ final class LegacyEconomyModule implements Listener {
         saveEconomy();
     }
 
+    /** Money as this server shows it. */
+    String format(BigDecimal amount) {
+        return formatMoney(amount);
+    }
+
+    /**
+     * Adds {@code delta} (negative to take) to a balance and saves; false, with nothing changed, when
+     * the balance would go below zero or the save fails.
+     */
+    boolean adjust(UUID id, String name, BigDecimal delta) {
+        BigDecimal next = getBalance(id).add(delta).setScale(2, RoundingMode.HALF_UP);
+        if (next.compareTo(BigDecimal.ZERO) < 0) return false;
+        BigDecimal previous = balances.put(id, next);
+        String previousName = name == null ? null : knownNames.put(id, name);
+        if (saveEconomy()) return true;
+        restore(balances, id, previous);
+        if (name != null) restore(knownNames, id, previousName);
+        return false;
+    }
+
+    LegacyCheques cheques() {
+        return cheques;
+    }
+
     boolean handles(String commandName) {
         switch (commandName) {
             case "balance":
@@ -120,6 +153,7 @@ final class LegacyEconomyModule implements Listener {
             case "worth":
             case "setworth":
             case "sell":
+            case "cheque":
                 return true;
             default:
                 return false;
@@ -135,6 +169,7 @@ final class LegacyEconomyModule implements Listener {
             case "worth": return handleWorth(sender, args);
             case "setworth": return handleSetWorth(sender, args);
             case "sell": return handleSell(sender, args);
+            case "cheque": return cheques.command(sender, args);
             default: return false;
         }
     }
@@ -150,6 +185,8 @@ final class LegacyEconomyModule implements Listener {
                 return Collections.emptyList();
             case "sell":
                 return args.length == 1 ? filter(Arrays.asList("hand", "all"), prefix) : Collections.<String>emptyList();
+            case "cheque":
+                return cheques.complete(sender, args, prefix);
             case "worth":
                 return args.length == 1 ? filter(Arrays.asList("hand"), prefix) : Collections.<String>emptyList();
             default:

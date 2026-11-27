@@ -85,6 +85,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyUtilitiesModule utilities;
     private final LegacyTextModule text;
     private final LegacyPlayerSettings settings;
+    private final LegacyEditSignCommand editSign;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -99,6 +100,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.configManager = new LegacyConfigManager(plugin);
         this.languageManager = new LegacyLanguageManager(plugin, configManager);
         this.messageManager = new LegacyMessageManager(plugin, configManager, languageManager, version);
+        this.editSign = new LegacyEditSignCommand(plugin, messageManager);
         this.commandManager = new LegacyCommandManager(plugin, configManager);
         this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
         this.economy = new LegacyEconomyModule(plugin, configManager);
@@ -195,6 +197,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         utilities.disable();
         godPlayers.clear();
         replyTargets = new ReplyTargets();
+        editSign.clear();
         backLocations.clear();
         incomingTpa.clear();
         warps.clear();
@@ -229,6 +232,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         godPlayers.remove(id);
         incomingTpa.remove(id);
         replyTargets.forget(id);
+        editSign.forget(id);
     }
 
     @Override
@@ -310,6 +314,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return settings.execute(sender, true, args);
             case "toggles":
                 return settings.execute(sender, false, args);
+            case "editsign":
+                return editSign.execute(sender, args);
             case "heal":
                 return handleHeal(sender, args);
             case "feed":
@@ -364,6 +370,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
         if ("toggle".equals(name)) return settings.complete(sender, args);
+        if ("editsign".equals(name)) {
+            return command.testPermissionSilent(sender) ? editSign.complete(args, prefix) : Collections.emptyList();
+        }
 
         if ("help".equals(name)) {
             return helpCommand.complete(sender, args);

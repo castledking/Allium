@@ -8,9 +8,11 @@ import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.Sign;
 import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -277,6 +279,40 @@ class LegacyModulesTest {
         verify(incoming).sendMessage(contains("sender-reply"));
         verify(outgoing, never()).sendMessage(contains("sender-reply"));
         restarted.runtime().onDisable();
+    }
+
+    @Test
+    void compatibilitySignEditingUsesClipboardAndRespectsProtectionEvents() {
+        Harness h = createHarness();
+        Player player = h.addPlayer("Builder", UUID.randomUUID(), true);
+        Block block = mock(Block.class);
+        Sign sign = mock(Sign.class);
+        when(block.getState()).thenReturn(sign);
+        when(sign.getLines()).thenReturn(new String[]{"first", "second", "", "last"});
+        when(sign.update(false, false)).thenReturn(true);
+        when(player.getTargetBlock(org.mockito.ArgumentMatchers.<Set<Material>>isNull(), eq(6))).thenReturn(block);
+
+        assertTrue(h.run(player, "editsign", "copy"));
+        verify(sign, never()).setLine(anyInt(), anyString());
+        PluginManager manager = h.server().getPluginManager();
+        doAnswer(inv -> {
+            SignChangeEvent event = inv.getArgument(0);
+            event.setLine(0, "plugin-modified");
+            return null;
+        }).when(manager).callEvent(any(SignChangeEvent.class));
+        assertTrue(h.run(player, "editsign", "paste"));
+        verify(sign).setLine(0, "plugin-modified");
+        verify(sign).setLine(1, "second");
+        verify(sign).update(false, false);
+
+        doAnswer(inv -> {
+            inv.<BlockBreakEvent>getArgument(0).setCancelled(true);
+            return null;
+        }).when(manager).callEvent(any(BlockBreakEvent.class));
+        assertTrue(h.run(player, "editsign", "set", "1", "bypass"));
+        verify(sign, never()).setLine(anyInt(), eq("bypass"));
+        verify(sign, times(1)).update(false, false);
+        verify(player).sendMessage(contains("cannot change that block"));
     }
 
     @Test

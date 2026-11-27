@@ -188,6 +188,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(kits, plugin);
         pm.registerEvents(moderation, plugin);
         pm.registerEvents(playerInfo, plugin);
+        pm.registerEvents(playerInfo.editor(), plugin);
         pm.registerEvents(chat, plugin);
         pm.registerEvents(hide, plugin);
         pm.registerEvents(utilities, plugin);
@@ -243,6 +244,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(chat);
         HandlerList.unregisterAll(hide);
         HandlerList.unregisterAll(utilities);
+        HandlerList.unregisterAll(playerInfo.editor());
         HandlerList.unregisterAll(explosiveCommands);
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);

@@ -482,6 +482,11 @@ public final class LegacyCompat {
         }
     }
 
+    /** Whether this server draws {@code &#RRGGBB} hex colours (1.16+). */
+    static boolean supportsHexColor() {
+        return BUNGEE_COLOR_OF != null;
+    }
+
     /** Translates {@code &} color codes and {@code &#RRGGBB} hex colors (1.16+, stripped gracefully on 1.12-1.15). */
     public static String color(String raw) {
         if (raw == null) return "";

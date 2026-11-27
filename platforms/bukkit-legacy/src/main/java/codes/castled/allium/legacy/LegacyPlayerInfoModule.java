@@ -47,6 +47,7 @@ final class LegacyPlayerInfoModule implements Listener {
     private final Map<UUID, Long> lastSeenMs = new HashMap<UUID, Long>();
     private final Map<UUID, Location> lastLocations = new HashMap<UUID, Location>();
     private final Map<UUID, String> nicknames = new HashMap<UUID, String>();
+    private final LegacyNicknameEditor editor;
     private final Map<UUID, String> afkReasons = new HashMap<UUID, String>();
     private final Map<UUID, Set<UUID>> ignores = new HashMap<UUID, Set<UUID>>();
     private final Map<UUID, List<String>> mailboxes = new HashMap<UUID, List<String>>();
@@ -57,6 +58,7 @@ final class LegacyPlayerInfoModule implements Listener {
         this.moderation = moderation;
         this.economy = economy;
         this.messages = messages;
+        this.editor = new LegacyNicknameEditor(this, messages);
     }
 
     private void send(CommandSender recipient, String message) {
@@ -163,6 +165,7 @@ final class LegacyPlayerInfoModule implements Listener {
             case "unignore":
             case "mail":
             case "nick":
+            case "editnick":
             case "realname":
                 return true;
             default:
@@ -182,6 +185,7 @@ final class LegacyPlayerInfoModule implements Listener {
             case "unignore": return handleIgnore(sender, args, false);
             case "mail": return handleMail(sender, args);
             case "nick": return handleNick(sender, args);
+            case "editnick": return editor.command(sender, args, this::findOnline);
             case "realname": return handleRealName(sender, args);
             default: return false;
         }
@@ -197,6 +201,8 @@ final class LegacyPlayerInfoModule implements Listener {
                 return args.length == 1 ? onlinePlayers(prefix) : Collections.<String>emptyList();
             case "nick":
                 return args.length == 2 ? onlinePlayers(prefix) : Collections.<String>emptyList();
+            case "editnick":
+                return args.length == 1 && sender.hasPermission("allium.nick.others") ? onlinePlayers(prefix) : Collections.<String>emptyList();
             case "mail":
                 if (args.length == 1) return filter(Arrays.asList("read", "send", "clear"), prefix);
                 if (args.length == 2 && args[0].equalsIgnoreCase("send")) return onlinePlayers(prefix);
@@ -544,6 +550,31 @@ final class LegacyPlayerInfoModule implements Listener {
         saveInfo();
         send(sender, ChatColor.GREEN + "Set nickname for " + target.getName() + " to " + LegacyCompat.color(raw) + ChatColor.GREEN + ".");
         return true;
+    }
+
+    LegacyNicknameEditor editor() {
+        return editor;
+    }
+
+    /** Saves a nickname from /editnick under /nick's rules; {@code raw} null resets it. */
+    void setNicknameFromEditor(Player viewer, UUID targetId, String targetName, String raw) {
+        Player target = plugin.getServer().getPlayer(targetId);
+        if (raw == null) {
+            nicknames.remove(targetId);
+            if (target != null) target.setDisplayName(target.getName());
+            saveInfo();
+            send(viewer, ChatColor.GREEN + "Reset nickname for " + targetName + ".");
+            return;
+        }
+        String plain = ChatColor.stripColor(LegacyCompat.color(raw));
+        if (plain.isEmpty() || plain.length() > 32) {
+            send(viewer, ChatColor.RED + "Nickname must be 1-32 visible characters.");
+            return;
+        }
+        nicknames.put(targetId, raw);
+        if (target != null) applyNick(target);
+        saveInfo();
+        send(viewer, ChatColor.GREEN + "Set nickname for " + targetName + " to " + LegacyCompat.color(raw) + ChatColor.GREEN + ".");
     }
 
     private boolean handleRealName(CommandSender sender, String[] args) {

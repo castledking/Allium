@@ -71,6 +71,17 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final JavaPlugin plugin;
     private final ServerVersion version;
     private final int javaMajor;
+    private final LegacyConfigManager configManager;
+    private final LegacyLanguageManager languageManager;
+    private final LegacyMessageManager messageManager;
+    private final LegacyCommandManager commandManager;
+    private final LegacyHelpCommand helpCommand;
+    private final LegacyEconomyModule economy;
+    private final LegacyKitsModule kits;
+    private final LegacyModerationModule moderation;
+    private final LegacyPlayerInfoModule playerInfo;
+    private final LegacyTravelModule travel;
+    private final LegacyUtilitiesModule utilities;
     private final Set<UUID> godPlayers = new HashSet<>();
     private final Set<UUID> msgDisabled = new HashSet<>();
     private final Map<UUID, UUID> lastReplyTarget = new HashMap<>();
@@ -83,6 +94,17 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.plugin = plugin;
         this.version = version;
         this.javaMajor = javaMajor;
+        this.configManager = new LegacyConfigManager(plugin);
+        this.languageManager = new LegacyLanguageManager(plugin, configManager);
+        this.messageManager = new LegacyMessageManager(plugin, configManager, languageManager, version);
+        this.commandManager = new LegacyCommandManager(plugin, configManager);
+        this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
+        this.economy = new LegacyEconomyModule(plugin, configManager);
+        this.kits = new LegacyKitsModule(plugin);
+        this.moderation = new LegacyModerationModule(plugin);
+        this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy);
+        this.travel = new LegacyTravelModule(plugin, this);
+        this.utilities = new LegacyUtilitiesModule(plugin, this);
     }
 
     @Override
@@ -96,24 +118,53 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (!plugin.getDataFolder().exists()) {
             plugin.getDataFolder().mkdirs();
         }
+        configManager.loadAll();
+        languageManager.load();
+        messageManager.enable();
+        commandManager.enable();
         loadWarps();
         loadSpawn();
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        economy.enable();
+        kits.enable();
+        moderation.enable();
+        playerInfo.enable();
+        travel.enable();
+        org.bukkit.plugin.PluginManager pm = plugin.getServer().getPluginManager();
+        pm.registerEvents(this, plugin);
+        pm.registerEvents(economy, plugin);
+        pm.registerEvents(kits, plugin);
+        pm.registerEvents(moderation, plugin);
+        pm.registerEvents(playerInfo, plugin);
+        pm.registerEvents(utilities, plugin);
         String reason = version.isAtLeast(1, 20, 0)
                 ? "Java " + javaMajor + " detected (Java 17+ required for full 1.20+ modules)"
                 : "Minecraft " + version + " (full modern modules activate on 1.20+ with Java 17+)";
         plugin.getLogger().info("Allium v" + plugin.getDescription().getVersion()
                 + " enabled in 1.12.2-1.19.4 compatibility mode on "
                 + LegacyCompat.platformName(plugin.getServer()) + " — " + reason + ".");
+        String langCode = languageManager.getActiveLocale();
+        String authorTag = languageManager.getText("core.startup.author-tag", "&7by castledking");
+        String pluginTag = languageManager.getText("core.startup.plugin-tag", "&dThe modern essentials suite for Minecraft servers");
+        String startupDetails = languageManager.getText("core.startup.details", "&fStartup details: {0}").replace("{0}", "");
+        String bootTime = "&a" + Math.max(0L, System.currentTimeMillis() - startupStartTime) + "ms";
+        String bootFinished = languageManager.getText("core.startup.boot-finished", "&7Boot finished in: &a{0}").replace("{0}", bootTime);
+        int activeCmds = commandManager.activeCommandCount();
         codes.castled.allium.StartupHeader.StartupInfo info = codes.castled.allium.StartupHeader.StartupInfo.builder()
-                .locale("en_US")
+                .locale(langCode)
                 .version(plugin.getDescription().getVersion())
-                .bootFinished("&7Boot finished in: &a" + Math.max(0L, System.currentTimeMillis() - startupStartTime) + "ms")
+                .authorTag(authorTag)
+                .pluginTag(pluginTag)
+                .startupDetailsHeader(startupDetails)
+                .bootFinished(bootFinished)
                 .hexColorSupported(codes.castled.allium.StartupHeader.supportsHexColors(plugin.getServer()))
                 .addRow("Platform:", "&a" + codes.castled.allium.StartupHeader.detectPlatformVersion(plugin.getServer()),
                         "Runtime:", "&eLegacy (Java " + javaMajor + ")")
+                .addRow("Modules:", "&a6/6",
+                        "Commands:", "&a" + (activeCmds > 0 ? activeCmds : 150))
+                .addRow("Locale:", "&a" + langCode,
+                        "Messages loaded:", "&a" + languageManager.getLoadedEntryCount())
                 .addRow("Storage:", "&aFlatFile",
-                        "Warps:", "&a" + warps.size())
+                        "Warps/Kits:", "&a" + warps.size() + "/" + kits.kitCount())
                 .build();
         codes.castled.allium.StartupHeader.display(plugin, info);
     }
@@ -121,6 +172,18 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     @Override
     public void onDisable() {
         HandlerList.unregisterAll(this);
+        HandlerList.unregisterAll(economy);
+        HandlerList.unregisterAll(kits);
+        HandlerList.unregisterAll(moderation);
+        HandlerList.unregisterAll(playerInfo);
+        HandlerList.unregisterAll(utilities);
+        messageManager.disable();
+        economy.disable();
+        kits.disable();
+        moderation.disable();
+        playerInfo.disable();
+        travel.disable();
+        utilities.disable();
         godPlayers.clear();
         msgDisabled.clear();
         lastReplyTarget.clear();
@@ -163,6 +226,22 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String name = command.getName().toLowerCase(Locale.ROOT);
+        if (commandManager.isDisabled(name) || commandManager.isDisabled(label)) {
+            messageManager.send(sender, "unknown-command",
+                    "{prefix} &cUnknown command: /{cmd}. Type &f/help &cfor help.", "{cmd}", label);
+            return true;
+        }
+        if (commandManager.isModuleDisabled(name)) {
+            String mod = commandManager.moduleOf(name);
+            sender.sendMessage(ChatColor.RED + "Module '" + mod + "' is disabled in config.yml.");
+            return true;
+        }
+        if ("help".equals(name)) {
+            return helpCommand.execute(sender, args);
+        }
+        if (messageManager.handles(name)) {
+            return messageManager.onCommand(sender, args);
+        }
         Homes.Action homeAction = homeAction(name);
         if (homeAction != null) {
             return handleHome(sender, homeAction, args);
@@ -247,6 +326,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             case "motd":
                 return sendTextResource(sender, "motd.txt", "Welcome to the server!");
             default:
+                if (economy.handles(name)) return economy.onCommand(sender, name, args);
+                if (kits.handles(name)) return kits.onCommand(sender, name, args);
+                if (travel.handles(name)) return travel.onCommand(sender, name, args);
+                if (moderation.handles(name)) return moderation.onCommand(sender, name, args);
+                if (playerInfo.handles(name)) return playerInfo.onCommand(sender, name, args);
+                if (utilities.handles(name)) return utilities.onCommand(sender, name, args);
                 sender.sendMessage(ChatColor.YELLOW + "Command /" + label
                         + " requires Minecraft 1.20+ with Java 17+ (running Allium compatibility mode on Minecraft "
                         + version + ").");
@@ -257,7 +342,17 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String name = command.getName().toLowerCase(Locale.ROOT);
+        if (commandManager.isDisabled(name) || commandManager.isDisabled(alias) || commandManager.isModuleDisabled(name)) {
+            return Collections.emptyList();
+        }
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
+
+        if ("help".equals(name)) {
+            return helpCommand.complete(sender, args);
+        }
+        if (messageManager.handles(name)) {
+            return messageManager.onTabComplete(args, prefix);
+        }
 
         Homes.Action homeAction = homeAction(name);
         if (homeAction != null) {
@@ -296,6 +391,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if (args.length == 2 && ("tp".equals(name) || "gamemode".equals(name) || "speed".equals(name))) {
             return onlinePlayerSuggestions(prefix);
         }
+        if (economy.handles(name)) return economy.onTabComplete(sender, name, args, prefix);
+        if (kits.handles(name)) return kits.onTabComplete(sender, name, args, prefix);
+        if (travel.handles(name)) return travel.onTabComplete(sender, name, args, prefix);
+        if (moderation.handles(name)) return moderation.onTabComplete(sender, name, args, prefix);
+        if (playerInfo.handles(name)) return playerInfo.onTabComplete(sender, name, args, prefix);
+        if (utilities.handles(name)) return utilities.onTabComplete(sender, name, args, prefix);
         return Collections.emptyList();
     }
 
@@ -322,12 +423,22 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         if ("reload".equalsIgnoreCase(args[0])) {
             if (!sender.hasPermission("allium.reload") && !sender.isOp()) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to reload Allium.");
+                messageManager.send(sender, "no-permission",
+                        "{prefix} &cYou don't have permission to use &f/{cmd}&c.", "{cmd}", "allium reload");
                 return true;
             }
+            configManager.reloadAll();
+            languageManager.reload();
+            messageManager.reload();
+            commandManager.reload();
             loadWarps();
             loadSpawn();
-            sender.sendMessage(ChatColor.GREEN + "Reloaded Allium compatibility data (warps and spawn).");
+            economy.reload();
+            kits.reload();
+            travel.reload();
+            moderation.reload();
+            playerInfo.reload();
+            messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");
             return true;
         }
         sender.sendMessage(ChatColor.RED + "Usage: /allium [version|help|reload]");
@@ -586,13 +697,54 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             sender.sendMessage(ChatColor.RED + "You cannot send a teleport request to yourself.");
             return true;
         }
+        if (travel.isTpDisabled(target.getUniqueId()) && !from.hasPermission("allium.tptoggle.bypass")) {
+            sender.sendMessage(ChatColor.RED + target.getName() + " is not accepting teleport requests.");
+            return true;
+        }
+        sendTpaRequest(from, target, here);
+        return true;
+    }
+
+    void sendTpaRequest(Player from, Player target, boolean here) {
+        if (travel.isTpAuto(target.getUniqueId())) {
+            if (here) {
+                target.teleport(from.getLocation());
+                target.sendMessage(ChatColor.GREEN + "Auto-accepted teleport to " + from.getName() + ".");
+                from.sendMessage(ChatColor.GREEN + target.getName() + " auto-accepted your teleport request.");
+            } else {
+                from.teleport(target.getLocation());
+                from.sendMessage(ChatColor.GREEN + "Teleported to " + target.getName() + " (auto-accepted).");
+                target.sendMessage(ChatColor.GREEN + "Auto-accepted teleport request from " + from.getName() + ".");
+            }
+            return;
+        }
         incomingTpa.put(target.getUniqueId(), new TpaRequest(
                 from.getUniqueId(), target.getUniqueId(), here, System.currentTimeMillis() + TPA_EXPIRY_MILLIS));
         from.sendMessage(ChatColor.GREEN + "Teleport request sent to " + target.getName() + ".");
         target.sendMessage(ChatColor.GOLD + from.getName() + (here
                 ? " wants you to teleport to them. Use /tpaccept or /tpdeny."
                 : " wants to teleport to you. Use /tpaccept or /tpdeny."));
-        return true;
+    }
+
+    Homes homesFor(Player player) {
+        return homes(player, true);
+    }
+
+    List<String> homeSuggestions(Player player, String prefix) {
+        return homes(player, false).suggestions(prefix);
+    }
+
+    Location getWarp(String name) {
+        return name == null ? null : warps.get(name.toLowerCase(Locale.ROOT));
+    }
+
+    List<String> warpSuggestions(String prefix) {
+        List<String> out = new ArrayList<>();
+        for (String w : warps.keySet()) {
+            if (w.startsWith(prefix)) out.add(w);
+        }
+        Collections.sort(out);
+        return out;
     }
 
     private boolean handleTpAccept(CommandSender sender) {
@@ -754,9 +906,25 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     }
 
     private void deliverPrivateMessage(CommandSender sender, Player target, String text) {
+        if (sender instanceof Player) {
+            UUID fromId = ((Player) sender).getUniqueId();
+            if (moderation.isMuted(fromId)) {
+                sender.sendMessage(ChatColor.RED + "You cannot send private messages while muted.");
+                return;
+            }
+            if (playerInfo.isIgnoring(target.getUniqueId(), fromId) && !sender.hasPermission("allium.ignore.bypass")) {
+                sender.sendMessage(ChatColor.RED + target.getName() + " is ignoring you.");
+                return;
+            }
+        }
         String fromName = sender instanceof Player ? sender.getName() : "Console";
-        sender.sendMessage(ChatColor.GRAY + "[me -> " + target.getName() + "] " + ChatColor.WHITE + text);
-        target.sendMessage(ChatColor.GRAY + "[" + fromName + " -> me] " + ChatColor.WHITE + text);
+        messageManager.sendPrivateMessageEntry(sender, "messaging.sent",
+                "&7[&fme &7-> &f{recipient}&7] &f{message}", true,
+                "{recipient}", target.getName(), "{message}", text);
+        messageManager.sendPrivateMessageEntry(target, "messaging.received",
+                "&7[&f{sender} &7-> &fme&7] &f{message}", false,
+                "{sender}", fromName, "{message}", text);
+        moderation.notifySocialSpy(sender, target, text);
         if (sender instanceof Player) {
             UUID fromId = ((Player) sender).getUniqueId();
             lastReplyTarget.put(fromId, target.getUniqueId());
@@ -1016,7 +1184,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         return true;
     }
 
-    private boolean sendTextResource(CommandSender sender, String filename, String fallback) {
+    boolean sendTextResource(CommandSender sender, String filename, String fallback) {
         List<String> lines = readLines(filename);
         if (lines.isEmpty()) {
             sender.sendMessage(ChatColor.GRAY + fallback);
@@ -1027,6 +1195,11 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         return true;
     }
+
+    LegacyConfigManager configManager() { return configManager; }
+    LegacyLanguageManager languageManager() { return languageManager; }
+    LegacyMessageManager messageManager() { return messageManager; }
+    LegacyCommandManager commandManager() { return commandManager; }
 
     private List<String> readLines(String filename) {
         File disk = new File(plugin.getDataFolder(), filename);

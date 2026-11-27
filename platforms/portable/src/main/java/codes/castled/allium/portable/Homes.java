@@ -151,6 +151,30 @@ public final class Homes {
         }
     }
 
+    public int rename(String oldRaw, String newRaw, Consumer<String> reply) {
+        String oldName = normalize(oldRaw);
+        String newName = normalize(newRaw);
+        if (oldName.isEmpty() || newName.isEmpty()) {
+            return fail(reply, "Use 1–32 letters, digits, underscores or hyphens for a home name.");
+        }
+        if (newName.equals("bed")) {
+            return fail(reply, "The name 'bed' is reserved.");
+        }
+        try {
+            Properties homes = read();
+            String saved = homes.getProperty(oldName);
+            if (saved == null) return fail(reply, "Home '" + oldName + "' was not found.");
+            if (homes.containsKey(newName)) return fail(reply, "Home '" + newName + "' already exists.");
+            homes.remove(oldName);
+            homes.setProperty(newName, saved);
+            save(homes);
+            reply.accept("Renamed home '" + oldName + "' to '" + newName + "'.");
+            return 1;
+        } catch (IOException | IllegalArgumentException failure) {
+            return fail(reply, "Your home data could not be read or saved.");
+        }
+    }
+
     private static List<String> names(Properties homes, String prefix) {
         List<String> names = new ArrayList<>();
         for (String name : homes.stringPropertyNames()) {

@@ -184,7 +184,7 @@ class UnifiedBootstrapTest {
         verify(alice).setAllowFlight(true);
 
         // 1.20+-only command gives clear notice
-        assertTrue(runtime.onCommand(alice, cmd("grindstone"), "grindstone", new String[0]));
+        assertTrue(runtime.onCommand(alice, cmd("creativemanager"), "creativemanager", new String[0]));
         verify(alice).sendMessage(argThat((String msg) -> msg.contains("requires Minecraft 1.20+")));
 
         // Color helper works safely

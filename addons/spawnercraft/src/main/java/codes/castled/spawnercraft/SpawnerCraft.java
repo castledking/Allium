@@ -6,10 +6,12 @@ import codes.castled.allium.scheduler.TaskHandle;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.block.CreatureSpawner;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -138,6 +140,21 @@ public final class SpawnerCraft extends AlliumAddon implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCorePlace(BlockPlaceEvent event) {
         if (heads.coreMob(event.getItemInHand()) != null) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onCraftedSpawnerPlace(BlockPlaceEvent event) {
+        if (event.getBlockPlaced().getType() != Material.SPAWNER) return;
+        ItemStack item = event.getItemInHand();
+        if (!HeadRecipes.isCraftedSpawnerItem(item)) return;
+        if (event.getBlockPlaced().getState() instanceof CreatureSpawner spawner) {
+            spawner.getPersistentDataContainer().set(HeadRecipes.CRAFTED_SPAWNER_KEY, PersistentDataType.BYTE, (byte) 1);
+            EntityType craftedType = HeadRecipes.craftedSpawnerType(item);
+            if (craftedType != null && spawner.getSpawnedType() != craftedType) {
+                spawner.setSpawnedType(craftedType);
+            }
+            spawner.update(false, false);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

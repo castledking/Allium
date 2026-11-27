@@ -436,7 +436,7 @@ public final class ChatService implements Listener,AutoCloseable {
         if(c.local()&&!p.hasPermission(StaffSpyService.PERM_CHAT_SPY_EXEMPT)){
             notifyLocalSpy(p,body,render.keySet());
         }
-        if(!c.local()&&!c.discordId().isEmpty())relay.send(message,c,p.getName(),body.toPlainText());
+        if(!c.excludeFromDiscord())relay.send(message,c,p.getName(),body.toPlainText());
         plugin.getServer().getConsoleSender().sendMessage("["+c.id()+"] "+p.getName()+": "+body.toPlainText()+" ["+id+"]");
     }
     private static boolean canSeePlayer(CommandSender viewer,Player target){

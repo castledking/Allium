@@ -689,7 +689,8 @@ chat:
         aliases: [a, ac, amsg, staffchat]
         format: '&8[Staff] <prefix><display_name>&f: <message>'
         discord-channel-id: ''
-        webhook-delivery: false
+        discord-out-format: '{message}'
+        webhook-delivery: true
   # /me (/action): sent to everyone online like chat; deletable with /delmsg, never relayed to Discord.
   action-format: '&5* <display_name> &5<message>'
   # @<player> mentions in chat (requires allium.chat.mention, default true).

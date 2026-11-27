@@ -68,10 +68,81 @@ class DiscordChatRelayTest {
         var base=service.settings().channels().get("default");var channel=new ChatSettings.Channel(base.id(),base.display(),base.aliases(),base.format(),0,base.discordId(),base.discordIn(),base.discordOut(),true);
         var m=message();relay.send(m,channel,"Alice","@everyone body");assertEquals(1,calls.size());assertEquals("true",calls.get(0).url().queryParameter("wait"));
         var bytes=new github.scarsz.discordsrv.dependencies.okio.Buffer();calls.get(0).body().writeTo(bytes);var payload=new github.scarsz.discordsrv.dependencies.json.JSONObject(bytes.readUtf8());assertEquals(0,payload.getJSONObject("allowed_mentions").getJSONArray("parse").length());
+        assertEquals("@everyone body",payload.getString("content"));
         var response=new github.scarsz.discordsrv.dependencies.okhttp3.Response.Builder().request(calls.get(0)).protocol(github.scarsz.discordsrv.dependencies.okhttp3.Protocol.HTTP_1_1).code(200).message("OK").body(github.scarsz.discordsrv.dependencies.okhttp3.ResponseBody.create(github.scarsz.discordsrv.dependencies.okhttp3.MediaType.parse("application/json"),"{\"id\":\"444444444\",\"channel_id\":\"123456789\"}")).build();
         m.deleted().set(true);relay.delete(m.id());acknowledgements.get(0).onResponse(null,response);
         assertEquals(2,calls.size());assertEquals("DELETE",calls.get(1).method());assertEquals("/api/webhooks/1/test/messages/444444444",calls.get(1).url().encodedPath());verify(destination,never()).getHistory();
     }
+
+    @Test void discordSrvWebhookDeliveryUsesFormattedUsernamePlayerHeadAndCleanBody()throws Exception{
+        var client=mock(github.scarsz.discordsrv.dependencies.okhttp3.OkHttpClient.class);
+        when(jda.getHttpClient()).thenReturn(client);
+        when(backend.webhookDeliveryEnabled()).thenReturn(true);
+        when(backend.webhook(destination)).thenReturn("https://example.invalid/api/webhooks/1/test");
+        when(backend.displayName(any(),eq("Jack"))).thenReturn("§c[ADMIN]§fJack");
+        when(backend.formatWebhook(any(),eq("Jack"),eq("§c[ADMIN]§fJack"),any(),eq(destination),eq("gotta update server to 26.3")))
+                .thenReturn(new DiscordChatRelay.WebhookPayload(
+                        "[ADMIN]Jack",
+                        "https://crafthead.net/helm/abc123/128",
+                        "gotta update server to 26.3",
+                        false));
+        var calls=new ArrayList<github.scarsz.discordsrv.dependencies.okhttp3.Request>();
+        when(client.newCall(any())).thenAnswer(invocation->{
+            calls.add(invocation.getArgument(0));
+            return mock(github.scarsz.discordsrv.dependencies.okhttp3.Call.class);
+        });
+        var defaultChannel=service.settings().channels().get("default");
+        assertFalse(defaultChannel.webhook());
+        var m=message();
+        relay.send(m,defaultChannel,"Jack","gotta update server to 26.3");
+        verify(destination,never()).sendMessage(anyString());
+        assertEquals(1,calls.size());
+        var bytes=new github.scarsz.discordsrv.dependencies.okio.Buffer();
+        calls.get(0).body().writeTo(bytes);
+        var payload=new github.scarsz.discordsrv.dependencies.json.JSONObject(bytes.readUtf8());
+        assertEquals("[ADMIN]Jack",payload.getString("username"));
+        assertEquals("https://crafthead.net/helm/abc123/128",payload.getString("avatar_url"));
+        assertEquals("gotta update server to 26.3",payload.getString("content"));
+    }
+
+    @Test void finalizeWebhookPayloadKeepsMinecraftHeadAndFormattedNameUnlessDiscordOverrideEnabled(){
+        String head="https://crafthead.net/helm/0123456789/128";
+        var linkedDefault=DiscordChatRelay.finalizeWebhookPayload(
+                "[ADMIN]Jack",head,"hello world","Jack","retrogameman88",
+                Map.of(),"retogameman","retogameman","https://cdn.discordapp.com/avatars/1/a.png",
+                false,false);
+        assertFalse(linkedDefault.filtered());
+        assertEquals("[ADMIN]Jack",linkedDefault.username());
+        assertEquals(head,linkedDefault.avatarUrl());
+        assertEquals("hello world",linkedDefault.content());
+
+        var unlinked=DiscordChatRelay.finalizeWebhookPayload(
+                "ggpots",head,"a","ggpots","ggpots",
+                Map.of(),null,null,null,false,false);
+        assertFalse(unlinked.filtered());
+        assertEquals("ggpots",unlinked.username());
+        assertEquals(head,unlinked.avatarUrl());
+        assertEquals("a",unlinked.content());
+
+        var discordOverrides=DiscordChatRelay.finalizeWebhookPayload(
+                "[ADMIN]Jack",head,"hello world","Jack","retrogameman88",
+                Map.of(),"RetroNick","retogameman","https://cdn.discordapp.com/avatars/1/a.png",
+                true,true);
+        assertEquals("RetroNick",discordOverrides.username());
+        assertEquals("https://cdn.discordapp.com/avatars/1/a.png",discordOverrides.avatarUrl());
+    }
+
+    @Test void emptyDiscordChannelIdFallsBackToDiscordSrvGameChannelMapping(){
+        var mapped=mock(TextChannel.class);
+        when(mapped.getId()).thenReturn("555555555");
+        when(mapped.sendMessage(anyString())).thenReturn(action);
+        var staff=service.settings().channels().get("staff-chat");
+        assertTrue(staff.discordId().isEmpty());
+        when(backend.mappedChannel(staff,"default")).thenReturn(mapped);
+        relay.send(message(),staff,"Alice","staff ping");
+        verify(mapped,times(1)).sendMessage("Alice: staff ping");
+    }
+
     @Test void readyHookAttachesDeleteListenerAfterDelayedConnection(){relay.close();when(backend.jda()).thenReturn(null);relay=new DiscordChatRelay(plugin,service,backend);clearInvocations(jda);when(backend.jda()).thenReturn(jda);relay.ready(mock(DiscordReadyEvent.class));relay.ready(mock(DiscordReadyEvent.class));verify(jda,times(1)).addEventListener(any());}
     @AfterEach void close(){if(relay!=null)relay.close();}
 }

@@ -3,7 +3,9 @@ package codes.castled.spawnercraft;
 import codes.castled.allium.api.AddonPowerTools;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.entity.EntityType;
@@ -18,15 +20,37 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.Plugin;
 
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 final class SpawnerChanger implements Listener {
+    static final String BLOCKED_MESSAGE = "§cYou cannot use a Spawner Changer on upgradable or crafted spawners.";
+
     private static final Set<String> RESTRICTED = Set.of(
             "villager", "zombie_villager", "wandering_trader", "mooshroom", "cow", "sheep", "chicken",
             "spider", "zombie", "skeleton", "iron_golem", "enderman", "slime", "magma_cube", "squid",
             "glow_squid", "pig", "blaze", "creeper");
+
+    private static final Set<String> BLOCKED_NAMESPACES = Set.of(
+            "spawnercraft",
+            "upgradeablespawners",
+            "upgradablespawners",
+            "rosestacker",
+            "wildstacker",
+            "ancspawners",
+            "smartspawner");
+
+    private static final NamespacedKey SPAWNERMETA_OWNER = new NamespacedKey("spawnermeta", "owner");
+    private static final NamespacedKey SPAWNERMETA_LEVELS = new NamespacedKey("spawnermeta", "levels");
+    private static final NamespacedKey SPAWNERMETA_STACK = new NamespacedKey("spawnermeta", "stack");
+    private static final NamespacedKey SPAWNERMETA_CHARGES = new NamespacedKey("spawnermeta", "charges");
+    private static final NamespacedKey SPAWNERMETA_EMPTY = new NamespacedKey("spawnermeta", "empty");
 
     private final SpawnerCraft plugin;
 
@@ -43,6 +67,11 @@ final class SpawnerChanger implements Listener {
                 || player.getGameMode() == GameMode.SPECTATOR) return false;
         var tools = plugin.connection().powerTools();
         if (!tools.mayModify(player, block, "change_spawner", event)) return false;
+        if (isBlockedSpawner(block, spawner)) {
+            event.setCancelled(true);
+            player.sendMessage(BLOCKED_MESSAGE);
+            return false;
+        }
         event.setCancelled(true);
         int toolSlot = context.hand().equals("off") ? 40 : player.getInventory().getHeldItemSlot();
         var menu = new Menu(block, spawner.getSpawnedType(), toolSlot, context.item().clone());
@@ -53,6 +82,107 @@ final class SpawnerChanger implements Listener {
     }
 
     static boolean isMenu(Inventory inventory) { return inventory.getHolder() instanceof Menu; }
+
+    static boolean isBlockedSpawner(Block block, CreatureSpawner spawner) {
+        if (spawner != null && hasBlockedPersistentData(spawner.getPersistentDataContainer())) {
+            return true;
+        }
+        if (block == null || Bukkit.getServer() == null) {
+            return false;
+        }
+        return isOwnedBySpawnerMeta(block) || isManagedByUpgradeableSpawners(block);
+    }
+
+    static boolean hasBlockedPersistentData(PersistentDataContainer data) {
+        if (data == null) return false;
+        for (NamespacedKey key : data.getKeys()) {
+            String namespace = key.getNamespace().toLowerCase(Locale.ROOT);
+            if (BLOCKED_NAMESPACES.contains(namespace)) {
+                return true;
+            }
+        }
+        String owner = data.get(SPAWNERMETA_OWNER, PersistentDataType.STRING);
+        if (owner != null && !owner.isBlank()) {
+            return true;
+        }
+        int[] levels = data.get(SPAWNERMETA_LEVELS, PersistentDataType.INTEGER_ARRAY);
+        if (levels != null) {
+            for (int level : levels) {
+                if (level > 1) return true;
+            }
+        }
+        Integer stack = data.get(SPAWNERMETA_STACK, PersistentDataType.INTEGER);
+        if (stack != null && stack > 1) {
+            return true;
+        }
+        Integer charges = data.get(SPAWNERMETA_CHARGES, PersistentDataType.INTEGER);
+        if (charges != null && charges > 0) {
+            return true;
+        }
+        Integer empty = data.get(SPAWNERMETA_EMPTY, PersistentDataType.INTEGER);
+        return empty != null && empty >= 1;
+    }
+
+    private static boolean isOwnedBySpawnerMeta(Block block) {
+        Plugin spawnerMeta = Bukkit.getPluginManager().getPlugin("SpawnerMeta");
+        if (spawnerMeta == null || !spawnerMeta.isEnabled()) return false;
+        try {
+            Class<?> dataManager = Class.forName("mc.rellox.spawnermeta.utility.DataManager");
+            Object owned = dataManager.getMethod("isOwned", Block.class).invoke(null, block);
+            if (Boolean.TRUE.equals(owned)) return true;
+        } catch (Throwable ignored) {}
+        try {
+            Class<?> locationRegistry = Class.forName("mc.rellox.spawnermeta.configuration.location.LocationRegistry");
+            Object tracked = locationRegistry.getMethod("get", Block.class).invoke(null, block);
+            if (tracked != null) return true;
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    private static boolean isManagedByUpgradeableSpawners(Block block) {
+        Plugin plugin = Bukkit.getPluginManager().getPlugin("UpgradeableSpawners");
+        if (plugin == null || !plugin.isEnabled()) {
+            plugin = Bukkit.getPluginManager().getPlugin("UpgradableSpawners");
+        }
+        if (plugin == null || !plugin.isEnabled()) return false;
+        try {
+            Class<?> apiClass = Class.forName("me.angeschossen.upgradeablespawners.api.UpgradeableSpawnersAPI");
+            Object api = apiClass.getMethod("getInstance").invoke(null);
+            if (api == null) return false;
+            try {
+                if (apiClass.getMethod("getSpawner", Block.class).invoke(api, block) != null) return true;
+            } catch (NoSuchMethodException ignored) {}
+            try {
+                if (apiClass.getMethod("getSpawner", Location.class).invoke(api, block.getLocation()) != null) return true;
+            } catch (NoSuchMethodException ignored) {}
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    private static boolean clearUnownedSpawnerMetaTags(PersistentDataContainer data) {
+        boolean changed = false;
+        for (NamespacedKey key : new HashSet<>(data.getKeys())) {
+            if ("spawnermeta".equalsIgnoreCase(key.getNamespace())) {
+                data.remove(key);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    private static void detachSpawnerMeta(Block block) {
+        if (block == null || Bukkit.getServer() == null) return;
+        Plugin spawnerMeta = Bukkit.getPluginManager().getPlugin("SpawnerMeta");
+        if (spawnerMeta == null || !spawnerMeta.isEnabled()) return;
+        try {
+            Class<?> generatorRegistry = Class.forName("mc.rellox.spawnermeta.spawner.generator.GeneratorRegistry");
+            generatorRegistry.getMethod("remove", Block.class).invoke(null, block);
+        } catch (Throwable ignored) {}
+        try {
+            Class<?> locationRegistry = Class.forName("mc.rellox.spawnermeta.configuration.location.LocationRegistry");
+            locationRegistry.getMethod("remove", Block.class).invoke(null, block);
+        } catch (Throwable ignored) {}
+    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void click(InventoryClickEvent event) {
@@ -109,8 +239,14 @@ final class SpawnerChanger implements Listener {
                 player.sendMessage("§cThe spawner change is no longer available.");
                 return;
             }
+            if (isBlockedSpawner(block, spawner)) {
+                player.sendMessage(BLOCKED_MESSAGE);
+                return;
+            }
             spawner.setSpawnedType(menu.type);
+            clearUnownedSpawnerMetaTags(spawner.getPersistentDataContainer());
             if (!spawner.update(false, false)) return;
+            detachSpawnerMeta(block);
             consume(inv, menu.eggSlot, egg);
             consume(inv, menu.toolSlot, tool);
             player.sendMessage("§aSpawner changed to " + Heads.title(menu.type.getKey().getKey()) + ".");
@@ -125,15 +261,22 @@ final class SpawnerChanger implements Listener {
         consume(inv, menu.eggSlot, egg);
         consume(inv, menu.toolSlot, tool);
         plugin.connection().runForRegion(block.getWorld(), block.getX() >> 4, block.getZ() >> 4, () -> {
-            boolean updated = block.getState() instanceof CreatureSpawner spawner
+            boolean blocked = false;
+            boolean updated = false;
+            if (block.getState() instanceof CreatureSpawner spawner
                     && spawner.getSpawnedType() == menu.original
-                    && plugin.connection().powerTools().mayModify(player, block, "change_spawner", null);
-            if (updated) {
-                CreatureSpawner spawner = (CreatureSpawner) block.getState();
-                spawner.setSpawnedType(menu.type);
-                updated = spawner.update(false, false);
+                    && plugin.connection().powerTools().mayModify(player, block, "change_spawner", null)) {
+                if (isBlockedSpawner(block, spawner)) {
+                    blocked = true;
+                } else {
+                    spawner.setSpawnedType(menu.type);
+                    clearUnownedSpawnerMetaTags(spawner.getPersistentDataContainer());
+                    updated = spawner.update(false, false);
+                    if (updated) detachSpawnerMeta(block);
+                }
             }
             boolean success = updated;
+            boolean wasBlocked = blocked;
             plugin.connection().runForEntity(player, () -> {
                 if (success) {
                     if (player.isOnline()) {
@@ -142,7 +285,9 @@ final class SpawnerChanger implements Listener {
                 } else {
                     refund(player, spentEgg);
                     refund(player, spentTool);
-                    if (player.isOnline()) player.sendMessage("§cThe spawner change is no longer available.");
+                    if (player.isOnline()) {
+                        player.sendMessage(wasBlocked ? BLOCKED_MESSAGE : "§cThe spawner change is no longer available.");
+                    }
                 }
             }, () -> {}, 0L);
         }, 0L);

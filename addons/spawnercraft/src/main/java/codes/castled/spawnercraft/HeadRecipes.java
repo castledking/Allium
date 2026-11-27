@@ -5,18 +5,23 @@ import codes.castled.allium.api.AddonItems;
 import codes.castled.allium.api.ItemResult;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.*;
 import java.util.function.Supplier;
 
 final class HeadRecipes {
+    static final NamespacedKey CRAFTED_SPAWNER_KEY = new NamespacedKey("spawnercraft", "crafted_spawner");
+
     enum DeliveryStatus {
         DELIVERED,
         COMMAND_DISPATCHED,
@@ -312,7 +317,9 @@ final class HeadRecipes {
                 return new PreparedOutput(null, "Spawner block metadata is unavailable.");
             }
             spawner.setSpawnedType(entityType);
+            spawner.getPersistentDataContainer().set(CRAFTED_SPAWNER_KEY, PersistentDataType.BYTE, (byte) 1);
             meta.setBlockState(spawner);
+            meta.getPersistentDataContainer().set(CRAFTED_SPAWNER_KEY, PersistentDataType.BYTE, (byte) 1);
             output.setItemMeta(meta);
             return new PreparedOutput(output, "");
         }
@@ -334,6 +341,26 @@ final class HeadRecipes {
             return new PreparedOutput(null, reason);
         }
         return new PreparedOutput(stack, "");
+    }
+
+    static boolean isCraftedSpawnerItem(ItemStack item) {
+        if (item == null || item.getType() != Material.SPAWNER || !item.hasItemMeta()) return false;
+        var meta = item.getItemMeta();
+        if (meta.getPersistentDataContainer().getOrDefault(CRAFTED_SPAWNER_KEY, PersistentDataType.BYTE, (byte) 0) > 0) {
+            return true;
+        }
+        return meta instanceof BlockStateMeta blockMeta
+                && blockMeta.getBlockState() instanceof CreatureSpawner spawner
+                && spawner.getPersistentDataContainer().getOrDefault(CRAFTED_SPAWNER_KEY, PersistentDataType.BYTE, (byte) 0) > 0;
+    }
+
+    static EntityType craftedSpawnerType(ItemStack item) {
+        if (item == null || item.getType() != Material.SPAWNER || !item.hasItemMeta()) return null;
+        if (item.getItemMeta() instanceof BlockStateMeta blockMeta
+                && blockMeta.getBlockState() instanceof CreatureSpawner spawner) {
+            return spawner.getSpawnedType();
+        }
+        return null;
     }
 
     private static void giveOrDrop(Player player, ItemStack output) {

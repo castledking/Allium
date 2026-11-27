@@ -63,10 +63,12 @@ final class LegacyUtilitiesModule implements Listener {
     private final JavaPlugin plugin;
     private final LegacyBukkitRuntime runtime;
     private final LegacyRecipeCommand recipes;
+    private final LegacyFireworkCommand fireworks;
     private final Set<UUID> pvpDisabled = new HashSet<UUID>();
 
     LegacyUtilitiesModule(JavaPlugin plugin, LegacyBukkitRuntime runtime) {
         this.recipes = new LegacyRecipeCommand(plugin.getServer());
+        this.fireworks = new LegacyFireworkCommand(runtime.configManager(), runtime.messageManager());
         this.plugin = plugin;
         this.runtime = runtime;
     }
@@ -99,6 +101,7 @@ final class LegacyUtilitiesModule implements Listener {
         switch (name) {
             case "repair":
             case "recipe":
+            case "firework":
             case "disposal":
             case "anvil":
             case "grindstone":
@@ -151,6 +154,7 @@ final class LegacyUtilitiesModule implements Listener {
         switch (name) {
             case "repair": return handleRepair(sender, args);
             case "recipe": return recipes.execute(sender, args);
+            case "firework": return fireworks.execute(sender, args);
             case "disposal": return handleDisposal(sender);
             case "anvil": return handleWorkstation(sender, "allium.anvil", "ANVIL", "openAnvil", "Anvil");
             case "grindstone": return handleWorkstation(sender, "allium.grindstone", "GRINDSTONE", "openGrindstone", "Grindstone");
@@ -203,6 +207,9 @@ final class LegacyUtilitiesModule implements Listener {
             case "recipe":
                 return args.length == 1 && sender.hasPermission("allium.recipe")
                         ? recipes.complete(prefix) : Collections.emptyList();
+            case "firework":
+                return sender.hasPermission("allium.firework") ? fireworks.complete(sender, args, prefix)
+                        : Collections.emptyList();
             case "repair":
                 return args.length == 1 ? filter(Arrays.asList("hand", "all"), prefix) : Collections.<String>emptyList();
             case "lore":

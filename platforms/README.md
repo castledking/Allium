@@ -20,6 +20,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/editsign` (`/sign`) can set or clear individual lines on the sign you are looking at, copy its text, or paste text copied during your session. The command checks spawn protection and honors cancelled Bukkit protection and sign-change events.
 
+`/firework` edits a held rocket. It supports `power <0-4>`, `clear`, and effect options such as `color:red,blue fade:white shape:star effect:trail`. Players with `allium.firework.fire` can launch rockets with `fire [amount|aim]`.
+
 ## Player settings on Bukkit 1.12.2–1.19.4
 
 `/settings` or `/toggles` shows the player's permitted settings. `/toggle <tpa|msg|pay> [on|off]` changes the same settings as `/tptoggle`, `/msgtoggle`, or `/paytoggle`. Teleport auto-accept configured through `/tpauto` also survives a restart. Messaging and teleport choices are saved in `player-settings-legacy.yml`, and payments use the existing economy file.

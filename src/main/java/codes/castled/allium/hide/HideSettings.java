@@ -23,7 +23,7 @@ public record HideSettings(boolean enabled,boolean useResolver,boolean blockName
         }
         var overrides=new LinkedHashMap<String,String>();for(Map<?,?> row:c.getMapList("permission-overrides")){
             String command=Objects.toString(row.get("command"),"").toLowerCase(Locale.ROOT),permission=Objects.toString(row.get("permission"),"");
-            if(!command.matches("[a-z0-9_:?.-]{1,128}")||!permission.matches("[A-Za-z0-9_.*:-]{1,256}"))throw new IllegalArgumentException("invalid hide permission override");
+            if(!command.matches("[a-z0-9_/:?.-]{1,128}")||!permission.matches("[A-Za-z0-9_.*:-]{1,256}"))throw new IllegalArgumentException("invalid hide permission override");
             if(overrides.put(command,permission)!=null)throw new IllegalArgumentException("duplicate hide permission override");
         }
         return new HideSettings(c.getBoolean("settings.enabled",false),c.getBoolean("settings.use-allium-permission-resolver",true),c.getBoolean("settings.block-namespaced-commands-for-ops",false),c.getBoolean("settings.hide-namespaced-commands-for-ops",false),
@@ -41,9 +41,10 @@ public record HideSettings(boolean enabled,boolean useResolver,boolean blockName
             filterSuggestions,cancelBareSlash,cancelUnknown,namespacedAllow,suggestionPrefixes,hint,policy,permissionOverrides);
     }
     public boolean namespacedVisible(String label,boolean bypass){
-        if(!HidePolicy.root(label).contains(":"))return true;
+        String root=HidePolicy.rootOfPath(label);
+        if(!root.contains(":"))return true;
         if(bypass)return !hideNamespacedForBypass;
-        return namespacedAllow.stream().anyMatch(rule->rule.equalsIgnoreCase(HidePolicy.root(label))||rule.endsWith(":*")&&HidePolicy.root(label).startsWith(rule.substring(0,rule.length()-1)));
+        return namespacedAllow.stream().anyMatch(rule->rule.equalsIgnoreCase(root)||rule.endsWith(":*")&&root.startsWith(rule.substring(0,rule.length()-1)));
     }
     private static List<String> strings(ConfigurationSection c,String path){Object raw=c.get(path);if(raw==null)return List.of();if(!(raw instanceof List<?> values)||values.stream().anyMatch(v->!(v instanceof String)))throw new IllegalArgumentException("hide "+path+" must be a string list");return values.stream().map(String.class::cast).toList();}
     private static Set<String> normalized(ConfigurationSection c,String path){var out=new LinkedHashSet<String>();for(String value:strings(c,path)){String n=HidePolicy.normalize(value);if(n.length()>512)throw new IllegalArgumentException("hide rule too long");if(!n.isEmpty())out.add(n);}if(out.size()>4096)throw new IllegalArgumentException("too many hide filters");return Collections.unmodifiableSet(out);}

@@ -28,4 +28,30 @@ class HideHelpTest {
  @Test void allowedButUnauthorizedUsesLegacyNoPermissionKey()throws Exception{var f=fixture(true);var event=new PlayerCommandPreprocessEvent(f.player,"/guarded");f.service.command(event);assertTrue(event.isCancelled());verify(f.plugin.getMessageManager()).send(f.player,Messages.HIDE_NO_PERMISSION,"{cmd}","guarded");}
  @Test void disablingResolverDelegatesNativePermissionsButKeepsHideRules()throws Exception{var f=fixture(false);var event=new PlayerCommandPreprocessEvent(f.player,"/guarded");f.service.command(event);assertFalse(event.isCancelled());assertTrue(f.service.helpEntries(f.player).stream().anyMatch(e->e.path().equals("guarded")));var denied=new PlayerCommandPreprocessEvent(f.player,"/party kick");f.service.command(denied);assertTrue(denied.isCancelled());}
  @Test void suggestionsOnlyConsiderVisibleExecutableRoots(){assertEquals("help",HideService.closest("hel",List.of("help","party invite")));assertNull(HideService.closest("secret",List.of("help","party invite")));assertNull(HideService.closest("party",List.of("party invite")));}
+ @Test void opWithBypassCanRunWorldEditDoubleSlashCommands() throws Exception {
+  var f = fixture(true);
+  var owner = mock(org.bukkit.plugin.Plugin.class);
+  when(owner.getName()).thenReturn("WorldEdit");
+  var wand = mock(Command.class, withSettings().extraInterfaces(PluginIdentifiableCommand.class));
+  when(((PluginIdentifiableCommand) wand).getPlugin()).thenReturn(owner);
+  when(wand.getName()).thenReturn("/wand");
+  when(wand.getAliases()).thenReturn(List.of());
+  set(f.service, "commands", Map.of("/wand", wand, "worldedit:/wand", wand));
+
+  // OP / bypass player runs //wand (registered as /wand) and //set stone (dynamic/unregistered in knownCommands)
+  when(f.player.hasPermission(HideService.BYPASS)).thenReturn(true);
+  var wandEvent = new PlayerCommandPreprocessEvent(f.player, "//wand");
+  f.service.command(wandEvent);
+  assertFalse(wandEvent.isCancelled(), "OP with allium.hide.bypass must be able to execute //wand");
+
+  var setEvent = new PlayerCommandPreprocessEvent(f.player, "//set stone");
+  f.service.command(setEvent);
+  assertFalse(setEvent.isCancelled(), "OP with allium.hide.bypass must be able to execute dynamic //set");
+
+  // Non-OP player without //wand in hide.yml is still blocked
+  when(f.player.hasPermission(HideService.BYPASS)).thenReturn(false);
+  var blockedEvent = new PlayerCommandPreprocessEvent(f.player, "//wand");
+  f.service.command(blockedEvent);
+  assertTrue(blockedEvent.isCancelled());
+ }
 }

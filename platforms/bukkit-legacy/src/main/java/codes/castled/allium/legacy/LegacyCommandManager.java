@@ -57,10 +57,15 @@ final class LegacyCommandManager {
     private final Map<String, String> commandModules = buildCommandModules();
     /** Canonical names currently disabled via config.yml disabled-commands. */
     private volatile Set<String> disabledFamilies = Collections.emptySet();
+    private volatile LegacyHideModule hideModule;
 
     LegacyCommandManager(JavaPlugin plugin, LegacyConfigManager config) {
         this.plugin = plugin;
         this.config = config;
+    }
+
+    void setHideModule(LegacyHideModule hideModule) {
+        this.hideModule = hideModule;
     }
 
     void enable() {
@@ -124,7 +129,12 @@ final class LegacyCommandManager {
                 // Only include primary name of each command to avoid duplicate alias spam in main /help
                 if (!lower.equals(cmd.getName().toLowerCase(Locale.ROOT))) continue;
                 if (isOwnedByAllium(cmd) && (isDisabled(lower) || isModuleDisabled(lower))) continue;
-                if (!cmd.testPermissionSilent(sender)) continue;
+                LegacyHideModule hide = this.hideModule;
+                if (hide != null && hide.isActive()) {
+                    if (!hide.isVisibleInHelp(sender, lower, cmd)) continue;
+                } else if (!cmd.testPermissionSilent(sender)) {
+                    continue;
+                }
                 String owner = resolveOwner(cmd);
                 String desc = cmd.getDescription() != null ? cmd.getDescription() : "";
                 String usage = cmd.getUsage() != null && !cmd.getUsage().isEmpty()
@@ -143,6 +153,10 @@ final class LegacyCommandManager {
                     if (isDisabled(lower) || isModuleDisabled(lower)) continue;
                     Map<String, Object> meta = e.getValue();
                     String perm = meta != null && meta.get("permission") != null ? String.valueOf(meta.get("permission")) : "";
+                    LegacyHideModule hide = this.hideModule;
+                    if (hide != null && hide.isActive()) {
+                        if (!hide.isVisibleInHelp(sender, lower, null)) continue;
+                    }
                     if (!perm.isEmpty() && !sender.hasPermission(perm)) continue;
                     String description = meta != null && meta.get("description") != null ? String.valueOf(meta.get("description")) : "";
                     String usage = meta != null && meta.get("usage") != null
@@ -255,7 +269,7 @@ final class LegacyCommandManager {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Command> inspectKnownCommands(Server server) {
+    static Map<String, Command> inspectKnownCommands(Server server) {
         if (server == null) return null;
         try {
             CommandMap map = null;
@@ -272,6 +286,12 @@ final class LegacyCommandManager {
                 }
             }
             if (map == null) return null;
+            try {
+                Method getKnown = map.getClass().getMethod("getKnownCommands");
+                Object res = getKnown.invoke(map);
+                if (res instanceof Map) return (Map<String, Command>) res;
+            } catch (NoSuchMethodException ignored) {
+            }
             Field knownField = findField(map.getClass(), "knownCommands");
             if (knownField == null && map instanceof SimpleCommandMap) {
                 knownField = SimpleCommandMap.class.getDeclaredField("knownCommands");

@@ -43,4 +43,26 @@ class HidePermissionResolverTest {
   var framework=new FrameworkCommand(new PublicNode(null));
   assertEquals("shop admin reset",f.resolver.decisionKey(framework,"/shop  admin reset"));
  }
+ @Test void worldEditDoubleSlashCommandsResolveWithoutStrippingSecondSlash() {
+  var f = fixture();
+  var owner = mock(org.bukkit.plugin.Plugin.class);
+  when(owner.getName()).thenReturn("WorldEdit");
+  var wand = mock(Command.class, withSettings().extraInterfaces(PluginIdentifiableCommand.class));
+  when(((PluginIdentifiableCommand) wand).getPlugin()).thenReturn(owner);
+  when(wand.getName()).thenReturn("/wand");
+  when(wand.getAliases()).thenReturn(List.of());
+  when(f.manager.getPermissions()).thenReturn(Set.of(new Permission("worldedit.wand")));
+  var commands = Map.of("/wand", wand, "worldedit:/wand", wand);
+
+  // Without permission -> denied by registered worldedit.wand
+  var denied = f.resolver.resolve(f.player, "/wand", commands, Map.of());
+  assertFalse(denied.allowed());
+  assertEquals("worldedit.wand", denied.permission());
+
+  // With permission -> allowed for both already-normalized "/wand" and raw "//wand"
+  when(f.player.hasPermission("worldedit.wand")).thenReturn(true);
+  assertTrue(f.resolver.resolve(f.player, "/wand", commands, Map.of()).allowed());
+  assertTrue(f.resolver.resolve(f.player, "//wand", commands, Map.of()).allowed());
+  assertEquals("/wand", f.resolver.decisionKey(wand, "/wand"));
+ }
 }

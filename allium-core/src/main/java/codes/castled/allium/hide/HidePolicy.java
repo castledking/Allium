@@ -10,9 +10,12 @@ public final class HidePolicy {
     public record Group(String name,boolean whitelist,List<String> commands,List<String> inheritedAllowed,List<String> completions) {
         public Group {commands=List.copyOf(commands);inheritedAllowed=List.copyOf(inheritedAllowed);completions=List.copyOf(completions);}
         boolean allows(String path,boolean completion){
-            if(completion)return whitelist==matches(completions,path,whitelist);
-            if(matches(commands,path,false))return whitelist;
-            return !whitelist&&(inheritedAllowed.isEmpty()||matches(inheritedAllowed,path,false));
+            return allowsNormalized(normalize(path),completion);
+        }
+        boolean allowsNormalized(String normalizedPath,boolean completion){
+            if(completion)return whitelist==matchesNormalized(completions,normalizedPath,whitelist);
+            if(matchesNormalized(commands,normalizedPath,false))return whitelist;
+            return !whitelist&&(inheritedAllowed.isEmpty()||matchesNormalized(inheritedAllowed,normalizedPath,false));
         }
     }
     private final Map<String,Group> groups;
@@ -41,26 +44,24 @@ public final class HidePolicy {
         if(selected.isEmpty()&&groups.containsKey("default"))selected.add(groups.get("default"));return List.copyOf(selected);
     }
     public static boolean allows(List<Group> selected,String path,boolean completion){
-        if(normalize(path).isEmpty())return false;
-        for(Group g:selected)if(!g.whitelist()&&!g.allows(path,completion))return false;
+        return allowsNormalized(selected,normalize(path),completion);
+    }
+    public static boolean allowsNormalized(List<Group> selected,String normalizedPath,boolean completion){
+        String p=normalizePath(normalizedPath);
+        if(p.isEmpty())return false;
+        for(Group g:selected)if(!g.whitelist()&&!g.allowsNormalized(p,completion))return false;
         if(selected.stream().noneMatch(Group::whitelist))return true;
-        return selected.stream().anyMatch(g->g.whitelist()&&g.allows(path,completion));
+        return selected.stream().anyMatch(g->g.whitelist()&&g.allowsNormalized(p,completion));
     }
-    public static String normalize(String value){if(value==null)return "";value=value.trim();if(value.startsWith("/"))value=value.substring(1);return value.trim().replaceAll("\\s+"," ").toLowerCase(Locale.ROOT);}
-    public static String root(String value){String p=normalize(value);int end=p.indexOf(' ');return end<0?p:p.substring(0,end);}
-    public static String plain(String value){String p=normalize(value);int colon=root(p).indexOf(':');return colon<0?p:p.substring(colon+1);}
-    public static boolean matches(Collection<String> rules,String value,boolean ancestors){
-        String p=normalize(value);if(p.isEmpty())return false;String plain=plain(p);
-        for(String raw:rules){String r=normalize(raw);if(r.equals("*"))return true;
-            if(r.endsWith(":*")&&root(p).startsWith(r.substring(0,r.length()-1)))return true;
-            if(branch(p,r)||branch(plain,r)||ancestors&&(branch(r,p)||branch(r,plain)))return true;
-        }return false;
-    }
-    public static String suggestionPath(String buffer,String candidate,int offset){
-        buffer=buffer==null?"":buffer;if(offset<0||offset>buffer.length()){offset=buffer.lastIndexOf(' ')+1;if(offset==0&&buffer.startsWith("/"))offset=1;}
-        return normalize(buffer.substring(0,offset)+(offset<=1&&candidate.startsWith("/")?candidate.substring(1):candidate));
-    }
-    private static boolean branch(String value,String parent){return value.equals(parent)||value.startsWith(parent+" ");}
+    public static String normalize(String value){return HidePolicyEngine.normalize(value);}
+    public static String normalizePath(String value){return HidePolicyEngine.normalizePath(value);}
+    public static String root(String value){return HidePolicyEngine.root(value);}
+    public static String rootOfPath(String path){return HidePolicyEngine.rootOfPath(path);}
+    public static String plain(String value){return HidePolicyEngine.plain(value);}
+    public static String plainOfPath(String path){return HidePolicyEngine.plainOfPath(path);}
+    public static boolean matches(Collection<String> rules,String value,boolean ancestors){return HidePolicyEngine.matches(rules,value,ancestors);}
+    public static boolean matchesNormalized(Collection<String> normalizedRules,String normalizedPath,boolean ancestors){return HidePolicyEngine.matchesNormalized(normalizedRules,normalizedPath,ancestors);}
+    public static String suggestionPath(String buffer,String candidate,int offset){return HidePolicyEngine.suggestionPath(buffer,candidate,offset);}
     private static String group(String name){if(name==null||!name.matches("[A-Za-z0-9_-]{1,64}"))throw new IllegalArgumentException("invalid hide group");return name.toLowerCase(Locale.ROOT);}
     private static List<String> rules(List<String> values){if(values.size()>2048)throw new IllegalArgumentException("too many hide rules");var out=new LinkedHashSet<String>();for(String v:values){String p=normalize(v);if(p.isEmpty()||p.length()>512)throw new IllegalArgumentException("invalid hide rule");out.add(p);}return List.copyOf(out);}
 }

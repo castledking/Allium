@@ -39,7 +39,12 @@ public final class HidePermissionResolver {
      * candidates use the first argument; Paper, framework and Brigadier trees walk every argument.
      */
     public String decisionKey(Command command,String path){
-        String normalized=HidePolicy.normalize(path),root=HidePolicy.root(normalized);
+        String rawPath=HidePolicy.normalizePath(path),rawRoot=HidePolicy.rootOfPath(rawPath);
+        String normalized=(command!=null&&(rawRoot.equalsIgnoreCase(command.getName())
+                ||(rawRoot.startsWith("/")&&command.getName()!=null&&command.getName().startsWith("/"))))
+                ?rawPath
+                :HidePolicy.normalize(path);
+        String root=HidePolicy.rootOfPath(normalized);
         if(command==null)return root;Shape shape=SHAPES.get(command.getClass());
         if(shape.paperBasic())return root;
         if(shape.framework())return normalized;
@@ -48,7 +53,16 @@ public final class HidePermissionResolver {
         String[] tokens=normalized.split(" ",3);return tokens.length>1?root+" "+tokens[1]:root;
     }
     public Decision resolve(Player player,String line,Map<String,Command> commands,Map<String,String> overrides){
-        String path=HidePolicy.normalize(line),label=HidePolicy.root(path);Command command=commands.get(label);
+        String rawPath=HidePolicy.normalizePath(line),rawLabel=HidePolicy.rootOfPath(rawPath);
+        String path,label;
+        if(commands.containsKey(rawLabel)){
+            path=rawPath;
+            label=rawLabel;
+        }else{
+            path=HidePolicy.normalize(line);
+            label=HidePolicy.rootOfPath(path);
+        }
+        Command command=commands.get(label);
         if(command==null)return new Decision(false,Source.UNKNOWN,null,label);
         String[] tokens=path.split(" ",256);List<String> args=Arrays.asList(tokens).subList(1,tokens.length);
         Decision d=paperBasic(player,command,label);if(d!=null)return d;
@@ -138,7 +152,13 @@ public final class HidePermissionResolver {
     }
     private static boolean hasSuper(Class<?> type,String name){for(Class<?> c=type;c!=null;c=c.getSuperclass())if(c.getName().equals(name))return true;return false;}
     static List<String> candidates(String owner,Command command,String label,List<String> args,Set<String> registered){
-        if(owner==null)return List.of();String root=HidePolicy.plain(label);var identities=new LinkedHashSet<>(command.getAliases());identities.add(root);identities.add(command.getName());
+        if(owner==null)return List.of();
+        String root=stripLeadingSlash(HidePolicy.plainOfPath(label));
+        var identities=new LinkedHashSet<String>();
+        for(String alias:command.getAliases())identities.add(stripLeadingSlash(alias.toLowerCase(Locale.ROOT)));
+        identities.add(root);
+        identities.add(stripLeadingSlash(command.getName().toLowerCase(Locale.ROOT)));
+        identities.remove("");
         var modules=new TreeSet<String>();String prefix=owner+".";
         for(String key:registered){
             if(!key.startsWith(prefix))continue;
@@ -151,6 +171,7 @@ public final class HidePermissionResolver {
         for(String id:identities)out.add(prefix+id);
         for(String module:modules)out.add(prefix+module+".command.*");out.add(prefix+"command.*");for(String module:modules)out.add(prefix+module+".*");out.add(prefix+"*");return List.copyOf(out);
     }
+    private static String stripLeadingSlash(String value){return value==null?"":(value.startsWith("/")?value.substring(1):value);}
     private static Object optional(Object target,String method)throws ReflectiveOperationException{try{return call(target,method);}catch(NoSuchMethodException missing){return null;}}
     private static Object call(Object target,String method)throws ReflectiveOperationException{return invoke(target,method,new Class<?>[0]);}
     private static Object invoke(Object target,String method,Class<?>[] parameters,Object...args)throws ReflectiveOperationException{Method m=target.getClass().getMethod(method,parameters);m.setAccessible(true);return m.invoke(target,args);}

@@ -62,6 +62,7 @@ class LegacyModulesTest {
             when(p.getName()).thenReturn(name);
             when(p.getDisplayName()).thenReturn(name);
             when(p.getUniqueId()).thenReturn(id);
+            when(p.getServer()).thenReturn(server);
             when(p.isOnline()).thenReturn(true);
             when(p.canSee(any(Player.class))).thenReturn(true);
             when(p.isOp()).thenReturn(op);
@@ -146,9 +147,11 @@ class LegacyModulesTest {
                 "codes.castled.allium.legacy.LegacyModerationModule",
                 "codes.castled.allium.legacy.LegacyPlayerInfoModule",
                 "codes.castled.allium.legacy.LegacyChatModule",
+                "codes.castled.allium.legacy.LegacyHideModule",
                 "codes.castled.allium.legacy.LegacyTravelModule",
                 "codes.castled.allium.legacy.LegacyUtilitiesModule",
-                "codes.castled.allium.chat.ChatFilterEngine"
+                "codes.castled.allium.chat.ChatFilterEngine",
+                "codes.castled.allium.hide.HidePolicyEngine"
         };
         for (String name : classNames) {
             Class<?> clazz = Class.forName(name);
@@ -1086,6 +1089,107 @@ class LegacyModulesTest {
         var vanishedQuit = new org.bukkit.event.player.PlayerQuitEvent(staff, "Staff left the game");
         onQuit.invoke(chatListener, vanishedQuit);
         assertNull(vanishedQuit.getQuitMessage());
+
+        h.runtime().onDisable();
+    }
+
+    @Test
+    void legacyHideSystemFiltersCommandsTabCompleteWorldEditDoubleSlashAndAdmin() throws Exception {
+        Files.writeString(tempDir.resolve("hide.yml"), String.join("\n",
+                "settings:",
+                "  enabled: true",
+                "  use-allium-permission-resolver: true",
+                "  block-namespaced-commands-for-ops: false",
+                "  hide-namespaced-commands-for-ops: false",
+                "  remove-unsafe-commands: true",
+                "  unsafe-commands-list: [plugins, pl, version]",
+                "  filter-command-suggestions: true",
+                "  cancel-bare-slash-request: true",
+                "groups:",
+                "  default:",
+                "    whitelist: true",
+                "    commands: [help, spawn, //wand]",
+                "    tabcompletes: ['^']",
+                "  moderator:",
+                "    whitelist: false",
+                "    commands: [op, deop]",
+                "    tabcompletes: ['^']"
+        ));
+        Harness h = createHarness();
+        Player guest = h.addPlayer("Guest", UUID.randomUUID(), false);
+        Player op = h.addPlayer("AdminOp", UUID.randomUUID(), true);
+
+        var listenerCaptor = ArgumentCaptor.forClass(org.bukkit.event.Listener.class);
+        verify(h.server().getPluginManager(), atLeastOnce()).registerEvents(listenerCaptor.capture(), eq(h.plugin()));
+        Object hideListener = listenerCaptor.getAllValues().stream()
+                .filter(l -> l.getClass().getSimpleName().equals("LegacyHideModule"))
+                .findFirst().orElseThrow();
+        var onCommand = hideListener.getClass().getMethod("onCommandPreprocess", org.bukkit.event.player.PlayerCommandPreprocessEvent.class);
+        var onTab = hideListener.getClass().getMethod("onTabComplete", org.bukkit.event.server.TabCompleteEvent.class);
+        onCommand.setAccessible(true);
+        onTab.setAccessible(true);
+
+        // 1. Non-OP guest allowed to run /help and //wand, blocked from /plugins and //set
+        var guestHelp = new org.bukkit.event.player.PlayerCommandPreprocessEvent(guest, "/help");
+        onCommand.invoke(hideListener, guestHelp);
+        assertFalse(guestHelp.isCancelled());
+
+        var guestWand = new org.bukkit.event.player.PlayerCommandPreprocessEvent(guest, "//wand");
+        onCommand.invoke(hideListener, guestWand);
+        assertFalse(guestWand.isCancelled(), "Whitelisted //wand must work for non-OP players");
+
+        var guestPlugins = new org.bukkit.event.player.PlayerCommandPreprocessEvent(guest, "/plugins");
+        onCommand.invoke(hideListener, guestPlugins);
+        assertTrue(guestPlugins.isCancelled());
+        verify(guest).sendMessage(argThat((String msg) -> msg.contains("Unknown command")));
+
+        var guestSet = new org.bukkit.event.player.PlayerCommandPreprocessEvent(guest, "//set stone");
+        onCommand.invoke(hideListener, guestSet);
+        assertTrue(guestSet.isCancelled());
+
+        // 2. OP with allium.hide.bypass can run WorldEdit //wand, //set stone, and /plugins
+        var opWand = new org.bukkit.event.player.PlayerCommandPreprocessEvent(op, "//wand");
+        onCommand.invoke(hideListener, opWand);
+        assertFalse(opWand.isCancelled());
+
+        var opSet = new org.bukkit.event.player.PlayerCommandPreprocessEvent(op, "//set stone");
+        onCommand.invoke(hideListener, opSet);
+        assertFalse(opSet.isCancelled());
+
+        // 3. TabCompleteEvent cancels bare "/" for guest, filters disallowed roots, and preserves //wand
+        var bareSlash = new org.bukkit.event.server.TabCompleteEvent(guest, "/", List.of("/help", "/plugins"));
+        onTab.invoke(hideListener, bareSlash);
+        assertTrue(bareSlash.isCancelled());
+        assertTrue(bareSlash.getCompletions().isEmpty());
+
+        var guestTab = new org.bukkit.event.server.TabCompleteEvent(guest, "/h", List.of("/help", "/plugins", "/secret"));
+        onTab.invoke(hideListener, guestTab);
+        assertFalse(guestTab.isCancelled());
+        assertEquals(List.of("/help"), guestTab.getCompletions());
+
+        var guestWeTab = new org.bukkit.event.server.TabCompleteEvent(guest, "//w", List.of("/wand", "/walls"));
+        onTab.invoke(hideListener, guestWeTab);
+        assertEquals(List.of("/wand"), guestWeTab.getCompletions());
+
+        // 4. /allium hide admin commands work and update hide.yml
+        clearInvocations(op);
+        assertTrue(h.run(op, "allium", "hide", "status"));
+        verify(op).sendMessage(argThat((String msg) -> msg.contains("enabled=true") && msg.contains("default")));
+
+        clearInvocations(op);
+        assertTrue(h.run(op, "allium", "hide", "group", "default", "add", "//set"));
+        verify(op).sendMessage(argThat((String msg) -> msg.contains("updated")));
+
+        var guestSetAfter = new org.bukkit.event.player.PlayerCommandPreprocessEvent(guest, "//set stone");
+        onCommand.invoke(hideListener, guestSetAfter);
+        assertFalse(guestSetAfter.isCancelled(), "After /allium hide group default add //set, guest can run //set");
+
+        clearInvocations(op);
+        assertTrue(h.run(op, "allium", "hide", "enabled", "false"));
+        verify(op).sendMessage(argThat((String msg) -> msg.contains("updated")));
+        var guestPluginsOff = new org.bukkit.event.player.PlayerCommandPreprocessEvent(guest, "/plugins");
+        onCommand.invoke(hideListener, guestPluginsOff);
+        assertFalse(guestPluginsOff.isCancelled(), "Disabled hide.yml must not block commands");
 
         h.runtime().onDisable();
     }

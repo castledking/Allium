@@ -137,63 +137,65 @@ public final class HideService implements Listener,AutoCloseable {
     private void logCapability(){if(settings.enabled())plugin.logger().info("Hide execution/root filtering enabled; packet filtering="+(packets!=null)+". Native command permissions remain authoritative.");}
     public Set<String> scopedRoots(Viewer v){
         if(v==null||v.bypass()||!v.settings().enabled())return Set.of();var out=new LinkedHashSet<String>();
-        for(var group:v.groups())for(String path:group.completions())if(path.contains(" ")){out.add(HidePolicy.root(path));out.add(HidePolicy.plain(HidePolicy.root(path)));}
+        for(var group:v.groups())for(String path:group.completions())if(path.contains(" ")){String r=HidePolicy.rootOfPath(path);out.add(r);out.add(HidePolicy.plainOfPath(r));}
         return Set.copyOf(out);
     }
     private void refreshLabels(){
         var out=new HashMap<String,List<String>>();for(var entry:commands.entrySet()){
-            Command command=entry.getValue();if(command instanceof PluginIdentifiableCommand pc){String owner=pc.getPlugin().getName().toLowerCase(Locale.ROOT);out.put(entry.getKey(),List.of(owner+":"+HidePolicy.plain(entry.getKey()),owner+":"+command.getName().toLowerCase(Locale.ROOT)));}
+            Command command=entry.getValue();if(command instanceof PluginIdentifiableCommand pc){String owner=pc.getPlugin().getName().toLowerCase(Locale.ROOT);out.put(entry.getKey(),List.of(owner+":"+HidePolicy.plainOfPath(entry.getKey()),owner+":"+command.getName().toLowerCase(Locale.ROOT)));}
         }labels=Map.copyOf(out);
     }
     private List<String> variants(String path){
-        var out=new ArrayList<String>();path=HidePolicy.normalize(path);out.add(path);String label=HidePolicy.root(path),args=path.substring(label.length());Command command=commands.get(label);
-        if(command instanceof PluginIdentifiableCommand pc){String owner=pc.getPlugin().getName().toLowerCase(Locale.ROOT);out.add(owner+":"+HidePolicy.plain(label)+args);out.add(owner+":"+command.getName().toLowerCase(Locale.ROOT)+args);}
+        var out=new ArrayList<String>();path=HidePolicy.normalizePath(path);out.add(path);String label=HidePolicy.rootOfPath(path),args=path.substring(label.length());Command command=commands.get(label);
+        if(command instanceof PluginIdentifiableCommand pc){String owner=pc.getPlugin().getName().toLowerCase(Locale.ROOT);out.add(owner+":"+HidePolicy.plainOfPath(label)+args);out.add(owner+":"+command.getName().toLowerCase(Locale.ROOT)+args);}
         return out;
     }
     private boolean groupAllows(Viewer v,String path,boolean completion){
         List<String> paths=variants(path);
         // A denied alias/qualified path must not escape another group's blacklist.
-        for(var g:v.groups())if(!g.whitelist())for(String candidate:paths)if(!g.allows(candidate,completion))return false;
+        for(var g:v.groups())if(!g.whitelist())for(String candidate:paths)if(!g.allowsNormalized(candidate,completion))return false;
         if(v.groups().stream().noneMatch(HidePolicy.Group::whitelist))return true;
-        return paths.stream().anyMatch(candidate->v.groups().stream().anyMatch(g->g.whitelist()&&g.allows(candidate,completion)));
+        return paths.stream().anyMatch(candidate->v.groups().stream().anyMatch(g->g.whitelist()&&g.allowsNormalized(candidate,completion)));
     }
     /** Pure snapshot check used by Netty packet listeners, without Bukkit permission/provider calls. */
     public static boolean packetVisible(Viewer v,String path){
         if(v==null)return false;HideSettings s=v.settings();if(!s.enabled())return true;
-        if(!s.namespacedVisible(path,v.bypass()))return false;if(v.bypass())return true;
-        String root=HidePolicy.root(path);
+        String normalized=HidePolicy.normalizePath(path),root=HidePolicy.rootOfPath(normalized);
+        if(!s.namespacedVisible(root,v.bypass()))return false;if(v.bypass())return true;
         if(s.removeUnsafe()&&s.unsafe().contains(root))return false;
         if(s.filterSuggestions()&&s.suggestionPrefixes().stream().anyMatch(root::startsWith))return false;
-        String normalized=HidePolicy.normalize(path),suffix=normalized.substring(root.length());
+        String suffix=normalized.substring(root.length());
         var variants=new ArrayList<String>();variants.add(normalized);for(String label:v.labels().getOrDefault(root,List.of()))variants.add(label+suffix);
-        for(var g:v.groups())if(!g.whitelist())for(String variant:variants)if(!g.allows(variant,true))return false;
-        return v.groups().stream().noneMatch(HidePolicy.Group::whitelist)||variants.stream().anyMatch(variant->v.groups().stream().anyMatch(g->g.whitelist()&&g.allows(variant,true)));
+        for(var g:v.groups())if(!g.whitelist())for(String variant:variants)if(!g.allowsNormalized(variant,true))return false;
+        return v.groups().stream().noneMatch(HidePolicy.Group::whitelist)||variants.stream().anyMatch(variant->v.groups().stream().anyMatch(g->g.whitelist()&&g.allowsNormalized(variant,true)));
     }
     private boolean visible(Player p,Viewer v,String path){return visible(p,v,path,null);}
     /** {@code memo} (per completion batch) reuses one resolver decision for arguments that cannot change it. */
     private boolean visible(Player p,Viewer v,String path,Map<String,Boolean> memo){
         if(!v.settings().enabled())return true;
-        if(!v.settings().namespacedVisible(path,v.bypass()))return false;
+        String normalized=HidePolicy.normalizePath(path),root=HidePolicy.rootOfPath(normalized);
+        if(!v.settings().namespacedVisible(root,v.bypass()))return false;
         if(!v.bypass()){
-            String root=HidePolicy.root(path);if(v.settings().removeUnsafe()&&v.settings().unsafe().contains(root))return false;
+            if(v.settings().removeUnsafe()&&v.settings().unsafe().contains(root))return false;
             if(v.settings().filterSuggestions()&&v.settings().suggestionPrefixes().stream().anyMatch(root::startsWith))return false;
-            if(!groupAllows(v,path,true))return false;
+            if(!groupAllows(v,normalized,true))return false;
         }
         if(!v.settings().useResolver()||commands.isEmpty())return true;
-        if(memo==null)return permissions.resolve(p,path,commands,v.settings().permissionOverrides()).allowed();
-        String key=permissions.decisionKey(commands.get(HidePolicy.root(path)),path);
+        if(v.bypass()&&!commands.containsKey(root))return true;
+        if(memo==null)return permissions.resolve(p,normalized,commands,v.settings().permissionOverrides()).allowed();
+        String key=permissions.decisionKey(commands.get(root),normalized);
         Boolean known=memo.get(key);if(known!=null)return known;
-        boolean allowed=permissions.resolve(p,path,commands,v.settings().permissionOverrides()).allowed();memo.put(key,allowed);return allowed;
+        boolean allowed=permissions.resolve(p,normalized,commands,v.settings().permissionOverrides()).allowed();memo.put(key,allowed);return allowed;
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void command(PlayerCommandPreprocessEvent event){
-        if(closed||!settings.enabled())return;Player p=event.getPlayer();String line=HidePolicy.normalize(event.getMessage());Viewer v=refresh(p,false);
-        if(v.bypass()&&v.settings().blockNamespacedForBypass()&&HidePolicy.root(line).contains(":" )||!groupAllows(v,line,false)){
+        if(closed||!settings.enabled())return;Player p=event.getPlayer();String line=HidePolicy.normalize(event.getMessage());String root=HidePolicy.rootOfPath(line);Viewer v=refresh(p,false);
+        if(v.bypass()&&v.settings().blockNamespacedForBypass()&&root.contains(":" )||!groupAllows(v,line,false)){
             event.setCancelled(true);unknown(p,line);return;
         }
-        if(!v.settings().useResolver())return;
+        if(v.bypass()||!v.settings().useResolver())return;
         var decision=permissions.resolve(p,line,commands,v.settings().permissionOverrides());
         if(!decision.allowed()){
-            event.setCancelled(true);if(!commands.containsKey(HidePolicy.root(line)))unknown(p,line);else plugin.getMessageManager().send(p,Messages.HIDE_NO_PERMISSION,"{cmd}",HidePolicy.root(line));
+            event.setCancelled(true);if(!commands.containsKey(root))unknown(p,line);else plugin.getMessageManager().send(p,Messages.HIDE_NO_PERMISSION,"{cmd}",root);
         }
     }
     public record HelpEntry(String path,String owner,String description,String usage,String permission) {
@@ -234,7 +236,8 @@ public final class HideService implements Listener,AutoCloseable {
                     &&plugin.getCommandManager().getFamilyPolicy().isDisabled(root))continue;
             var candidates=new LinkedHashSet<String>();candidates.add(root);
             if(v!=null&&v.settings().enabled())for(var group:v.groups())for(String rule:group.completions()){
-                if(rule.contains(" ")&&!rule.contains("*")&&variants(root).stream().anyMatch(label->HidePolicy.root(rule).equals(label)||HidePolicy.root(rule).equals(root)))candidates.add(root+rule.substring(rule.indexOf(' ')));
+                String ruleRoot=HidePolicy.rootOfPath(rule);
+                if(rule.contains(" ")&&!rule.contains("*")&&variants(root).stream().anyMatch(label->ruleRoot.equals(label)||ruleRoot.equals(root)))candidates.add(root+rule.substring(rule.indexOf(' ')));
             }
             for(String path:candidates){
                 if(v!=null&&v.settings().enabled()&&(!packetVisible(v,path)||!groupAllows(v,path,false)))continue;
@@ -249,20 +252,15 @@ public final class HideService implements Listener,AutoCloseable {
         return List.copyOf(out.values());
     }
     private void unknown(Player player,String line){
-        String root=HidePolicy.root(line);String suggestion=root.contains(":")?null:closest(root,helpEntries(player).stream().map(HelpEntry::path).toList());
+        String root=HidePolicy.rootOfPath(line);String suggestion=root.contains(":")?null:closest(root,helpEntries(player).stream().map(HelpEntry::path).toList());
         plugin.getMessageManager().send(player,suggestion==null?Messages.HIDE_UNKNOWN:Messages.HIDE_SUGGESTION,"{cmd}",root,"{suggestion}",Objects.toString(suggestion,""));
     }
     static String closest(String input,List<String> allowed){
-        if(input.isEmpty()||input.length()>64)return null;String best=null;int score=3;
-        for(String candidate:allowed){if(candidate.contains(" ")||candidate.equals(input)||Math.abs(candidate.length()-input.length())>2)continue;
-            int[] prev=new int[candidate.length()+1];for(int j=0;j<prev.length;j++)prev[j]=j;
-            for(int i=1;i<=input.length();i++){int[] next=new int[prev.length];next[0]=i;for(int j=1;j<next.length;j++)next[j]=Math.min(Math.min(next[j-1]+1,prev[j]+1),prev[j-1]+(input.charAt(i-1)==candidate.charAt(j-1)?0:1));prev=next;}
-            int distance=prev[candidate.length()];if(distance<score){score=distance;best=candidate;}
-        }return best;
+        return HidePolicyEngine.closest(input,allowed);
     }
     @EventHandler(priority=EventPriority.HIGHEST) public void roots(PlayerCommandSendEvent event){
         if(closed)return;refreshLabels();Viewer v=refresh(event.getPlayer(),false);if(!settings.enabled())return;Set<String> scoped=scopedRoots(v);
-        event.getCommands().removeIf(label->!visible(event.getPlayer(),v,label)||packets==null&&scoped.contains(HidePolicy.plain(label)));
+        event.getCommands().removeIf(label->!visible(event.getPlayer(),v,label)||packets==null&&scoped.contains(HidePolicy.plainOfPath(label)));
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void completions(TabCompleteEvent event){
         if(closed||!settings.enabled()||!(event.getSender() instanceof Player p)||!event.getBuffer().startsWith("/"))return;
@@ -272,7 +270,7 @@ public final class HideService implements Listener,AutoCloseable {
     }
     @EventHandler public void joined(PlayerJoinEvent event){enqueuePoll(event.getPlayer());refresh(event.getPlayer(),true);}
     @EventHandler public void quit(PlayerQuitEvent event){UUID id=event.getPlayer().getUniqueId();viewers.remove(id);pollTracked.remove(id);pollInFlight.remove(id);refreshQueued.remove(id);HidePacketHooks currentPackets=packets;if(currentPackets!=null)currentPackets.forget(id);}
-    @EventHandler public void pluginEnabled(PluginEnableEvent event){if(event.getPlugin().getName().equalsIgnoreCase("packetevents")){installPackets();for(Player p:List.copyOf(plugin.getServer().getOnlinePlayers()))queueRefresh(p);}}
+    @EventHandler public void pluginEnabled(PluginEnableEvent event){refreshLabels();if(event.getPlugin().getName().equalsIgnoreCase("packetevents")){installPackets();for(Player p:List.copyOf(plugin.getServer().getOnlinePlayers()))queueRefresh(p);}}
     @EventHandler public void pluginDisabled(PluginDisableEvent event){if(event.getPlugin().getName().equalsIgnoreCase("packetevents")&&packets!=null){packets.close();packets=null;for(Player p:List.copyOf(plugin.getServer().getOnlinePlayers()))queueRefresh(p);}}
     /**
      * Reads and validates {@code hide.yml} without mutating live hide state or scheduling async work.
@@ -362,8 +360,9 @@ public final class HideService implements Listener,AutoCloseable {
         int start=2;String flag="-tc";if(args[start].startsWith("-")){flag=args[start++];if(!Set.of("-c","-t","-tc","-ct").contains(flag))throw new IllegalArgumentException("scope");}
         if(start>=args.length)throw new IllegalArgumentException("rule missing");List<String> rules=Arrays.stream(String.join(" ",Arrays.copyOfRange(args,start,args.length)).split(",")).map(HidePolicy::normalize).toList();
         var scopes=flag.equals("-c")?List.of("commands"):flag.equals("-t")?List.of("tabcompletes"):List.of("commands","tabcompletes");
-        if(action.equals("check")){var g=settings.policy().select(List.of(name)).get(0);for(String rule:rules)send(actor,Messages.HIDE_INFO,"{message}",name+" "+rule+": command="+g.allows(rule,false)+", tab="+g.allows(rule,true));return;}
-        audit(actor,"group-"+action);update(actor,c->{for(String scope:scopes){String path=groupPath(c,name)+"."+scope;var values=new LinkedHashSet<>(c.getStringList(path));if(action.equals("add"))values.addAll(rules);else values.removeAll(rules);c.set(path,List.copyOf(values));}});
+        if(action.equals("check")){var g=settings.policy().select(List.of(name)).get(0);for(String rule:rules)send(actor,Messages.HIDE_INFO,"{message}",name+" "+rule+": command="+g.allowsNormalized(rule,false)+", tab="+g.allowsNormalized(rule,true));return;}
+        List<String> yamlRules=rules.stream().map(r->r.startsWith("/")?"/"+r:r).toList();
+        audit(actor,"group-"+action);update(actor,c->{for(String scope:scopes){String path=groupPath(c,name)+"."+scope;var values=new LinkedHashSet<>(c.getStringList(path));if(action.equals("add"))values.addAll(yamlRules);else{values.removeAll(yamlRules);values.removeAll(rules);}c.set(path,List.copyOf(values));}});
     }
     private static String groupPath(YamlConfiguration c,String name){var g=c.getConfigurationSection("groups");if(g==null)throw new IllegalArgumentException("missing groups");return "groups."+g.getKeys(false).stream().filter(v->v.equalsIgnoreCase(name)).findFirst().orElseThrow(()->new IllegalArgumentException("missing group"));}
     private void audit(CommandSender actor,String action){plugin.logger().info("Hide settings action="+action+" actor="+(actor instanceof Player p?p.getUniqueId():"CONSOLE"));}

@@ -40,6 +40,10 @@ Public chat formatting (`enable-chat-formatting`, `chat-format.default`, `chat-f
 
 Opt-in `chat.filter.*` rules (phrase tokens/phrases/substrings/exceptions with leetspeak normalization and split-letter detection, repeat-similarity window with flood-suffix stripping and whitelist, rate-limit min-interval and burst caps, `block` vs `alert-only` mode, `allium.chat.filter.bypass`, and `allium.chat.filter.alerts` staff notices) share the same `ChatFilterEngine` logic as 1.20–26.3 and apply to both chat and `/me`.
 
+## Command hider (`hide.yml`) on Bukkit 1.12.2–1.19.4
+
+Opt-in `hide.yml` command filtering (`modules.hide`, `settings.enabled`) runs natively on 1.12.2–1.19.4 using the shared `HidePolicyEngine` group, inheritance, whitelist/blacklist, and double-slash (`//wand`, `//set`) rules. It filters command execution (`PlayerCommandPreprocessEvent`), tab completion (`TabCompleteEvent` on 1.12.2–1.19.4 plus dynamic `PlayerCommandSendEvent` root-tree filtering on 1.13–1.19.4), and `/help`, supports Vault/LuckPerms group lookups via reflection, honors `allium.hide.bypass`, and exposes `/allium hide <status|reload|enabled|resolve|fix|unfix|group>` (`allium.hide.admin`).
+
 `/rtoggle` (`/replytoggle`) switches `/reply` between the last person you messaged and the last person who messaged you. The selected mode survives a restart. Message history used to pick the recipient lasts for the current session.
 
 Teleport commands and tab completion accept partial usernames, nicknames, and close typos. Teleporting another player with `/tp <player> <target>` requires `allium.tp.others`.

@@ -83,6 +83,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyModerationModule moderation;
     private final LegacyPlayerInfoModule playerInfo;
     private final LegacyChatModule chat;
+    private final LegacyHideModule hide;
     private final LegacyTravelModule travel;
     private final LegacyUtilitiesModule utilities;
     private final LegacyTextModule text;
@@ -122,6 +123,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
         this.chat = new LegacyChatModule(plugin, configManager, messageManager, moderation, playerInfo, version,
                 this::canSeeTeleportTarget);
+        this.hide = new LegacyHideModule(plugin, configManager, messageManager, commandManager,
+                this::canSeeTeleportTarget);
+        this.commandManager.setHideModule(this.hide);
         this.travel = new LegacyTravelModule(plugin, this);
         this.utilities = new LegacyUtilitiesModule(plugin, this);
         this.text = new LegacyTextModule(plugin, configManager, moderation);
@@ -151,6 +155,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         moderation.enable();
         playerInfo.enable();
         chat.enable();
+        hide.enable();
         travel.enable();
         org.bukkit.plugin.PluginManager pm = plugin.getServer().getPluginManager();
         pm.registerEvents(this, plugin);
@@ -159,6 +164,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(moderation, plugin);
         pm.registerEvents(playerInfo, plugin);
         pm.registerEvents(chat, plugin);
+        pm.registerEvents(hide, plugin);
         pm.registerEvents(utilities, plugin);
         pm.registerEvents(text, plugin);
         pm.registerEvents(unlimited, plugin);
@@ -206,6 +212,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(moderation);
         HandlerList.unregisterAll(playerInfo);
         HandlerList.unregisterAll(chat);
+        HandlerList.unregisterAll(hide);
         HandlerList.unregisterAll(utilities);
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);
@@ -218,6 +225,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         economy.disable();
         kits.disable();
         moderation.disable();
+        hide.disable();
         chat.disable();
         playerInfo.disable();
         travel.disable();
@@ -444,8 +452,18 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("tpoffline".equals(name) && args.length == 1) return offlineTeleport.complete(sender, prefix);
         if ("tppet".equals(name) && args.length == 1) return companions.complete(sender, true, prefix);
         if ("tpent".equals(name) && args.length == 1) return companions.complete(sender, false, prefix);
-        if ("allium".equals(name) && args.length == 1) {
-            return filterPrefix(Arrays.asList("version", "help", "reload"), prefix);
+        if ("allium".equals(name)) {
+            if (args.length == 1) {
+                List<String> subs = new ArrayList<String>(Arrays.asList("version", "help", "reload"));
+                if (sender.hasPermission(LegacyHideModule.ADMIN) || sender.isOp()) {
+                    subs.add("hide");
+                }
+                return filterPrefix(subs, prefix);
+            }
+            if (args.length >= 2 && "hide".equalsIgnoreCase(args[0])) {
+                return hide.completeAdmin(sender, Arrays.copyOfRange(args, 1, args.length));
+            }
+            return Collections.emptyList();
         }
         if (("warp".equals(name) || "delwarp".equals(name)) && args.length == 1) {
             List<String> out = new ArrayList<>();
@@ -511,6 +529,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                     version.raw));
             return true;
         }
+        if ("hide".equalsIgnoreCase(args[0])) {
+            return hide.handleAdmin(sender, Arrays.copyOfRange(args, 1, args.length));
+        }
         if ("reload".equalsIgnoreCase(args[0])) {
             if (!sender.hasPermission("allium.reload") && !sender.isOp()) {
                 messageManager.send(sender, "no-permission",
@@ -531,11 +552,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             moderation.reload();
             playerInfo.reload();
             chat.reload();
+            hide.reload();
             text.reload();
             messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");
             return true;
         }
-        send(sender, ChatColor.RED + "Usage: /allium [version|help|reload]");
+        send(sender, ChatColor.RED + "Usage: /allium [version|help|reload|hide]");
         return true;
     }
 

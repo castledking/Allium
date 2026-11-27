@@ -18,7 +18,7 @@ public final class CommandTreeFilter {
             if(child<0||child>=nodes.size())throw new IllegalArgumentException("invalid command child");Node n=nodes.get(child);String label=n.getName().orElse("");
             if((n.getFlags()&Node.TYPE_MASK)!=Node.TYPE_LITERAL||label.isEmpty()||!visible.test(label))continue;
             kept.add(child);
-            if(serverSuggestedRoots.contains(HidePolicy.root(label))||serverSuggestedRoots.contains(HidePolicy.plain(HidePolicy.root(label)))||hasRedirect(nodes,child)){
+            if(serverSuggestedRoots.contains(HidePolicy.rootOfPath(label))||serverSuggestedRoots.contains(HidePolicy.plainOfPath(HidePolicy.rootOfPath(label)))||hasRedirect(nodes,child)){
                 int args=nodes.size();nodes.add(new Node((byte)(Node.TYPE_ARGUMENT|Node.FLAG_EXECUTABLE|Node.FLAG_CUSTOM_SUGGESTIONS),new ArrayList<>(),0,"args",Parsers.BRIGADIER_STRING,List.<Object>of(2),new ResourceLocation("minecraft:ask_server")));
                 n.setChildren(new ArrayList<>(List.of(args)));n.setFlags((byte)(n.getFlags()&~Node.FLAG_REDIRECT));n.setRedirectNodeIndex(0);
             }

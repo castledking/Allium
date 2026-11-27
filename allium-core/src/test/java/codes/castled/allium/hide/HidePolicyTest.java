@@ -18,4 +18,20 @@ class HidePolicyTest {
     @Test void inheritanceCyclesAndUnknownParentsAreRejected(){assertThrows(IllegalArgumentException.class,()->new HidePolicy(List.of(new HidePolicy.Definition("a",true,List.of(),List.of(),List.of("b"),List.of()),new HidePolicy.Definition("b",true,List.of(),List.of(),List.of("a"),List.of()))));assertThrows(IllegalArgumentException.class,()->new HidePolicy(List.of(new HidePolicy.Definition("a",true,List.of(),List.of(),List.of("missing"),List.of()))));}
     @Test void requestReplacementOffsetReconstructsFullPaths(){assertEquals("party invite steve",HidePolicy.suggestionPath("/party invite St","Steve",14));assertEquals("party invite",HidePolicy.suggestionPath("/party i","invite",7));}
     @Test void blacklistInheritedWhitelistConstrainsUnlistedBranches(){var p=new HidePolicy(List.of(new HidePolicy.Definition("base",true,List.of("party invite","party leave"),List.of(),List.of(),List.of()),new HidePolicy.Definition("alt",false,List.of("party invite"),List.of(),List.of("base"),List.of())));assertFalse(HidePolicy.allows(p.select(List.of("alt")),"party invite Steve",false));assertTrue(HidePolicy.allows(p.select(List.of("alt")),"party leave",false));assertFalse(HidePolicy.allows(p.select(List.of("alt")),"party kick",false));}
+    @Test void doubleSlashCommandsLikeWorldEditPreserveLeadingSlash() {
+        assertEquals("/wand", HidePolicy.normalize("//wand"));
+        assertEquals("/wand", HidePolicy.normalizePath("/wand"));
+        assertEquals("/set", HidePolicy.rootOfPath("/set stone"));
+        assertEquals("/wand", HidePolicy.plainOfPath("worldedit:/wand"));
+        assertEquals("/wand", HidePolicy.suggestionPath("//wa", "/wand", 1));
+        assertEquals("/set stone", HidePolicy.suggestionPath("//set st", "stone", 6));
+
+        var p = policy(true, List.of("//wand", "//set"), List.of("^"));
+        var groups = p.select(List.of());
+        assertTrue(HidePolicy.allows(groups, "//wand", false));
+        assertTrue(HidePolicy.allows(groups, "//set stone", false));
+        assertTrue(HidePolicy.allowsNormalized(groups, "/wand", true));
+        assertTrue(HidePolicy.allowsNormalized(groups, "worldedit:/wand", false));
+        assertFalse(HidePolicy.allows(groups, "//copy", false));
+    }
 }

@@ -206,6 +206,40 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacyRedeemPersistsTheClaimBeforeDispatchAndPreventsPartialRewardReplay() throws Exception {
+        UUID playerId = UUID.randomUUID();
+        Path config = tempDir.resolve("config.yml");
+        Files.writeString(config, """
+                redeem-settings:
+                  players-to-redeem: ['%s:GOLD', '%s:gold']
+                  commands-to-run:
+                    gold: ['/reward {player} {uuid}', 'missing-reward', 'last-reward']
+                """.formatted(playerId, playerId));
+        Harness h = createHarness();
+        Player player = h.addPlayer("Alice", playerId, false);
+        when(player.hasPermission("allium.redeem")).thenReturn(true);
+        var console = mock(org.bukkit.command.ConsoleCommandSender.class);
+        when(h.server().getConsoleSender()).thenReturn(console);
+        String first = "reward Alice " + playerId;
+        when(h.server().dispatchCommand(console, first)).thenAnswer(call -> {
+            var saved = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(config.toFile());
+            assertEquals(List.of(playerId + ":gold"), saved.getStringList("redeem-settings.claimed"));
+            assertTrue(saved.getStringList("redeem-settings.players-to-redeem").isEmpty());
+            return true;
+        });
+        assertTrue(h.runAs(player, "redeem", "claimrank"));
+        var order = inOrder(h.server());
+        order.verify(h.server()).dispatchCommand(console, first);
+        order.verify(h.server()).dispatchCommand(console, "missing-reward");
+        verify(h.server(), never()).dispatchCommand(console, "last-reward");
+        verify(player).sendMessage(contains("rewards could not be delivered"));
+        assertTrue(h.run(player, "redeem"));
+        verify(player).sendMessage(contains("no rank rewards"));
+        verify(h.server(), times(1)).dispatchCommand(console, first);
+        h.runtime().onDisable();
+    }
+
+    @Test
     void legacyPaymentConfirmationPersistsAndMatchesTheRecipientAndAmount() {
         UUID aliceId = UUID.randomUUID();
         Harness first = createHarness();

@@ -135,6 +135,7 @@ commands:
     permission: allium.clearchat
   redeem:
     description: Claim configured rank rewards
+    usage: /<command>
     aliases: [claimrank]
     permission: allium.redeem
   autorestart:

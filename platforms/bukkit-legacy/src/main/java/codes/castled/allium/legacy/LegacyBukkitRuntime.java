@@ -93,6 +93,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyEditSignCommand editSign;
     private final LegacyUnlimitedCommand unlimited;
     private final LegacyOfflineTeleport offlineTeleport;
+    private final LegacyRedeemCommand redeem;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -109,6 +110,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.messageManager = new LegacyMessageManager(plugin, configManager, languageManager, version);
         this.editSign = new LegacyEditSignCommand(plugin, messageManager);
         this.commandManager = new LegacyCommandManager(plugin, configManager);
+        this.redeem = new LegacyRedeemCommand(plugin, configManager, commandManager, messageManager);
         this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
         this.economy = new LegacyEconomyModule(plugin, configManager, messageManager);
         this.settings = new LegacyPlayerSettings(plugin, commandManager, economy, messageManager);
@@ -169,6 +171,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(text, plugin);
         pm.registerEvents(unlimited, plugin);
         pm.registerEvents(offlineTeleport, plugin);
+        pm.registerEvents(redeem, plugin);
         pm.registerEvents(companions, plugin);
         text.reload();
         String reason = version.isAtLeast(1, 20, 0)
@@ -217,6 +220,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);
         HandlerList.unregisterAll(offlineTeleport);
+        HandlerList.unregisterAll(redeem);
         HandlerList.unregisterAll(companions);
         text.stop();
         chatClear.stop();
@@ -298,6 +302,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         switch (name) {
             case "allium":
                 return handleAllium(sender, args);
+            case "redeem":
+                return redeem.execute(sender, args);
             case "ping":
                 return handlePing(sender, args);
             case "coords":
@@ -416,6 +422,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String name = command.getName().toLowerCase(Locale.ROOT);
+        if ("redeem".equals(name)) return Collections.emptyList();
         if (commandManager.isDisabled(name) || commandManager.isDisabled(alias) || commandManager.isModuleDisabled(name)) {
             return Collections.emptyList();
         }

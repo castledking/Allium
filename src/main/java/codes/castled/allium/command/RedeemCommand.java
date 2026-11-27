@@ -6,7 +6,7 @@ import codes.castled.allium.command.spec.CoreCommandSpecs;
 import codes.castled.allium.command.spec.CommandSpec;
 import codes.castled.allium.config.YamlFiles;
 import codes.castled.allium.message.Messages;
-import org.bukkit.configuration.ConfigurationSection;
+import codes.castled.allium.redeem.RedeemConfiguration;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -15,16 +15,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
 import java.util.UUID;
 
 public final class RedeemCommand implements SpecCommandHandler, Listener {
-    private static final String PENDING = "redeem-settings.players-to-redeem";
-    private static final String CLAIMED = "redeem-settings.claimed";
-
     private final PluginStart plugin;
 
     public RedeemCommand(PluginStart plugin) {
@@ -64,26 +58,20 @@ public final class RedeemCommand implements SpecCommandHandler, Listener {
         try {
             var config = new YamlConfiguration();
             config.load(file.toFile());
-            var claim = pending(config, id);
+            var claim = RedeemConfiguration.pending(config, id);
             if (claim.isEmpty()) {
                 send(player, Messages.REDEEM_UNAVAILABLE);
                 return;
             }
             rank = claim.get();
-            commands = config.getStringList("redeem-settings.commands-to-run." + rank).stream()
-                    .map(String::strip).filter(command -> !command.isEmpty()).toList();
+            commands = RedeemConfiguration.commands(config, rank);
             if (commands.isEmpty()) {
                 plugin.logger().warning("No commands configured for redemption rank " + rank);
                 send(player, Messages.REDEEM_FAILED);
                 return;
             }
             // Persist the claim before invoking other plugins. Their commands have no shared rollback.
-            var entries = new ArrayList<>(config.getStringList(PENDING));
-            entries.removeIf(entry -> claimKey(id, rank).equalsIgnoreCase(entry.strip()));
-            var claimed = new ArrayList<>(config.getStringList(CLAIMED));
-            claimed.add(claimKey(id, rank));
-            config.set(PENDING, entries);
-            config.set(CLAIMED, claimed);
+            RedeemConfiguration.consume(config, id, rank);
             YamlFiles.normalize(file, config);
             plugin.reloadConfig();
         } catch (IOException | InvalidConfigurationException error) {
@@ -92,9 +80,9 @@ public final class RedeemCommand implements SpecCommandHandler, Listener {
             return;
         }
         for (int i = 0; i < commands.size(); i++) {
-            String command = commands.get(i).replace("{player}", name).replace("{uuid}", id.toString());
+            String command = RedeemConfiguration.expand(commands.get(i), id, name);
             try {
-                if (plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), command.replaceFirst("^/", ""))) {
+                if (plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), command)) {
                     continue;
                 }
             } catch (RuntimeException error) {
@@ -112,25 +100,8 @@ public final class RedeemCommand implements SpecCommandHandler, Listener {
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (!player.hasPermission("allium.redeem")) return;
-        pending(plugin.getConfig(), player.getUniqueId()).ifPresent(rank ->
+        RedeemConfiguration.pending(plugin.getConfig(), player.getUniqueId()).ifPresent(rank ->
                 send(player, Messages.REDEEM_JOIN, "{rank}", rank, "{name}", player.getName()));
-    }
-
-    static Optional<String> pending(ConfigurationSection config, UUID player) {
-        List<String> claimed = config.getStringList(CLAIMED);
-        for (String entry : config.getStringList(PENDING)) {
-            String[] parts = entry.strip().split(":", 2);
-            if (parts.length != 2 || !player.toString().equalsIgnoreCase(parts[0])) continue;
-            String rank = parts[1].toLowerCase(Locale.ROOT);
-            if (rank.matches("[a-z0-9_-]+") && claimed.stream().noneMatch(claimKey(player, rank)::equalsIgnoreCase)) {
-                return Optional.of(rank);
-            }
-        }
-        return Optional.empty();
-    }
-
-    private static String claimKey(UUID player, String rank) {
-        return player + ":" + rank;
     }
 
     private void send(Player player, Messages message, String... placeholders) {

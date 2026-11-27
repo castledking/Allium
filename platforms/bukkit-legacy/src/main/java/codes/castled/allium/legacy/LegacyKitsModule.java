@@ -181,7 +181,7 @@ final class LegacyKitsModule implements Listener {
             givingOther = !target.equals(sender);
         } else {
             if (!(sender instanceof Player)) {
-                send(sender, ChatColor.RED + "Usage: /kit <name> <player>");
+                LegacyUsageCards.invalid(sender, "/kit <name> <player>");
                 return true;
             }
             target = (Player) sender;
@@ -228,7 +228,7 @@ final class LegacyKitsModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /createkit <name> [cooldownSeconds]");
+            LegacyUsageCards.invalid(sender, "/createkit <name> [cooldownSeconds]");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
@@ -273,7 +273,7 @@ final class LegacyKitsModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /delkit <name>");
+            LegacyUsageCards.invalid(sender, "/delkit <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
@@ -296,7 +296,7 @@ final class LegacyKitsModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /showkit <name>");
+            LegacyUsageCards.invalid(sender, "/showkit <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
@@ -321,7 +321,7 @@ final class LegacyKitsModule implements Listener {
             return true;
         }
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /kitreset <player> <kit|all>");
+            LegacyUsageCards.invalid(sender, "/kitreset <player> <kit|all>");
             return true;
         }
         Player online = plugin.getServer().getPlayerExact(args[0]);

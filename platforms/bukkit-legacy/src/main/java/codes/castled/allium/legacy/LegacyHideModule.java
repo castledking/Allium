@@ -444,15 +444,15 @@ final class LegacyHideModule implements Listener {
             messages.send(actor, "hide.failed", "{prefix} &cHide configuration was refused. Check console for details.");
             return true;
         }
-        messages.sendPrefixed(actor, ChatColor.RED
-                + "Usage: /allium hide <status|reload|enabled <true|false>|resolve <player> <cmd>|fix <cmd> <perm>|unfix <cmd>|group ...>");
+        // The narrowest form that was wrong, as the modern platform shows it.
+        boolean known = args.length > 0 && Arrays.asList("enabled", "resolve", "fix", "unfix").contains(args[0].toLowerCase(Locale.ROOT));
+        LegacyUsageCards.invalid(actor, known ? "/allium hide " + args[0].toLowerCase(Locale.ROOT) : "/allium hide");
         return true;
     }
 
     private boolean handleGroupAdmin(CommandSender actor, String[] args) {
         if (args.length < 2) {
-            messages.sendPrefixed(actor, ChatColor.RED
-                    + "Usage: /allium hide group <name> <create|add|remove|check|whitelist|inherit> ...");
+            LegacyUsageCards.invalid(actor, "/allium hide group <name> <create|add|remove|check|whitelist|inherit> ...");
             return true;
         }
         final String name = args[0].toLowerCase(Locale.ROOT);
@@ -510,8 +510,7 @@ final class LegacyHideModule implements Listener {
             return true;
         }
         if ((!"add".equals(action) && !"remove".equals(action) && !"check".equals(action)) || args.length < 3) {
-            messages.sendPrefixed(actor, ChatColor.RED
-                    + "Usage: /allium hide group <name> <add|remove|check> [-c|-t|-tc] <rules>");
+            LegacyUsageCards.invalid(actor, "/allium hide group <name> <add|remove|check> [-c|-t|-tc] <rules>");
             return true;
         }
         int start = 2;

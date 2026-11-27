@@ -142,7 +142,7 @@ final class LegacyTravelModule {
             return true;
         }
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /renamehome <oldName> <newName>");
+            LegacyUsageCards.invalid(sender, "/renamehome <oldName> <newName>");
             return true;
         }
         final Player player = (Player) sender;
@@ -194,7 +194,7 @@ final class LegacyTravelModule {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /warpinfo <warp>");
+            LegacyUsageCards.invalid(sender, "/warpinfo <warp>");
             return true;
         }
         Location loc = runtime.getWarp(args[0]);
@@ -218,7 +218,7 @@ final class LegacyTravelModule {
             return true;
         }
         if (args.length < 3) {
-            send(sender, ChatColor.RED + "Usage: /tppos <x> <y> <z> [world]");
+            LegacyUsageCards.invalid(sender, "/tppos <x> <y> <z> [world]");
             return true;
         }
         Player player = (Player) sender;
@@ -329,7 +329,7 @@ final class LegacyTravelModule {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /" + (here ? "tpohere" : "tpo") + " <player>");
+            LegacyUsageCards.invalid(sender, "/" + (here ? "tpohere" : "tpo") + " <player>");
             return true;
         }
         Player self = (Player) sender;
@@ -363,7 +363,7 @@ final class LegacyTravelModule {
         } else if (sender instanceof Player) {
             destPlayer = (Player) sender;
         } else {
-            send(sender, ChatColor.RED + "Usage: /tpall <player>");
+            LegacyUsageCards.invalid(sender, "/tpall <player>");
             return true;
         }
         int count = 0;
@@ -425,7 +425,7 @@ final class LegacyTravelModule {
         } else if (sender instanceof Player) {
             target = (Player) sender;
         } else {
-            send(sender, ChatColor.RED + "Usage: /world <world> <player>");
+            LegacyUsageCards.invalid(sender, "/world <world> <player>");
             return true;
         }
         target.teleport(world.getSpawnLocation());

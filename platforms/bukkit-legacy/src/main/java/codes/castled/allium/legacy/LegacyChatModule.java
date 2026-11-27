@@ -521,7 +521,7 @@ final class LegacyChatModule implements Listener {
         }
 
         if (args.length < 2 || args.length > 3) {
-            messages.sendPrefixed(player, ChatColor.RED + "Usage: /channel <join|leave|list> [channel] [read|write]");
+            LegacyUsageCards.invalid(player, "/channel <join|leave|list> [channel] [read|write]");
             return true;
         }
 
@@ -593,7 +593,7 @@ final class LegacyChatModule implements Listener {
             return true;
         }
         if (args.length == 0) {
-            messages.sendPrefixed(sender, ChatColor.RED + "Usage: /me <message>");
+            LegacyUsageCards.invalid(sender, "/me <message>");
             return true;
         }
         String body = stripControlChars(joinArgs(args, 0));

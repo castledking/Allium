@@ -97,6 +97,8 @@ class LegacyModulesTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Harness createHarness() {
         JavaPlugin plugin = mock(JavaPlugin.class);
+        when(plugin.getResource(anyString())).thenAnswer(inv ->
+                LegacyModulesTest.class.getClassLoader().getResourceAsStream(inv.getArgument(0)));
         Server server = mock(Server.class);
         PluginManager pm = mock(PluginManager.class);
         World world = mock(World.class);
@@ -277,12 +279,33 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacyCommandsWithWrongArgumentsShowTheirUsageCards() {
+        Harness h = createHarness();
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+        assertTrue(h.run(staff, "allium", "hide", "enabled"));
+        verify(staff).sendMessage(argThat((String line) -> line != null
+                && org.bukkit.ChatColor.stripColor(line).contains("Command Help") && line.contains("/allium")));
+        verify(staff, atLeastOnce()).sendMessage(argThat((String line) -> line != null
+                && org.bukkit.ChatColor.stripColor(line).contains("/allium hide enabled")));
+        // Narrowed to the form that was wrong: other /allium forms stay off the card.
+        verify(staff, never()).sendMessage(argThat((String line) -> line != null
+                && org.bukkit.ChatColor.stripColor(line).contains("/allium hide status")));
+        verify(staff, never()).sendMessage(argThat((String line) -> line != null
+                && org.bukkit.ChatColor.stripColor(line).contains("adopt-window")));
+        // A handler refusing its arguments gets the card instead of Bukkit's plain usage line.
+        assertTrue(h.run(staff, "kittycannon", "extra"));
+        verify(staff, atLeastOnce()).sendMessage(argThat((String line) -> line != null
+                && org.bukkit.ChatColor.stripColor(line).contains("/kittycannon")));
+        h.runtime().onDisable();
+    }
+
+    @Test
     void legacyNukeValidatesAllNamedTargetsBeforeSpawningTnt() {
         Harness h = createHarness();
         Player actor = h.addPlayer("Staff", UUID.randomUUID(), true);
         Player member = h.addPlayer("Member", UUID.randomUUID(), false);
         assertTrue(h.run(actor, "nuke", "Member", "Missing"));
-        verify(actor).sendMessage(contains("was not found"));
+        verify(actor).sendMessage(contains("not found"));
         verify(h.world(), never()).spawn(any(Location.class), eq(org.bukkit.entity.TNTPrimed.class));
         assertTrue(h.run(member, "nuke", "Staff"));
         verify(member).sendMessage(contains("permission"));

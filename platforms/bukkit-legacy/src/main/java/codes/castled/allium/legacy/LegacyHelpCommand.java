@@ -77,7 +77,7 @@ final class LegacyHelpCommand {
                 }
             }
         } catch (NumberFormatException invalid) {
-            sender.sendMessage(ChatColor.RED + "Usage: /help [command|plugin|query] [page]");
+            LegacyUsageCards.invalid(sender, "/help [command|plugin|query] [page]");
             return true;
         }
 

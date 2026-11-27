@@ -232,7 +232,7 @@ final class LegacyPlayerInfoModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /seen <player>");
+            LegacyUsageCards.invalid(sender, "/seen <player>");
             return true;
         }
         Player online = findOnline(args[0]);
@@ -264,7 +264,7 @@ final class LegacyPlayerInfoModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /whois <player>");
+            LegacyUsageCards.invalid(sender, "/whois <player>");
             return true;
         }
         Player target = findOnline(args[0]);
@@ -344,7 +344,7 @@ final class LegacyPlayerInfoModule implements Listener {
         } else if (sender instanceof Player) {
             target = (Player) sender;
         } else {
-            send(sender, ChatColor.RED + "Usage: /playtime <player>");
+            LegacyUsageCards.invalid(sender, "/playtime <player>");
             return true;
         }
         String name = target.getName() != null ? target.getName() : args[0];
@@ -437,7 +437,7 @@ final class LegacyPlayerInfoModule implements Listener {
         }
         if (args.length == 0 || args[0].equalsIgnoreCase("read")) {
             if (!(sender instanceof Player)) {
-                send(sender, ChatColor.RED + "Usage: /mail send <player> <message>");
+                LegacyUsageCards.invalid(sender, "/mail send <player> <message>");
                 return true;
             }
             List<String> mail = mailboxes.get(((Player) sender).getUniqueId());
@@ -464,7 +464,7 @@ final class LegacyPlayerInfoModule implements Listener {
         }
         if (sub.equals("send")) {
             if (args.length < 3) {
-                send(sender, ChatColor.RED + "Usage: /mail send <player> <message>");
+                LegacyUsageCards.invalid(sender, "/mail send <player> <message>");
                 return true;
             }
             OfflinePlayer target = resolvePlayer(args[1]);
@@ -496,7 +496,7 @@ final class LegacyPlayerInfoModule implements Listener {
             }
             return true;
         }
-        send(sender, ChatColor.RED + "Usage: /mail <read|send|clear>");
+        LegacyUsageCards.invalid(sender, "/mail <read|send|clear>");
         return true;
     }
 
@@ -506,7 +506,7 @@ final class LegacyPlayerInfoModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /nick <nickname|off> [player]");
+            LegacyUsageCards.invalid(sender, "/nick <nickname|off> [player]");
             return true;
         }
         Player target;
@@ -523,7 +523,7 @@ final class LegacyPlayerInfoModule implements Listener {
         } else if (sender instanceof Player) {
             target = (Player) sender;
         } else {
-            send(sender, ChatColor.RED + "Usage: /nick <nickname|off> <player>");
+            LegacyUsageCards.invalid(sender, "/nick <nickname|off> <player>");
             return true;
         }
         if (args[0].equalsIgnoreCase("off") || args[0].equalsIgnoreCase("reset")) {
@@ -552,7 +552,7 @@ final class LegacyPlayerInfoModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /realname <nickname>");
+            LegacyUsageCards.invalid(sender, "/realname <nickname>");
             return true;
         }
         String needle = args[0].toLowerCase(Locale.ROOT);

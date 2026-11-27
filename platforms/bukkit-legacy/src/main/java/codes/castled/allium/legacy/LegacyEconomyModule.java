@@ -164,7 +164,7 @@ final class LegacyEconomyModule implements Listener {
         }
         if (args.length == 0) {
             if (!(sender instanceof Player)) {
-                send(sender, ChatColor.RED + "Usage: /balance <player>");
+                LegacyUsageCards.invalid(sender, "/balance <player>");
                 return true;
             }
             Player p = (Player) sender;
@@ -196,7 +196,7 @@ final class LegacyEconomyModule implements Listener {
             return true;
         }
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /pay <player> <amount>");
+            LegacyUsageCards.invalid(sender, "/pay <player> <amount>");
             return true;
         }
         Player payer = (Player) sender;
@@ -397,7 +397,7 @@ final class LegacyEconomyModule implements Listener {
             return true;
         }
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /eco <give|take|set|reset> <player> [amount]");
+            LegacyUsageCards.invalid(sender, "/eco <give|take|set|reset> <player> [amount]");
             return true;
         }
         String action = args[0].toLowerCase(Locale.ROOT);
@@ -414,7 +414,7 @@ final class LegacyEconomyModule implements Listener {
             return true;
         }
         if (args.length < 3) {
-            send(sender, ChatColor.RED + "Usage: /eco " + action + " <player> <amount>");
+            LegacyUsageCards.invalid(sender, "/eco " + action + " <player> <amount>");
             return true;
         }
         BigDecimal amount = LegacyCompat.parseMoneyAmount(args[2]);
@@ -436,7 +436,7 @@ final class LegacyEconomyModule implements Listener {
                 next = amount;
                 break;
             default:
-                send(sender, ChatColor.RED + "Usage: /eco <give|take|set|reset> <player> [amount]");
+                LegacyUsageCards.invalid(sender, "/eco <give|take|set|reset> <player> [amount]");
                 return true;
         }
         setBalance(id, targetName, next);
@@ -498,7 +498,7 @@ final class LegacyEconomyModule implements Listener {
         int amount = 1;
         if (args.length == 0 || args[0].equalsIgnoreCase("hand")) {
             if (!(sender instanceof Player)) {
-                send(sender, ChatColor.RED + "Usage: /worth <material>");
+                LegacyUsageCards.invalid(sender, "/worth <material>");
                 return true;
             }
             ItemStack hand = ((Player) sender).getInventory().getItemInMainHand();
@@ -537,7 +537,7 @@ final class LegacyEconomyModule implements Listener {
         if (args.length == 1 && sender instanceof Player) {
             ItemStack hand = ((Player) sender).getInventory().getItemInMainHand();
             if (hand == null || hand.getType() == Material.AIR) {
-                send(sender, ChatColor.RED + "Usage: /setworth [material] <price>");
+                LegacyUsageCards.invalid(sender, "/setworth [material] <price>");
                 return true;
             }
             mat = hand.getType();
@@ -546,7 +546,7 @@ final class LegacyEconomyModule implements Listener {
             mat = LegacyCompat.matchMaterial(args[0]);
             priceRaw = args[1];
         } else {
-            send(sender, ChatColor.RED + "Usage: /setworth [material] <price>");
+            LegacyUsageCards.invalid(sender, "/setworth [material] <price>");
             return true;
         }
         if (mat == null) {

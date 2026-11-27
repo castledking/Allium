@@ -402,7 +402,7 @@ final class LegacyModerationModule implements Listener {
         } else if (sender instanceof Player) {
             target = (Player) sender;
         } else {
-            send(sender, ChatColor.RED + "Usage: /vanish <player>");
+            LegacyUsageCards.invalid(sender, "/vanish <player>");
             return true;
         }
         boolean nowVanished;
@@ -434,7 +434,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /mute <player> [duration] [reason]");
+            LegacyUsageCards.invalid(sender, "/mute <player> [duration] [reason]");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -469,7 +469,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /unmute <player>");
+            LegacyUsageCards.invalid(sender, "/unmute <player>");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -521,7 +521,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /kick <player> [reason]");
+            LegacyUsageCards.invalid(sender, "/kick <player> [reason]");
             return true;
         }
         Player target = findOnline(args[0]);
@@ -558,7 +558,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < (temp ? 2 : 1)) {
-            send(sender, ChatColor.RED + "Usage: /" + (temp ? (ip ? "tempbanip" : "tempban") + " <target> <duration> [reason]"
+            LegacyUsageCards.invalid(sender, "/" + (temp ? (ip ? "tempbanip" : "tempban") + " <target> <duration> [reason]"
                     : (ip ? "ipban" : "ban") + " <target> [reason]"));
             return true;
         }
@@ -606,7 +606,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /" + (ip ? "unbanip <ip>" : "unban <player>"));
+            LegacyUsageCards.invalid(sender, "/" + (ip ? "unbanip <ip>" : "unban <player>"));
             return true;
         }
         BanList list = plugin.getServer().getBanList(ip ? BanList.Type.IP : BanList.Type.NAME);
@@ -645,7 +645,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /freeze <player>");
+            LegacyUsageCards.invalid(sender, "/freeze <player>");
             return true;
         }
         Player target = findOnline(args[0]);
@@ -674,7 +674,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /setjail <name>");
+            LegacyUsageCards.invalid(sender, "/setjail <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
@@ -690,7 +690,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /deljail <name>");
+            LegacyUsageCards.invalid(sender, "/deljail <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
@@ -723,7 +723,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /jail <player> <jail> [duration]");
+            LegacyUsageCards.invalid(sender, "/jail <player> <jail> [duration]");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -764,7 +764,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /unjail <player>");
+            LegacyUsageCards.invalid(sender, "/unjail <player>");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -783,7 +783,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /togglejail <player> [jail] [duration]");
+            LegacyUsageCards.invalid(sender, "/togglejail <player> [jail] [duration]");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -825,7 +825,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /warn <player> <reason>");
+            LegacyUsageCards.invalid(sender, "/warn <player> <reason>");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -855,7 +855,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /notes <player> [note to add]");
+            LegacyUsageCards.invalid(sender, "/notes <player> [note to add]");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -893,7 +893,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /unnote <player> <index>");
+            LegacyUsageCards.invalid(sender, "/unnote <player> <index>");
             return true;
         }
         OfflinePlayer target = resolvePlayer(args[0]);
@@ -930,7 +930,7 @@ final class LegacyModerationModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /invsee <player>");
+            LegacyUsageCards.invalid(sender, "/invsee <player>");
             return true;
         }
         Player target = findOnline(args[0]);

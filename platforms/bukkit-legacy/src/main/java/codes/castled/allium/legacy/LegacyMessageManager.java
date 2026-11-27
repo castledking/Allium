@@ -276,6 +276,12 @@ final class LegacyMessageManager {
         return Collections.emptyList();
     }
 
+    /** Plays a message's configured sound alone, without its text. */
+    void playSound(Player player, String key) {
+        LegacyLanguageManager.SoundSpec sound = lang.getSound(key);
+        if (sound != null) playSoundSpec(player, sound, false);
+    }
+
     private void sendInternal(CommandSender sender, String key, String defaultText, boolean scaleSound, String... replacements) {
         sendInternal(sender, key, defaultText, scaleSound, null, replacements);
     }

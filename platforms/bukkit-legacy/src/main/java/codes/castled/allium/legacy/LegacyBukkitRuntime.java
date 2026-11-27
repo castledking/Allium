@@ -103,6 +103,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyXpBottle xpBottle;
     private final LegacyStaffReports staffReports;
     private final LegacyExplosiveCommands explosiveCommands;
+    private final LegacyUsageCards usageCards;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -117,6 +118,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.configManager = new LegacyConfigManager(plugin);
         this.languageManager = new LegacyLanguageManager(plugin, configManager);
         this.messageManager = new LegacyMessageManager(plugin, configManager, languageManager, version);
+        this.usageCards = LegacyUsageCards.load(plugin, messageManager);
+        LegacyUsageCards.install(usageCards);
         this.editSign = new LegacyEditSignCommand(plugin, messageManager);
         this.commandManager = new LegacyCommandManager(plugin, configManager);
         this.redeem = new LegacyRedeemCommand(plugin, configManager, commandManager, messageManager);
@@ -316,6 +319,12 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (dispatch(sender, command, label, args)) return true;
+        // Missing or wrong arguments: the command's usage card, as on the modern platform.
+        return usageCards.send(sender, command.getName(), label, null);
+    }
+
+    private boolean dispatch(CommandSender sender, Command command, String label, String[] args) {
         String name = command.getName().toLowerCase(Locale.ROOT);
         if (commandManager.isDisabled(name) || commandManager.isDisabled(label)) {
             messageManager.send(sender, "unknown-command",
@@ -627,7 +636,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             } else if (commandManager.isDisabled("escalate") || commandManager.isModuleDisabled("escalate")) {
                 messageManager.send(sender, "error.module-disabled", "{prefix} &cThis feature is currently disabled.");
             } else if (args.length < 4 || !staffReports.escalate(sender, args[1], args, 2)) {
-                send(sender, ChatColor.RED + "Usage: /allium escalate <staffmember> <target> <reason>");
+                LegacyUsageCards.invalid(sender, "/allium escalate <staffmember> <target> <reason>");
             }
             return true;
         }
@@ -659,13 +668,13 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");
             return true;
         }
-        send(sender, ChatColor.RED + "Usage: /allium [version|help|reload|hide]");
+        LegacyUsageCards.invalid(sender, "/allium [version|help|reload|hide]");
         return true;
     }
 
     private boolean handlePing(CommandSender sender, String[] args) {
         if (args.length > 1) {
-            send(sender, ChatColor.RED + "Usage: /ping [player]");
+            LegacyUsageCards.invalid(sender, "/ping [player]");
             return true;
         }
         Player target = resolveTarget(sender, args, 0, "allium.ping.others");
@@ -681,7 +690,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private boolean handleCoords(CommandSender sender, String[] args) {
         if (args.length > 1) {
-            send(sender, ChatColor.RED + "Usage: /coords [player]");
+            LegacyUsageCards.invalid(sender, "/coords [player]");
             return true;
         }
         Player target = resolveTarget(sender, args, 0, "allium.getpos.others");
@@ -719,7 +728,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return true;
         }
         if (args.length > (action.acceptsName() ? 1 : 0)) {
-            send(sender, ChatColor.RED + "Usage: /" + action.command + (action.acceptsName() ? " [name]" : ""));
+            LegacyUsageCards.invalid(sender, "/" + action.command + (action.acceptsName() ? " [name]" : ""));
             return true;
         }
         Player player = (Player) sender;
@@ -794,7 +803,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return true;
         }
         if (args.length != 1 || !args[0].matches("[A-Za-z0-9_-]{1,32}")) {
-            send(sender, ChatColor.RED + "Usage: /setwarp <name>");
+            LegacyUsageCards.invalid(sender, "/setwarp <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
@@ -831,7 +840,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return true;
         }
         if (args.length != 1) {
-            send(sender, ChatColor.RED + "Usage: /delwarp <name>");
+            LegacyUsageCards.invalid(sender, "/delwarp <name>");
             return true;
         }
         String key = args[0].toLowerCase(Locale.ROOT);
@@ -875,7 +884,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private boolean handleSpawn(CommandSender sender, String[] args) {
         if (args.length > 1) {
-            send(sender, ChatColor.RED + "Usage: /spawn [player]");
+            LegacyUsageCards.invalid(sender, "/spawn [player]");
             return true;
         }
         Player target = resolveTarget(sender, args, 0, "allium.spawn.others");
@@ -903,7 +912,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         Player from = requirePlayer(sender);
         if (from == null) return true;
         if (args.length != 1) {
-            send(sender, ChatColor.RED + "Usage: /" + (here ? "tpahere" : "tpa") + " <player>");
+            LegacyUsageCards.invalid(sender, "/" + (here ? "tpahere" : "tpa") + " <player>");
             return true;
         }
         Player target = findTeleportPlayer(sender, args[0]);
@@ -1051,7 +1060,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             send(sender, ChatColor.GREEN + "Teleported " + subject.getName() + " to " + dest.getName() + ".");
             return true;
         }
-        send(sender, ChatColor.RED + "Usage: /tp <player> [target]");
+        LegacyUsageCards.invalid(sender, "/tp <player> [target]");
         return true;
     }
 
@@ -1062,7 +1071,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return true;
         }
         if (args.length != 1) {
-            send(sender, ChatColor.RED + "Usage: /tphere <player>");
+            LegacyUsageCards.invalid(sender, "/tphere <player>");
             return true;
         }
         Player target = findTeleportPlayer(sender, args[0]);
@@ -1139,7 +1148,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private boolean handleMsg(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /msg <player> <message>");
+            LegacyUsageCards.invalid(sender, "/msg <player> <message>");
             return true;
         }
         Player target = plugin.getServer().getPlayerExact(args[0]);
@@ -1160,7 +1169,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         Player self = requirePlayer(sender);
         if (self == null) return true;
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /reply <message>");
+            LegacyUsageCards.invalid(sender, "/reply <message>");
             return true;
         }
         UUID playerId = self.getUniqueId();
@@ -1287,7 +1296,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             targetIndex = 0;
         } else {
             if (args.length < 1) {
-                send(sender, ChatColor.RED + "Usage: /gamemode <survival|creative|adventure|spectator> [player]");
+                LegacyUsageCards.invalid(sender, "/gamemode <survival|creative|adventure|spectator> [player]");
                 return true;
             }
             mode = parseGameMode(args[0]);
@@ -1312,7 +1321,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private boolean handleSpeed(CommandSender sender, String label, String[] args) {
         if (args.length < 1 || args.length > 2) {
-            send(sender, ChatColor.RED + "Usage: /speed <0-10> [player]");
+            LegacyUsageCards.invalid(sender, "/speed <0-10> [player]");
             return true;
         }
         float value;
@@ -1385,7 +1394,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     private boolean handleTime(CommandSender sender, String[] args) {
         if (args.length < 1 || args.length > 2) {
-            send(sender, ChatColor.RED + "Usage: /time <day|noon|night|midnight|ticks> [world]");
+            LegacyUsageCards.invalid(sender, "/time <day|noon|night|midnight|ticks> [world]");
             return true;
         }
         String token = args[0].toLowerCase(Locale.ROOT);
@@ -1420,7 +1429,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return setWorldWeather(sender, args.length > 0 ? args[0] : null, lower);
         }
         if (args.length < 1 || args.length > 2) {
-            send(sender, ChatColor.RED + "Usage: /weather <sun|rain|storm> [world]");
+            LegacyUsageCards.invalid(sender, "/weather <sun|rain|storm> [world]");
             return true;
         }
         return setWorldWeather(sender, args.length == 2 ? args[1] : null, args[0].toLowerCase(Locale.ROOT));
@@ -1448,14 +1457,14 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 send(sender, ChatColor.GREEN + "Set weather to storm in " + world.getName() + ".");
                 return true;
             default:
-                send(sender, ChatColor.RED + "Usage: /weather <sun|rain|storm> [world]");
+                LegacyUsageCards.invalid(sender, "/weather <sun|rain|storm> [world]");
                 return true;
         }
     }
 
     private boolean handleBroadcast(CommandSender sender, String[] args) {
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /broadcast <message>");
+            LegacyUsageCards.invalid(sender, "/broadcast <message>");
             return true;
         }
         String text = LegacyCompat.color("&6[Broadcast] &f" + joinArgs(args, 0));

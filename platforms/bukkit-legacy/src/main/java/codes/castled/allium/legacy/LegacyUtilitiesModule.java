@@ -338,7 +338,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /rename <name>");
+            LegacyUsageCards.invalid(sender, "/rename <name>");
             return true;
         }
         Player p = (Player) sender;
@@ -366,7 +366,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /lore <add <text>|set <line> <text>|remove <line>|clear>");
+            LegacyUsageCards.invalid(sender, "/lore <add <text>|set <line> <text>|remove <line>|clear>");
             return true;
         }
         Player p = (Player) sender;
@@ -421,7 +421,7 @@ final class LegacyUtilitiesModule implements Listener {
             send(sender, ChatColor.GREEN + "Removed lore line #" + (idx + 1) + ".");
             return true;
         }
-        send(sender, ChatColor.RED + "Usage: /lore <add <text>|set <line> <text>|remove <line>|clear>");
+        LegacyUsageCards.invalid(sender, "/lore <add <text>|set <line> <text>|remove <line>|clear>");
         return true;
     }
 
@@ -435,7 +435,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /enchant <enchantment> [level]");
+            LegacyUsageCards.invalid(sender, "/enchant <enchantment> [level]");
             return true;
         }
         Player p = (Player) sender;
@@ -478,7 +478,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /itemflag <flag>");
+            LegacyUsageCards.invalid(sender, "/itemflag <flag>");
             return true;
         }
         Player p = (Player) sender;
@@ -545,7 +545,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (!(sender instanceof Player)) {
-            send(sender, ChatColor.RED + "Usage: /itemdb <material>");
+            LegacyUsageCards.invalid(sender, "/itemdb <material>");
             return true;
         }
         ItemStack hand = ((Player) sender).getInventory().getItemInMainHand();
@@ -686,7 +686,7 @@ final class LegacyUtilitiesModule implements Listener {
                 return true;
             }
             if (args.length < 1) {
-                send(sender, ChatColor.RED + "Usage: /i <material> [amount]");
+                LegacyUsageCards.invalid(sender, "/i <material> [amount]");
                 return true;
             }
             target = (Player) sender;
@@ -696,7 +696,7 @@ final class LegacyUtilitiesModule implements Listener {
             }
         } else {
             if (args.length < 2) {
-                send(sender, ChatColor.RED + "Usage: /give <player> <material> [amount]");
+                LegacyUsageCards.invalid(sender, "/give <player> <material> [amount]");
                 return true;
             }
             target = findOnline(args[0]);
@@ -746,7 +746,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /burn <player> [seconds]");
+            LegacyUsageCards.invalid(sender, "/burn <player> [seconds]");
             return true;
         }
         Player target = findOnline(args[0]);
@@ -779,7 +779,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (!(sender instanceof Player)) {
-            send(sender, ChatColor.RED + "Usage: /smite <player>");
+            LegacyUsageCards.invalid(sender, "/smite <player>");
             return true;
         }
         Player p = (Player) sender;
@@ -883,7 +883,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /ptime <day|noon|night|midnight|ticks|reset> [player]");
+            LegacyUsageCards.invalid(sender, "/ptime <day|noon|night|midnight|ticks|reset> [player]");
             return true;
         }
         Player target = args.length >= 2 ? findOnline(args[1]) : (sender instanceof Player ? (Player) sender : null);
@@ -920,7 +920,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /pweather <clear|rain|reset> [player]");
+            LegacyUsageCards.invalid(sender, "/pweather <clear|rain|reset> [player]");
             return true;
         }
         Player target = args.length >= 2 ? findOnline(args[1]) : (sender instanceof Player ? (Player) sender : null);
@@ -939,7 +939,7 @@ final class LegacyUtilitiesModule implements Listener {
         } else if (raw.equals("rain") || raw.equals("storm") || raw.equals("downfall")) {
             target.setPlayerWeather(WeatherType.DOWNFALL);
         } else {
-            send(sender, ChatColor.RED + "Usage: /pweather <clear|rain|reset> [player]");
+            LegacyUsageCards.invalid(sender, "/pweather <clear|rain|reset> [player]");
             return true;
         }
         send(sender, ChatColor.GREEN + "Set " + target.getName() + "'s personal weather to " + raw + ".");
@@ -979,7 +979,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /spawner <mobType>");
+            LegacyUsageCards.invalid(sender, "/spawner <mobType>");
             return true;
         }
         EntityType type;
@@ -1039,7 +1039,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /remove <drops|mobs|monsters|all> [radius]");
+            LegacyUsageCards.invalid(sender, "/remove <drops|mobs|monsters|all> [radius]");
             return true;
         }
         Player p = (Player) sender;
@@ -1075,7 +1075,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 1) {
-            send(sender, ChatColor.RED + "Usage: /spawnmob <mob> [amount]");
+            LegacyUsageCards.invalid(sender, "/spawnmob <mob> [amount]");
             return true;
         }
         EntityType type;
@@ -1138,7 +1138,7 @@ final class LegacyUtilitiesModule implements Listener {
             return true;
         }
         if (args.length < 2) {
-            send(sender, ChatColor.RED + "Usage: /broadcastworld <world> <message>");
+            LegacyUsageCards.invalid(sender, "/broadcastworld <world> <message>");
             return true;
         }
         World w = plugin.getServer().getWorld(args[0]);
@@ -1200,7 +1200,7 @@ final class LegacyUtilitiesModule implements Listener {
         }
         Player target = args.length >= 1 ? findOnline(args[0]) : (sender instanceof Player ? (Player) sender : null);
         if (target == null) {
-            send(sender, ChatColor.RED + "Usage: /explode <player> [power]");
+            LegacyUsageCards.invalid(sender, "/explode <player> [power]");
             return true;
         }
         float power = 4.0f;
@@ -1225,7 +1225,7 @@ final class LegacyUtilitiesModule implements Listener {
             return target;
         }
         if (sender instanceof Player) return (Player) sender;
-        send(sender, ChatColor.RED + "Usage: " + usage);
+        LegacyUsageCards.invalid(sender, "" + usage);
         return null;
     }
 

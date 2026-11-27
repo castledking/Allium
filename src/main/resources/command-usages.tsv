@@ -1,0 +1,647 @@
+# Usage card lines for the legacy Bukkit platform, written from the command specs
+# by CommandUsageTableTest. C: command, aliases, description. U: syntax, description, permission.
+C	action	me,describe	Describe what you are doing in chat
+U	<message>	Describes what you are doing, as * You <message>	
+C	afk	away	Toggle AFK status with an optional message
+U		Toggles your AFK status	
+U	<message>	Goes AFK with a message	
+C	allium	core	Allium administration
+U	version	Shows the Allium version	
+U	reload	Reloads the configuration and language files	allium.reload
+U	sethomes <player> [number|+N|-N|-1]	Shows or overrides a player's max homes	allium.sethomes
+U	import lang [apply]	Imports messages from the pre-recode lang file (a dry run unless apply)	allium.import
+U	import vouchers [apply]	Makes a powertool of each pre-recode voucher (a dry run unless apply)	allium.import
+U	escalate <staffmember> <target> <reason>	Escalates for a staff member, from the console (legacy /core escalate)	allium.escalate
+U	import legacy [apply <run>]	Imports homes, warps and logout positions from legacy Allium	allium.import
+U	adopt-window <duration>	Adopts pre-recode privileged tools on first use for a while	allium.adoptwindow
+U	adopt-window off	Closes the adoption window	allium.adoptwindow
+U	creativemanager [gui|active]	Opens the creative manager; active lists the players	allium.gamemode.creative.manage
+U	creativemanager <player|group> <name> [edit|list|check|add|remove] [flag]	Edits a player's or group's creative flags	allium.gamemode.creative.manage
+U	hide status	Shows command hiding status and groups	allium.hide.admin
+U	hide reload	Reloads hide.yml	allium.hide.admin
+U	hide enabled <true|false>	Turns command hiding on or off	allium.hide.admin
+U	hide resolve <player> <command>	Shows which permission decides a player's access to a command	allium.hide.admin
+U	hide fix <command> <permission>	Overrides the permission used for a command	allium.hide.admin
+U	hide unfix <command>	Removes a permission override	allium.hide.admin
+U	hide group <name> create <whitelist|blacklist>	Creates a hide group	allium.hide.admin
+U	hide group <name> whitelist <true|false>	Switches a group between whitelist and blacklist	allium.hide.admin
+U	hide group <name> inherit <commands|tabcompletes> <groups>	Inherits rules from other groups	allium.hide.admin
+U	hide group <name> add [-c|-t|-tc] <rules>	Adds command and tab-complete rules	allium.hide.admin
+U	hide group <name> remove [-c|-t|-tc] <rules>	Removes command and tab-complete rules	allium.hide.admin
+U	hide group <name> check [-c|-t|-tc] <rules>	Tests rules against a group	allium.hide.admin
+C	altexempt		Exempt an account from alt detection, or check its exemption
+U	add <player> [reason]		allium.altexempt
+U	remove <player>		allium.altexempt
+U	check <player>		allium.altexempt
+C	antioch	grenade,tnt	Throw primed TNT where you look
+U		Throws primed TNT where you are looking and announces it	
+C	anvil		Open a virtual anvil
+U			
+C	autorestart	ar	Schedule or manage server restarts
+U	help		allium.autorestart.help
+U	time		allium.autorestart.time
+U	now		allium.autorestart.now
+U	stop		allium.autorestart.stop
+U	reload		allium.autorestart.reload
+U	vote [start|yes|no]		allium.autorestart.vote.yes
+C	back	return	Return to your previous location
+U			
+C	balance	bal	Show your (or a player's) balance
+U	[player]		
+C	baltop	balancetop	Show the richest accounts
+U	[page]		
+C	ban		Ban a player permanently
+U	<player> [reason]		
+C	banlist		List active bans
+U			
+C	bed		Teleport to your bed
+U		Teleports you to your bed	
+C	beezooka	beecannon	Throw an exploding bee
+U		Throws a bee that explodes harmlessly	
+C	bigtree	largetree	Grow a big tree
+U	[type]		
+C	book		Edit or sign the book you are holding
+U	[author|title|sign|unsign] [value]		
+C	bottom		Teleport to the lowest block below you
+U			
+C	break		Break the block you are looking at
+U			
+C	broadcast	bc,bcast	Send a message to everyone online
+U	<message>	Sends a message to everyone online; colours and click tags work	
+C	broadcasts		Show the timed broadcasts, or send one now
+U		Shows the timed broadcasts and their settings	
+U	send <name>	Sends one broadcast now	
+U	next	Sends the next broadcast in the rotation now	
+C	broadcastworld	bcw,bcastw,shoutworld	Broadcast a message to a world
+U	<world> <message>		
+C	burn		Set a player on fire for a duration in seconds
+U	<player> [seconds]		
+C	cartographytable	carttable	Open a virtual cartography table
+U			
+C	channel	g,global,shout,l,local,a,ac,amsg,staffchat	Join, leave or write to a chat channel
+U		Lists the channels you can read	
+U	join <channel> [read|write]	Joins a channel to read it, or to write to it	
+U	leave <channel>	Leaves a channel	
+C	cheque		Write a redeemable money cheque
+U	<amount> [player]		
+C	clearchat		Clear the chat window for everyone or one player
+U	[player]		
+C	clearinventory	clear,ci,clean,clearinvent	Clear inventory items for yourself, a player, or a group
+U	[player|*|**] [item] [maxCount]		
+C	clearinventoryconfirmtoggle	clearconfirm,clearconfirmon,clearconfirmoff,clearinventoryconfirmoff	Toggle inventory clear confirmation
+U			
+C	commandspy	cmdspy,cspy	Opt in or out of seeing other players' commands
+U		Toggles command spy	
+U	<on|off>	Turns command spy on or off	
+C	compass	direction	Show the direction you are facing
+U		Shows the direction you are facing	
+C	condense	compact,blocks,toblocks	Craft items into blocks using the server's recipes
+U	[item]		
+C	coords	getpos,whereami,getloc,getlocation,position	Show your position or another player's
+U		Shows your world, position and facing	
+U	<player>	Shows another player's position	allium.getpos.others
+C	createkit	ck,kc,createk,kitcreate	Create a kit from your inventory
+U	<name>	Creates a kit from your inventory	
+U	<name> <cooldown>	Creates a kit with a cooldown, e.g. 1d	
+U	<name> <cooldown> once	Creates a kit each player can claim only once	
+C	creativemanager	cm	Manage creative-mode flags for players and permission groups
+U		Opens the menu of groups and players	allium.gamemode.creative.manage
+U	gui	Opens the menu of groups and players	allium.gamemode.creative.manage
+U	active	Opens the menu on the players, online and offline	allium.gamemode.creative.manage
+U	player <player> [edit]	Opens a player's creative flags	allium.gamemode.creative.manage
+U	player <player> list	Lists the flags set on a player	allium.gamemode.creative.manage
+U	player <player> check [flag]	Shows whether flags apply to a player, and why	allium.gamemode.creative.manage
+U	player <player> add <flag>	Gives a player a creative flag	allium.gamemode.creative.manage
+U	player <player> remove <flag>	Removes a player's own creative flag	allium.gamemode.creative.manage
+U	group <group> [edit]	Opens a group's creative flags	allium.gamemode.creative.manage
+U	group <group> list	Lists the flags set on a group	allium.gamemode.creative.manage
+U	group <group> check [flag]	Shows whether flags apply to a group	allium.gamemode.creative.manage
+U	group <group> add <flag>	Gives a group a creative flag	allium.gamemode.creative.manage
+U	group <group> remove <flag>	Removes a creative flag from a group	allium.gamemode.creative.manage
+C	customtext		Show a page of the server's custom text
+U		Shows the custom text index	
+U	<section> [page]	Shows a section of the custom text	
+C	day		Set world time to day
+U		Sets your world to day	
+U	<world|*>	Sets a world (or every world) to day	
+C	delhome	remhome,rmhome	Delete one of your homes
+U		Deletes your default home	
+U	<name>	Deletes one of your homes	
+U	<player>:<home>	Deletes another player's home	allium.delhome.others
+C	deljail	remjail,rmjail	Persisted, audited moderation: deljail
+U	<jail>	Deletes an empty jail	
+C	delkit	deletekit,remkit,rmkit	Delete a kit definition
+U	<name>		
+C	delmsg	deletemsg	Delete a chat message for everyone
+U	<id>	Deletes one chat message for everyone	
+U	<player> <amount>	Deletes a player's last messages (1-200)	
+C	delwarp	remwarp,rmwarp	Delete a warp
+U	<name>		
+C	disposal	trash,dispose	Open a disposal inventory
+U			
+C	eco	money	Give, take or set player balances
+U	give <player> <amount>		allium.eco
+U	take <player> <amount>		allium.eco
+U	set <player> <amount>		allium.eco
+U	open <player>		allium.eco
+U	reservations [player]		allium.eco.admin
+U	resolve <KIT|MAIL|REPAIR|CHEQUE> <workflow> <capture|release> <reason>		allium.eco.admin
+C	editnick	nickgui	Open the nickname customization GUI
+U	[player]		
+C	editsign	sign	Edit or copy text on the sign face you are looking at
+U	<set|clear|copy|paste> [line] [text]		
+C	enchant		Apply or remove an enchantment on the held item
+U	<enchantment> <level>	Enchants the item in your hand	
+U	<enchantment> 0	Removes an enchantment from the item in your hand	
+U	<enchantment> <level> <player>	Enchants another player's held item	allium.enchant.others
+C	enderchest	echest,ec	Open your own or inspect another player's ender chest
+U		Opens your ender chest	
+U	<player>	Inspects another player's ender chest	allium.enderchest.others
+C	escalate		Hand an issue up to senior staff
+U	<target> <reason>	Hands an issue about a player up to senior staff	
+C	explode		Drop an exploding fireball on yourself or a player
+U	[power]	Drops an exploding fireball on you	
+U	<player> [power]	Drops one on another player	allium.explode.others
+C	ext	extinguish	Extinguish fire on yourself or another player
+U		Puts out the fire on you	
+U	<player>	Puts out the fire on another player	allium.ext.others
+C	feed		Feed yourself or another player
+U		Fills your hunger	
+U	<player>	Fills another player's hunger	allium.feed.others
+C	fireball	fireentity,fireskull	Throw a fireball or another projectile
+U		Throws a fireball where you are looking	
+U	<type> [speed]	Throws a fireball, arrow, skull, egg, snowball, potion, trident or other projectile	
+U	[type] <speed> ride	Throws it and rides it	allium.fireball.ride
+C	firework		Edit or launch the held firework rocket
+U	color:<colors> [fade:<colors>] [shape:<shape>] [effect:<trail,twinkle>]	Adds an explosion effect to the held firework	
+U	power <0-4>	Sets the held firework's flight power	
+U	clear	Clears all effects from the held firework	
+U	fire [amount|aim]	Launches copies of the held firework	allium.firework.fire
+C	fly		Toggle flight mode
+U		Toggles your flight; without allium.fly, your timed flight	
+U	<player>	Toggles another player's flight	allium.fly.others
+U	<player> add <time>	Gives timed flight, e.g. 30m, 2h or 1d	allium.tfly.add
+U	<player> take <time>	Takes timed flight	allium.tfly.take
+U	<player> set <time>	Sets a player's timed flight	allium.tfly.set
+U	<player> reset	Removes all of a player's timed flight	allium.tfly.reset
+C	freeze		Freeze or unfreeze a player in place
+U	<player>	Freezes or unfreezes a player	
+U	<player> <on|off> [reason]	Freezes or unfreezes a player, with a reason	
+C	gamemode	gm,gmc,gma,gms,gmsp,gmt,creative,survival,spectator,adventure,creativemode,survivalmode,spectatormode,adventuremode	Change your gamemode
+U	<mode>	Changes your gamemode	
+U	<mode> <player>	Changes another player's gamemode	allium.gamemode.others
+C	gc	uptime,lag,tps,mem,memory	Display runtime uptime, memory, disk, TPS, and world counts
+U			
+C	give		Give items (M1 item-library harness)
+U	<player> <item> [amount]	Gives a player an item	
+U	<player> <item,item...> [amount]	Gives several items at once	
+U	<player> <item> [amount] [key:value...]	Gives an item with a name, lore, enchantments or other properties	
+U	<player> <item> [amount] --overflow=<drop|refuse|partial>	Chooses what happens when the inventory is full	
+C	glow		Set your glow colour, or another player's
+U	<color>	Glows in a colour	
+U	rainbow	Glows through the colours	allium.glow.rainbow
+U	off	Stops glowing	
+U	spectator	Shows your glow only while in spectator	allium.gamemode.spectator
+U	<color|rainbow|off> <player>	Sets another player's glow	allium.glow.others
+C	god	godmode,tgm	Toggle god mode
+U		Toggles your god mode	
+U	<player>	Toggles another player's god mode	allium.god.others
+C	grindstone		Open a virtual grindstone
+U			
+C	hat		Wear the held item on your head
+U			
+C	heal		Heal yourself or another player
+U		Heals you	
+U	<player>	Heals another player	allium.heal.others
+C	help		Browse commands available to you
+U		Shows the commands you can use	
+U	<page>	Shows a page of the help menu	
+U	<command>	Shows help for one command	
+U	<search> [page]	Searches commands by name and description	
+U	<plugin> [page]	Lists one plugin's commands	allium.help.plugins
+C	helpop	helpme	Send a help request to online staff
+U	<message>		
+C	home		Teleport to one of your homes
+U		Teleports you to your default home	
+U	<name>	Teleports you to one of your homes	
+U	bed	Teleports you to your bed	allium.home.bed
+U	<player>:<home>	Teleports you to another player's home	allium.home.others
+U	<player>:	Lists another player's homes	allium.home.others
+U	<player>:bed	Teleports you to another player's bed	allium.home.others.bed
+C	homes		List your homes
+U		Lists your homes	
+U	<player>	Lists another player's homes	allium.homes.others
+C	i	item	Give items to yourself
+U	<item> [amount]	Gives you an item	
+U	<item,item...> [amount]	Gives you several items at once	
+U	<item> [amount] [key:value...]	Gives you an item with a name, lore, enchantments or other properties	
+C	ignore		Ignore a player's private messages, or list who you ignore
+U		Lists the players you ignore	
+U	<player>	Ignores a player's private messages	
+C	info	about,ifo,news	Show the server info pages
+U		Shows the server info pages	
+U	<chapter> [page]	Shows a chapter of the info pages	
+C	inform		Show a player the info pages
+U		Shows your own info pages	
+U	<player> [chapter] [page]	Shows a player their info pages	
+C	invsee		Inspect (and optionally edit) another player's inventory
+U	<player>		
+C	ipban	banip	Ban a player's IP address
+U	<player> [reason]		
+C	itemdb	iteminfo,itemno	Inspect the held item ID, durability, and Allium identity
+U		Inspects the item in your hand	
+U	<player>	Inspects another player's held item	allium.itemdb.others
+C	itemflag	iflag,if,ie	Edit tooltip flags and attribute modifiers on the item in your hand
+U	hide <flag|all> [on|off]		
+U	show <flag|all>		
+U	list		
+U	attribute <add|remove|list>		allium.itemflag.attribute
+C	jail		Send a player to a jail
+U	<player> <jail> [reason]		
+C	jailedplayers		Persisted, audited moderation: jailedplayers
+U		Lists currently jailed players	
+C	jails		Persisted, audited moderation: jails
+U		Lists all defined jails	
+C	jump	j,jumpto	Allium safe teleport: jump
+U		Teleports you to the block you are looking at	
+C	kick		Kick a player with a reason
+U	<player> [reason]		
+C	kickall		Persisted, audited moderation: kickall
+U	[reason]	Kicks every online player except you and exempt staff	
+C	kit		Claim a kit or list available kits
+U		Lists the kits you can claim	
+U	<name>	Claims a kit	
+U	<name> <player>	Gives a kit to another player	allium.kit.others
+C	kitreset	kitr,resetkit	Clear a player's cooldown for a kit
+U	<kit>	Clears your cooldown for a kit	
+U	<kit> <player>	Clears another player's cooldown for a kit	allium.kitreset.others
+C	kits		List available kits
+U			
+C	kittycannon		Throw an exploding kitten
+U		Throws a kitten that explodes harmlessly	
+C	list	online,who,playerlist,plist	List online players
+U			
+C	loom		Open a virtual loom
+U			
+C	lore	itemlore,ilore	Edit the lore of the item in your hand
+U	add <text>	Adds a line to the lore of the item in your hand	
+U	set <line> <text>	Replaces a lore line	
+U	insert <line> <text>	Inserts a lore line before another	
+U	remove <line>	Removes a lore line	
+U	clear	Removes all lore	
+U	copy	Copies the lore of the item in your hand	
+U	paste	Replaces the lore of the item in your hand with the copied lore	
+C	mail	memo	Send and read mail, and gifts of items
+U	read		allium.mail
+U	send <player> <message>		allium.mail.send
+U	gift <player> [amount] [note]		allium.mail.gift
+U	claim <id|all>		allium.mail
+U	delete <id>		allium.mail
+U	clear		allium.mail
+C	messagesounds	msounds,mfx	Your private-message sound volume
+U		Shows your private-message sound volume	
+U	volume <0-1>	Sets your private-message sound volume	
+U	toggle	Turns private-message sounds on or off	
+U	reset	Goes back to the server's default volume	
+C	more		Refill the held item stack
+U		Fills the stack in your hand	
+U	<amount>	Sets the size of the stack in your hand	
+U	<amount> <player>	Sets the size of another player's held stack	allium.more.others
+C	motd		Show the message of the day
+U		Shows the message of the day	
+U	<section> [page]	Shows a section of the message of the day	
+C	msg	tell,w,whisper,m,t,pm	Send a private message
+U	<player> <message>	Sends a private message	
+C	msgtoggle		Turn receiving private messages on or off
+U		Toggles receiving private messages	
+U	<on|off>	Turns receiving private messages on or off	
+U	<on|off> <player>	Turns another player's private messages on or off	allium.msgtoggle.others
+C	mute	silence	Mute or toggle mute on a player with an optional duration and reason
+U	<player>	Mutes a player, or unmutes them if already muted	
+U	<player> <reason>	Mutes a player until they are unmuted	
+U	<player> <duration> [reason]	Mutes a player for a set time, e.g. 30m, 2h or 7d	
+C	mutes	mutelist	List currently active mutes
+U			
+C	near	nearby	List nearby visible players
+U		Lists the players near you	
+U	<radius>	Lists the players within a radius	
+C	nick	nickname	Set or clear your nickname (or another player's)
+U	<nickname>	Changes your nickname to the given text	
+U	off	Removes your nickname	
+U	<player> <nickname>	Changes the specified player's nickname to the given text	allium.nick.others
+U	<player> off	Removes the given player's nickname	allium.nick.others
+C	night		Set world time to night
+U		Sets your world to night	
+U	<world|*>	Sets a world (or every world) to night	
+C	notes		Read or add staff notes on a player
+U	<player>	Reads the staff notes on a player	
+U	<player> add <note>	Adds a staff note	
+C	nuke		Rain TNT on players; it breaks no blocks
+U		Rains TNT on every player online; it breaks no blocks	
+U	<player...>	Rains TNT on those players	
+C	nv	nightvision	Toggle night vision for yourself or another player
+U		Toggles night vision	
+U	<on|off>	Turns night vision on or off	
+U	<on|off> <player>	Turns night vision on or off for another player	allium.nv.others
+C	pay		Pay money to a player
+U	<player> <amount>		
+C	payconfirmtoggle	payconfirm,payconfirmon,payconfirmoff	Allium economy: payconfirmtoggle
+U		Toggles /pay confirmation prompts	
+U	<on|off>	Turns /pay confirmation on or off	
+U	<on|off> <player>	Turns another player's /pay confirmation on or off	allium.payconfirmtoggle.others
+C	paytoggle	payon,payoff	Allow or refuse incoming payments
+U		Toggles incoming payments	
+U	<on|off>	Allows or refuses incoming payments	
+U	<on|off> <player>	Allows or refuses another player's incoming payments	allium.paytoggle.others
+C	ping	pong	Check your ping or another player's ping
+U		Shows your ping	
+U	<player>	Shows another player's ping	allium.ping.others
+C	playtime		Show how long you (or another player) have played
+U		Shows how long you have played and when you first joined	
+U	<player>	Shows another player's playtime	allium.playtime.others
+C	potion	elixer,elixir	Edit or apply custom effects on the held potion
+U		Lists the potion effects you can apply	
+U	clear	Clears all custom effects from the held potion	
+U	apply	Applies the held potion's custom effects to you	allium.potion.apply
+U	effect:<effect> power:<1-256> duration:<seconds> [splash:<true|false>]	Adds a custom effect to the held potion	
+C	powertool	pt,tool,tools,powertools,ptt,powertooltoggle,pttoggle,powertoollist,ptlist	Create, edit, save, bind, enable/disable and give interactive powertool items
+U	add [flags...] <action> [args...]	Adds an action to the item in your hand	allium.powertool.edit
+U	set <index> [flags...] <action> [args...]	Replaces action number <index> on a trigger	allium.powertool.edit
+U	remove [trigger] [index]	Removes one action, or every action on a trigger	allium.powertool.edit
+U	clear	Removes every action from the item in your hand	
+U	cooldown [--t <trigger>] <duration> [--scope player|item|global]	Sets a trigger's cooldown	allium.powertool.edit
+U	perm [--t <trigger>] <permission|none>	Sets the permission needed to use the tool or a trigger	allium.powertool.edit
+U	uses <max|unlimited> [--consume true|false] [--recharge <duration>]	Limits uses, with optional consume and recharge	allium.powertool.edit
+U	cancel [--t <trigger>] <true|false>	Cancels or allows the normal click action	allium.powertool.edit
+U	sneak [--t <trigger>] <any|require|disallow>	Requires or forbids sneaking	allium.powertool.edit
+U	hand [--t <trigger>] <main|off|both>	Chooses which hand the tool works in	allium.powertool.edit
+U	fish [--t on-fish] <any|state...>	Picks the fishing rod states an on-fish trigger fires on	allium.powertool.edit
+U	info [tool]	Shows the item in your hand or a saved tool	
+U	save <name> [--overwrite]	Saves the item in your hand to tools/<name>.yml	allium.powertool.save
+U	delete <name>	Deletes a saved tool	allium.powertool.save
+U	enable <tool>	Turns a tool on	
+U	disable <tool>	Turns a tool off	
+U	bind <name>	Puts a saved tool's actions on the item in your hand	allium.powertool.bind
+U	get <item> [amount]	Gives you a saved tool	allium.powertool.give
+U	give <player> <item> [amount]	Gives a player a saved tool	allium.powertool.give
+U	list [filter]	Lists tools and whether they are on	
+U	toggle	Turns powertools on or off for yourself	allium.powertool.toggle
+U	reload	Reloads every tool and the powertools settings	allium.powertool.reload
+U	help <triggers|actions|placeholders>	Lists the triggers, actions or placeholders you can use	
+C	ptime	playertime	View, set, freeze, or reset a player's client time
+U		Shows your client time	
+U	list [player|*]	Shows client time for you or online players	
+U	<time|@time> [player|*]	Sets or freezes (@) client time, e.g. day, @17:30, 4pm, 4000ticks	
+U	reset [player|*]	Resets client time back to the world clock	
+C	pvp		Toggle player-versus-player combat
+U	[on|off] [player]		
+C	pweather	playerweather	View, set, or reset a player's client weather
+U		Shows your client weather	
+U	list [player|*]	Shows client weather for you or online players	
+U	<sun|storm> [player|*]	Sets client weather to sun or storm	
+U	reset [player|*]	Resets client weather back to the world	
+C	realname		Find a visible online player's account name from their nickname
+U	<nickname>		
+C	recipe	formula,method,recipes	Show how an item is made
+U		Shows how the item you hold is made	
+U	<item> [number]	Shows how an item is made; the number picks one of several recipes	
+C	redeem	claimrank	Claim configured rank rewards
+U			
+C	remove	butcher,killall,mobkill	Remove matching entities from loaded chunks
+U	<type> [radius] [world]		
+C	rename	itemname,iname,itemrename,irename	Rename the item in your hand
+U	<name>	Renames the item in your hand; colors and gradients work	
+U	clear	Removes the custom name from the item in your hand	
+C	renamehome		Rename one of your homes
+U	<home> <newhome>	Renames one of your homes	
+U	<player>:<home> <newhome>	Renames another player's home	allium.renamehome.others
+C	repair	fix	Repair the held item or all damaged items
+U		Repairs the item in your hand	
+U	all	Repairs every damaged item in your inventory	allium.repair.all
+C	reply	r	Reply to your last private message
+U	<message>	Replies to the last player who messaged you	
+C	report		Report a player, or anything else, to staff
+U	<player> <what happened>	Reports a player to staff	
+U	<message>	Reports anything else to staff	
+C	restore		Browse inventory snapshots and restore them
+U		Browses your inventory snapshots	
+U	<player>	Browses another player's inventory snapshots	allium.restore.others
+C	rtoggle	replytoggle	Choose whether reply uses your last sender or last recipient
+U			
+C	rtp	tpr,tprandom	Teleport to a random safe spot
+U		Teleports you to a random safe spot in this world	
+U	<location|world>	Teleports you to a random spot of a location or world	
+U	<location|world> <player>	Sends another player to a random spot	allium.rtp.others
+U	biome <biome[,biome...]> [location]	Teleports you to a random spot in one of those biomes	allium.rtp.biome
+U	info [location]	Shows a location's centre, range, shape and heights	
+U	list	Lists the random teleport locations	
+C	rules		Show the server rules
+U		Shows the server rules	
+U	<chapter> [page]	Shows a chapter of the rules	
+C	scale		Set the scale of a player or selected mobs
+U	<0-16>	Sets your size	
+U	<0-16> <player>	Sets another player's size	allium.scale.others
+C	seen	alts	Show when a player was last seen and first joined
+U	<player>		
+C	sell		Sell items for their worth
+U	hand [amount]	Sells all items like the one you hold, or that many	allium.sell.hand
+U	<item> [amount]	Sells all of an item, or that many (-10 keeps ten, 2s is two stacks)	
+U	inventory	Sells everything sellable; repeat to confirm	allium.sell.bulk
+U	blocks	Sells every sellable block; repeat to confirm	allium.sell.bulk
+C	sethome	createhome	Set a home here
+U		Sets your default home here	
+U	<name>	Sets a named home here	
+U	<name> confirm	Moves an existing home here	
+C	setjail	createjail	Create or move a jail here
+U	<name>		
+C	setspawn		Set the spawn point here
+U	[group]		
+C	settpr	settprandom	Set a random teleport location's centre, range, shape and heights
+U	<location> center	Centres the location where you stand	allium.settpr
+U	<location> minrange <blocks>	Sets how close to the centre a spot may be	allium.settpr
+U	<location> maxrange <blocks>	Sets how far from the centre a spot may be	allium.settpr
+U	<location> shape <square|circle>	Searches a square or a circle	allium.settpr
+U	<location> miny <y|none>	Sets the lowest landing height	allium.settpr
+U	<location> maxy <y|none>	Sets the highest landing height (searches upward below it)	allium.settpr
+U	<location> world <world>	Sets the location's world	allium.settpr
+U	<location> remove	Deletes the location	allium.settpr
+C	setwarp	createwarp	Create or move a warp here
+U	<name>	Creates a warp here	
+U	<name> confirm	Moves an existing warp here	
+C	setworth		Set what an item sells for
+U	<price>	Sets the price of the item you hold	allium.setworth
+U	<item> <price>	Sets an item's price; a negative price stops it selling	allium.setworth
+C	showkit	kitpreview,preview,kitshow	Preview the items in a kit
+U	<kit>	Previews the items in a kit	
+C	skull	head,playerhead,playerskull	Give yourself or another player a player skull
+U		Gives you your own head	
+U	<owner>	Gives you a player's head	
+U	<owner> <player>	Gives another player a head	allium.skull.others
+C	smite	lightning,strike,shock,thor	Strike a player or the block you are looking at with visual lightning
+U		Strikes visual lightning where you are looking	
+U	<player>	Strikes a player with visual lightning	
+C	smithing	smithingtable	Open a virtual smithing table
+U			
+C	socialspy		Observe delivered private messages between other players
+U		Toggles social spy	
+U	<on|off>	Turns social spy on or off	
+C	spawn		Teleport to spawn
+U			
+C	spawner	changems,mobspawner	Change the mob spawned by the spawner you are looking at
+U	<mob> [delay]		
+C	spawnmob	mob	Spawn one or more mobs at your target block or a player
+U	<mob>[:data] [amount]	Spawns mobs where you are looking	
+U	<mob>[:data],<mount>[:data] [amount]	Spawns stacked mobs	allium.spawnmob.stack
+U	<mob>[:data] <amount> <player>	Spawns mobs at another player	allium.spawnmob.others
+C	spectate		Spectate a player using the configured spectate commands
+U	<player>	Runs the configured spectate commands for a player	
+C	speed	wspeed,walkspeed,flyspeed,fspeed	Change walk or fly speed (0-10 or reset)
+U	<0-10|reset>	Sets your walk or fly speed, whichever you are using	
+U	<walk|fly> <0-10|reset>	Sets your walk or fly speed	
+U	<walk|fly> <0-10|reset> <player>	Sets another player's walk or fly speed	allium.speed.others
+C	spy		Inspect and toggle message, local chat, and command spying for a player
+U		Shows what you spy on everywhere, with clickable toggles	
+U	<player>	Shows spy status for a player with clickable toggles	
+C	stonecutter		Open a virtual stonecutter
+U			
+C	tax		Inspect, impose, list or refund server taxes
+U	balance		allium.tax.balance
+U	impose <player|*|*> <percent>		allium.tax.impose
+U	history [player] [page]		allium.tax.history
+U	refund <id|player> [percent] [confirm]		allium.tax.refund
+C	tempban		Ban a player for a set time
+U	<player> <duration> [reason]		
+C	tempbanip		Persisted, audited moderation: tempbanip
+U	<player|ip> <duration> [reason]	Temporarily IP-bans a player or literal IP address	
+C	there	tpthere	Teleport to the block you are looking at, or send selected entities there
+U		Teleports you to the block you are looking at	
+U	<players|selectors...>	Sends players or selected entities there	
+C	thunder		Set thunder in your world, optionally for a number of seconds
+U	<true|false> [duration]		
+C	time		View, set, add, or pause world time
+U		Shows the time	
+U	set <time> [world|*]	Sets the time, e.g. day, night or 6000	allium.time.set
+U	add <ticks> [world|*]	Moves the time forward	allium.time.add
+U	pause [world|*]	Pauses or resumes the time	allium.time.pause
+C	toggle		Change a player setting
+U	<tpa|msg|pay> [on|off]		
+C	togglejail	tjail	Persisted, audited moderation: togglejail
+U	<player>	Unjails a jailed player, or jails them in the only jail	
+U	<player> <jail> [time]	Jails a player (optionally timed) or toggles their jail	
+C	toggles	settings	View your player settings
+U			
+C	toggleslowfall	tsf,slowfalltoggle,toggleslowfalling	Toggle slow falling on flight loss
+U		Toggles slow falling when you lose flight	
+U	<on|off>	Turns slow falling on flight loss on or off	
+U	status	Shows whether it is on	
+C	top		Teleport to the highest block above you
+U			
+C	tp	tp2p,tele	Teleport to a player or coordinates, or move a player
+U	<player>	Teleports you to a player	
+U	<player> <target>	Teleports a player to another player	allium.tp.others
+U	<x> <y> <z> [yaw] [pitch] [world]	Teleports you to coordinates	allium.tp.position
+C	tpa	call,tpask	Ask to teleport to a player
+U	<player>		
+C	tpaall		Allium safe teleport: tpaall
+U		Sends a teleport-here request to every online player	
+U	<player>	Sends a teleport-here request to every online player on behalf of another player	allium.tpaall.others
+C	tpacancel	tpcancel	Cancel pending teleport requests or an active teleport
+U	[player]		
+C	tpaccept	tpyes	Accept a teleport request
+U		Accepts your latest teleport request	
+U	<player>	Accepts a player's teleport request	
+C	tpahere		Ask a player to teleport to you
+U	<player>		
+C	tpall		Teleport all online players to your location, bypassing /tptoggle
+U		Teleports all online players to you, bypassing /tptoggle	
+U	<player>	Teleports all online players to another player, bypassing /tptoggle	
+C	tpauto		Allium safe teleport: tpauto
+U		Toggles automatic acceptance of teleport requests	
+U	<on|off>	Turns auto-accept for teleport requests on or off	
+U	<on|off> <player>	Turns auto-accept on or off for another player	allium.tpauto.others
+C	tpdeny	tpno	Deny a teleport request
+U		Denies your latest teleport request	
+U	<player>	Denies a player's teleport request	
+C	tpent	tpentity,tpmob,teleportmob,tpm,tpe	Toggle selecting mobs and other entities for /tp
+U	[player]		
+C	tphere	here,s	Teleport a player to you
+U	<player>	Teleports a player to you	
+U	<players|selectors...>	Teleports several players or selected entities to you	
+C	tpo		Teleport to or move a player, bypassing /tptoggle
+U	<player>	Teleports you to a player, bypassing /tptoggle	
+U	<player> <target>	Teleports a player to another player, bypassing /tptoggle	
+C	tpoffline	otp,offlinetp,tpoff	Teleport to where an offline player logged out
+U	<player>		
+C	tpohere		Teleport a player to you, bypassing /tptoggle
+U	<player>	Teleports a player to you, bypassing /tptoggle	
+C	tppet		Toggle selecting your own pets for /tp
+U	[player]		
+C	tppos		Teleport to coordinates
+U	<x> <y> <z> [yaw] [pitch] [world]		
+C	tptoggle		Allow or block teleport requests to you
+U		Toggles teleport requests to you	
+U	<on|off>	Allows or blocks teleport requests to you	
+U	<on|off> <player>	Allows or blocks teleport requests to another player	allium.tptoggle.others
+C	tree		Grow a tree
+U	[type]		
+C	unban	pardon	Lift a player's ban
+U	<player>		
+C	unbanip	pardonip	Persisted, audited moderation: unbanip
+U	<player|ip>	Removes all IP bans for a player or literal IP address	
+C	unignore	delignore,remignore,rmignore	Stop ignoring a player
+U	<player>	Stops ignoring a player	
+C	unjail		Release a player from jail
+U	<player>		
+C	unlimited	ul,unl	Manage blocks that are replenished after placement
+U	<list|item|clear> [player]		
+C	unmute		Unmute a muted player
+U	<player> [reason]		
+C	unnote		Persisted, audited moderation: unnote
+U	<id>		
+U	<player> <id>		
+C	unrestrain		Free every restrained player, or one player
+U		Frees every restrained player	
+U	<player>	Frees one player, restrained or carried	
+C	vanish	v	Toggle vanish mode for yourself or another player
+U		Toggles vanish	
+U	<on|off>	Turns vanish on or off	
+U	<on|off> <player>	Turns vanish on or off for another player	allium.vanish.others
+C	voterestart		Vote for a server restart
+U	[yes|no|start]		
+C	voucher	vouchers	Give and list vouchers: powertools named voucher_<name>. /vouchers is /voucher list
+U	give <player> <voucher> [amount]	Gives a player vouchers (a voucher is a powertool named voucher_<name>)	allium.voucher.give
+U	list	Lists the vouchers	allium.voucher.give
+U	reload	Reloads the powertools, vouchers included	allium.voucher.reload
+C	warn		Warn a player and record it
+U	<player> [reason]	Warns a player and records it	
+U	<player> history	Shows a player's warnings	
+C	warp		Teleport to a warp, or send a player to a warp
+U	<name>	Teleports you to a warp	
+U	<name> <player>	Teleports another player to a warp	allium.warp.others
+C	warpinfo		Show a warp's location and permission
+U	<name>	Shows a warp's world, coordinates and permission	
+C	warps		List the warps you can use
+U			
+C	weather	rain,storm,sun,sky	Change world weather
+U	<clear|sun|rain|storm|thunder> [duration] [world|*]		
+C	whois		Inspect player UUID, name history, and staff-only location
+U	<player>		
+C	workbench	craft,wb,wbench	Open a virtual crafting table
+U			
+C	world		List accessible worlds or teleport to a world's spawn
+U	[world] [player]		
+C	worth	price	Show what items sell for
+U		Shows what the item you hold sells for	
+U	hand [amount]	Shows what the held item, or that many of it, sells for	
+U	<item> [amount]	Shows what an item, or that many of it, sells for	
+U	inventory	Shows what your whole inventory sells for	
+U	blocks	Shows what the blocks in your inventory sell for	
+C	xp	exp	Show or change experience
+U		Shows your experience	
+U	<player>	Shows another player's experience	allium.xp.others
+U	give <player> <amount>[L]	Gives experience points, or levels with L (e.g. 5L)	allium.xp.give
+U	take <player> <amount>[L]	Takes experience points, or levels with L	allium.xp.take
+U	set <player> <amount>[L]	Sets experience points, or levels with L	allium.xp.set
+U	reset <player>	Removes all of a player's experience	allium.xp.set
+C	xpbottle	bottle,expbottle	Convert experience into a redeemable XP bottle
+U	<amount|amountL|all> [player]		

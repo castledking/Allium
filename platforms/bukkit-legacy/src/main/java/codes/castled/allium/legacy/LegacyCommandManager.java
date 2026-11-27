@@ -305,7 +305,7 @@ final class LegacyCommandManager {
         // Kits
         for (String c : new String[]{"kit", "kits", "createkit", "delkit", "showkit", "kitreset"}) m.put(c, "kits");
         // Messaging & Mail
-        for (String c : new String[]{"msg", "reply", "msgtoggle", "ignore", "unignore"}) m.put(c, "messaging");
+        for (String c : new String[]{"msg", "reply", "rtoggle", "msgtoggle", "ignore", "unignore"}) m.put(c, "messaging");
         m.put("messagesounds", "preferences");
         m.put("toggle", "preferences");
         m.put("toggles", "preferences");

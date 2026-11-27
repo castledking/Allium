@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 final class LegacyPlayerSettings {
@@ -144,10 +145,22 @@ final class LegacyPlayerSettings {
 
     private boolean save(UUID player, Setting setting, boolean on) {
         if (enabled(player, setting) == on) return true;
+        return saveValue(path(player, setting), on == setting.defaultValue ? null : Boolean.valueOf(on));
+    }
+
+    Optional<Boolean> replyToLastRecipient(UUID player) {
+        String path = "players." + player + ".reply-to-last-recipient";
+        return data.isBoolean(path) ? Optional.of(data.getBoolean(path)) : Optional.empty();
+    }
+
+    boolean setReplyToLastRecipient(UUID player, boolean lastRecipient) {
+        return saveValue("players." + player + ".reply-to-last-recipient", lastRecipient);
+    }
+
+    private boolean saveValue(String path, Object value) {
         if (!writable) return false;
-        String path = path(player, setting);
         Object previous = data.get(path);
-        data.set(path, on == setting.defaultValue ? null : Boolean.valueOf(on));
+        data.set(path, value);
         try {
             replaceFile(data, file);
             return true;

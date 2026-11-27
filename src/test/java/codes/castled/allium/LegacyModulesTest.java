@@ -248,6 +248,38 @@ class LegacyModulesTest {
     }
 
     @Test
+    void compatibilityReplyModePersistsAndUsesOnlyTheChosenDirection() {
+        UUID id = UUID.randomUUID();
+        Harness first = createHarness();
+        Player player = first.addPlayer("Reader", id, true);
+        assertTrue(first.run(player, "rtoggle"));
+        verify(player).sendMessage(contains("last player you messaged"));
+        first.runtime().onDisable();
+
+        Harness restarted = createHarness();
+        Player reader = restarted.addPlayer("Reader", id, true);
+        Player incoming = restarted.addPlayer("Incoming", UUID.randomUUID(), true);
+        Player outgoing = restarted.addPlayer("Outgoing", UUID.randomUUID(), true);
+        assertTrue(restarted.run(incoming, "msg", "Reader", "first-message"));
+        assertTrue(restarted.run(reader, "reply", "missing-recipient"));
+        verify(reader).sendMessage(contains("No one to reply to"));
+        verify(incoming, never()).sendMessage(contains("missing-recipient"));
+
+        assertTrue(restarted.run(reader, "msg", "Outgoing", "outbound-message"));
+        assertTrue(restarted.run(incoming, "msg", "Reader", "latest-message"));
+        assertTrue(restarted.run(reader, "reply", "recipient-reply"));
+        verify(outgoing).sendMessage(contains("recipient-reply"));
+        verify(incoming, never()).sendMessage(contains("recipient-reply"));
+
+        assertTrue(restarted.run(reader, "rtoggle"));
+        verify(reader).sendMessage(contains("last player who messaged you"));
+        assertTrue(restarted.run(reader, "reply", "sender-reply"));
+        verify(incoming).sendMessage(contains("sender-reply"));
+        verify(outgoing, never()).sendMessage(contains("sender-reply"));
+        restarted.runtime().onDisable();
+    }
+
+    @Test
     void moderationMuteFreezeJailWarnBanAndSocialSpyWork() {
         Harness h = createHarness();
         Player mod = h.addPlayer("Mod", UUID.randomUUID(), true);

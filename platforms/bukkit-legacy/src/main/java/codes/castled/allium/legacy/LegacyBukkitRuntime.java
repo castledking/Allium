@@ -3,6 +3,7 @@ package codes.castled.allium.legacy;
 import codes.castled.allium.AlliumRuntime;
 import codes.castled.allium.ServerVersion;
 import codes.castled.allium.legacy.LegacyPlayerSettings.Setting;
+import codes.castled.allium.messaging.ReplyTargets;
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.PlayerNameSearch;
 import codes.castled.allium.portable.UtilityMessages;
@@ -41,6 +42,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -84,7 +86,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyTextModule text;
     private final LegacyPlayerSettings settings;
     private final Set<UUID> godPlayers = new HashSet<>();
-    private final Map<UUID, UUID> lastReplyTarget = new HashMap<>();
+    private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
     private final Map<UUID, TpaRequest> incomingTpa = new HashMap<>();
     private final Map<String, Location> warps = new LinkedHashMap<>();
@@ -192,7 +194,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         travel.disable();
         utilities.disable();
         godPlayers.clear();
-        lastReplyTarget.clear();
+        replyTargets = new ReplyTargets();
         backLocations.clear();
         incomingTpa.clear();
         warps.clear();
@@ -226,7 +228,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         UUID id = event.getPlayer().getUniqueId();
         godPlayers.remove(id);
         incomingTpa.remove(id);
-        lastReplyTarget.remove(id);
+        replyTargets.forget(id);
     }
 
     @Override
@@ -294,6 +296,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return handleMsg(sender, args);
             case "reply":
                 return handleReply(sender, args);
+            case "rtoggle":
+                return handleReplyToggle(sender, args);
             case "msgtoggle":
                 return settings.direct(sender, Setting.MSG, args);
             case "tptoggle":
@@ -921,7 +925,10 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             sender.sendMessage(ChatColor.RED + "Usage: /reply <message>");
             return true;
         }
-        UUID targetId = lastReplyTarget.get(self.getUniqueId());
+        UUID playerId = self.getUniqueId();
+        Optional<Boolean> mode = settings.replyToLastRecipient(playerId);
+        UUID targetId = (mode.isPresent() ? replyTargets.target(playerId, mode.get()) : replyTargets.target(playerId))
+                .orElse(null);
         Player target = targetId == null ? null : plugin.getServer().getPlayer(targetId);
         if (target == null || !target.isOnline()) {
             sender.sendMessage(ChatColor.RED + "No one to reply to.");
@@ -932,6 +939,28 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return true;
         }
         deliverPrivateMessage(self, target, joinArgs(args, 0));
+        return true;
+    }
+
+    private boolean handleReplyToggle(CommandSender sender, String[] args) {
+        if (args.length != 0) return false;
+        Player player = requirePlayer(sender);
+        if (player == null) return true;
+        if (!player.hasPermission("allium.rtoggle")) {
+            player.sendMessage(ChatColor.RED + "You cannot change that setting.");
+            return true;
+        }
+        UUID id = player.getUniqueId();
+        boolean lastRecipient = !settings.replyToLastRecipient(id).orElse(false);
+        if (!settings.setReplyToLastRecipient(id, lastRecipient)) {
+            player.sendMessage(ChatColor.RED + "Your setting could not be saved.");
+        } else if (lastRecipient) {
+            messageManager.send(player, "utility.reply-last-recipient",
+                    "{prefix} &aReply now targets the last player you messaged.");
+        } else {
+            messageManager.send(player, "utility.reply-last-sender",
+                    "{prefix} &aReply now targets the last player who messaged you.");
+        }
         return true;
     }
 
@@ -956,9 +985,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 "{sender}", fromName, "{message}", text);
         moderation.notifySocialSpy(sender, target, text);
         if (sender instanceof Player) {
-            UUID fromId = ((Player) sender).getUniqueId();
-            lastReplyTarget.put(fromId, target.getUniqueId());
-            lastReplyTarget.put(target.getUniqueId(), fromId);
+            replyTargets.delivered(((Player) sender).getUniqueId(), target.getUniqueId());
         }
     }
 

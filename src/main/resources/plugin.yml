@@ -47,6 +47,7 @@ commands:
     permission: allium.realname
   rtoggle:
     description: Switch the reply target mode
+    usage: /<command>
     permission: allium.rtoggle
     aliases: [replytoggle]
   break:

@@ -44,7 +44,7 @@ public record ChatSettings(boolean enabled,boolean formatting,boolean channelsEn
             if(!c.discordId().isEmpty()&&(!c.discordId().matches("[0-9]{5,24}")||!discord.add(c.discordId())))throw new IllegalArgumentException("invalid/duplicate Discord destination");
         }
         var groups=new LinkedHashMap<String,String>();var g=config.getConfigurationSection("chat-format.groups");if(g!=null)for(String key:g.getKeys(false))groups.put(key,g.getString(key,format));
-        int clear=config.getInt("chat.deletion_resend.clear_lines",500);clear=clear<=0?0:Math.max(100,Math.min(4096,clear));
+        int clear=ChatClear.entries(config.getInt("chat.deletion_resend.clear_lines",500));
         boolean mentionsEnabled=config.getBoolean("chat.mentions.enabled",true);
         String mentionColor=config.getString("chat.mentions.color","&e");
         String mentionSound=config.getString("chat.mentions.sound","minecraft:entity.experience_orb.pickup");

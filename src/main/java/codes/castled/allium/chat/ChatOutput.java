@@ -204,5 +204,5 @@ public final class ChatOutput {
     }
     public static void send(Player player,String json){player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.SYSTEM,ComponentSerializer.parse(json));}
     public static void replay(Player player,String json){send(player,ChatIdentity.tag(json,ChatIdentity.REPLAY));}
-    public static String blank(int index){char[] spaces={' ','\u2000','\u2001','\u2002','\u2003','\u2004','\u2005','\u2006','\u2007','\u2008','\u2009','\u200A'};StringBuilder text=new StringBuilder();for(int i=0;i<5;i++){text.append(spaces[index%spaces.length]);index/=spaces.length;}return ComponentSerializer.toString(new TextComponent(text.toString()));}
+    public static String blank(int index){return ComponentSerializer.toString(new TextComponent(ChatClear.blankLine(index)));}
 }

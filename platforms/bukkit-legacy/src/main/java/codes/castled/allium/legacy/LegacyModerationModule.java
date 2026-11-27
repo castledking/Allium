@@ -43,7 +43,7 @@ import java.util.UUID;
  * {@code /unbanip}, {@code /freeze}, {@code /setjail}, {@code /deljail}, {@code /jails}, {@code /jail},
  * {@code /unjail}, {@code /togglejail}, {@code /jailedplayers}, {@code /warn}, {@code /notes},
  * {@code /unnote}, {@code /invsee}, {@code /helpop}, {@code /report}, {@code /socialspy},
- * {@code /commandspy}, {@code /spy}, {@code /clearchat}.
+ * {@code /commandspy}, {@code /spy}.
  */
 final class LegacyModerationModule implements Listener {
 
@@ -306,7 +306,6 @@ final class LegacyModerationModule implements Listener {
             case "socialspy":
             case "commandspy":
             case "spy":
-            case "clearchat":
                 return true;
             default:
                 return false;
@@ -345,7 +344,6 @@ final class LegacyModerationModule implements Listener {
             case "socialspy": return handleSocialSpy(sender);
             case "commandspy": return handleCommandSpy(sender);
             case "spy": return handleSpyAll(sender);
-            case "clearchat": return handleClearChat(sender);
             default: return false;
         }
     }
@@ -1043,23 +1041,6 @@ final class LegacyModerationModule implements Listener {
             socialSpy.remove(id);
             commandSpy.remove(id);
             sender.sendMessage(ChatColor.GRAY + "SocialSpy and CommandSpy disabled.");
-        }
-        return true;
-    }
-
-    private boolean handleClearChat(CommandSender sender) {
-        if (!sender.hasPermission("allium.clearchat")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to clear chat.");
-            return true;
-        }
-        StringBuilder blank = new StringBuilder();
-        for (int i = 0; i < 60; i++) blank.append("\n");
-        String clearPayload = blank.toString();
-        for (Player p : plugin.getServer().getOnlinePlayers()) {
-            if (!p.hasPermission("allium.clearchat.exempt")) {
-                p.sendMessage(clearPayload);
-            }
-            p.sendMessage(ChatColor.GRAY + "Chat was cleared by " + ChatColor.WHITE + sender.getName() + ChatColor.GRAY + ".");
         }
         return true;
     }

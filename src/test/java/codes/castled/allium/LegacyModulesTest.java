@@ -25,6 +25,7 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.scheduler.BukkitTask;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
@@ -252,6 +253,45 @@ class LegacyModulesTest {
             Files.move(backup, data);
             h.runtime().onDisable();
         }
+    }
+
+    @Test
+    void legacyClearChatTargetsOnlyTheAuthorizedAudienceAndUsesTheSharedBudget() throws Exception {
+        Files.writeString(tempDir.resolve("config.yml"), """
+                chat:
+                  deletion_resend:
+                    clear_lines: 116
+                  replay-packets-per-tick: 50
+                """);
+        Harness h = createHarness();
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), false);
+        Player target = h.addPlayer("Target", UUID.randomUUID(), false);
+        Player bystander = h.addPlayer("Bystander", UUID.randomUUID(), false);
+        when(staff.hasPermission("allium.clearchat")).thenReturn(true);
+        BukkitScheduler scheduler = mock(BukkitScheduler.class);
+        BukkitTask scheduled = mock(BukkitTask.class);
+        when(h.server().getScheduler()).thenReturn(scheduler);
+        when(scheduler.runTaskTimer(eq(h.plugin()), any(Runnable.class), eq(1L), eq(1L))).thenReturn(scheduled);
+
+        assertTrue(h.run(staff, "clearchat", "Target"));
+        verify(staff).sendMessage(contains("permission"));
+        verifyNoInteractions(scheduler);
+        when(staff.hasPermission("allium.clearchat.others")).thenReturn(true);
+        assertTrue(h.run(staff, "clearchat", "Target"));
+        verify(staff).sendMessage(contains("Chat cleared."));
+
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskTimer(eq(h.plugin()), task.capture(), eq(1L), eq(1L));
+        var blankMessage = java.util.regex.Pattern.compile("[\\p{Zs}]{5}");
+        task.getValue().run();
+        verify(target, times(50)).sendMessage(matches(blankMessage));
+        verify(scheduled, never()).cancel();
+        task.getValue().run();
+        task.getValue().run();
+        verify(target, times(116)).sendMessage(matches(blankMessage));
+        verify(bystander, never()).sendMessage(anyString());
+        verify(scheduled).cancel();
+        h.runtime().onDisable();
     }
 
     @Test

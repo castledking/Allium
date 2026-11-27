@@ -32,6 +32,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/payconfirmtoggle [on|off] ([player])` saves whether outgoing payments require confirmation. With confirmation enabled, repeat the same recipient and amount within 30 seconds to send the payment. Staff with `allium.payconfirmtoggle.others` can change the setting for another known player.
 
+`/clearchat [player]` clears everyone’s chat by default. Targeting another player requires `allium.clearchat.others`. Global clears honor `allium.clearchat.exempt`. The line count comes from `chat.deletion_resend.clear_lines`. A value of zero disables clearing. Previous chat messages are never replayed by this command.
+
 `/rtoggle` (`/replytoggle`) switches `/reply` between the last person you messaged and the last person who messaged you. The selected mode survives a restart. Message history used to pick the recipient lasts for the current session.
 
 Teleport commands and tab completion accept partial usernames, nicknames, and close typos. Teleporting another player with `/tp <player> <target>` requires `allium.tp.others`.

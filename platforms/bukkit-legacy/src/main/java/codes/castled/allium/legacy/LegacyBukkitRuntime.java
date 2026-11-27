@@ -85,6 +85,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyTravelModule travel;
     private final LegacyUtilitiesModule utilities;
     private final LegacyTextModule text;
+    private final LegacyChatClear chatClear;
     private final LegacyPlayerSettings settings;
     private final LegacyEditSignCommand editSign;
     private final LegacyUnlimitedCommand unlimited;
@@ -113,6 +114,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.moderation = new LegacyModerationModule(plugin);
         this.offlineTeleport = new LegacyOfflineTeleport(plugin, configManager, moderation, messageManager,
                 this::canSeeTeleportTarget);
+        this.chatClear = new LegacyChatClear(plugin, configManager, messageManager, this::canSeeTeleportTarget);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy);
         this.travel = new LegacyTravelModule(plugin, this);
         this.utilities = new LegacyUtilitiesModule(plugin, this);
@@ -199,6 +201,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(unlimited);
         HandlerList.unregisterAll(offlineTeleport);
         text.stop();
+        chatClear.stop();
         messageManager.disable();
         economy.disable();
         kits.disable();
@@ -241,6 +244,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         godPlayers.remove(id);
+        chatClear.forget(id);
         incomingTpa.remove(id);
         replyTargets.forget(id);
         editSign.forget(id);
@@ -333,6 +337,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return settings.execute(sender, false, args);
             case "editsign":
                 return editSign.execute(sender, args);
+            case "clearchat":
+                return chatClear.execute(sender, args);
             case "unlimited":
                 return unlimited.execute(sender, args);
             case "heal":
@@ -389,6 +395,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
         if ("toggle".equals(name)) return settings.complete(sender, args);
+        if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);
         if ("payconfirmtoggle".equals(name)) return economy.completePayConfirmation(sender, alias, args, prefix);
         if ("editsign".equals(name)) {
             return command.testPermissionSilent(sender) ? editSign.complete(args, prefix) : Collections.emptyList();

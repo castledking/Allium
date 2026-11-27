@@ -373,6 +373,29 @@ class LegacyModulesTest {
     }
 
     @Test
+    void compatibilityOfflineTeleportHidesVanishedLogoutPositions() throws Exception {
+        Harness h = createHarness();
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), false);
+        when(staff.hasPermission("allium.reload")).thenReturn(true);
+        when(staff.hasPermission("allium.tp.offline")).thenReturn(true);
+        when(staff.hasPermission("allium.teleport.unsafe")).thenReturn(true);
+        UUID worldId = h.world().getUID();
+        when(h.server().getWorld(worldId)).thenReturn(h.world());
+        java.nio.file.Files.writeString(tempDir.resolve("logout-locations-legacy.yml"),
+                UUID.randomUUID() + ":\n  name: Hidden\n  hidden: true\n  world: " + worldId
+                        + "\n  x: 12.5\n  y: 64.0\n  z: -7.5\n  yaw: 90.0\n");
+        assertTrue(h.run(staff, "allium", "reload"));
+        assertTrue(h.run(staff, "tpoffline", "Hidden"));
+        verify(staff).sendMessage(contains("No saved offline location"));
+        verify(staff, never()).teleport(any(Location.class));
+
+        when(staff.hasPermission("allium.vanish.see")).thenReturn(true);
+        when(staff.teleport(any(Location.class))).thenReturn(true);
+        assertTrue(h.run(staff, "tpoffline", "hidden"));
+        verify(staff).teleport(new Location(h.world(), 12.5, 64.0, -7.5, 90, 0));
+    }
+
+    @Test
     void moderationMuteFreezeJailWarnBanAndSocialSpyWork() {
         Harness h = createHarness();
         Player mod = h.addPlayer("Mod", UUID.randomUUID(), true);

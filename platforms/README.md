@@ -36,6 +36,8 @@ Teleport commands and tab completion accept partial usernames, nicknames, and cl
 
 `/spectate <player>` uses the same `spectate-commands` configuration as the modern runtime. Entries can run as the console or use `player:` to run with the staff member's permissions.
 
+`/tpoffline <player>` uses known logout locations saved in `logout-locations-legacy.yml`. Saved positions from vanished players require `allium.vanish.see`. When the named player is currently online, the command checks visibility and uses their current location.
+
 ## Development build
 
 Run Gradle with JDK 25. JDK 17 and JDK 21 are also required by the build.

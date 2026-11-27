@@ -518,7 +518,7 @@ final class LegacyEconomyModule implements Listener {
             if (payDisabled.contains(id)) yml.set(path + ".pay-disabled", true);
         }
         try {
-            LegacyPlayerSettings.replaceFile(yml, file);
+            LegacyCompat.saveYamlAtomically(yml, file);
             return true;
         } catch (IOException e) {
             plugin.getLogger().warning("Could not save economy-legacy.yml: " + e.getMessage());

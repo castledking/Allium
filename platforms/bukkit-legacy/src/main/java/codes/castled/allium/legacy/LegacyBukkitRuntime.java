@@ -88,6 +88,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyPlayerSettings settings;
     private final LegacyEditSignCommand editSign;
     private final LegacyUnlimitedCommand unlimited;
+    private final LegacyOfflineTeleport offlineTeleport;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -110,6 +111,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.unlimited = new LegacyUnlimitedCommand(plugin, settings, commandManager);
         this.kits = new LegacyKitsModule(plugin);
         this.moderation = new LegacyModerationModule(plugin);
+        this.offlineTeleport = new LegacyOfflineTeleport(plugin, configManager, moderation, messageManager,
+                this::canSeeTeleportTarget);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy);
         this.travel = new LegacyTravelModule(plugin, this);
         this.utilities = new LegacyUtilitiesModule(plugin, this);
@@ -135,6 +138,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         loadSpawn();
         economy.enable();
         settings.reload();
+        offlineTeleport.reload();
         kits.enable();
         moderation.enable();
         playerInfo.enable();
@@ -148,6 +152,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(utilities, plugin);
         pm.registerEvents(text, plugin);
         pm.registerEvents(unlimited, plugin);
+        pm.registerEvents(offlineTeleport, plugin);
         text.reload();
         String reason = version.isAtLeast(1, 20, 0)
                 ? "Java " + javaMajor + " detected (Java 17+ required for full 1.20+ modules)"
@@ -192,6 +197,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(utilities);
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);
+        HandlerList.unregisterAll(offlineTeleport);
         text.stop();
         messageManager.disable();
         economy.disable();
@@ -301,6 +307,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return handleTpHere(sender, args);
             case "spectate":
                 return handleSpectate(sender, args);
+            case "tpoffline":
+                return offlineTeleport.execute(sender, args);
             case "back":
                 return handleBack(sender);
             case "msg":
@@ -405,6 +413,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("spectate".equals(name) && args.length == 1) {
             return sender.hasPermission("allium.spectate") ? teleportPlayerSuggestions(sender, prefix) : Collections.emptyList();
         }
+        if ("tpoffline".equals(name) && args.length == 1) return offlineTeleport.complete(sender, prefix);
         if ("allium".equals(name) && args.length == 1) {
             return filterPrefix(Arrays.asList("version", "help", "reload"), prefix);
         }
@@ -485,6 +494,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             loadSpawn();
             economy.reload();
             settings.reload();
+            offlineTeleport.reload();
             kits.reload();
             travel.reload();
             moderation.reload();

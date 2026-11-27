@@ -9,9 +9,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -172,24 +169,12 @@ final class LegacyPlayerSettings {
         Object previous = data.get(path);
         data.set(path, value);
         try {
-            replaceFile(data, file);
+            LegacyCompat.saveYamlAtomically(data, file);
             return true;
         } catch (IOException error) {
             data.set(path, previous);
             plugin.getLogger().warning("Could not save " + file.getName() + ": " + error.getMessage());
             return false;
-        }
-    }
-
-    static void replaceFile(YamlConfiguration values, File file) throws IOException {
-        Path target = file.toPath();
-        Files.createDirectories(target.getParent());
-        Path temporary = Files.createTempFile(target.getParent(), file.getName(), ".tmp");
-        try {
-            values.save(temporary.toFile());
-            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } finally {
-            Files.deleteIfExists(temporary);
         }
     }
 

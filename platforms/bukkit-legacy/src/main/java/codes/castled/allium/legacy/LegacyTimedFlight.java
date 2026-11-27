@@ -37,22 +37,24 @@ final class LegacyTimedFlight {
     private final LegacyConfigManager config;
     private final LegacyPlayerInfoModule playerInfo;
     private final LegacyMessageManager messages;
+    private final LegacyFlightProtection protection;
     private final BiPredicate<CommandSender, Player> canSee;
     private final File file;
     private final Map<UUID, Long> remainingTicks = new HashMap<>();
     private final Map<UUID, Player> active = new HashMap<>();
-    private final Map<UUID, Long> landingUntil = new HashMap<>();
     private BukkitTask ticker;
     private int ticksSinceSave;
     private boolean writable;
     private boolean dirty;
 
     LegacyTimedFlight(JavaPlugin plugin, LegacyConfigManager config, LegacyPlayerInfoModule playerInfo,
-                      LegacyMessageManager messages, BiPredicate<CommandSender, Player> canSee) {
+                      LegacyMessageManager messages, LegacyFlightProtection protection,
+                      BiPredicate<CommandSender, Player> canSee) {
         this.plugin = plugin;
         this.config = config;
         this.playerInfo = playerInfo;
         this.messages = messages;
+        this.protection = protection;
         this.canSee = canSee;
         this.file = new File(plugin.getDataFolder(), "timed-flight-legacy.yml");
     }
@@ -93,7 +95,12 @@ final class LegacyTimedFlight {
         if (active.remove(target.getUniqueId()) != null) save();
         boolean enable = !target.getAllowFlight();
         target.setAllowFlight(enable);
-        if (!enable) target.setFlying(false);
+        if (enable) {
+            protection.forget(target);
+        } else {
+            target.setFlying(false);
+            protection.protectLanding(target);
+        }
         String state = enable ? "&aenabled" : "&cdisabled";
         send(target, "fly-toggle", "{prefix} &fFly mode {state} &ffor &d{player}&f.", "{state}", state, "{player}", target.getName());
         if (!self) send(sender, "fly-toggle", "{prefix} &fFly mode {state} &ffor &d{player}&f.", "{state}", state, "{player}", target.getName());
@@ -104,7 +111,7 @@ final class LegacyTimedFlight {
         UUID id = player.getUniqueId();
         if (!writable) return storageFailed(player);
         if (active.remove(id) != null) {
-            revokeTimedFlight(player);
+            revokeTimedFlight(player, true);
             save();
             send(player, "tfly-off", "{prefix} &7Timed flight off: &f{time} &7left.", "{time}", format(ticks(id)));
         } else if (ticks(id) == 0L) {
@@ -112,7 +119,7 @@ final class LegacyTimedFlight {
         } else if (!survival(player) || player.getAllowFlight()) {
             send(player, "tfly-already-allowed", "{prefix} &7Flight is already available to you.");
         } else {
-            landingUntil.remove(id);
+            protection.forget(player);
             active.put(id, player);
             player.setAllowFlight(true);
             player.setFallDistance(0.0f);
@@ -202,7 +209,7 @@ final class LegacyTimedFlight {
             }
             if (!player.hasPermission(TIMED)) {
                 flying.remove();
-                revokeTimedFlight(player);
+                revokeTimedFlight(player, true);
                 continue;
             }
             if (onlyWhileFlying && !player.isFlying()) continue;
@@ -226,36 +233,29 @@ final class LegacyTimedFlight {
     }
 
     private void expire(Player player) {
-        revokeTimedFlight(player);
+        revokeTimedFlight(player, true);
         send(player, "tfly-expired", "{prefix} &cYour timed flight has run out.");
     }
 
-    private void revokeTimedFlight(Player player) {
+    private void revokeTimedFlight(Player player, boolean protect) {
         if (!survival(player) || player.hasPermission(UNLIMITED)) return;
-        if (player.isFlying()) landingUntil.put(player.getUniqueId(), System.currentTimeMillis() + 15_000L);
         player.setFlying(false);
         player.setAllowFlight(false);
         player.setFallDistance(0.0f);
-    }
-
-    boolean protectFall(Player player) {
-        Long expires = landingUntil.remove(player.getUniqueId());
-        return expires != null && expires >= System.currentTimeMillis();
+        if (protect) protection.protectLanding(player);
     }
 
     void forget(Player player) {
         if (active.remove(player.getUniqueId()) != null) {
-            revokeTimedFlight(player);
+            revokeTimedFlight(player, false);
             save();
         }
-        landingUntil.remove(player.getUniqueId());
     }
 
     void close() {
         for (Player player : new ArrayList<>(active.values())) forget(player);
         save();
         stopTimer();
-        landingUntil.clear();
     }
 
     private void stopTimer() {

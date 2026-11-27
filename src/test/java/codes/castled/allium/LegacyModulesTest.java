@@ -277,6 +277,34 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacySlowFallOptOutPersistsAndDisarmsThePendingLanding() {
+        UUID id = UUID.randomUUID();
+        Harness h = createHarness();
+        Player player = h.addPlayer("Staff", id, true);
+        when(player.getGameMode()).thenReturn(GameMode.SURVIVAL);
+        when(player.getAllowFlight()).thenReturn(true, false);
+        BukkitScheduler scheduler = mock(BukkitScheduler.class);
+        when(h.server().getScheduler()).thenReturn(scheduler);
+        assertTrue(h.run(player, "fly"));
+        verify(scheduler).runTaskTimer(eq(h.plugin()), any(Runnable.class), eq(5L), eq(5L));
+
+        assertTrue(h.runAs(player, "toggleslowfall", "tsf", "off"));
+        var landing = mock(org.bukkit.event.entity.EntityDamageEvent.class);
+        when(landing.getEntity()).thenReturn(player);
+        when(landing.getCause()).thenReturn(org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL);
+        h.runtime().onDamage(landing);
+        verify(landing, never()).setCancelled(true);
+        h.runtime().onDisable();
+
+        Harness restarted = createHarness();
+        Player samePlayer = restarted.addPlayer("Staff", id, true);
+        assertTrue(restarted.runAs(samePlayer, "toggleslowfall", "tsf", "status"));
+        verify(samePlayer).sendMessage(argThat((String text) ->
+                text.contains("Slow fall protection") && text.contains("disabled")));
+        restarted.runtime().onDisable();
+    }
+
+    @Test
     void legacyTimedFlightRequiresBankedTimeAndRevokesFlightWhenItExpires() {
         Harness h = createHarness();
         Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);

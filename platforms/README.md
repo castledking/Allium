@@ -44,6 +44,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/fly` grants unlimited flight with `allium.fly`. Players with `allium.tfly` can spend banked flight time in Survival or Adventure. Staff can use `/fly <player> <set|add|take> <time>` or `/fly <player> reset` with the corresponding `allium.tfly.<action>` permission, including for known offline players. Balances are saved in `timed-flight-legacy.yml`. Turn on `timed-flight.count-only-while-flying` to spend the bank only during actual flight.
 
+`/toggleslowfall [on|off|status]` saves the flight landing protection preference for players with `allium.fly`. Protection is enabled by default. When Allium removes flight in midair, it applies the Slow Falling effect where available and protects the next landing for up to 15 seconds. Teleporting, landing, or enabling flight again ends the protection.
+
 ## Chat and chat filter on Bukkit 1.12.2–1.19.4
 
 Public chat formatting (`enable-chat-formatting`, `chat-format.default`, `chat-format.groups.*`, optional Vault prefix/suffix/group lookup), channels (`/channel`, `/g`, `/global`, `/shout`, `/l`, `/local`, `/a`, `/ac`, `/amsg`, `/staffchat`, `#staff` and `>global` shortcuts), local radius, `?` global questions (`allium.chat.question`), `@<player>` mention highlights and sounds (`allium.chat.mention`, `allium.chat.receive.mention`), URL permission gating (`chat.urls.enabled`, `allium.chat.url`), `/me` (`/action`), and `join-and-quit-messages` (including optional `first-join` and `broadcast-scope: world`) run natively on 1.12.2–1.19.4. Channel selections are saved in `chat-channels-legacy.yml`.

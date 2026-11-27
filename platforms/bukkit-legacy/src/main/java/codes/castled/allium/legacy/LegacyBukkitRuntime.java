@@ -97,6 +97,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyAutoRestart autorestart;
     private final LegacyInventoryClear inventoryClear;
     private final LegacyTimedFlight flight;
+    private final LegacyFlightProtection flightProtection;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -128,7 +129,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.companions = new LegacyCompanionTeleports(plugin, configManager, messageManager, version,
                 this::findTeleportPlayer, this::canSeeTeleportTarget);
         this.playerInfo = new LegacyPlayerInfoModule(plugin, moderation, economy, messageManager);
-        this.flight = new LegacyTimedFlight(plugin, configManager, playerInfo, messageManager, this::canSeeTeleportTarget);
+        this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);
+        this.flight = new LegacyTimedFlight(plugin, configManager, playerInfo, messageManager, flightProtection, this::canSeeTeleportTarget);
         this.chat = new LegacyChatModule(plugin, configManager, messageManager, moderation, playerInfo, version,
                 this::canSeeTeleportTarget);
         this.hide = new LegacyHideModule(plugin, configManager, messageManager, commandManager,
@@ -235,6 +237,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         autorestart.close();
         inventoryClear.reset();
         flight.close();
+        flightProtection.close();
         companions.stop();
         messageManager.disable();
         economy.disable();
@@ -258,7 +261,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     public void onDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         Player player = (Player) event.getEntity();
-        boolean protectedLanding = event.getCause() == EntityDamageEvent.DamageCause.FALL && flight.protectFall(player);
+        boolean protectedLanding = event.getCause() == EntityDamageEvent.DamageCause.FALL && flightProtection.consumeLanding(player);
         if (protectedLanding || godPlayers.contains(player.getUniqueId())) {
             event.setCancelled(true);
         }
@@ -266,6 +269,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent event) {
+        flightProtection.forget(event.getPlayer());
         if (event.getFrom() != null && event.getFrom().getWorld() != null) {
             backLocations.put(event.getPlayer().getUniqueId(), event.getFrom().clone());
         }
@@ -275,6 +279,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
         flight.forget(player);
+        flightProtection.forget(player);
         if (player.getLocation() != null && player.getLocation().getWorld() != null) {
             backLocations.put(player.getUniqueId(), player.getLocation().clone());
         }
@@ -284,6 +289,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         flight.forget(event.getPlayer());
+        flightProtection.forget(event.getPlayer());
         godPlayers.remove(id);
         chatClear.forget(id);
         inventoryClear.forget(id);
@@ -398,6 +404,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return handleFeed(sender, args);
             case "fly":
                 return flight.execute(sender, args);
+            case "toggleslowfall":
+                return flightProtection.execute(sender, args);
             case "god":
                 return handleGod(sender, args);
             case "gamemode":
@@ -454,6 +462,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         }
         if ("toggle".equals(name)) return settings.complete(sender, args);
         if ("fly".equals(name)) return flight.complete(sender, args, prefix);
+        if ("toggleslowfall".equals(name)) return flightProtection.complete(sender, args, prefix);
         if ("clearinventory".equals(name)) return inventoryClear.complete(sender, args, prefix);
         if ("clearinventoryconfirmtoggle".equals(name)) return Collections.emptyList();
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);

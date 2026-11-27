@@ -168,6 +168,15 @@ final class LegacyPlayerSettings {
                 "players." + player + ".inventory-clear-confirmation-disabled", enabled ? null : Boolean.TRUE);
     }
 
+    boolean flightProtectionEnabled(UUID player) {
+        return !data.getBoolean("players." + player + ".slow-fall-disabled");
+    }
+
+    boolean setFlightProtectionEnabled(UUID player, boolean enabled) {
+        return flightProtectionEnabled(player) == enabled || saveValue(
+                "players." + player + ".slow-fall-disabled", enabled ? null : Boolean.TRUE);
+    }
+
     Set<String> unlimitedBlocks(UUID player) {
         return new TreeSet<>(data.getStringList("players." + player + ".unlimited-blocks"));
     }

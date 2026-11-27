@@ -34,6 +34,8 @@ The join MOTD uses `motd.show-on-join` and `motd.join-delay-ticks`. Timed broadc
 
 `/redeem` (`/claimrank`) uses the same `redeem-settings` as the modern runtime. Allium records the UUID and rank as claimed before running its configured console commands. If a command fails, staff can review the logs and deliver any remaining rewards.
 
+`/autorestart` (`/ar`) reads daily schedules, countdowns, and pre-restart commands from `autorestart.yml`. Staff can schedule, cancel, inspect, or dry-run a restart. Players can vote with `/voterestart`. Use a server wrapper to bring the server back after the clean shutdown. Restart notices on this runtime go to the server console and players.
+
 `/clearchat [player]` clears everyone’s chat by default. Targeting another player requires `allium.clearchat.others`. Global clears honor `allium.clearchat.exempt`. The line count comes from `chat.deletion_resend.clear_lines`. A value of zero disables clearing. Previous chat messages are never replayed by this command.
 
 ## Chat and chat filter on Bukkit 1.12.2–1.19.4

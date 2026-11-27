@@ -140,9 +140,11 @@ commands:
     permission: allium.redeem
   autorestart:
     description: Schedule or manage server restarts
+    usage: /<command> <help|time|now|stop|reload|vote>
     aliases: [ar]
   voterestart:
     description: Vote for a server restart
+    usage: /<command> [yes|no|start]
     permission: allium.autorestart.vote.yes
   repair:
     description: Repair the held item, or your whole inventory

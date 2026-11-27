@@ -94,6 +94,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyUnlimitedCommand unlimited;
     private final LegacyOfflineTeleport offlineTeleport;
     private final LegacyRedeemCommand redeem;
+    private final LegacyAutoRestart autorestart;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
     private final Map<UUID, Location> backLocations = new HashMap<>();
@@ -111,6 +112,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.editSign = new LegacyEditSignCommand(plugin, messageManager);
         this.commandManager = new LegacyCommandManager(plugin, configManager);
         this.redeem = new LegacyRedeemCommand(plugin, configManager, commandManager, messageManager);
+        this.autorestart = new LegacyAutoRestart(plugin, configManager, messageManager);
         this.helpCommand = new LegacyHelpCommand(commandManager, messageManager);
         this.economy = new LegacyEconomyModule(plugin, configManager, messageManager);
         this.settings = new LegacyPlayerSettings(plugin, commandManager, economy, messageManager);
@@ -174,6 +176,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(redeem, plugin);
         pm.registerEvents(companions, plugin);
         text.reload();
+        autorestart.reload();
         String reason = version.isAtLeast(1, 20, 0)
                 ? "Java " + javaMajor + " detected (Java 17+ required for full 1.20+ modules)"
                 : "Minecraft " + version + " (full modern modules activate on 1.20+ with Java 17+)";
@@ -224,6 +227,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(companions);
         text.stop();
         chatClear.stop();
+        autorestart.close();
         companions.stop();
         messageManager.disable();
         economy.disable();
@@ -304,6 +308,10 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return handleAllium(sender, args);
             case "redeem":
                 return redeem.execute(sender, args);
+            case "autorestart":
+                return autorestart.execute(sender, args);
+            case "voterestart":
+                return autorestart.voteCommand(sender, args);
             case "ping":
                 return handlePing(sender, args);
             case "coords":
@@ -427,6 +435,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             return Collections.emptyList();
         }
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
+        if ("autorestart".equals(name) || "voterestart".equals(name)) {
+            return autorestart.complete(sender, "voterestart".equals(name), args, prefix);
+        }
         if ("toggle".equals(name)) return settings.complete(sender, args);
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);
         if ("payconfirmtoggle".equals(name)) return economy.completePayConfirmation(sender, alias, args, prefix);
@@ -561,6 +572,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             chat.reload();
             hide.reload();
             text.reload();
+            autorestart.reload();
             messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");
             return true;
         }

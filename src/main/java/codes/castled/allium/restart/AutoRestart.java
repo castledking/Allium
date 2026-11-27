@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,14 +30,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
 
 public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
     private static final String PERMISSION = "allium.autorestart.";
     private static final List<String> VOTES = List.of("start", "yes", "no");
     private static final String USAGE = "/ar <help|time|now|stop|reload|vote>";
-    private static final Pattern DELAY = Pattern.compile("(\\d+)([smhd]?)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern CLOCK_DELAY = Pattern.compile("(\\d{1,2}):([0-5]\\d)");
 
     record Plan(Instant deadline, boolean preCommands, boolean dryRun) {}
 
@@ -184,23 +180,7 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
     }
 
     static long delaySeconds(String raw) {
-        if (raw.equalsIgnoreCase("now")) return 0;
-        var clock = CLOCK_DELAY.matcher(raw);
-        if (clock.matches()) {
-            int hour = Integer.parseInt(clock.group(1));
-            if (hour < 24) return hour * 3600L + Integer.parseInt(clock.group(2)) * 60L;
-        }
-        var matcher = DELAY.matcher(raw);
-        if (!matcher.matches()) throw new IllegalArgumentException("invalid delay");
-        long number = Long.parseLong(matcher.group(1));
-        long factor = switch (matcher.group(2).toLowerCase(Locale.ROOT)) {
-            case "m" -> 60;
-            case "h" -> 3_600;
-            case "d" -> 86_400;
-            default -> 1;
-        };
-        if (number > 31_536_000L / factor) throw new IllegalArgumentException("delay too large");
-        return number * factor;
+        return RestartTiming.delaySeconds(raw);
     }
 
     private void scheduleDaily() {
@@ -480,13 +460,11 @@ public final class AutoRestart implements SpecCommandHandler, AutoCloseable {
     }
 
     private static long secondsLeft(Plan active) {
-        return Math.max(0, (Duration.between(Instant.now(), active.deadline()).toMillis() + 999) / 1000);
+        return RestartTiming.secondsLeft(Instant.now(), active.deadline());
     }
 
     private static String format(long seconds) {
-        if (seconds < 60) return seconds + "s";
-        if (seconds < 3600) return seconds / 60 + "m " + seconds % 60 + "s";
-        return seconds / 3600 + "h " + seconds % 3600 / 60 + "m " + seconds % 60 + "s";
+        return RestartTiming.format(seconds);
     }
 
     private boolean allowed(CommandSender sender, String permission) {

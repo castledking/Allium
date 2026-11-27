@@ -206,6 +206,42 @@ class LegacyModulesTest {
     }
 
     @Test
+    void legacyRestartCancelsScheduledWorkAndKeepsOnlyOneVotePerPlayer() {
+        Harness h = createHarness();
+        Player staff = h.addPlayer("Staff", UUID.randomUUID(), true);
+        Player member = h.addPlayer("Member", UUID.randomUUID(), false);
+        when(member.hasPermission("allium.autorestart.vote.yes")).thenReturn(true);
+        BukkitScheduler scheduler = mock(BukkitScheduler.class);
+        BukkitTask timer = mock(BukkitTask.class);
+        BukkitTask voteTimer = mock(BukkitTask.class);
+        when(h.server().getScheduler()).thenReturn(scheduler);
+        when(scheduler.runTaskTimer(eq(h.plugin()), any(Runnable.class), eq(1L), eq(5L))).thenReturn(timer);
+        when(scheduler.runTaskLater(eq(h.plugin()), any(Runnable.class), eq(1_200L))).thenReturn(voteTimer);
+
+        assertTrue(h.runAs(staff, "autorestart", "ar", "now", "0s"));
+        ArgumentCaptor<Runnable> restart = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskTimer(eq(h.plugin()), restart.capture(), eq(1L), eq(5L));
+        assertTrue(h.run(staff, "autorestart", "stop"));
+        restart.getValue().run();
+        verify(timer).cancel();
+        verify(h.server(), never()).shutdown();
+
+        assertTrue(h.run(staff, "voterestart", "start"));
+        assertTrue(h.run(member, "voterestart", "yes"));
+        assertTrue(h.run(member, "voterestart", "no"));
+        verify(member).sendMessage(contains("already voted"));
+        ArgumentCaptor<Runnable> vote = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskLater(eq(h.plugin()), vote.capture(), eq(1_200L));
+        vote.getValue().run();
+        verify(voteTimer).cancel();
+        verify(staff).sendMessage(contains("Restart vote passed (1 yes, 0 no)"));
+        verify(scheduler, times(2)).runTaskTimer(eq(h.plugin()), any(Runnable.class), eq(1L), eq(5L));
+        h.runtime().onDisable();
+        verify(timer, times(2)).cancel();
+        verify(h.server(), never()).shutdown();
+    }
+
+    @Test
     void legacyRedeemPersistsTheClaimBeforeDispatchAndPreventsPartialRewardReplay() throws Exception {
         UUID playerId = UUID.randomUUID();
         Path config = tempDir.resolve("config.yml");

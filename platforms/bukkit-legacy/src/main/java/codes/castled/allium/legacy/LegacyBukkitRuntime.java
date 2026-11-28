@@ -200,6 +200,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(utilities, plugin);
         pm.registerEvents(explosiveCommands, plugin);
         pm.registerEvents(powerTools, plugin);
+        pm.registerEvents(powerTools.rides(), plugin);
+        powerTools.rides().enable();
         pm.registerEvents(text, plugin);
         pm.registerEvents(unlimited, plugin);
         pm.registerEvents(offlineTeleport, plugin);
@@ -255,6 +257,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(playerInfo.alts());
         HandlerList.unregisterAll(explosiveCommands);
         HandlerList.unregisterAll(powerTools);
+        powerTools.rides().disable();
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);
         HandlerList.unregisterAll(offlineTeleport);
@@ -461,6 +464,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return powerTools.powertool(sender, label, args);
             case "voucher":
                 return powerTools.voucher(sender, label, args);
+            case "unrestrain":
+                return powerTools.rides().unrestrain(sender, args);
             case "god":
                 return handleGod(sender, args);
             case "gamemode":
@@ -527,6 +532,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("beezooka".equals(name) || "kittycannon".equals(name)) return Collections.emptyList();
         if ("nuke".equals(name)) return explosiveCommands.completeNuke(sender, args, prefix);
         if ("powertool".equals(name) || "voucher".equals(name)) return powerTools.complete(sender, name, args, prefix);
+        if ("unrestrain".equals(name)) return powerTools.rides().complete(sender, args);
         if ("clearinventory".equals(name)) return inventoryClear.complete(sender, args, prefix);
         if ("clearinventoryconfirmtoggle".equals(name)) return Collections.emptyList();
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);

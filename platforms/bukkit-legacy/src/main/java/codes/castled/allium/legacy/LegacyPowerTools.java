@@ -19,6 +19,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
@@ -56,14 +57,15 @@ import java.util.regex.Pattern;
  * platform's schema, and {@code /powertool} to list, inspect, give, enable, disable and reload them.
  *
  * <p>Triggers: left, right, shift-left, shift-right, swap, drop, on-break, on-interact-entity,
- * on-hit and on-consume. Actions: command, console, message, actionbar, sound, particle, potion and
- * grant, with the same placeholder, console allow-list and selector rules. A binding's hand, sneak,
+ * on-hit, on-consume and on-fish. Actions: command, console, message, actionbar, sound, particle,
+ * potion, grant, ride, mount and release (over {@link LegacyRides}), with the same placeholder,
+ * console allow-list and selector rules. A binding's hand, sneak,
  * worlds, permission, cooldown and cancel-interaction apply, and so do the tool's use permission,
  * limited uses and click guard. {@code allium.powertool.bypass} or the tool's bypass permission
- * skips cooldowns and, unless {@code uses.bypassable} is false (as on vouchers), uses. A tool whose
- * item is one of Allium's own items, or that uses the on-fish trigger or an action this platform
- * lacks (tree_fell, disarm, obliterate, block_replace, ride, mount, release), is listed as needing
- * Minecraft 1.20+.
+ * skips cooldowns and, unless {@code uses.bypassable} is false (as on vouchers), uses. The
+ * handcuffs' item is an unbreakable fishing rod here. A tool whose item is another of Allium's own
+ * items, or that uses an action this platform lacks (tree_fell, disarm, obliterate, block_replace)
+ * or the ride action's claim option, is listed as needing Minecraft 1.20+.
  *
  * <p>Items before 1.14 carry no hidden data, so a tool item ends with a dark id line naming the
  * tool. Editing a tool in game ({@code add}, {@code set}, {@code cooldown} and the rest) needs
@@ -91,7 +93,17 @@ final class LegacyPowerTools implements Listener {
     }
 
     private static final Set<String> SUPPORTED_ACTIONS = new HashSet<>(Arrays.asList(
-            "command", "console", "message", "actionbar", "sound", "particle", "potion", "grant"));
+            "command", "console", "message", "actionbar", "sound", "particle", "potion", "grant", "ride", "mount", "release"));
+    /** Allium's own items that have a plain stand-in here: the handcuffs are an unbreakable fishing rod. */
+    private static final Map<String, String> STAND_INS = new HashMap<>();
+
+    static {
+        STAND_INS.put("allium:handcuffs", "fishing_rod");
+        STAND_INS.put("allium:claim_handcuffs", "fishing_rod");
+    }
+
+    /** The bundled tools that work here, installed once as on the modern platform. */
+    static final List<String> BUNDLED = Collections.singletonList("handcuffs.yml");
 
     enum Trigger {
         LEFT("left", false, "l", "lmb", "left-click", "left_click"),
@@ -146,6 +158,7 @@ final class LegacyPowerTools implements Listener {
         boolean cancel;
         String hand = "main", sneak = "any", requirePermission, cooldownScope = "player", cooldownMessage;
         Set<String> worlds = Collections.emptySet();
+        Set<String> fishing = Collections.emptySet();
         long cooldownMillis;
         boolean consumeUse = true;
     }
@@ -173,11 +186,21 @@ final class LegacyPowerTools implements Listener {
     private final Map<String, Long> cooldowns = new HashMap<>();
     private final Map<String, Long> clickGuard = new HashMap<>();
     private final Set<UUID> toggledOff = new HashSet<>();
+    private final LegacyRides rides;
 
     LegacyPowerTools(JavaPlugin plugin, LegacyConfigManager config, LegacyMessageManager messages) {
+        this(plugin, config, messages, new LegacyRides(plugin, config, messages));
+    }
+
+    LegacyPowerTools(JavaPlugin plugin, LegacyConfigManager config, LegacyMessageManager messages, LegacyRides rides) {
         this.plugin = plugin;
         this.config = config;
         this.messages = messages;
+        this.rides = rides;
+    }
+
+    LegacyRides rides() {
+        return rides;
     }
 
     // ---- loading ---------------------------------------------------------------------------------
@@ -185,6 +208,7 @@ final class LegacyPowerTools implements Listener {
     void load() {
         tools.clear();
         File folder = new File(plugin.getDataFolder(), DIRECTORY);
+        installDefaults(folder);
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
         if (files == null) return;
         Arrays.sort(files);
@@ -197,6 +221,54 @@ final class LegacyPowerTools implements Listener {
             } catch (RuntimeException invalid) {
                 plugin.getLogger().warning("tools/" + file.getName() + " was skipped: " + invalid.getMessage());
             }
+        }
+    }
+
+    /**
+     * Installs each bundled tool that works here once, recorded in {@code tools/.defaults} as the
+     * modern platform does, so a deleted default stays deleted and the modern platform installs the
+     * rest after an upgrade.
+     */
+    private void installDefaults(File folder) {
+        File record = new File(folder, ".defaults");
+        Set<String> installed = new LinkedHashSet<>();
+        try {
+            if (record.isFile()) {
+                for (String line : java.nio.file.Files.readAllLines(record.toPath(), java.nio.charset.StandardCharsets.UTF_8)) {
+                    String trimmed = line.trim();
+                    if (!trimmed.isEmpty() && !trimmed.startsWith("#")) installed.add(trimmed);
+                }
+            } else {
+                installed.add("mob_disarmer.yml");
+            }
+            boolean changed = !record.isFile();
+            for (String name : BUNDLED) {
+                if (installed.contains(name)) continue;
+                File target = new File(folder, name);
+                if (!target.exists()) {
+                    java.io.InputStream in = plugin.getResource(DIRECTORY + "/" + name);
+                    if (in == null) continue;
+                    try {
+                        folder.mkdirs();
+                        java.nio.file.Files.copy(in, target.toPath());
+                    } finally {
+                        in.close();
+                    }
+                    plugin.getLogger().info("Created " + DIRECTORY + "/" + name + ", a new default tool definition.");
+                }
+                installed.add(name);
+                changed = true;
+            }
+            if (changed) {
+                List<String> lines = new ArrayList<>();
+                lines.add("# Default tool definitions Allium has installed once. A default listed here is not");
+                lines.add("# installed again, so deleting its file removes the tool for good.");
+                lines.addAll(installed);
+                folder.mkdirs();
+                java.nio.file.Files.write(record.toPath(), lines, java.nio.charset.StandardCharsets.UTF_8);
+            }
+        } catch (IOException failed) {
+            plugin.getLogger().warning("Could not install the default tools: " + failed.getMessage());
         }
     }
 
@@ -225,8 +297,14 @@ final class LegacyPowerTools implements Listener {
             }
         } else {
             String appearance = yaml.getString("appearance.default", "");
-            if (appearance.startsWith("minecraft:")) tool.material = appearance.substring("minecraft:".length());
-            else tool.unsupported = "its item (" + appearance + ") is one of Allium's own items";
+            if (appearance.startsWith("minecraft:")) {
+                tool.material = appearance.substring("minecraft:".length());
+            } else if (STAND_INS.containsKey(appearance)) {
+                tool.material = STAND_INS.get(appearance);
+                tool.unbreakable = true;
+            } else {
+                tool.unsupported = "its item (" + appearance + ") is one of Allium's own items";
+            }
         }
         ConfigurationSection uses = yaml.getConfigurationSection("uses");
         if (uses != null) {
@@ -247,6 +325,12 @@ final class LegacyPowerTools implements Listener {
                 binding.sneak = section.getString("sneak", "any").toLowerCase(Locale.ROOT);
                 binding.requirePermission = section.getString("require-permission", null);
                 binding.worlds = new HashSet<>(section.getStringList("worlds"));
+                Set<String> states = new HashSet<>();
+                for (String state : section.getStringList("fishing")) {
+                    String known = fishState(state);
+                    if (known != null) states.add(known);
+                }
+                binding.fishing = states;
                 binding.cooldownMillis = LegacyCompat.parseDurationMillis(section.getString("cooldown", "0s"));
                 if (binding.cooldownMillis < 0) binding.cooldownMillis = 0;
                 binding.cooldownScope = section.getString("cooldown-scope", "player").toLowerCase(Locale.ROOT);
@@ -264,6 +348,9 @@ final class LegacyPowerTools implements Listener {
                     Object params = row.get("params");
                     Map<String, Object> map = new LinkedHashMap<>();
                     if (params instanceof Map) for (Map.Entry<?, ?> e : ((Map<?, ?>) params).entrySet()) map.put(String.valueOf(e.getKey()), e.getValue());
+                    if ("ride".equals(type) && truthy(map.get("claim"))) {
+                        tool.unsupported = "its claim option needs GriefPrevention support";
+                    }
                     binding.steps.add(new Step("console".equals(type) ? "command" : type, row.get("value") == null ? null : String.valueOf(row.get("value")),
                             console, delay, row.get("require-permission") == null ? null : String.valueOf(row.get("require-permission")),
                             Boolean.TRUE.equals(row.get("required")), map));
@@ -271,8 +358,38 @@ final class LegacyPowerTools implements Listener {
                 tool.bindings.put(trigger, binding);
             }
         }
-        if (tool.bindings.containsKey(Trigger.ON_FISH) && tool.unsupported == null) tool.unsupported = "it uses the on-fish trigger";
         return tool;
+    }
+
+    /** The modern platform's fishing states, from their aliases. */
+    static String fishState(String raw) {
+        if (raw == null) return null;
+        switch (raw.trim().toLowerCase(Locale.ROOT).replace('_', '-')) {
+            case "cast": case "fishing": case "throw": return "cast";
+            case "bite": return "bite";
+            case "lured": case "lure": return "lured";
+            case "caught-fish": case "catch": case "caught": return "caught-fish";
+            case "caught-entity": case "hooked": case "hook": case "hook-entity": case "entity": return "caught-entity";
+            case "in-ground": case "ground": case "block": return "in-ground";
+            case "failed": case "failed-attempt": case "fail": case "miss": return "failed";
+            case "reel-in": case "reel": case "retract": return "reel-in";
+            default: return null;
+        }
+    }
+
+    private static String fishState(PlayerFishEvent.State state) {
+        switch (state.name()) {
+            case "FISHING": return "cast";
+            case "CAUGHT_FISH": return "caught-fish";
+            case "CAUGHT_ENTITY": return "caught-entity";
+            case "IN_GROUND": return "in-ground";
+            case "FAILED_ATTEMPT": return "failed";
+            default: return state.name().toLowerCase(Locale.ROOT).replace('_', '-');
+        }
+    }
+
+    private static boolean truthy(Object value) {
+        return value instanceof Boolean ? (Boolean) value : value != null && Boolean.parseBoolean(String.valueOf(value).trim());
     }
 
     private static String action(String raw) {
@@ -396,6 +513,22 @@ final class LegacyPowerTools implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onFish(PlayerFishEvent event) {
+        Player player = event.getPlayer();
+        ItemStack main = player.getInventory().getItemInMainHand();
+        boolean mainRod = main != null && main.getType() == Material.FISHING_ROD;
+        ItemStack item = mainRod ? main : player.getInventory().getItemInOffHand();
+        if (item == null || item.getType() == Material.AIR) return;
+        String name = toolOf(item);
+        Tool tool = name == null ? null : tools.get(name);
+        Binding binding = tool == null ? null : tool.bindings.get(Trigger.ON_FISH);
+        if (binding == null || !binding.fishing.isEmpty() && !binding.fishing.contains(fishState(event.getState()))) return;
+        fire(player, item, !mainRod, Trigger.ON_FISH, event.getCaught(), null, event);
+        // A cancelled reel-in leaves the line out; take it in, as reeling in would have.
+        if (event.isCancelled() && event.getHook() != null) event.getHook().remove();
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent event) {
         fire(event.getPlayer(), event.getItem(), false, Trigger.ON_CONSUME, null, null, event);
     }
@@ -451,11 +584,11 @@ final class LegacyPowerTools implements Listener {
             }
             if (step.delayTicks > 0) {
                 plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    if (player.isOnline()) run(tool, step, player, target, values);
+                    if (player.isOnline()) run(tool, step, player, target, values, null);
                 }, step.delayTicks);
                 ran = true;
             } else {
-                boolean done = run(tool, step, player, target, values);
+                boolean done = run(tool, step, player, target, values, event);
                 ran |= done;
                 if (!done && step.required) break;
             }
@@ -541,7 +674,13 @@ final class LegacyPowerTools implements Listener {
 
     // ---- actions ---------------------------------------------------------------------------------
 
-    private boolean run(Tool tool, Step step, Player player, Entity target, Map<String, String> values) {
+    private boolean run(Tool tool, Step step, Player player, Entity target, Map<String, String> values, Cancellable cause) {
+        switch (step.type) {
+            case "ride": return ride(player, target, step.params);
+            case "mount": return mount(player, target, step.params);
+            case "release": return release(player, step.params, cause);
+            default: break;
+        }
         if (step.value == null || step.value.trim().isEmpty()) return false;
         String text = apply(step.value, values);
         switch (step.type) {
@@ -609,6 +748,107 @@ final class LegacyPowerTools implements Listener {
             default:
                 return false;
         }
+    }
+
+    // ---- ride, mount, release ---------------------------------------------------------------------
+
+    private boolean ride(Player player, Entity target, Map<String, Object> params) {
+        if (!eligible(player, target, params)) return false;
+        boolean restrain = truthy(params.get("restrain"));
+        String name = nameOf(target);
+        if (restrain && !(target instanceof Player)) {
+            messages.send(player, "tool.ride.players-only", "{prefix} &cOnly players can be restrained.");
+            return false;
+        }
+        int max = 5;
+        try {
+            if (params.get("max-riders") != null) max = Integer.parseInt(String.valueOf(params.get("max-riders")).trim());
+        } catch (NumberFormatException ignored) {
+        }
+        max = Math.max(1, Math.min(16, max));
+        switch (rides.carry(player, target, restrain, max)) {
+            case RESTRAINED: {
+                messages.send(player, "tool.ride.restrained", "{prefix} &aYou restrained &f{target}&a.", "{target}", name);
+                messages.send(target, "tool.ride.restrained-target", "{prefix} &cYou have been restrained by &f{player}&c!", "{player}", player.getName());
+                ((Player) target).sendTitle(messages.resolveColored("tool.ride.restrained-title", "&c&lRESTRAINED"),
+                        messages.resolveColored("tool.ride.restrained-subtitle", "&7Restrained by &f{player}", "{player}", player.getName()), 5, 45, 10);
+                return true;
+            }
+            case CARRIED:
+                messages.send(player, "tool.ride.carrying", "{prefix} &aYou picked up &f{target}&a.", "{target}", name);
+                if (target instanceof Player) {
+                    messages.send(target, "tool.ride.carried", "{prefix} &f{player} &apicked you up. Sneak to get down.", "{player}", player.getName());
+                }
+                return true;
+            case FULL:
+                messages.send(player, "tool.ride.full", "{prefix} &cYou can only carry &f{max} &cat once.", "{max}", Integer.toString(max));
+                return false;
+            case BUSY:
+                messages.send(player, "tool.ride.busy", "{prefix} &f{target} &cis already riding or carrying someone.", "{target}", name);
+                return false;
+            default:
+                return false;
+        }
+    }
+
+    private boolean mount(Player player, Entity target, Map<String, Object> params) {
+        if (!eligible(player, target, params)) return false;
+        if (rides.isRestrained(player.getUniqueId()) || rides.isRestrained(target.getUniqueId())
+                || player.getVehicle() != null && target.getUniqueId().equals(player.getVehicle().getUniqueId())) {
+            messages.send(player, "tool.ride.busy", "{prefix} &f{target} &cis already riding or carrying someone.", "{target}", nameOf(target));
+            return false;
+        }
+        if (rides.isCarried(player.getUniqueId())) rides.let(player.getUniqueId());
+        player.leaveVehicle();
+        return target.addPassenger(player);
+    }
+
+    private boolean release(Player player, Map<String, Object> params, Cancellable cause) {
+        Object which = params.get("which");
+        boolean all = which == null || !"last".equalsIgnoreCase(String.valueOf(which).trim());
+        List<Entity> released = rides.release(player, all);
+        if (released.isEmpty()) return false;
+        for (Entity entity : released) {
+            messages.send(player, "tool.ride.released", "{prefix} &aYou released &f{target}&a.", "{target}", nameOf(entity));
+            if (entity instanceof Player && ((Player) entity).isOnline()) {
+                messages.send(entity, "tool.ride.released-target", "{prefix} &aYou were released by &f{player}&a.", "{player}", player.getName());
+            }
+        }
+        // The handcuffs' drop lets go; the handcuffs stay in hand.
+        if (cause instanceof PlayerDropItemEvent) cause.setCancelled(true);
+        return true;
+    }
+
+    /** A living target, of an allowed type, not exempt and visible. */
+    private boolean eligible(Player player, Entity target, Map<String, Object> params) {
+        if (target == null || !target.isValid() || !(target instanceof LivingEntity) || target.getUniqueId().equals(player.getUniqueId())) {
+            return false;
+        }
+        Object rawTypes = params.get("entity-types");
+        List<String> types = new ArrayList<>();
+        if (rawTypes instanceof Collection) {
+            for (Object type : (Collection<?>) rawTypes) if (type != null) types.add(String.valueOf(type).trim().toLowerCase(Locale.ROOT));
+        } else if (rawTypes != null) {
+            for (String part : String.valueOf(rawTypes).split("[,\\s]+")) if (!part.trim().isEmpty()) types.add(part.trim().toLowerCase(Locale.ROOT));
+        }
+        String type = target.getType().name().toLowerCase(Locale.ROOT);
+        if (!types.isEmpty() && !types.contains(type) && !types.contains("minecraft:" + type)) return false;
+        if (target instanceof Player) {
+            Player other = (Player) target;
+            if (!player.canSee(other)) return false;
+            Object exempt = params.get("exempt-permission");
+            if (exempt != null && !String.valueOf(exempt).trim().isEmpty() && other.hasPermission(String.valueOf(exempt).trim())) {
+                messages.send(player, "tool.ride.exempt", "{prefix} &f{target} &ccannot be restrained or picked up.", "{target}", other.getName());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String nameOf(Entity entity) {
+        if (entity instanceof Player) return ((Player) entity).getName();
+        String custom = entity.getCustomName();
+        return custom != null && !custom.isEmpty() ? custom : entity.getType().name().toLowerCase(Locale.ROOT).replace('_', ' ');
     }
 
     @SuppressWarnings("deprecation")

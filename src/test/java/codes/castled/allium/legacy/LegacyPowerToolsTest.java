@@ -63,9 +63,17 @@ class LegacyPowerToolsTest {
         for (String name : Arrays.asList("handcuffs", "claim_handcuffs", "lazy_axe", "mob_disarmer", "phantom_obliterator")) {
             File file = Paths.get("src/main/resources/tools", name + ".yml").toFile();
             LegacyPowerTools.Tool tool = LegacyPowerTools.parse(name, YamlConfiguration.loadConfiguration(file));
-            if (name.endsWith("handcuffs")) assertNotNull(tool.unsupported, name + " is listed as needing 1.20+");
+            if (name.equals("claim_handcuffs")) assertNotNull(tool.unsupported, name + " is listed as needing 1.20+");
+            else if (name.equals("handcuffs")) assertNull(tool.unsupported, "the handcuffs work here: " + tool.unsupported);
             else assertNull(tool, name + " is another behavior, not a powertool");
         }
+        LegacyPowerTools.Tool cuffs = LegacyPowerTools.parse("handcuffs",
+                YamlConfiguration.loadConfiguration(Paths.get("src/main/resources/tools/handcuffs.yml").toFile()));
+        assertEquals("fishing_rod", cuffs.material);
+        assertTrue(cuffs.unbreakable);
+        assertEquals(Collections.singleton("caught-entity"), cuffs.bindings.get(LegacyPowerTools.Trigger.ON_FISH).fishing);
+        assertEquals("ride", cuffs.bindings.get(LegacyPowerTools.Trigger.ON_FISH).steps.get(0).type);
+        assertFalse(cuffs.bindings.get(LegacyPowerTools.Trigger.DROP).cancel);
         LegacyPowerTools.Tool voucher = LegacyPowerTools.parse("voucher_fly", yaml(VOUCHER));
         assertNull(voucher.unsupported);
         assertEquals(1, voucher.uses);
@@ -149,6 +157,48 @@ class LegacyPowerToolsTest {
         Thread.sleep(150);
         assertFalse(powerTools.fire(player, empty, false, LegacyPowerTools.Trigger.RIGHT, null, null, null), "no uses left");
         verify(messages).send(eq(player), eq("tool.powertool.no-uses"), anyString());
+    }
+
+    @Test
+    void aRestrainedPlayerRidesTheirCarrierUntilUnrestrained() {
+        JavaPlugin plugin = mock(JavaPlugin.class);
+        Server server = mock(Server.class);
+        when(plugin.getServer()).thenReturn(server);
+        when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
+        LegacyConfigManager config = mock(LegacyConfigManager.class);
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("restraints.allowed-commands", Collections.singletonList("msg"));
+        when(config.raw()).thenReturn(yaml);
+        LegacyMessageManager messages = mock(LegacyMessageManager.class);
+        LegacyRides rides = new LegacyRides(plugin, config, messages);
+        Player staff = player();
+        Player bob = player();
+        when(server.getPlayer(bob.getUniqueId())).thenReturn(bob);
+        when(server.getPlayer(staff.getUniqueId())).thenReturn(staff);
+        when(staff.addPassenger(bob)).thenReturn(true);
+        when(bob.getPassengers()).thenReturn(Collections.emptyList());
+        when(bob.getServer()).thenReturn(server);
+        doReturn(Collections.emptyList()).when(server).getOnlinePlayers();
+
+        assertEquals(LegacyRides.Result.RESTRAINED, rides.carry(staff, bob, true, 5));
+        verify(bob).setCollidable(false);
+        assertEquals(LegacyRides.Result.BUSY, rides.carry(staff, bob, true, 5));
+        assertEquals(LegacyRides.Result.SELF, rides.carry(staff, staff, true, 5));
+
+        org.bukkit.event.player.PlayerCommandPreprocessEvent spawn = new org.bukkit.event.player.PlayerCommandPreprocessEvent(bob, "/spawn");
+        rides.onCommand(spawn);
+        assertTrue(spawn.isCancelled());
+        org.bukkit.event.player.PlayerCommandPreprocessEvent msg = new org.bukkit.event.player.PlayerCommandPreprocessEvent(bob, "/minecraft:msg Staff hi");
+        rides.onCommand(msg);
+        assertFalse(msg.isCancelled(), "restraints.allowed-commands lets msg through");
+
+        org.bukkit.command.CommandSender console = mock(org.bukkit.command.CommandSender.class);
+        when(console.getName()).thenReturn("CONSOLE");
+        assertTrue(rides.unrestrain(console, new String[0]));
+        assertFalse(rides.isRestrained(bob.getUniqueId()));
+        verify(bob, times(2)).leaveVehicle();
+        verify(bob).setCollidable(true);
+        verify(messages).send(eq(console), eq("tool.unrestrain.released"), anyString(), eq("{count}"), eq("1"));
     }
 
     private static YamlConfiguration yaml(String text) throws Exception {

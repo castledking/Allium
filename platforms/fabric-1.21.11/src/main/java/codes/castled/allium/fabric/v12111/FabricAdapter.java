@@ -16,6 +16,7 @@ public final class FabricAdapter implements DedicatedServerModInitializer {
                     return UtilityMessages.coordinates(player.getScoreboardName(), pos.getX(), pos.getY(), pos.getZ(),
                             player.level().dimension().identifier().toString());
                 }, ServerPlayer::level, level -> level.dimension().identifier().toString(),
+                level -> level.getRespawnData().pos(),
                 (player, level, point) -> player.teleportTo(level, point.x, point.y, point.z,
                         Collections.emptySet(), point.yaw, point.pitch, true));
     }

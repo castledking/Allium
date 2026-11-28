@@ -1,6 +1,6 @@
 package codes.castled.allium.neoforge.v1202;
 
-import codes.castled.allium.minecraft.MinecraftHomes;
+import codes.castled.allium.minecraft.MinecraftNativePlatform;
 import codes.castled.allium.neoforge.bootstrap.NeoForgeAdapter;
 import codes.castled.allium.portable.UtilityMessages;
 import com.mojang.brigadier.CommandDispatcher;
@@ -9,6 +9,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -28,12 +29,13 @@ public final class LegacyNeoForge implements NeoForgeAdapter {
 
     private void registerCommands(RegisterCommandsEvent event, String version) {
         var dispatcher = event.getDispatcher();
-        MinecraftHomes.register(dispatcher, source -> source.hasPermission(2), ServerPlayer::serverLevel,
-                level -> level.dimension().location().toString(), (player, level, point) ->
-                        player.teleportTo(level, point.x, point.y, point.z, Collections.emptySet(),
-                                point.yaw, point.pitch));
+        MinecraftNativePlatform.register(dispatcher, source -> source.hasPermission(2), ServerPlayer::serverLevel,
+                level -> level.dimension().location().toString(), ServerLevel::getSharedSpawnPos,
+                (player, level, point) -> player.teleportTo(level, point.x, point.y, point.z,
+                        Collections.emptySet(), point.yaw, point.pitch));
         register(dispatcher, Commands.literal("allium:allium")
                 .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
+                .then(Commands.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
                 .then(Commands.literal("version").executes(ctx ->
                         reply(ctx.getSource(), UtilityMessages.version(version, "NeoForge", "1.20.2")))), "allium", "core");
         playerUtility(dispatcher, "ping", player -> UtilityMessages.ping(player.getScoreboardName(), player.connection.latency()), "ping", "pong");

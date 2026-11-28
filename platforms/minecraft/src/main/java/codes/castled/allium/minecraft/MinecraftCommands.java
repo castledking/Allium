@@ -21,12 +21,15 @@ public final class MinecraftCommands {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, String platform, String version) {
         String game = SharedConstants.getCurrentVersion().name();
-        MinecraftHomes.register(dispatcher, Commands.hasPermission(Commands.LEVEL_GAMEMASTERS), ServerPlayer::level,
-                level -> level.dimension().identifier().toString(), (player, level, point) ->
-                        player.teleportTo(level, point.x, point.y, point.z, Collections.emptySet(),
-                                point.yaw, point.pitch, true));
+        MinecraftNativePlatform.register(dispatcher, Commands.hasPermission(Commands.LEVEL_GAMEMASTERS),
+                ServerPlayer::level,
+                level -> level.dimension().identifier().toString(),
+                level -> level.getRespawnData().pos(),
+                (player, level, point) -> player.teleportTo(level, point.x, point.y, point.z,
+                        Collections.emptySet(), point.yaw, point.pitch, true));
         register(dispatcher, CoreCommandSpecs.ALLIUM, root -> root
                 .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
+                .then(Commands.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
                 .then(Commands.literal("version").executes(ctx ->
                         reply(ctx.getSource(), UtilityMessages.version(version, platform, game)))));
         playerUtility(dispatcher, CoreCommandSpecs.PING,

@@ -10,6 +10,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,6 +25,7 @@ public final class FabricUtilityCommands {
                                   Function<ServerPlayer, String> coordinates,
                                   Function<ServerPlayer, ServerLevel> levelOf,
                                   Function<ServerLevel, String> worldId,
+                                  Function<ServerLevel, BlockPos> spawnPos,
                                   MinecraftHomes.Teleport teleport) {
         FabricLoader loader = FabricLoader.getInstance();
         String version = loader.getModContainer("allium").orElseThrow().getMetadata().getVersion().getFriendlyString();
@@ -31,11 +33,12 @@ public final class FabricUtilityCommands {
         CommandRegistrationCallback.EVENT.register((dispatcher, context, selection) -> {
             register(dispatcher, CoreCommandSpecs.ALLIUM, root -> root
                     .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
+                    .then(Commands.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
                     .then(Commands.literal("version").executes(ctx ->
                             reply(ctx.getSource(), UtilityMessages.version(version, "Fabric", game)))));
             playerUtility(dispatcher, CoreCommandSpecs.PING, canInspect, ping);
             playerUtility(dispatcher, CoreCommandSpecs.COORDS, canInspect, coordinates);
-            MinecraftHomes.register(dispatcher, canInspect, levelOf, worldId, teleport);
+            MinecraftNativePlatform.register(dispatcher, canInspect, levelOf, worldId, spawnPos, teleport);
         });
     }
 

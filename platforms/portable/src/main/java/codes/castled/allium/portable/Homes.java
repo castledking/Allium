@@ -71,12 +71,12 @@ public final class Homes {
             this.pitch = pitch;
         }
 
-        private String encode() {
+        public String encode() {
             return String.join("\t", world, Double.toString(x), Double.toString(y), Double.toString(z),
                     Float.toString(yaw), Float.toString(pitch));
         }
 
-        private static Position decode(String raw) {
+        public static Position decode(String raw) {
             String[] fields = raw.split("\t", -1);
             if (fields.length != 6) throw new IllegalArgumentException("Invalid home data");
             return new Position(fields[0], Double.parseDouble(fields[1]), Double.parseDouble(fields[2]),

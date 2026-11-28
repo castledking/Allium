@@ -1,12 +1,21 @@
 # Allium native platforms
 
-The Fabric and NeoForge adapters implement `/allium version`, `/ping`, and `/coords` on dedicated servers. Players can check their own ping and position. Checking another player requires vanilla gamemaster permission. The Paper artifact includes the existing Bukkit plugin and uses its existing server matrix.
+The Fabric (`1.14`, `1.20.1`, `1.21.11`, `26.1–26.3`) and NeoForge (`1.20.2`, `26.1–26.3`) adapters run a shared portable + Brigadier essentials command suite on dedicated servers. Player commands work out of the box, while admin/staff actions and targeting other players use vanilla gamemaster permission (level 2). Every command registers under `allium:<name>` and exposes bare aliases only when the vanilla command tree does not already own them. The Paper artifact includes the existing Bukkit plugin and uses its existing server matrix.
 
-## Homes
+## Native Fabric & NeoForge commands
 
-Fabric, NeoForge, and Bukkit 1.12.2 support `/sethome [name]`, `/home [name]`, `/delhome [name]`, and `/homes`. Omitting the name uses `home`. Each player starts with one slot. Fabric and NeoForge use vanilla gamemaster permission for up to 1,000 homes. Bukkit 1.12.2 uses `allium.sethome.<amount>` and `allium.sethome.unlimited` for higher limits.
+All persisted data lives under `<world>/allium/`:
 
-Homes save the world or dimension, exact position, and facing. Delete an existing name before reusing it. Teleportation requires the saved destination's world to be loaded. The native mods store homes under `allium/homes/` in the world save. Bukkit 1.12.2 stores them in `plugins/Allium/homes/`. This first port covers players' own saved homes. The Paper plugin's travel configuration and database use their existing paths and commands.
+- **Homes** (`homes/<uuid>.properties`): `/sethome [name]`, `/home [name]`, `/delhome [name]`, `/homes`, and `/renamehome <old> <new>`. Omitting the name uses `home`. Players start with 1 slot; gamemasters get up to 1,000 slots.
+- **Warps** (`warps.properties`): `/setwarp <name>` (gamemaster), `/warp [name]`, `/delwarp <name>` (gamemaster), and `/warps` with tab completion.
+- **Spawn** (`spawn.properties`): `/setspawn` (gamemaster) and `/spawn [player]` (falls back to the overworld spawn when unset).
+- **Teleportation**: `/tpa <player>`, `/tpahere <player>`, `/tpaccept`, `/tpdeny`, `/tpacancel` (60s expiry, fuzzy online-player lookup), `/tphere <player>` (gamemaster), `/back` (automatically records previous location on `/home`, `/warp`, `/spawn`, `/tpa`, `/tpahere`, `/tphere`, and `/back`), plus persisted `/tptoggle [on|off]` and `/tpauto [on|off]` in `settings.properties`.
+- **Messaging & ignores** (`settings.properties`, `ignores/<uuid>.properties`): `/pm` / `/m` / `allium:msg <player> <message>`, `/reply` (`/r`), `/rtoggle` (`/replytoggle`), `/msgtoggle [on|off]`, `/ignore <player>`, `/unignore <player>`, and `/ignorelist`.
+- **Utilities & staff shortcuts**: `/allium [help|version]`, `/ping [player]`, `/coords [player]`, `/depth`, `/list` (`/who`, `/online`), `/heal [player]`, `/feed [player]`, `/fly [player]`, `/gmc [player]`, `/gms [player]`, `/gma [player]`, `/gmsp [player]`, `/day`, `/night`, `/sun`, `/rain`, `/storm`, `/clearinventory [player]`, and `/broadcast <message>` (`/bc`).
+
+## Homes (cross-platform notes)
+
+Bukkit 1.12.2 stores homes in `plugins/Allium/homes/` and uses `allium.sethome.<amount>` / `allium.sethome.unlimited` for higher limits. Homes save the world or dimension, exact position, and facing. Delete an existing name before reusing it. Teleportation requires the saved destination's world to be loaded. The Paper plugin's travel configuration and database use their existing paths and commands.
 
 ## Text pages and broadcasts on Bukkit 1.12.2–1.19.4
 

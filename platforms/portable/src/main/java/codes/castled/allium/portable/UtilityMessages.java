@@ -2,7 +2,12 @@ package codes.castled.allium.portable;
 
 /** Shared command output for adapters that run on different Java and Minecraft versions. */
 public final class UtilityMessages {
-    public static final String COMMANDS = "Allium commands: /allium version, /ping, /coords, /sethome, /home, /delhome, /homes";
+    public static final String COMMANDS = "Allium commands: /allium version, /ping, /coords, /depth, /list, "
+            + "/sethome, /home, /delhome, /homes, /renamehome, /setwarp, /warp, /delwarp, /warps, "
+            + "/setspawn, /spawn, /tpa, /tpahere, /tpaccept, /tpdeny, /tpacancel, /tphere, /back, "
+            + "/tptoggle, /tpauto, /pm, /reply, /rtoggle, /msgtoggle, /ignore, /unignore, /ignorelist, "
+            + "/heal, /feed, /fly, /gmc, /gms, /gma, /gmsp, /day, /night, /sun, /rain, /storm, "
+            + "/clearinventory, /broadcast";
 
     private UtilityMessages() {}
 
@@ -16,5 +21,16 @@ public final class UtilityMessages {
 
     public static String coordinates(String player, int x, int y, int z, String world) {
         return player + " is at " + x + ", " + y + ", " + z + " in " + world + ".";
+    }
+
+    public static String depth(int y, int seaLevel) {
+        int diff = y - seaLevel;
+        if (diff == 0) {
+            return "You are at sea level (Y=" + seaLevel + ").";
+        }
+        if (diff > 0) {
+            return "You are " + diff + " block(s) above sea level (Y=" + y + ").";
+        }
+        return "You are " + (-diff) + " block(s) below sea level (Y=" + y + ").";
     }
 }

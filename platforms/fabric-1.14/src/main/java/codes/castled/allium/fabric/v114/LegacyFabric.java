@@ -238,6 +238,11 @@ public final class LegacyFabric implements DedicatedServerModInitializer {
             }
             return sold;
         }
+
+        @Override
+        public Object serverHandle(ServerCommandSource source) {
+            return source.getMinecraftServer();
+        }
     }
 
     private static void playerUtility(CommandDispatcher<ServerCommandSource> dispatcher, String name,

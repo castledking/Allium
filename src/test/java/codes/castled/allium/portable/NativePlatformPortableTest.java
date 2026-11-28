@@ -25,7 +25,8 @@ class NativePlatformPortableTest {
         for (Class<?> type : new Class<?>[]{
                 Homes.class, Warps.class, Spawns.class, NativeSettings.class,
                 TeleportRequests.class, DirectMessages.class, UtilityMessages.class,
-                NativeEconomy.class, NativeWorth.class
+                NativeEconomy.class, NativeEconomyBackend.class, EconomyCraftBridge.class,
+                AlliumEconomyApi.class, NativeWorth.class
         }) {
             String res = type.getName().replace('.', '/') + ".class";
             try (InputStream in = type.getClassLoader().getResourceAsStream(res)) {
@@ -228,5 +229,106 @@ class NativePlatformPortableTest {
         assertEquals(List.of("minecraft:diamond"), worth.suggestions("dia"));
         assertTrue(worth.setPrice("minecraft:diamond", BigDecimal.ZERO));
         assertNull(new NativeWorth(tempDir).priceOf("diamond"));
+    }
+
+    @Test
+    void alliumEconomyApiInteroperatesWithExternalMods() {
+        UUID alice = UUID.randomUUID();
+        assertEquals(0L, AlliumEconomyApi.getWholeBalance(tempDir, alice));
+        assertTrue(AlliumEconomyApi.depositWhole(tempDir, alice, "Alice", 250L));
+        assertEquals(250L, AlliumEconomyApi.getWholeBalance(tempDir, alice));
+        assertEquals(new BigDecimal("250.00"), AlliumEconomyApi.getBalance(tempDir, alice));
+        assertFalse(AlliumEconomyApi.withdrawWhole(tempDir, alice, "Alice", 300L));
+        assertTrue(AlliumEconomyApi.withdrawWhole(tempDir, alice, "Alice", 75L));
+        assertEquals(175L, AlliumEconomyApi.getWholeBalance(tempDir, alice));
+        assertEquals("$175.00", AlliumEconomyApi.formatWhole(175L));
+    }
+
+    public static final class FakeEcResult {
+        private final boolean ok;
+        FakeEcResult(boolean ok) { this.ok = ok; }
+        public boolean successful() { return ok; }
+    }
+
+    public static final class FakeEcEntry {
+        private final UUID id;
+        private final long bal;
+        FakeEcEntry(UUID id, long bal) { this.id = id; this.bal = bal; }
+        public UUID playerId() { return id; }
+        public long balance() { return bal; }
+    }
+
+    public static final class FakeEcBalances {
+        final java.util.Map<UUID, Long> map = new java.util.HashMap<>();
+        public long getBalance(UUID id) { return map.getOrDefault(id, 0L); }
+        public FakeEcResult addMoney(UUID id, long amount) {
+            if (amount <= 0) return new FakeEcResult(false);
+            map.put(id, getBalance(id) + amount);
+            return new FakeEcResult(true);
+        }
+        public FakeEcResult removeMoney(UUID id, long amount) {
+            long cur = getBalance(id);
+            if (amount <= 0 || cur < amount) return new FakeEcResult(false);
+            map.put(id, cur - amount);
+            return new FakeEcResult(true);
+        }
+        public FakeEcResult setMoney(UUID id, long amount) {
+            if (amount < 0) return new FakeEcResult(false);
+            map.put(id, amount);
+            return new FakeEcResult(true);
+        }
+        public FakeEcResult pay(UUID from, UUID to, long amount) {
+            if (!removeMoney(from, amount).successful()) return new FakeEcResult(false);
+            addMoney(to, amount);
+            return new FakeEcResult(true);
+        }
+    }
+
+    public static final class FakeEcLeaderboard {
+        private final FakeEcBalances balances;
+        FakeEcLeaderboard(FakeEcBalances balances) { this.balances = balances; }
+        public List<FakeEcEntry> getLeaderboardEntries(int limit) {
+            List<FakeEcEntry> list = new ArrayList<>();
+            for (var e : balances.map.entrySet()) list.add(new FakeEcEntry(e.getKey(), e.getValue()));
+            list.sort((a, b) -> Long.compare(b.balance(), a.balance()));
+            return list.subList(0, Math.min(limit, list.size()));
+        }
+    }
+
+    public static final class FakeEcApi {
+        final FakeEcBalances balances = new FakeEcBalances();
+        final FakeEcLeaderboard leaderboard = new FakeEcLeaderboard(balances);
+        public FakeEcBalances balances() { return balances; }
+        public FakeEcLeaderboard leaderboard() { return leaderboard; }
+        public String formatMoney(long amount) { return amount + " coins"; }
+        public String formatMoneyChat(long amount) { return "$" + amount; }
+    }
+
+    @Test
+    void economyCraftBridgeDelegatesAllOperations() {
+        FakeEcApi fakeApi = new FakeEcApi();
+        NativeEconomy cache = new NativeEconomy(tempDir);
+        EconomyCraftBridge bridge = EconomyCraftBridge.wrap(fakeApi, cache);
+        assertNotNull(bridge);
+        assertEquals("EconomyCraft", bridge.providerName());
+        assertFalse(bridge.supportsDecimals());
+
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+        assertEquals(new BigDecimal("500.00"), bridge.addBalance(alice, "Alice", new BigDecimal("500")));
+        assertTrue(bridge.transfer(alice, "Alice", bob, "Bob", new BigDecimal("125")));
+        assertEquals(new BigDecimal("375.00"), bridge.balance(alice));
+        assertEquals(new BigDecimal("125.00"), bridge.balance(bob));
+        assertEquals("$375", bridge.formatMoney(bridge.balance(alice)));
+
+        List<NativeEconomy.AccountEntry> top = bridge.topAccounts();
+        assertEquals(2, top.size());
+        assertEquals("Alice", top.get(0).name);
+        assertEquals("Bob", top.get(1).name);
+
+        assertEquals(new BigDecimal("300.00"), bridge.takeBalance(alice, "Alice", new BigDecimal("75")));
+        assertTrue(bridge.setBalance(bob, "Bob", new BigDecimal("50")));
+        assertEquals(new BigDecimal("50.00"), bridge.balance(bob));
+        assertEquals(NativeEconomy.ZERO, bridge.resetBalance(bob, "Bob"));
     }
 }

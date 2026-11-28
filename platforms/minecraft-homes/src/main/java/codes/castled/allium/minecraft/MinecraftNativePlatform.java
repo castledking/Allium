@@ -248,4 +248,9 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
         }
         return sold;
     }
+
+    @Override
+    public Object serverHandle(CommandSourceStack source) {
+        return source.getServer();
+    }
 }

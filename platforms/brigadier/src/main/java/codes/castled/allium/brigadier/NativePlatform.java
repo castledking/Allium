@@ -1,6 +1,9 @@
 package codes.castled.allium.brigadier;
 
+import codes.castled.allium.portable.EconomyCraftBridge;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.NativeEconomy;
+import codes.castled.allium.portable.NativeEconomyBackend;
 
 import java.nio.file.Path;
 import java.util.Collection;
@@ -60,4 +63,12 @@ public interface NativePlatform<S, P> {
     int consumeHeldItem(P player);
 
     Map<String, Integer> consumeSellableItems(P player, Predicate<String> sellable);
+
+    Object serverHandle(S source);
+
+    default NativeEconomyBackend economyBackend(S source) {
+        NativeEconomy local = new NativeEconomy(dataDirectory(source));
+        NativeEconomyBackend external = EconomyCraftBridge.tryConnect(serverHandle(source), local);
+        return external != null ? external : local;
+    }
 }

@@ -25,7 +25,7 @@ import java.util.function.LongSupplier;
  * Atomic flatfile economy engine shared by native Fabric (1.14–26.3) and NeoForge (1.20.2–26.3) adapters.
  * Persists balances, known account names, and payment preferences in {@code <world>/allium/economy.properties}.
  */
-public final class NativeEconomy {
+public final class NativeEconomy implements NativeEconomyBackend {
     public static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
     public static final BigDecimal MAX_BALANCE = new BigDecimal("100000000000000.00");
     public static final long CONFIRM_WINDOW_MILLIS = 30_000L;
@@ -131,6 +131,35 @@ public final class NativeEconomy {
     public static String format(BigDecimal amount) {
         BigDecimal safe = amount == null ? ZERO : amount.setScale(2, RoundingMode.HALF_UP);
         return String.format(Locale.US, "$%,.2f", safe);
+    }
+
+    @Override
+    public String providerName() {
+        return "Allium";
+    }
+
+    @Override
+    public boolean supportsDecimals() {
+        return true;
+    }
+
+    @Override
+    public String formatMoney(BigDecimal amount) {
+        return format(amount);
+    }
+
+    public void recordName(UUID id, String name) {
+        if (id == null || name == null || name.isEmpty()) return;
+        synchronized (LOCK) {
+            try {
+                Properties props = read();
+                if (!name.equals(props.getProperty("name." + id))) {
+                    props.setProperty("name." + id, name);
+                    save(props);
+                }
+            } catch (IOException ignored) {
+            }
+        }
     }
 
     public BigDecimal startingBalance() {

@@ -1,6 +1,7 @@
 package codes.castled.allium.brigadier;
 
 import codes.castled.allium.portable.NativeEconomy;
+import codes.castled.allium.portable.NativeEconomyBackend;
 import codes.castled.allium.portable.NativeSettings;
 import codes.castled.allium.portable.NativeWorth;
 import codes.castled.allium.portable.PlayerNameSearch;
@@ -89,9 +90,9 @@ public final class NativeEconomyCommands {
                     S source = ctx.getSource();
                     P player = requirePlayer(platform, source);
                     if (player == null) return 0;
-                    NativeEconomy eco = new NativeEconomy(platform.dataDirectory(source));
+                    NativeEconomyBackend eco = platform.economyBackend(source);
                     BigDecimal bal = eco.balance(platform.id(player));
-                    platform.reply(source, "Balance: " + NativeEconomy.format(bal));
+                    platform.reply(source, "Balance: " + eco.formatMoney(bal));
                     return 1;
                 })
                 .then(RequiredArgumentBuilder.<S, String>argument("player", StringArgumentType.word())
@@ -101,9 +102,9 @@ public final class NativeEconomyCommands {
                             ResolvedAccount<P> target = resolveAccount(platform, source,
                                     StringArgumentType.getString(ctx, "player"));
                             if (target == null) return 0;
-                            NativeEconomy eco = new NativeEconomy(platform.dataDirectory(source));
+                            NativeEconomyBackend eco = platform.economyBackend(source);
                             platform.reply(source, target.name + "'s balance: "
-                                    + NativeEconomy.format(eco.balance(target.id)));
+                                    + eco.formatMoney(eco.balance(target.id)));
                             return 1;
                         }));
         registerAliases(dispatcher, root, "balance", "bal", "money");
@@ -142,29 +143,37 @@ public final class NativeEconomyCommands {
             platform.reply(source, "Invalid amount: " + rawAmount);
             return 0;
         }
-        NativeEconomy eco = new NativeEconomy(platform.dataDirectory(source));
+        NativeEconomyBackend backend = platform.economyBackend(source);
+        if (!backend.supportsDecimals()) {
+            amount = amount.setScale(0, RoundingMode.HALF_UP).setScale(2, RoundingMode.HALF_UP);
+            if (amount.compareTo(BigDecimal.ONE) < 0) {
+                platform.reply(source, backend.providerName() + " requires whole currency amounts of at least 1.");
+                return 0;
+            }
+        }
+        NativeEconomy prefs = new NativeEconomy(platform.dataDirectory(source));
         NativeSettings settings = new NativeSettings(platform.dataDirectory(source));
         if (!platform.isGamemaster(source)) {
-            if (!eco.acceptsPayments(targetId) || settings.isIgnoring(targetId, payerId)) {
+            if (!prefs.acceptsPayments(targetId) || settings.isIgnoring(targetId, payerId)) {
                 platform.reply(source, platform.name(target) + " is not accepting payments.");
                 return 0;
             }
         }
-        if (eco.balance(payerId).compareTo(amount) < 0) {
+        if (backend.balance(payerId).compareTo(amount) < 0) {
             platform.reply(source, "Insufficient funds. Your balance is "
-                    + NativeEconomy.format(eco.balance(payerId)) + ".");
+                    + backend.formatMoney(backend.balance(payerId)) + ".");
             return 0;
         }
-        if (eco.requiresPayConfirm(payerId) && !confirmations.confirmOrArm(payerId, targetId, amount)) {
+        if (prefs.requiresPayConfirm(payerId) && !confirmations.confirmOrArm(payerId, targetId, amount)) {
             platform.reply(source, "Run /pay " + platform.name(target) + " " + amount.toPlainString()
-                    + " again within 30 seconds to confirm sending " + NativeEconomy.format(amount) + ".");
+                    + " again within 30 seconds to confirm sending " + backend.formatMoney(amount) + ".");
             return 1;
         }
-        if (!eco.transfer(payerId, platform.name(payer), targetId, platform.name(target), amount)) {
+        if (!backend.transfer(payerId, platform.name(payer), targetId, platform.name(target), amount)) {
             platform.reply(source, "Could not complete payment.");
             return 0;
         }
-        String formatted = NativeEconomy.format(amount);
+        String formatted = backend.formatMoney(amount);
         platform.reply(source, "Sent " + formatted + " to " + platform.name(target) + ".");
         platform.send(target, "Received " + formatted + " from " + platform.name(payer) + ".");
         return 1;
@@ -295,14 +304,14 @@ public final class NativeEconomyCommands {
                                          String targetQuery, String rawAmount) {
         ResolvedAccount<P> target = resolveAccount(platform, source, targetQuery);
         if (target == null) return 0;
-        NativeEconomy eco = new NativeEconomy(platform.dataDirectory(source));
+        NativeEconomyBackend eco = platform.economyBackend(source);
         if ("reset".equals(action)) {
             BigDecimal start = eco.resetBalance(target.id, target.name);
             if (start == null) {
                 platform.reply(source, "Could not reset balance for " + target.name + ".");
                 return 0;
             }
-            platform.reply(source, "Reset " + target.name + "'s balance to " + NativeEconomy.format(start) + ".");
+            platform.reply(source, "Reset " + target.name + "'s balance to " + eco.formatMoney(start) + ".");
             return 1;
         }
         BigDecimal amount = NativeEconomy.parseAmount(rawAmount);
@@ -310,27 +319,34 @@ public final class NativeEconomyCommands {
             platform.reply(source, "Invalid amount: " + rawAmount);
             return 0;
         }
+        if (!eco.supportsDecimals()) {
+            amount = amount.setScale(0, RoundingMode.HALF_UP).setScale(2, RoundingMode.HALF_UP);
+            if (!"set".equals(action) && amount.compareTo(BigDecimal.ONE) < 0) {
+                platform.reply(source, eco.providerName() + " requires whole currency amounts of at least 1.");
+                return 0;
+            }
+        }
         if ("give".equals(action)) {
             BigDecimal next = eco.addBalance(target.id, target.name, amount);
             if (next == null) {
-                platform.reply(source, "Could not give " + NativeEconomy.format(amount) + " to " + target.name + ".");
+                platform.reply(source, "Could not give " + eco.formatMoney(amount) + " to " + target.name + ".");
                 return 0;
             }
-            platform.reply(source, "Gave " + NativeEconomy.format(amount) + " to " + target.name
-                    + " (new balance: " + NativeEconomy.format(next) + ").");
+            platform.reply(source, "Gave " + eco.formatMoney(amount) + " to " + target.name
+                    + " (new balance: " + eco.formatMoney(next) + ").");
             if (target.online != null) {
-                platform.send(target.online, "You received " + NativeEconomy.format(amount) + ".");
+                platform.send(target.online, "You received " + eco.formatMoney(amount) + ".");
             }
             return 1;
         }
         if ("take".equals(action)) {
             BigDecimal next = eco.takeBalance(target.id, target.name, amount);
             if (next == null) {
-                platform.reply(source, target.name + " does not have " + NativeEconomy.format(amount) + ".");
+                platform.reply(source, target.name + " does not have " + eco.formatMoney(amount) + ".");
                 return 0;
             }
-            platform.reply(source, "Took " + NativeEconomy.format(amount) + " from " + target.name
-                    + " (new balance: " + NativeEconomy.format(next) + ").");
+            platform.reply(source, "Took " + eco.formatMoney(amount) + " from " + target.name
+                    + " (new balance: " + eco.formatMoney(next) + ").");
             return 1;
         }
         if ("set".equals(action)) {
@@ -338,7 +354,7 @@ public final class NativeEconomyCommands {
                 platform.reply(source, "Could not set balance for " + target.name + ".");
                 return 0;
             }
-            platform.reply(source, "Set " + target.name + "'s balance to " + NativeEconomy.format(amount) + ".");
+            platform.reply(source, "Set " + target.name + "'s balance to " + eco.formatMoney(amount) + ".");
             return 1;
         }
         return 0;
@@ -356,7 +372,7 @@ public final class NativeEconomyCommands {
     }
 
     private static <S, P> int showBaltop(NativePlatform<S, P> platform, S source, int requestedPage) {
-        NativeEconomy eco = new NativeEconomy(platform.dataDirectory(source));
+        NativeEconomyBackend eco = platform.economyBackend(source);
         List<NativeEconomy.AccountEntry> entries = eco.topAccounts();
         if (entries.isEmpty()) {
             platform.reply(source, "No economy accounts recorded yet.");
@@ -371,10 +387,10 @@ public final class NativeEconomyCommands {
         int start = (page - 1) * BALTOP_PAGE_SIZE;
         int end = Math.min(entries.size(), start + BALTOP_PAGE_SIZE);
         platform.reply(source, "Top Balances (Page " + page + "/" + pages + ") - Server Total: "
-                + NativeEconomy.format(total));
+                + eco.formatMoney(total));
         for (int i = start; i < end; i++) {
             NativeEconomy.AccountEntry e = entries.get(i);
-            platform.reply(source, (i + 1) + ". " + e.name + " - " + NativeEconomy.format(e.balance));
+            platform.reply(source, (i + 1) + ". " + e.name + " - " + eco.formatMoney(e.balance));
         }
         return 1;
     }
@@ -491,15 +507,20 @@ public final class NativeEconomyCommands {
             platform.reply(source, itemId + " cannot be sold.");
             return 0;
         }
+        NativeEconomyBackend eco = platform.economyBackend(source);
+        BigDecimal preview = unit.multiply(BigDecimal.valueOf(count)).setScale(2, RoundingMode.HALF_UP);
+        if (!eco.supportsDecimals() && preview.setScale(0, RoundingMode.HALF_UP).compareTo(BigDecimal.ONE) < 0) {
+            platform.reply(source, "Total sale value is less than 1 currency unit.");
+            return 0;
+        }
         int removed = platform.consumeHeldItem(player);
         if (removed <= 0) {
             platform.reply(source, "Nothing to sell.");
             return 0;
         }
         BigDecimal earned = unit.multiply(BigDecimal.valueOf(removed)).setScale(2, RoundingMode.HALF_UP);
-        NativeEconomy eco = new NativeEconomy(platform.dataDirectory(source));
         eco.addBalance(platform.id(player), platform.name(player), earned);
-        platform.reply(source, "Sold " + removed + "x " + itemId + " for " + NativeEconomy.format(earned) + ".");
+        platform.reply(source, "Sold " + removed + "x " + itemId + " for " + eco.formatMoney(earned) + ".");
         return 1;
     }
 
@@ -527,9 +548,9 @@ public final class NativeEconomyCommands {
             platform.reply(source, "You have no sellable items in your inventory.");
             return 0;
         }
-        NativeEconomy eco = new NativeEconomy(platform.dataDirectory(source));
+        NativeEconomyBackend eco = platform.economyBackend(source);
         eco.addBalance(platform.id(player), platform.name(player), totalEarned);
-        platform.reply(source, "Sold " + totalItems + " item(s) for " + NativeEconomy.format(totalEarned) + ".");
+        platform.reply(source, "Sold " + totalItems + " item(s) for " + eco.formatMoney(totalEarned) + ".");
         return 1;
     }
 

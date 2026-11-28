@@ -2,10 +2,13 @@ package codes.castled.allium.portable;
 
 /** Shared command output for adapters that run on different Java and Minecraft versions. */
 public final class UtilityMessages {
-    public static final String COMMANDS = "Allium commands: /allium version, /ping, /coords, /depth, /list, "
+    public static final String COMMANDS = "Allium commands: /allium version|reload, /ping, /coords, /depth, /list, "
             + "/sethome, /home, /delhome, /homes, /renamehome, /setwarp, /warp, /delwarp, /warps, "
             + "/setspawn, /spawn, /tpa, /tpahere, /tpaccept, /tpdeny, /tpacancel, /tphere, /back, "
             + "/tptoggle, /tpauto, /pm, /reply, /rtoggle, /msgtoggle, /ignore, /unignore, /ignorelist, "
+            + "/channel, /g, /l, /a, /me, "
+            + "/mute, /unmute, /setjail, /deljail, /jails, /jail, /unjail, /jailedplayers, "
+            + "/warn, /warnings, /notes, /unnote, /freeze, /kickall, /vanish, /report, /helpop, "
             + "/mail, /seen, /whois, /playtime, /afk, /nick, /realname, /near, "
             + "/info, /rules, /motd, /customtext, /inform, /broadcasts, "
             + "/bal, /pay, /paytoggle, /payconfirmtoggle, /eco, /baltop, /worth, /setworth, /sell, "

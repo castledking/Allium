@@ -20,6 +20,7 @@ dependencies {
     minecraft("com.mojang:minecraft:$minecraftVersion")
     implementation("net.fabricmc:fabric-loader:$loaderVersion")
     implementation(fabricApi.module("fabric-command-api-v2", fabricApiVersion))
+    implementation(fabricApi.module("fabric-message-api-v1", fabricApiVersion))
     implementation(project(":allium-core"))
     include(project(":allium-core"))
 }

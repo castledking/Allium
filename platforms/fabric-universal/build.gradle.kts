@@ -113,6 +113,19 @@ val prepareAdapters by tasks.registering {
 tasks.jar {
     dependsOn(prepareAdapters)
     from(prepareAdapters)
+    from(rootProject.layout.projectDirectory.dir("src/main/resources")) {
+        include(
+            "config.yml",
+            "lang/*.yml",
+            "info.txt",
+            "rules.txt",
+            "motd.txt",
+            "custom.txt",
+            "broadcasts.txt",
+            "worth.yml"
+        )
+        into("allium-defaults")
+    }
     for (adapter in adapters) {
         from(adapter.map { zipTree(it) }) {
             include("codes/**")

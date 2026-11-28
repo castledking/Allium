@@ -4,7 +4,10 @@ import codes.castled.allium.brigadier.NativeCommands;
 import codes.castled.allium.brigadier.NativePlatform;
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.NativeConfig;
+import codes.castled.allium.portable.NativeDiscordRelay;
 import codes.castled.allium.portable.NativeEconomy;
+import codes.castled.allium.portable.NativeModeration;
 import codes.castled.allium.portable.NativePlayerInfo;
 import codes.castled.allium.portable.NativeTextPages;
 import codes.castled.allium.portable.TeleportRequests;
@@ -45,18 +48,30 @@ public final class LegacyFabric implements DedicatedServerModInitializer {
     private static final NativeEconomy.PendingConfirmations PAY_CONFIRMATIONS = new NativeEconomy.PendingConfirmations();
     private static final NativePlayerInfo.SessionState PLAYER_SESSIONS = new NativePlayerInfo.SessionState();
     private static final NativeTextPages.BroadcastState BROADCASTS = new NativeTextPages.BroadcastState();
+    private static final NativeModeration.SessionState MOD_STATE = new NativeModeration.SessionState();
+    private static final NativeDiscordRelay DISCORD = new NativeDiscordRelay();
 
     @Override
     public void onInitializeServer() {
-        String version = FabricLoader.getInstance().getModContainer("allium").get().getMetadata().getVersion().getFriendlyString();
+        FabricLoader loader = FabricLoader.getInstance();
+        String version = loader.getModContainer("allium").get().getMetadata().getVersion().getFriendlyString();
+        Path dataDir = loader.getGameDirectory().toPath().resolve("plugins").resolve("Allium").toAbsolutePath().normalize();
+        final Fabric114Platform platform = new Fabric114Platform(dataDir);
         CommandRegistry.INSTANCE.register(true, dispatcher -> {
-            NativeCommands.register(dispatcher, new Fabric114Platform(), TELEPORTS, MESSAGES,
-                    PAY_CONFIRMATIONS, PLAYER_SESSIONS, BROADCASTS);
+            NativeCommands.register(dispatcher, platform, TELEPORTS, MESSAGES,
+                    PAY_CONFIRMATIONS, PLAYER_SESSIONS, BROADCASTS, MOD_STATE, DISCORD);
             register(dispatcher, CommandManager.literal("allium:allium")
                     .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
                     .then(CommandManager.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
                     .then(CommandManager.literal("version").executes(ctx ->
-                            reply(ctx.getSource(), UtilityMessages.version(version, "Fabric", "1.14")))), "allium", "core");
+                            reply(ctx.getSource(), UtilityMessages.version(version, "Fabric", "1.14"))))
+                    .then(CommandManager.literal("reload")
+                            .requires(source -> source.hasPermissionLevel(2))
+                            .executes(ctx -> {
+                                platform.reloadConfig(ctx.getSource());
+                                return reply(ctx.getSource(), platform.config(ctx.getSource())
+                                        .format("core.reload-success", "{prefix} &aConfiguration reloaded."));
+                            })), "allium", "core");
             playerUtility(dispatcher, "ping", player -> UtilityMessages.ping(player.getEntityName(), player.field_13967), "pong");
             playerUtility(dispatcher, "coords", player -> {
                 BlockPos position = player.getBlockPos();
@@ -67,15 +82,42 @@ public final class LegacyFabric implements DedicatedServerModInitializer {
     }
 
     private static final class Fabric114Platform implements NativePlatform<ServerCommandSource, ServerPlayerEntity> {
+        private final Path dataDirectory;
+        private final NativeConfig config;
+
+        Fabric114Platform(Path dataDirectory) {
+            this.dataDirectory = dataDirectory;
+            this.config = new NativeConfig(dataDirectory);
+        }
+
         @Override
         public Path dataDirectory(ServerCommandSource source) {
-            MinecraftServer server = source.getMinecraftServer();
-            return server.getLevelStorage().resolveFile(server.getLevelName(), "allium").toPath();
+            return dataDirectory;
+        }
+
+        @Override
+        public NativeConfig config(ServerCommandSource source) {
+            return config;
+        }
+
+        @Override
+        public void reloadConfig(ServerCommandSource source) {
+            config.reload();
         }
 
         @Override
         public boolean isGamemaster(ServerCommandSource source) {
             return source.hasPermissionLevel(2);
+        }
+
+        @Override
+        public boolean isGamemasterPlayer(ServerPlayerEntity player) {
+            return player.getCommandSource().hasPermissionLevel(2);
+        }
+
+        @Override
+        public void kick(ServerPlayerEntity player, String reason) {
+            player.networkHandler.disconnect(new TextComponent(reason));
         }
 
         @Override

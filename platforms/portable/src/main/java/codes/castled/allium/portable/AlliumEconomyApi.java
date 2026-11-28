@@ -2,6 +2,7 @@ package codes.castled.allium.portable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -53,6 +54,34 @@ public final class AlliumEconomyApi {
     }
 
     private static NativeEconomy economy(Path worldRoot) {
-        return new NativeEconomy(worldRoot.resolve("allium"));
+        return new NativeEconomy(resolveDataDirectory(worldRoot));
+    }
+
+    /**
+     * Resolves {@code plugins/Allium} when given either a server game directory or a world directory
+     * (such as {@code server.getWorldPath(LevelResource.ROOT)} passed by GriefPrevention3D),
+     * falling back to legacy {@code <worldRoot>/allium} if present.
+     */
+    public static Path resolveDataDirectory(Path worldRoot) {
+        if (worldRoot == null) {
+            return java.nio.file.Paths.get("plugins", "Allium");
+        }
+        Path direct = worldRoot.resolve("plugins").resolve("Allium");
+        if (Files.isDirectory(direct)) {
+            return direct;
+        }
+        Path normalized = worldRoot.toAbsolutePath().normalize();
+        Path parent = normalized.getParent();
+        if (parent != null) {
+            Path sibling = parent.resolve("plugins").resolve("Allium");
+            if (Files.isDirectory(sibling)) {
+                return sibling;
+            }
+        }
+        Path legacy = worldRoot.resolve("allium");
+        if (Files.isDirectory(legacy)) {
+            return legacy;
+        }
+        return direct;
     }
 }

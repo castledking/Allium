@@ -26,7 +26,9 @@ class NativePlatformPortableTest {
                 Homes.class, Warps.class, Spawns.class, NativeSettings.class,
                 TeleportRequests.class, DirectMessages.class, UtilityMessages.class,
                 NativeEconomy.class, NativeEconomyBackend.class, EconomyCraftBridge.class,
-                AlliumEconomyApi.class, NativeWorth.class, NativePlayerInfo.class, NativeTextPages.class
+                AlliumEconomyApi.class, NativeWorth.class, NativePlayerInfo.class, NativeTextPages.class,
+                NativeYaml.class, NativeConfig.class, NativeDiscordRelay.class,
+                NativeModeration.class, NativeChatChannels.class
         }) {
             String res = type.getName().replace('.', '/') + ".class";
             try (InputStream in = type.getClassLoader().getResourceAsStream(res)) {
@@ -430,5 +432,155 @@ class NativePlatformPortableTest {
         assertEquals("tip1", state.next(names));
         assertEquals("tip2", state.next(names));
         assertEquals("tip1", state.next(names));
+    }
+
+    @Test
+    void nativeYamlAndConfigExtractDefaultsLoadLocaleAndPreserveEdits() throws Exception {
+        Path pluginDir = tempDir.resolve("plugins").resolve("Allium");
+        NativeConfig cfg = new NativeConfig(pluginDir);
+        assertTrue(java.nio.file.Files.isRegularFile(pluginDir.resolve("config.yml")));
+        assertTrue(java.nio.file.Files.isRegularFile(pluginDir.resolve("lang").resolve("en_US.yml")));
+        assertEquals("en_US", cfg.activeLocale());
+
+        // Write custom config and Spanish lang override, then reload without overwriting
+        java.nio.file.Files.writeString(pluginDir.resolve("config.yml"),
+                "settings:\n"
+                        + "  locale: es_ES\n"
+                        + "chat:\n"
+                        + "  channels:\n"
+                        + "    enabled: true\n"
+                        + "    local-channel:\n"
+                        + "      radius: 150\n"
+                        + "discord:\n"
+                        + "  channels:\n"
+                        + "    moderation:\n"
+                        + "      actions: [mute, warn, jail]\n"
+                        + "      mentions:\n"
+                        + "        - \"123456789012345678\"\n");
+        java.nio.file.Files.writeString(pluginDir.resolve("lang").resolve("es_ES.yml"),
+                "prefix: '&8[&dAlliumES&8]&r'\n"
+                        + "core:\n"
+                        + "  reload-success: '{prefix} &aRecargado para {user}!'\n");
+
+        cfg.reload();
+        assertEquals("es_ES", cfg.activeLocale());
+        assertEquals(150, cfg.raw().getInt("chat.channels.local-channel.radius", 100));
+        assertEquals(List.of("mute", "warn", "jail"), cfg.raw().getStringList("discord.channels.moderation.actions"));
+        assertEquals(List.of("123456789012345678"), cfg.raw().getStringList("discord.channels.moderation.mentions"));
+        String msg = cfg.format("core.reload-success", "fallback", "{user}", "Steve");
+        assertTrue(msg.contains("\u00A7dAlliumES") && msg.contains("Recargado para Steve!"));
+
+        // World subdirectory passed by external mods (e.g. GP3D) resolves sibling plugins/Allium
+        Path worldDir = tempDir.resolve("world");
+        java.nio.file.Files.createDirectories(worldDir);
+        assertEquals(pluginDir.toAbsolutePath().normalize(), AlliumEconomyApi.resolveDataDirectory(worldDir));
+    }
+
+    @Test
+    void nativeModerationHandlesDurationsMutesJailsWarningsNotesAndSessionState() {
+        assertEquals(0L, NativeModeration.parseDurationMillis("perm"));
+        assertEquals(30_000L, NativeModeration.parseDurationMillis("30s"));
+        assertEquals(3_600_000L + 600_000L, NativeModeration.parseDurationMillis("1h10m"));
+        assertEquals(-1L, NativeModeration.parseDurationMillis("notaduration"));
+
+        NativeModeration mod = new NativeModeration(tempDir);
+        UUID bob = UUID.randomUUID();
+        long t0 = 1_000_000L;
+
+        // Mute lifecycle & auto-expiry
+        assertTrue(mod.mute(bob, "Bob", "Staff", 60_000L, "Spam", t0));
+        NativeModeration.MuteRecord active = mod.activeMute(bob, t0 + 10_000L);
+        assertNotNull(active);
+        assertEquals(50_000L, active.remainingMillis(t0 + 10_000L));
+        assertNull(mod.activeMute(bob, t0 + 61_000L));
+
+        assertTrue(mod.mute(bob, "Bob", "Staff", 0L, "Permanent mute", t0));
+        assertTrue(mod.activeMute(bob, t0 + 999_999L).isPermanent());
+        assertTrue(mod.unmute(bob));
+        assertNull(mod.activeMute(bob, t0));
+
+        // Jails & return location
+        Homes.Position cell = new Homes.Position("minecraft:overworld", 0.5, 64.0, 0.5, 0f, 0f);
+        Homes.Position before = new Homes.Position("minecraft:overworld", 120.5, 70.0, -40.5, 90f, 0f);
+        assertTrue(mod.setJail("cell1", cell));
+        assertEquals(List.of("cell1"), mod.jailNames());
+        assertTrue(mod.jail(bob, "Bob", "cell1", "Staff", 120_000L, "Griefing", before, t0));
+        assertEquals(1, mod.jailedPlayers(t0 + 1_000L).size());
+        NativeModeration.JailRecord released = mod.unjail(bob);
+        assertNotNull(released);
+        assertEquals(120.5, released.returnPosition.x, 1e-6);
+        assertTrue(mod.deleteJail("cell1"));
+
+        // Warnings & notes
+        assertNotNull(mod.addWarning(bob, "Staff", "First warning", t0));
+        assertEquals(1, mod.warnings(bob).size());
+        assertNotNull(mod.addNote(bob, "Staff", "Note 1", t0));
+        assertNotNull(mod.addNote(bob, "Staff", "Note 2", t0 + 1000L));
+        assertEquals(2, mod.notes(bob).size());
+        assertTrue(mod.removeNote(bob, 1));
+        assertEquals(1, mod.notes(bob).size());
+        assertEquals("Note 2", mod.notes(bob).get(0).text);
+
+        // Session freeze & vanish
+        NativeModeration.SessionState session = new NativeModeration.SessionState();
+        assertTrue(session.toggleFreeze(bob));
+        assertTrue(session.isFrozen(bob));
+        assertFalse(session.toggleFreeze(bob));
+        assertTrue(session.toggleVanish(bob));
+        assertTrue(session.isVanished(bob));
+    }
+
+    @Test
+    void nativeChatChannelsAndDiscordPayloadsWork() {
+        NativeConfig cfg = new NativeConfig(tempDir);
+        NativeChatChannels channels = new NativeChatChannels(tempDir);
+        UUID alice = UUID.randomUUID();
+
+        assertEquals(NativeChatChannels.Channel.GLOBAL, channels.activeChannel(alice, cfg));
+        assertTrue(channels.setActiveChannel(alice, NativeChatChannels.Channel.LOCAL));
+        assertEquals(NativeChatChannels.Channel.LOCAL, new NativeChatChannels(tempDir).activeChannel(alice, cfg));
+
+        // Shortcut prefixes
+        NativeChatChannels.RoutedMessage staffMsg = NativeChatChannels.resolveOutgoing(
+                NativeChatChannels.Channel.LOCAL, true, cfg, "#check player");
+        assertEquals(NativeChatChannels.Channel.STAFF, staffMsg.channel);
+        assertEquals("check player", staffMsg.message);
+
+        NativeChatChannels.RoutedMessage nonStaffHash = NativeChatChannels.resolveOutgoing(
+                NativeChatChannels.Channel.LOCAL, false, cfg, "#notstaff");
+        assertEquals(NativeChatChannels.Channel.LOCAL, nonStaffHash.channel);
+
+        NativeChatChannels.RoutedMessage shout = NativeChatChannels.resolveOutgoing(
+                NativeChatChannels.Channel.LOCAL, false, cfg, ">hello everyone");
+        assertEquals(NativeChatChannels.Channel.GLOBAL, shout.channel);
+        assertEquals("hello everyone", shout.message);
+
+        NativeChatChannels.RoutedMessage question = NativeChatChannels.resolveOutgoing(
+                NativeChatChannels.Channel.LOCAL, false, cfg, "?how to claim");
+        assertTrue(question.question);
+        assertEquals("how to claim", question.message);
+
+        // Message color codes are not translated for regular players, but are for staff
+        String regular = NativeChatChannels.formatChat(cfg, shout, "Alice", "&dAli", false);
+        assertTrue(regular.contains("\u00A7dAli"));
+        String literalColor = NativeChatChannels.formatChat(cfg,
+                new NativeChatChannels.RoutedMessage(NativeChatChannels.Channel.GLOBAL, "&cred", false),
+                "Alice", "Alice", false);
+        assertTrue(literalColor.contains("&cred"));
+
+        // Discord webhook URL validation & JSON escaping
+        assertTrue(NativeDiscordRelay.isAllowedWebhook("https://discord.com/api/webhooks/123/abc"));
+        assertTrue(NativeDiscordRelay.isAllowedWebhook("http://127.0.0.1:8080/hook"));
+        assertFalse(NativeDiscordRelay.isAllowedWebhook("http://example.com/hook"));
+        assertFalse(NativeDiscordRelay.isAllowedWebhook(""));
+
+        String chatJson = NativeDiscordRelay.buildChatPayload("Alice", "", "Hello \"world\"\n@everyone");
+        assertTrue(chatJson.contains("\\\"world\\\"\\n@everyone"));
+        assertTrue(chatJson.contains("\"allowed_mentions\":{\"parse\":[]}"));
+
+        String embedJson = NativeDiscordRelay.buildEmbedPayload(
+                NativeYaml.empty(), List.of("123456789012345678"), "Mute", "Muted Bob", 0xE74C3C);
+        assertTrue(embedJson.contains("<@&123456789012345678>"));
+        assertTrue(embedJson.contains("\"roles\":[\"123456789012345678\"]"));
     }
 }

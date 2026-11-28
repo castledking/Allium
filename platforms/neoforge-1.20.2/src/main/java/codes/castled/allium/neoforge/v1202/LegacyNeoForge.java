@@ -13,9 +13,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.ServerChatEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.function.Function;
 
@@ -23,13 +27,29 @@ public final class LegacyNeoForge implements NeoForgeAdapter {
     @Override
     public void initialize(String version) {
         if (FMLEnvironment.dist == Dist.DEDICATED_SERVER) {
-            NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> registerCommands(event, version));
+            Path dataDir = FMLPaths.GAMEDIR.get().resolve("plugins").resolve("Allium");
+            NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> registerCommands(event, version, dataDir));
+            NeoForge.EVENT_BUS.addListener((ServerChatEvent event) -> {
+                if (MinecraftNativePlatform.handleChat(event.getPlayer(), event.getRawText())) {
+                    event.setCanceled(true);
+                }
+            });
+            NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> {
+                if (event.getEntity() instanceof ServerPlayer) {
+                    MinecraftNativePlatform.handleJoin((ServerPlayer) event.getEntity());
+                }
+            });
+            NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) -> {
+                if (event.getEntity() instanceof ServerPlayer) {
+                    MinecraftNativePlatform.handleQuit((ServerPlayer) event.getEntity());
+                }
+            });
         }
     }
 
-    private void registerCommands(RegisterCommandsEvent event, String version) {
+    private void registerCommands(RegisterCommandsEvent event, String version, Path dataDir) {
         var dispatcher = event.getDispatcher();
-        MinecraftNativePlatform.register(dispatcher, source -> source.hasPermission(2), ServerPlayer::serverLevel,
+        MinecraftNativePlatform.register(dispatcher, dataDir, source -> source.hasPermission(2), ServerPlayer::serverLevel,
                 level -> level.dimension().location().toString(), ServerLevel::getSharedSpawnPos,
                 player -> player.connection.latency(),
                 (player, level, point) -> player.teleportTo(level, point.x, point.y, point.z,
@@ -38,7 +58,10 @@ public final class LegacyNeoForge implements NeoForgeAdapter {
                 .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
                 .then(Commands.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
                 .then(Commands.literal("version").executes(ctx ->
-                        reply(ctx.getSource(), UtilityMessages.version(version, "NeoForge", "1.20.2")))), "allium", "core");
+                        reply(ctx.getSource(), UtilityMessages.version(version, "NeoForge", "1.20.2"))))
+                .then(Commands.literal("reload")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> reply(ctx.getSource(), MinecraftNativePlatform.reloadAndMessage()))), "allium", "core");
         playerUtility(dispatcher, "ping", player -> UtilityMessages.ping(player.getScoreboardName(), player.connection.latency()), "ping", "pong");
         playerUtility(dispatcher, "coords", player -> {
             var pos = player.blockPosition();

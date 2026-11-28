@@ -2,6 +2,7 @@ package codes.castled.allium.brigadier;
 
 import codes.castled.allium.portable.EconomyCraftBridge;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.NativeConfig;
 import codes.castled.allium.portable.NativeEconomy;
 import codes.castled.allium.portable.NativeEconomyBackend;
 
@@ -71,6 +72,18 @@ public interface NativePlatform<S, P> {
     int maxPlayers(S source);
 
     String serverName(S source);
+
+    void kick(P player, String reason);
+
+    boolean isGamemasterPlayer(P player);
+
+    default NativeConfig config(S source) {
+        return new NativeConfig(dataDirectory(source));
+    }
+
+    default void reloadConfig(S source) {
+        config(source).reload();
+    }
 
     default NativeEconomyBackend economyBackend(S source) {
         NativeEconomy local = new NativeEconomy(dataDirectory(source));

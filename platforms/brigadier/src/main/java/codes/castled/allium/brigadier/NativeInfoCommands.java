@@ -2,6 +2,7 @@ package codes.castled.allium.brigadier;
 
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.NativeEconomyBackend;
+import codes.castled.allium.portable.NativeModeration;
 import codes.castled.allium.portable.NativePlayerInfo;
 import codes.castled.allium.portable.NativeSettings;
 import codes.castled.allium.portable.PlayerNameSearch;
@@ -60,10 +61,19 @@ public final class NativeInfoCommands {
     public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
                                        NativePlayerInfo.SessionState sessions,
                                        SuggestionProvider<S> onlinePlayers) {
+        register(dispatcher, platform, sessions, new NativeModeration.SessionState(), onlinePlayers);
+    }
+
+    public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
+                                       NativePlayerInfo.SessionState sessions,
+                                       NativeModeration.SessionState modState,
+                                       SuggestionProvider<S> onlinePlayers) {
         SuggestionProvider<S> knownPlayers = (ctx, builder) -> {
             String rem = builder.getRemaining().toLowerCase(Locale.ROOT);
             Set<String> names = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+            boolean canSeeVanished = platform.isGamemaster(ctx.getSource());
             for (P online : platform.onlinePlayers(ctx.getSource())) {
+                if (!canSeeVanished && modState.isVanished(platform.id(online))) continue;
                 String n = platform.name(online);
                 if (n != null) names.add(n);
             }
@@ -80,7 +90,7 @@ public final class NativeInfoCommands {
         registerPlaytime(dispatcher, platform, sessions, knownPlayers);
         registerAfk(dispatcher, platform, sessions);
         registerNickAndRealname(dispatcher, platform, sessions, onlinePlayers);
-        registerNear(dispatcher, platform, sessions);
+        registerNear(dispatcher, platform, sessions, modState);
     }
 
     // ==================== /mail ====================
@@ -144,6 +154,15 @@ public final class NativeInfoCommands {
         ResolvedPlayer<P> target = resolveKnown(platform, source, targetQuery);
         if (target == null) return 0;
         if (sender != null && !platform.isGamemaster(source)) {
+            long now = sessions.now();
+            NativeModeration.MuteRecord mute = new NativeModeration(platform.dataDirectory(source))
+                    .activeMute(platform.id(sender), now);
+            if (mute != null) {
+                String rem = mute.isPermanent() ? "permanent"
+                        : NativePlayerInfo.formatDuration(mute.remainingMillis(now));
+                platform.reply(source, "You are muted (" + rem + "): " + mute.reason);
+                return 0;
+            }
             NativeSettings settings = new NativeSettings(platform.dataDirectory(source));
             if (settings.isIgnoring(target.id, platform.id(sender))) {
                 platform.reply(source, target.name + " is not accepting mail from you.");
@@ -428,26 +447,31 @@ public final class NativeInfoCommands {
     // ==================== /near ====================
 
     private static <S, P> void registerNear(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
-                                            NativePlayerInfo.SessionState sessions) {
+                                            NativePlayerInfo.SessionState sessions,
+                                            NativeModeration.SessionState modState) {
         LiteralArgumentBuilder<S> near = LiteralArgumentBuilder.<S>literal("allium:near")
-                .executes(ctx -> findNear(platform, sessions, ctx.getSource(), DEFAULT_NEAR_RADIUS))
+                .executes(ctx -> findNear(platform, sessions, modState, ctx.getSource(), DEFAULT_NEAR_RADIUS))
                 .then(RequiredArgumentBuilder.<S, Integer>argument("radius", IntegerArgumentType.integer(1, MAX_NEAR_RADIUS))
-                        .executes(ctx -> findNear(platform, sessions, ctx.getSource(),
+                        .executes(ctx -> findNear(platform, sessions, modState, ctx.getSource(),
                                 IntegerArgumentType.getInteger(ctx, "radius"))));
         registerAliases(dispatcher, near, "near", "nearby");
     }
 
     private static <S, P> int findNear(NativePlatform<S, P> platform, NativePlayerInfo.SessionState sessions,
+                                       NativeModeration.SessionState modState,
                                        S source, int radius) {
         P viewer = requirePlayer(platform, source);
         if (viewer == null) return 0;
         touch(platform, sessions, source, viewer);
         UUID viewerId = platform.id(viewer);
+        boolean canSeeVanished = platform.isGamemaster(source);
         Homes.Position origin = platform.positionOf(viewer);
         double maxDistSq = (double) radius * (double) radius;
         List<NearEntry> found = new ArrayList<NearEntry>();
         for (P other : platform.onlinePlayers(source)) {
-            if (viewerId.equals(platform.id(other))) continue;
+            UUID otherId = platform.id(other);
+            if (viewerId.equals(otherId)) continue;
+            if (!canSeeVanished && modState.isVanished(otherId)) continue;
             Homes.Position pos = platform.positionOf(other);
             if (!origin.world.equals(pos.world)) continue;
             double dx = pos.x - origin.x;

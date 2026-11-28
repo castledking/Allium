@@ -2,7 +2,9 @@ package codes.castled.allium.brigadier;
 
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.NativeDiscordRelay;
 import codes.castled.allium.portable.NativeEconomy;
+import codes.castled.allium.portable.NativeModeration;
 import codes.castled.allium.portable.NativePlayerInfo;
 import codes.castled.allium.portable.NativeSettings;
 import codes.castled.allium.portable.NativeTextPages;
@@ -67,10 +69,23 @@ public final class NativeCommands {
                                        NativeEconomy.PendingConfirmations payConfirmations,
                                        NativePlayerInfo.SessionState playerSessions,
                                        NativeTextPages.BroadcastState broadcastState) {
+        register(dispatcher, platform, teleports, messages, payConfirmations, playerSessions,
+                broadcastState, new NativeModeration.SessionState(), new NativeDiscordRelay());
+    }
+
+    public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
+                                       TeleportRequests teleports, DirectMessages messages,
+                                       NativeEconomy.PendingConfirmations payConfirmations,
+                                       NativePlayerInfo.SessionState playerSessions,
+                                       NativeTextPages.BroadcastState broadcastState,
+                                       NativeModeration.SessionState modState,
+                                       NativeDiscordRelay discord) {
         SuggestionProvider<S> onlinePlayers = (ctx, builder) -> {
             String remaining = builder.getRemaining().toLowerCase(Locale.ROOT);
+            boolean canSeeVanished = platform.isGamemaster(ctx.getSource());
             List<String> names = new ArrayList<String>();
             for (P online : platform.onlinePlayers(ctx.getSource())) {
+                if (!canSeeVanished && modState.isVanished(platform.id(online))) continue;
                 String n = platform.name(online);
                 if (n != null && n.toLowerCase(Locale.ROOT).startsWith(remaining)) {
                     names.add(n);
@@ -109,12 +124,14 @@ public final class NativeCommands {
         registerHomes(dispatcher, platform, teleports, homeNames);
         registerWarps(dispatcher, platform, teleports, warpNames);
         registerSpawn(dispatcher, platform, teleports, onlinePlayers);
-        registerTeleports(dispatcher, platform, teleports, onlinePlayers, onOff);
-        registerSocial(dispatcher, platform, messages, onlinePlayers, onOff);
+        registerTeleports(dispatcher, platform, teleports, modState, onlinePlayers, onOff);
+        registerSocial(dispatcher, platform, messages, modState, onlinePlayers, onOff);
         NativeEconomyCommands.register(dispatcher, platform, payConfirmations, onlinePlayers, onOff);
-        NativeInfoCommands.register(dispatcher, platform, playerSessions, onlinePlayers);
+        NativeInfoCommands.register(dispatcher, platform, playerSessions, modState, onlinePlayers);
         NativeTextCommands.register(dispatcher, platform, broadcastState, onlinePlayers);
-        registerUtilities(dispatcher, platform, onlinePlayers);
+        NativeModerationCommands.register(dispatcher, platform, modState, discord, onlinePlayers);
+        NativeChatCommands.register(dispatcher, platform, playerSessions, modState, discord);
+        registerUtilities(dispatcher, platform, modState, onlinePlayers);
     }
 
     // ==================== Homes ====================
@@ -257,19 +274,20 @@ public final class NativeCommands {
     // ==================== TPA, Back, TpHere, Settings ====================
 
     private static <S, P> void registerTeleports(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
-                                                 TeleportRequests teleports, SuggestionProvider<S> onlinePlayers,
+                                                 TeleportRequests teleports, NativeModeration.SessionState modState,
+                                                 SuggestionProvider<S> onlinePlayers,
                                                  SuggestionProvider<S> onOff) {
         LiteralArgumentBuilder<S> tpa = LiteralArgumentBuilder.<S>literal("allium:tpa")
                 .then(RequiredArgumentBuilder.<S, String>argument("player", StringArgumentType.word())
                         .suggests(onlinePlayers)
-                        .executes(ctx -> handleTpa(platform, teleports, ctx.getSource(),
+                        .executes(ctx -> handleTpa(platform, teleports, modState, ctx.getSource(),
                                 StringArgumentType.getString(ctx, "player"), false)));
         registerAliases(dispatcher, tpa, "tpa", "tpask");
 
         LiteralArgumentBuilder<S> tpaHere = LiteralArgumentBuilder.<S>literal("allium:tpahere")
                 .then(RequiredArgumentBuilder.<S, String>argument("player", StringArgumentType.word())
                         .suggests(onlinePlayers)
-                        .executes(ctx -> handleTpa(platform, teleports, ctx.getSource(),
+                        .executes(ctx -> handleTpa(platform, teleports, modState, ctx.getSource(),
                                 StringArgumentType.getString(ctx, "player"), true)));
         registerAliases(dispatcher, tpaHere, "tpahere");
 
@@ -389,6 +407,7 @@ public final class NativeCommands {
     }
 
     private static <S, P> int handleTpa(NativePlatform<S, P> platform, TeleportRequests teleports,
+                                        NativeModeration.SessionState modState,
                                         S source, String query, boolean here) {
         P from = requirePlayer(platform, source);
         if (from == null) return 0;
@@ -396,6 +415,10 @@ public final class NativeCommands {
         if (target == null) return 0;
         UUID fromId = platform.id(from);
         UUID targetId = platform.id(target);
+        if (!platform.isGamemaster(source) && modState.isVanished(targetId)) {
+            platform.reply(source, "Player '" + query + "' is not online.");
+            return 0;
+        }
         if (fromId.equals(targetId)) {
             platform.reply(source, "You cannot send a teleport request to yourself.");
             return 0;
@@ -438,13 +461,14 @@ public final class NativeCommands {
     // ==================== Private Messaging & Ignores ====================
 
     private static <S, P> void registerSocial(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
-                                              DirectMessages messages, SuggestionProvider<S> onlinePlayers,
+                                              DirectMessages messages, NativeModeration.SessionState modState,
+                                              SuggestionProvider<S> onlinePlayers,
                                               SuggestionProvider<S> onOff) {
         LiteralArgumentBuilder<S> msg = LiteralArgumentBuilder.<S>literal("allium:msg")
                 .then(RequiredArgumentBuilder.<S, String>argument("player", StringArgumentType.word())
                         .suggests(onlinePlayers)
                         .then(RequiredArgumentBuilder.<S, String>argument("message", StringArgumentType.greedyString())
-                                .executes(ctx -> sendPrivateMessage(platform, messages, ctx.getSource(),
+                                .executes(ctx -> sendPrivateMessage(platform, messages, modState, ctx.getSource(),
                                         resolvePlayer(platform, ctx.getSource(), StringArgumentType.getString(ctx, "player")),
                                         StringArgumentType.getString(ctx, "message")))));
         registerAliases(dispatcher, msg, "msg", "pm", "m", "tell", "w");
@@ -467,7 +491,7 @@ public final class NativeCommands {
                                 platform.reply(source, "That player is no longer online.");
                                 return 0;
                             }
-                            return sendPrivateMessage(platform, messages, source, target,
+                            return sendPrivateMessage(platform, messages, modState, source, target,
                                     StringArgumentType.getString(ctx, "message"));
                         }));
         registerAliases(dispatcher, reply, "reply", "r");
@@ -568,6 +592,7 @@ public final class NativeCommands {
     }
 
     private static <S, P> int sendPrivateMessage(NativePlatform<S, P> platform, DirectMessages messages,
+                                                 NativeModeration.SessionState modState,
                                                  S source, P target, String body) {
         if (target == null) return 0;
         P sender = platform.playerOrNull(source);
@@ -577,6 +602,21 @@ public final class NativeCommands {
             if (senderId.equals(targetId)) {
                 platform.reply(source, "You cannot message yourself.");
                 return 0;
+            }
+            if (!platform.isGamemaster(source)) {
+                if (modState.isVanished(targetId)) {
+                    platform.reply(source, "Player '" + platform.name(target) + "' is not online.");
+                    return 0;
+                }
+                long now = System.currentTimeMillis();
+                NativeModeration.MuteRecord mute = new NativeModeration(platform.dataDirectory(source))
+                        .activeMute(senderId, now);
+                if (mute != null) {
+                    String rem = mute.isPermanent() ? "permanent"
+                            : NativePlayerInfo.formatDuration(mute.remainingMillis(now));
+                    platform.reply(source, "You are muted (" + rem + "): " + mute.reason);
+                    return 0;
+                }
             }
             NativeSettings settings = new NativeSettings(platform.dataDirectory(source));
             if (!platform.isGamemaster(source)) {
@@ -596,6 +636,7 @@ public final class NativeCommands {
     // ==================== Utilities & Admin Commands ====================
 
     private static <S, P> void registerUtilities(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
+                                                 NativeModeration.SessionState modState,
                                                  SuggestionProvider<S> onlinePlayers) {
         // /heal [player]
         registerPlayerAction(dispatcher, platform, onlinePlayers, "heal", true, (source, target, self) -> {
@@ -663,9 +704,12 @@ public final class NativeCommands {
         LiteralArgumentBuilder<S> list = LiteralArgumentBuilder.<S>literal("allium:list")
                 .executes(ctx -> {
                     S source = ctx.getSource();
+                    boolean canSeeVanished = platform.isGamemaster(source);
                     List<String> names = new ArrayList<String>();
                     for (P online : platform.onlinePlayers(source)) {
-                        names.add(platform.name(online));
+                        boolean vanished = modState.isVanished(platform.id(online));
+                        if (vanished && !canSeeVanished) continue;
+                        names.add(vanished ? platform.name(online) + " [V]" : platform.name(online));
                     }
                     Collections.sort(names, String.CASE_INSENSITIVE_ORDER);
                     platform.reply(source, names.isEmpty()

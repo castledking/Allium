@@ -40,6 +40,19 @@ tasks.jar {
     from(coreJar.flatMap { it.archiveFile }.map { zipTree(it.asFile) }) {
         exclude("META-INF/MANIFEST.MF")
     }
+    from(rootProject.layout.projectDirectory.dir("src/main/resources")) {
+        include(
+            "config.yml",
+            "lang/*.yml",
+            "info.txt",
+            "rules.txt",
+            "motd.txt",
+            "custom.txt",
+            "broadcasts.txt",
+            "worth.yml"
+        )
+        into("allium-defaults")
+    }
 }
 
 val legacyProject = layout.projectDirectory.dir("../neoforge-1.20.2")

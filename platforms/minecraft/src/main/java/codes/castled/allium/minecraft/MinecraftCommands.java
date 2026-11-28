@@ -12,6 +12,8 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.function.Function;
 
@@ -20,8 +22,13 @@ public final class MinecraftCommands {
     private MinecraftCommands() {}
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, String platform, String version) {
+        register(dispatcher, platform, version, Paths.get("plugins", "Allium"));
+    }
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, String platform, String version,
+                                Path dataDirectory) {
         String game = SharedConstants.getCurrentVersion().name();
-        MinecraftNativePlatform.register(dispatcher, Commands.hasPermission(Commands.LEVEL_GAMEMASTERS),
+        MinecraftNativePlatform.register(dispatcher, dataDirectory, Commands.hasPermission(Commands.LEVEL_GAMEMASTERS),
                 ServerPlayer::level,
                 level -> level.dimension().identifier().toString(),
                 level -> level.getRespawnData().pos(),
@@ -32,7 +39,10 @@ public final class MinecraftCommands {
                 .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
                 .then(Commands.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
                 .then(Commands.literal("version").executes(ctx ->
-                        reply(ctx.getSource(), UtilityMessages.version(version, platform, game)))));
+                        reply(ctx.getSource(), UtilityMessages.version(version, platform, game))))
+                .then(Commands.literal("reload")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .executes(ctx -> reply(ctx.getSource(), MinecraftNativePlatform.reloadAndMessage()))));
         playerUtility(dispatcher, CoreCommandSpecs.PING,
                 player -> UtilityMessages.ping(player.getScoreboardName(), player.connection.latency()));
         playerUtility(dispatcher, CoreCommandSpecs.COORDS, player -> {

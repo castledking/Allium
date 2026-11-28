@@ -1,10 +1,14 @@
 package codes.castled.allium.minecraft;
 
+import codes.castled.allium.brigadier.NativeChatCommands;
 import codes.castled.allium.brigadier.NativeCommands;
 import codes.castled.allium.brigadier.NativePlatform;
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.NativeConfig;
+import codes.castled.allium.portable.NativeDiscordRelay;
 import codes.castled.allium.portable.NativeEconomy;
+import codes.castled.allium.portable.NativeModeration;
 import codes.castled.allium.portable.NativePlayerInfo;
 import codes.castled.allium.portable.NativeTextPages;
 import codes.castled.allium.portable.TeleportRequests;
@@ -16,25 +20,31 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.storage.LevelResource;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
  * Shared Mojang-mapped {@link NativePlatform} implementation for Fabric 1.20.1/1.21.11/26.x
- * and NeoForge 1.20.2/26.x.
+ * and NeoForge 1.20.2/26.x. Stores configuration, language files, text pages, and flatfile data
+ * under {@code <serverRoot>/plugins/Allium}.
  */
 public final class MinecraftNativePlatform implements NativePlatform<CommandSourceStack, ServerPlayer> {
     private static final TeleportRequests TELEPORTS = new TeleportRequests();
@@ -42,7 +52,13 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     private static final NativeEconomy.PendingConfirmations PAY_CONFIRMATIONS = new NativeEconomy.PendingConfirmations();
     private static final NativePlayerInfo.SessionState PLAYER_SESSIONS = new NativePlayerInfo.SessionState();
     private static final NativeTextPages.BroadcastState BROADCASTS = new NativeTextPages.BroadcastState();
+    private static final NativeModeration.SessionState MOD_STATE = new NativeModeration.SessionState();
+    private static final NativeDiscordRelay DISCORD = new NativeDiscordRelay();
+    private static final AtomicBoolean FABRIC_LIFECYCLE_HOOKED = new AtomicBoolean(false);
+    private static volatile MinecraftNativePlatform active;
 
+    private final Path dataDirectory;
+    private final NativeConfig config;
     private final Predicate<CommandSourceStack> gamemaster;
     private final Function<ServerPlayer, ServerLevel> levelOf;
     private final Function<ServerLevel, String> worldId;
@@ -50,12 +66,16 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     private final ToIntFunction<ServerPlayer> latencyOf;
     private final MinecraftHomes.Teleport teleport;
 
-    public MinecraftNativePlatform(Predicate<CommandSourceStack> gamemaster,
+    public MinecraftNativePlatform(Path dataDirectory,
+                                   Predicate<CommandSourceStack> gamemaster,
                                    Function<ServerPlayer, ServerLevel> levelOf,
                                    Function<ServerLevel, String> worldId,
                                    Function<ServerLevel, BlockPos> spawnPos,
                                    ToIntFunction<ServerPlayer> latencyOf,
                                    MinecraftHomes.Teleport teleport) {
+        this.dataDirectory = (dataDirectory != null ? dataDirectory : Paths.get("plugins", "Allium"))
+                .toAbsolutePath().normalize();
+        this.config = new NativeConfig(this.dataDirectory);
         this.gamemaster = gamemaster;
         this.levelOf = levelOf;
         this.worldId = worldId;
@@ -65,25 +85,110 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
+                                Path dataDirectory,
                                 Predicate<CommandSourceStack> gamemaster,
                                 Function<ServerPlayer, ServerLevel> levelOf,
                                 Function<ServerLevel, String> worldId,
                                 Function<ServerLevel, BlockPos> spawnPos,
                                 ToIntFunction<ServerPlayer> latencyOf,
                                 MinecraftHomes.Teleport teleport) {
-        NativeCommands.register(dispatcher,
-                new MinecraftNativePlatform(gamemaster, levelOf, worldId, spawnPos, latencyOf, teleport),
-                TELEPORTS, MESSAGES, PAY_CONFIRMATIONS, PLAYER_SESSIONS, BROADCASTS);
+        MinecraftNativePlatform instance = new MinecraftNativePlatform(
+                dataDirectory, gamemaster, levelOf, worldId, spawnPos, latencyOf, teleport);
+        active = instance;
+        NativeCommands.register(dispatcher, instance, TELEPORTS, MESSAGES, PAY_CONFIRMATIONS,
+                PLAYER_SESSIONS, BROADCASTS, MOD_STATE, DISCORD);
+    }
+
+    public static boolean handleChat(ServerPlayer player, String rawMessage) {
+        MinecraftNativePlatform current = active;
+        if (current == null || player == null) return false;
+        return NativeChatCommands.handleChat(current, player.createCommandSourceStack(), player,
+                rawMessage, PLAYER_SESSIONS, MOD_STATE, DISCORD);
+    }
+
+    public static void handleJoin(ServerPlayer player) {
+        MinecraftNativePlatform current = active;
+        if (current == null || player == null) return;
+        NativeChatCommands.handleJoin(current, player.createCommandSourceStack(), player,
+                PLAYER_SESSIONS, MOD_STATE, DISCORD);
+    }
+
+    public static void handleQuit(ServerPlayer player) {
+        MinecraftNativePlatform current = active;
+        if (current == null || player == null) return;
+        NativeChatCommands.handleQuit(current, player.createCommandSourceStack(), player,
+                PLAYER_SESSIONS, MOD_STATE, DISCORD);
+    }
+
+    public static String reloadAndMessage() {
+        MinecraftNativePlatform current = active;
+        if (current == null) {
+            return "Configuration reloaded.";
+        }
+        current.config.reload();
+        return current.config.format("core.reload-success", "{prefix} &aConfiguration reloaded.");
+    }
+
+    /** Reflectively registers Fabric {@code ServerPlayConnectionEvents} join/quit hooks when available. */
+    public static void tryHookFabricConnectionEvents() {
+        if (!FABRIC_LIFECYCLE_HOOKED.compareAndSet(false, true)) return;
+        try {
+            Class<?> eventsClass = Class.forName("net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents");
+            Class<?> joinIface = Class.forName("net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents$Join");
+            Class<?> discIface = Class.forName("net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents$Disconnect");
+            Object joinEvent = eventsClass.getField("JOIN").get(null);
+            Object discEvent = eventsClass.getField("DISCONNECT").get(null);
+            Method registerMethod = joinEvent.getClass().getMethod("register", Object.class);
+
+            Object joinProxy = Proxy.newProxyInstance(joinIface.getClassLoader(), new Class<?>[]{joinIface},
+                    new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, Method method, Object[] args) {
+                            if (args != null && args.length >= 1 && args[0] instanceof ServerGamePacketListenerImpl) {
+                                handleJoin(((ServerGamePacketListenerImpl) args[0]).getPlayer());
+                            }
+                            return null;
+                        }
+                    });
+            Object discProxy = Proxy.newProxyInstance(discIface.getClassLoader(), new Class<?>[]{discIface},
+                    new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, Method method, Object[] args) {
+                            if (args != null && args.length >= 1 && args[0] instanceof ServerGamePacketListenerImpl) {
+                                handleQuit(((ServerGamePacketListenerImpl) args[0]).getPlayer());
+                            }
+                            return null;
+                        }
+                    });
+            registerMethod.invoke(joinEvent, joinProxy);
+            registerMethod.invoke(discEvent, discProxy);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
     public Path dataDirectory(CommandSourceStack source) {
-        return source.getServer().getWorldPath(LevelResource.ROOT).resolve("allium");
+        return dataDirectory;
+    }
+
+    @Override
+    public NativeConfig config(CommandSourceStack source) {
+        return config;
+    }
+
+    @Override
+    public void reloadConfig(CommandSourceStack source) {
+        config.reload();
     }
 
     @Override
     public boolean isGamemaster(CommandSourceStack source) {
         return gamemaster.test(source);
+    }
+
+    @Override
+    public boolean isGamemasterPlayer(ServerPlayer player) {
+        return gamemaster.test(player.createCommandSourceStack());
     }
 
     @Override
@@ -148,6 +253,11 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     @Override
     public void broadcast(CommandSourceStack source, String message) {
         source.getServer().getPlayerList().broadcastSystemMessage(Component.literal(message), false);
+    }
+
+    @Override
+    public void kick(ServerPlayer player, String reason) {
+        player.connection.disconnect(Component.literal(reason));
     }
 
     @Override

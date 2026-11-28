@@ -9,6 +9,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -33,6 +34,7 @@ public final class MinecraftCommands {
                 level -> level.dimension().identifier().toString(),
                 level -> level.getRespawnData().pos(),
                 player -> player.connection.latency(),
+                item -> BuiltInRegistries.ITEM.getKey(item).toString(),
                 (player, level, point) -> player.teleportTo(level, point.x, point.y, point.z,
                         Collections.emptySet(), point.yaw, point.pitch, true));
         register(dispatcher, CoreCommandSpecs.ALLIUM, root -> root

@@ -15,7 +15,6 @@ import codes.castled.allium.portable.TeleportRequests;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -23,6 +22,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 
@@ -64,6 +64,7 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     private final Function<ServerLevel, String> worldId;
     private final Function<ServerLevel, BlockPos> spawnPos;
     private final ToIntFunction<ServerPlayer> latencyOf;
+    private final Function<Item, String> itemIdOf;
     private final MinecraftHomes.Teleport teleport;
 
     public MinecraftNativePlatform(Path dataDirectory,
@@ -72,6 +73,7 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
                                    Function<ServerLevel, String> worldId,
                                    Function<ServerLevel, BlockPos> spawnPos,
                                    ToIntFunction<ServerPlayer> latencyOf,
+                                   Function<Item, String> itemIdOf,
                                    MinecraftHomes.Teleport teleport) {
         this.dataDirectory = (dataDirectory != null ? dataDirectory : Paths.get("plugins", "Allium"))
                 .toAbsolutePath().normalize();
@@ -81,6 +83,7 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
         this.worldId = worldId;
         this.spawnPos = spawnPos;
         this.latencyOf = latencyOf;
+        this.itemIdOf = itemIdOf;
         this.teleport = teleport;
     }
 
@@ -91,9 +94,10 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
                                 Function<ServerLevel, String> worldId,
                                 Function<ServerLevel, BlockPos> spawnPos,
                                 ToIntFunction<ServerPlayer> latencyOf,
+                                Function<Item, String> itemIdOf,
                                 MinecraftHomes.Teleport teleport) {
         MinecraftNativePlatform instance = new MinecraftNativePlatform(
-                dataDirectory, gamemaster, levelOf, worldId, spawnPos, latencyOf, teleport);
+                dataDirectory, gamemaster, levelOf, worldId, spawnPos, latencyOf, itemIdOf, teleport);
         active = instance;
         NativeCommands.register(dispatcher, instance, TELEPORTS, MESSAGES, PAY_CONFIRMATIONS,
                 PLAYER_SESSIONS, BROADCASTS, MOD_STATE, DISCORD);
@@ -337,7 +341,7 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     public String heldItemId(ServerPlayer player) {
         ItemStack stack = player.getMainHandItem();
         if (stack.isEmpty()) return null;
-        return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        return itemIdOf.apply(stack.getItem());
     }
 
     @Override
@@ -363,7 +367,7 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
         for (int i = 0; i < limit; i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
-            String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            String id = itemIdOf.apply(stack.getItem());
             if (!sellable.test(id)) continue;
             int count = stack.getCount();
             inv.setItem(i, ItemStack.EMPTY);

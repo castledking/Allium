@@ -12,6 +12,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -46,7 +47,8 @@ public final class FabricUtilityCommands {
             playerUtility(dispatcher, CoreCommandSpecs.PING, canInspect,
                     player -> UtilityMessages.ping(player.getScoreboardName(), latencyOf.applyAsInt(player)));
             playerUtility(dispatcher, CoreCommandSpecs.COORDS, canInspect, coordinates);
-            MinecraftNativePlatform.register(dispatcher, dataDir, canInspect, levelOf, worldId, spawnPos, latencyOf, teleport);
+            MinecraftNativePlatform.register(dispatcher, dataDir, canInspect, levelOf, worldId, spawnPos, latencyOf,
+                    item -> BuiltInRegistries.ITEM.getKey(item).toString(), teleport);
         });
         try {
             ChatHook.register();

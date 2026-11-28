@@ -9,7 +9,7 @@ public final class NeoForgeBootstrap {
         ModList mods = ModList.get();
         String game = mods.getModContainerById("minecraft").orElseThrow().getModInfo().getVersion().toString();
         String version = mods.getModContainerById("allium").orElseThrow().getModInfo().getVersion().toString();
-        String entrypoint = game.equals("1.20.2")
+        String entrypoint = isLegacyNeoForge(game)
                 ? "codes.castled.allium.neoforge.v1202.LegacyNeoForge"
                 : "codes.castled.allium.neoforge.AlliumNeoForge";
         try {
@@ -17,5 +17,9 @@ public final class NeoForgeBootstrap {
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Could not initialize Allium's NeoForge adapter for Minecraft " + game, e);
         }
+    }
+
+    private static boolean isLegacyNeoForge(String game) {
+        return "1.20.2".equals(game) || "1.20.3".equals(game) || "1.20.4".equals(game);
     }
 }

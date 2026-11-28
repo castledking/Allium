@@ -76,7 +76,7 @@ val prepareAdapters by tasks.registering {
                                             val module = JsonSlurper().parseText(input.readBytes().decodeToString())
                                                     as MutableMap<String, Any?>
                                             val requires = module["depends"] as? Map<*, *> ?: emptyMap<String, String>()
-                                            module["depends"] = requires + ("minecraft" to "1.14")
+                                            module["depends"] = requires + ("minecraft" to ">=1.14 <1.15-")
                                             outputZip.write(JsonOutput.toJson(module).toByteArray())
                                         } else {
                                             input.copyTo(outputZip)
@@ -102,7 +102,7 @@ val prepareAdapters by tasks.registering {
             "description" to "Allium server utilities for Fabric.",
             "environment" to "server",
             "entrypoints" to mapOf("server" to listOf(bootstrap)),
-            "depends" to mapOf("fabricloader" to ">=$loaderVersion", "minecraft" to versions.keys, "java" to ">=8"),
+            "depends" to mapOf("fabricloader" to ">=$loaderVersion", "minecraft" to ">=1.14 <26.4-", "java" to ">=8"),
             "jars" to nested,
             "custom" to mapOf("allium:adapters" to versions)
         )

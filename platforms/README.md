@@ -119,8 +119,8 @@ Run Gradle with JDK 25. JDK 17 and JDK 21 are also required by the build.
 | Artifact staged in `build/platforms/` | Installation |
 | --- | --- |
 | `Allium-Paper-1.0.2.jar` | `plugins/` on Bukkit, Spigot, Paper, Purpur, or Folia for Minecraft **1.12.2 – 26.3** (Java 8+ compatibility runtime on 1.12.2–1.19.4; full modern runtime on 1.20–26.3 with Java 17+) |
-| `Allium-Fabric-1.0.2.jar` | `mods/` on Fabric for Minecraft 1.14, 1.20.1, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2, or 26.3 |
-| `Allium-NeoForge-1.0.2.jar` | `mods/` on NeoForge for Minecraft 1.20.2, 26.1, 26.1.1, 26.1.2, 26.2, or 26.3 |
+| `Allium-Fabric-1.0.2.jar` | `mods/` on Fabric for Minecraft **1.14 – 26.3** (single universal JAR with version-adaptive server adapters) |
+| `Allium-NeoForge-1.0.2.jar` | `mods/` on NeoForge for Minecraft **1.20.2 – 26.3** (single universal JAR with version-adaptive server adapters) |
 
 `./gradlew paperPlatformJar` stages only the unified Bukkit/Spigot/Paper/Folia artifact. Existing `shadowJar` consumers can continue to use `build/libs/Allium.jar` (identical bytes).
 

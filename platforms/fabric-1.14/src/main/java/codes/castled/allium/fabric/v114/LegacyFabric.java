@@ -4,6 +4,7 @@ import codes.castled.allium.brigadier.NativeCommands;
 import codes.castled.allium.brigadier.NativePlatform;
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.NativeEconomy;
 import codes.castled.allium.portable.TeleportRequests;
 import codes.castled.allium.portable.UtilityMessages;
 import com.mojang.brigadier.CommandDispatcher;
@@ -12,33 +13,40 @@ import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.registry.CommandRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.command.arguments.EntityArgumentType;
+import net.minecraft.item.ItemStack;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.registry.Registry;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.level.LevelProperties;
 
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class LegacyFabric implements DedicatedServerModInitializer {
     private static final TeleportRequests TELEPORTS = new TeleportRequests();
     private static final DirectMessages MESSAGES = new DirectMessages();
+    private static final NativeEconomy.PendingConfirmations PAY_CONFIRMATIONS = new NativeEconomy.PendingConfirmations();
 
     @Override
     public void onInitializeServer() {
         String version = FabricLoader.getInstance().getModContainer("allium").get().getMetadata().getVersion().getFriendlyString();
         CommandRegistry.INSTANCE.register(true, dispatcher -> {
-            NativeCommands.register(dispatcher, new Fabric114Platform(), TELEPORTS, MESSAGES);
+            NativeCommands.register(dispatcher, new Fabric114Platform(), TELEPORTS, MESSAGES, PAY_CONFIRMATIONS);
             register(dispatcher, CommandManager.literal("allium:allium")
                     .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
                     .then(CommandManager.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
@@ -190,6 +198,45 @@ public final class LegacyFabric implements DedicatedServerModInitializer {
         @Override
         public void clearInventory(ServerPlayerEntity player) {
             player.inventory.clear();
+        }
+
+        @Override
+        public String heldItemId(ServerPlayerEntity player) {
+            ItemStack stack = player.getMainHandStack();
+            if (stack.isEmpty()) return null;
+            return Registry.ITEM.getId(stack.getItem()).toString();
+        }
+
+        @Override
+        public int heldItemCount(ServerPlayerEntity player) {
+            ItemStack stack = player.getMainHandStack();
+            return stack.isEmpty() ? 0 : stack.getAmount();
+        }
+
+        @Override
+        public int consumeHeldItem(ServerPlayerEntity player) {
+            ItemStack stack = player.getMainHandStack();
+            if (stack.isEmpty()) return 0;
+            int count = stack.getAmount();
+            player.setStackInHand(Hand.MAIN_HAND, ItemStack.EMPTY);
+            return count;
+        }
+
+        @Override
+        public Map<String, Integer> consumeSellableItems(ServerPlayerEntity player, Predicate<String> sellable) {
+            int limit = Math.min(36, player.inventory.getInvSize());
+            Map<String, Integer> sold = new LinkedHashMap<String, Integer>();
+            for (int i = 0; i < limit; i++) {
+                ItemStack stack = player.inventory.getInvStack(i);
+                if (stack.isEmpty()) continue;
+                String id = Registry.ITEM.getId(stack.getItem()).toString();
+                if (!sellable.test(id)) continue;
+                int count = stack.getAmount();
+                player.inventory.setInvStack(i, ItemStack.EMPTY);
+                Integer prev = sold.get(id);
+                sold.put(id, prev == null ? count : prev + count);
+            }
+            return sold;
         }
     }
 

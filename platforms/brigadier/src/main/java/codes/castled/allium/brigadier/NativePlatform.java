@@ -4,7 +4,9 @@ import codes.castled.allium.portable.Homes;
 
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * Version-independent server adapter implemented by Fabric (1.14, 1.20.1, 1.21.11, 26.x)
@@ -50,4 +52,12 @@ public interface NativePlatform<S, P> {
     boolean setWeather(S source, String mode);
 
     void clearInventory(P player);
+
+    String heldItemId(P player);
+
+    int heldItemCount(P player);
+
+    int consumeHeldItem(P player);
+
+    Map<String, Integer> consumeSellableItems(P player, Predicate<String> sellable);
 }

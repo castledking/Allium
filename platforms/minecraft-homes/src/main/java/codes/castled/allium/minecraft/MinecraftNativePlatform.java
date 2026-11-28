@@ -4,20 +4,27 @@ import codes.castled.allium.brigadier.NativeCommands;
 import codes.castled.allium.brigadier.NativePlatform;
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.NativeEconomy;
 import codes.castled.allium.portable.TeleportRequests;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -29,6 +36,7 @@ import java.util.function.Predicate;
 public final class MinecraftNativePlatform implements NativePlatform<CommandSourceStack, ServerPlayer> {
     private static final TeleportRequests TELEPORTS = new TeleportRequests();
     private static final DirectMessages MESSAGES = new DirectMessages();
+    private static final NativeEconomy.PendingConfirmations PAY_CONFIRMATIONS = new NativeEconomy.PendingConfirmations();
 
     private final Predicate<CommandSourceStack> gamemaster;
     private final Function<ServerPlayer, ServerLevel> levelOf;
@@ -56,7 +64,7 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
                                 MinecraftHomes.Teleport teleport) {
         NativeCommands.register(dispatcher,
                 new MinecraftNativePlatform(gamemaster, levelOf, worldId, spawnPos, teleport),
-                TELEPORTS, MESSAGES);
+                TELEPORTS, MESSAGES, PAY_CONFIRMATIONS);
     }
 
     @Override
@@ -199,5 +207,45 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     @Override
     public void clearInventory(ServerPlayer player) {
         player.getInventory().clearContent();
+    }
+
+    @Override
+    public String heldItemId(ServerPlayer player) {
+        ItemStack stack = player.getMainHandItem();
+        if (stack.isEmpty()) return null;
+        return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+    }
+
+    @Override
+    public int heldItemCount(ServerPlayer player) {
+        ItemStack stack = player.getMainHandItem();
+        return stack.isEmpty() ? 0 : stack.getCount();
+    }
+
+    @Override
+    public int consumeHeldItem(ServerPlayer player) {
+        ItemStack stack = player.getMainHandItem();
+        if (stack.isEmpty()) return 0;
+        int count = stack.getCount();
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        return count;
+    }
+
+    @Override
+    public Map<String, Integer> consumeSellableItems(ServerPlayer player, Predicate<String> sellable) {
+        Inventory inv = player.getInventory();
+        int limit = Math.min(36, inv.getContainerSize());
+        Map<String, Integer> sold = new LinkedHashMap<String, Integer>();
+        for (int i = 0; i < limit; i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty()) continue;
+            String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            if (!sellable.test(id)) continue;
+            int count = stack.getCount();
+            inv.setItem(i, ItemStack.EMPTY);
+            Integer prev = sold.get(id);
+            sold.put(id, prev == null ? count : prev + count);
+        }
+        return sold;
     }
 }

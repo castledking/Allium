@@ -2,6 +2,7 @@ package codes.castled.allium.brigadier;
 
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
+import codes.castled.allium.portable.NativeEconomy;
 import codes.castled.allium.portable.NativeSettings;
 import codes.castled.allium.portable.PlayerNameSearch;
 import codes.castled.allium.portable.Spawns;
@@ -34,11 +35,18 @@ public final class NativeCommands {
     private NativeCommands() {}
 
     public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform) {
-        register(dispatcher, platform, new TeleportRequests(), new DirectMessages());
+        register(dispatcher, platform, new TeleportRequests(), new DirectMessages(),
+                new NativeEconomy.PendingConfirmations());
     }
 
     public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
                                        TeleportRequests teleports, DirectMessages messages) {
+        register(dispatcher, platform, teleports, messages, new NativeEconomy.PendingConfirmations());
+    }
+
+    public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
+                                       TeleportRequests teleports, DirectMessages messages,
+                                       NativeEconomy.PendingConfirmations payConfirmations) {
         SuggestionProvider<S> onlinePlayers = (ctx, builder) -> {
             String remaining = builder.getRemaining().toLowerCase(Locale.ROOT);
             List<String> names = new ArrayList<String>();
@@ -83,6 +91,7 @@ public final class NativeCommands {
         registerSpawn(dispatcher, platform, teleports, onlinePlayers);
         registerTeleports(dispatcher, platform, teleports, onlinePlayers, onOff);
         registerSocial(dispatcher, platform, messages, onlinePlayers, onOff);
+        NativeEconomyCommands.register(dispatcher, platform, payConfirmations, onlinePlayers, onOff);
         registerUtilities(dispatcher, platform, onlinePlayers);
     }
 

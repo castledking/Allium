@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,8 @@ class NativePlatformPortableTest {
     void portableClassesTargetJava8() throws Exception {
         for (Class<?> type : new Class<?>[]{
                 Homes.class, Warps.class, Spawns.class, NativeSettings.class,
-                TeleportRequests.class, DirectMessages.class, UtilityMessages.class
+                TeleportRequests.class, DirectMessages.class, UtilityMessages.class,
+                NativeEconomy.class, NativeWorth.class
         }) {
             String res = type.getName().replace('.', '/') + ".class";
             try (InputStream in = type.getClassLoader().getResourceAsStream(res)) {
@@ -156,6 +158,75 @@ class NativePlatformPortableTest {
         assertTrue(UtilityMessages.depth(50, 63).contains("13 block(s) below"));
         assertTrue(UtilityMessages.COMMANDS.contains("/warp"));
         assertTrue(UtilityMessages.COMMANDS.contains("/tpa"));
+        assertTrue(UtilityMessages.COMMANDS.contains("/bal"));
+        assertTrue(UtilityMessages.COMMANDS.contains("/sell"));
         assertTrue(UtilityMessages.COMMANDS.contains("/heal"));
+    }
+
+    @Test
+    void nativeEconomyHandlesShorthandTransfersBaltopAndConfirmations() {
+        assertEquals(new BigDecimal("1500.00"), NativeEconomy.parseAmount("$1.5k"));
+        assertEquals(new BigDecimal("2000000.00"), NativeEconomy.parseAmount("2m"));
+        assertNull(NativeEconomy.parseAmount("-5"));
+        assertNull(NativeEconomy.parseAmount("not-a-number"));
+        assertEquals("$1,500.00", NativeEconomy.format(new BigDecimal("1500")));
+
+        NativeEconomy eco = new NativeEconomy(tempDir);
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+
+        assertEquals(NativeEconomy.ZERO, eco.balance(alice));
+        assertEquals(new BigDecimal("500.00"), eco.addBalance(alice, "Alice", new BigDecimal("500")));
+        assertEquals(new BigDecimal("400.00"), eco.takeBalance(alice, "Alice", new BigDecimal("100")));
+        assertNull(eco.takeBalance(alice, "Alice", new BigDecimal("999")));
+
+        assertTrue(eco.transfer(alice, "Alice", bob, "Bob", new BigDecimal("150.25")));
+        assertFalse(eco.transfer(alice, "Alice", bob, "Bob", new BigDecimal("1000")));
+
+        NativeEconomy reloaded = new NativeEconomy(tempDir);
+        assertEquals(new BigDecimal("249.75"), reloaded.balance(alice));
+        assertEquals(new BigDecimal("150.25"), reloaded.balance(bob));
+        assertEquals(bob, reloaded.findKnownId("bob"));
+        assertEquals("Bob", reloaded.nameOf(bob));
+
+        List<NativeEconomy.AccountEntry> top = reloaded.topAccounts();
+        assertEquals(2, top.size());
+        assertEquals(alice, top.get(0).id);
+        assertEquals(bob, top.get(1).id);
+
+        assertTrue(reloaded.acceptsPayments(bob));
+        assertTrue(reloaded.setAcceptsPayments(bob, "Bob", false));
+        assertFalse(reloaded.acceptsPayments(bob));
+
+        assertFalse(reloaded.requiresPayConfirm(alice));
+        assertTrue(reloaded.setRequiresPayConfirm(alice, "Alice", true));
+        assertTrue(reloaded.requiresPayConfirm(alice));
+
+        AtomicLong clock = new AtomicLong(1_000L);
+        NativeEconomy.PendingConfirmations confirms = new NativeEconomy.PendingConfirmations(clock::get, 30_000L);
+        assertFalse(confirms.confirmOrArm(alice, bob, new BigDecimal("50.00")));
+        assertTrue(confirms.confirmOrArm(alice, bob, new BigDecimal("50.00")));
+        assertFalse(confirms.confirmOrArm(alice, bob, new BigDecimal("50.00")));
+        clock.addAndGet(31_000L);
+        assertFalse(confirms.confirmOrArm(alice, bob, new BigDecimal("50.00")));
+
+        assertEquals(NativeEconomy.ZERO, reloaded.resetBalance(alice, "Alice"));
+        assertEquals(NativeEconomy.ZERO, reloaded.balance(alice));
+    }
+
+    @Test
+    void nativeWorthNormalizesIdsAndPersistsPrices() {
+        assertEquals("minecraft:diamond", NativeWorth.normalizeItemId("diamond"));
+        assertEquals("minecraft:diamond", NativeWorth.normalizeItemId("Minecraft:Diamond"));
+        assertEquals("modid:custom_gem", NativeWorth.normalizeItemId("modid:custom_gem"));
+        assertEquals("", NativeWorth.normalizeItemId("bad item!"));
+
+        NativeWorth worth = new NativeWorth(tempDir);
+        assertNull(worth.priceOf("diamond"));
+        assertTrue(worth.setPrice("diamond", new BigDecimal("100.5")));
+        assertEquals(new BigDecimal("100.50"), new NativeWorth(tempDir).priceOf("minecraft:diamond"));
+        assertEquals(List.of("minecraft:diamond"), worth.suggestions("dia"));
+        assertTrue(worth.setPrice("minecraft:diamond", BigDecimal.ZERO));
+        assertNull(new NativeWorth(tempDir).priceOf("diamond"));
     }
 }

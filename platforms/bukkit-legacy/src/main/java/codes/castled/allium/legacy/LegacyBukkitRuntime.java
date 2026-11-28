@@ -106,6 +106,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyPowerTools powerTools;
     private final LegacyCreativeManager creativeManager;
     private final LegacyCreativeManage creativeManage;
+    private final LegacyEssentialsImport essentialsImport;
     private final LegacyUsageCards usageCards;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
@@ -148,6 +149,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.creativeManager = new LegacyCreativeManager(plugin, configManager, messageManager, version);
         this.creativeManage = new LegacyCreativeManage(plugin, messageManager, playerInfo, moderation,
                 commandManager, this::canSeeTeleportTarget);
+        this.essentialsImport = new LegacyEssentialsImport(plugin, messageManager, this::reloadImportedData);
         this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);
         this.flight = new LegacyTimedFlight(plugin, configManager, playerInfo, messageManager, flightProtection, this::canSeeTeleportTarget);
         this.experience = new LegacyExperienceCommand(plugin, messageManager, this::canSeeTeleportTarget);
@@ -205,6 +207,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(hide, plugin);
         pm.registerEvents(creativeManager, plugin);
         pm.registerEvents(creativeManage, plugin);
+        pm.registerEvents(essentialsImport, plugin);
         pm.registerEvents(utilities, plugin);
         pm.registerEvents(explosiveCommands, plugin);
         pm.registerEvents(powerTools, plugin);
@@ -262,6 +265,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(hide);
         HandlerList.unregisterAll(creativeManager);
         HandlerList.unregisterAll(creativeManage);
+        HandlerList.unregisterAll(essentialsImport);
         HandlerList.unregisterAll(utilities);
         HandlerList.unregisterAll(playerInfo.editor());
         HandlerList.unregisterAll(playerInfo.alts());
@@ -593,6 +597,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                         && !commandManager.isDisabled("creativemanager") && !commandManager.isModuleDisabled("creativemanager")) {
                     subs.add("creativemanager");
                 }
+                if (sender.hasPermission(LegacyEssentialsImport.PERMISSION) || sender.isOp()) {
+                    subs.add("import");
+                }
                 if (sender instanceof ConsoleCommandSender && sender.hasPermission("allium.escalate")
                         && !commandManager.isDisabled("escalate") && !commandManager.isModuleDisabled("escalate")) {
                     subs.add("escalate");
@@ -604,6 +611,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             }
             if (args.length >= 2 && "creativemanager".equalsIgnoreCase(args[0])) {
                 return creativeManage.complete(sender, Arrays.copyOfRange(args, 1, args.length));
+            }
+            if (args.length >= 2 && "import".equalsIgnoreCase(args[0])) {
+                return essentialsImport.complete(sender, Arrays.copyOfRange(args, 1, args.length));
             }
             return Collections.emptyList();
         }
@@ -681,6 +691,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             }
             return creativeManage.execute(sender, "/allium creativemanager", Arrays.copyOfRange(args, 1, args.length));
         }
+        if ("import".equalsIgnoreCase(args[0])) {
+            return essentialsImport.execute(sender, Arrays.copyOfRange(args, 1, args.length));
+        }
         if ("escalate".equalsIgnoreCase(args[0])) {
             if (!(sender instanceof ConsoleCommandSender)) {
                 messageManager.send(sender, "error.console-only", "{prefix} &cThis command can only be used from the console.");
@@ -721,8 +734,19 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");
             return true;
         }
-        LegacyUsageCards.invalid(sender, "/allium [version|help|reload|hide]");
+        LegacyUsageCards.invalid(sender, "/allium [version|help|reload|hide|import]");
         return true;
+    }
+
+    private void reloadImportedData() {
+        loadWarps();
+        loadSpawn();
+        economy.reload();
+        settings.reload();
+        offlineTeleport.reload();
+        kits.reload();
+        moderation.reload();
+        playerInfo.reload();
     }
 
     private boolean handlePing(CommandSender sender, String[] args) {

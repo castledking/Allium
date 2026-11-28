@@ -353,6 +353,7 @@ final class LegacyCommandManager {
         for (String c : new String[]{"fireball", "antioch", "nuke", "explode", "kittycannon", "beezooka"}) m.put(c, "explosions");
         m.put("altexempt", "alts");
         for (String c : new String[]{"powertool", "voucher", "unrestrain"}) m.put(c, "powertools");
+        m.put("creativemanager", "creative");
         // Chat
         for (String c : new String[]{"nick", "editnick", "realname", "action", "channel", "clearchat", "delmsg"}) m.put(c, "chat");
         return m;

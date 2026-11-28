@@ -115,6 +115,15 @@ final class LegacyPlayerInfoModule implements Listener {
         return nicknames.get(id);
     }
 
+    Map<UUID, String> knownPlayerNames() {
+        return Collections.unmodifiableMap(lastNames);
+    }
+
+    long lastSeenOf(UUID id) {
+        Long seen = lastSeenMs.get(id);
+        return seen != null ? seen.longValue() : 0L;
+    }
+
     UUID findKnownPlayerId(String name) {
         UUID match = null;
         for (Map.Entry<UUID, String> entry : lastNames.entrySet()) {

@@ -104,6 +104,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyStaffReports staffReports;
     private final LegacyExplosiveCommands explosiveCommands;
     private final LegacyPowerTools powerTools;
+    private final LegacyCreativeManager creativeManager;
+    private final LegacyCreativeManage creativeManage;
     private final LegacyUsageCards usageCards;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
@@ -143,6 +145,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.staffReports = new LegacyStaffReports(plugin, configManager, messageManager, playerInfo, this::canSeeTeleportTarget);
         this.explosiveCommands = new LegacyExplosiveCommands(plugin, messageManager, this::canSeeTeleportTarget);
         this.powerTools = new LegacyPowerTools(plugin, configManager, messageManager);
+        this.creativeManager = new LegacyCreativeManager(plugin, configManager, messageManager, version);
+        this.creativeManage = new LegacyCreativeManage(plugin, messageManager, playerInfo, moderation,
+                commandManager, this::canSeeTeleportTarget);
         this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);
         this.flight = new LegacyTimedFlight(plugin, configManager, playerInfo, messageManager, flightProtection, this::canSeeTeleportTarget);
         this.experience = new LegacyExperienceCommand(plugin, messageManager, this::canSeeTeleportTarget);
@@ -186,6 +191,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         xpBottle.enable();
         chat.enable();
         hide.enable();
+        creativeManager.enable();
         travel.enable();
         org.bukkit.plugin.PluginManager pm = plugin.getServer().getPluginManager();
         pm.registerEvents(this, plugin);
@@ -197,6 +203,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(playerInfo.alts(), plugin);
         pm.registerEvents(chat, plugin);
         pm.registerEvents(hide, plugin);
+        pm.registerEvents(creativeManager, plugin);
+        pm.registerEvents(creativeManage, plugin);
         pm.registerEvents(utilities, plugin);
         pm.registerEvents(explosiveCommands, plugin);
         pm.registerEvents(powerTools, plugin);
@@ -252,6 +260,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(playerInfo);
         HandlerList.unregisterAll(chat);
         HandlerList.unregisterAll(hide);
+        HandlerList.unregisterAll(creativeManager);
+        HandlerList.unregisterAll(creativeManage);
         HandlerList.unregisterAll(utilities);
         HandlerList.unregisterAll(playerInfo.editor());
         HandlerList.unregisterAll(playerInfo.alts());
@@ -277,6 +287,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         kits.disable();
         moderation.disable();
         hide.disable();
+        creativeManage.disable();
+        creativeManager.disable();
         chat.disable();
         playerInfo.disable();
         travel.disable();
@@ -460,6 +472,8 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return explosiveCommands.cannon(sender, name, args);
             case "nuke":
                 return explosiveCommands.nuke(sender, args);
+            case "creativemanager":
+                return creativeManage.execute(sender, "/creativemanager", args);
             case "powertool":
                 return powerTools.powertool(sender, label, args);
             case "voucher":
@@ -532,6 +546,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("beezooka".equals(name) || "kittycannon".equals(name)) return Collections.emptyList();
         if ("nuke".equals(name)) return explosiveCommands.completeNuke(sender, args, prefix);
         if ("powertool".equals(name) || "voucher".equals(name)) return powerTools.complete(sender, name, args, prefix);
+        if ("creativemanager".equals(name)) return creativeManage.complete(sender, args);
         if ("unrestrain".equals(name)) return powerTools.rides().complete(sender, args);
         if ("clearinventory".equals(name)) return inventoryClear.complete(sender, args, prefix);
         if ("clearinventoryconfirmtoggle".equals(name)) return Collections.emptyList();
@@ -574,6 +589,10 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 if (sender.hasPermission(LegacyHideModule.ADMIN) || sender.isOp()) {
                     subs.add("hide");
                 }
+                if ((sender.hasPermission(LegacyCreativeManage.PERMISSION_MANAGE) || sender.isOp())
+                        && !commandManager.isDisabled("creativemanager") && !commandManager.isModuleDisabled("creativemanager")) {
+                    subs.add("creativemanager");
+                }
                 if (sender instanceof ConsoleCommandSender && sender.hasPermission("allium.escalate")
                         && !commandManager.isDisabled("escalate") && !commandManager.isModuleDisabled("escalate")) {
                     subs.add("escalate");
@@ -582,6 +601,9 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             }
             if (args.length >= 2 && "hide".equalsIgnoreCase(args[0])) {
                 return hide.completeAdmin(sender, Arrays.copyOfRange(args, 1, args.length));
+            }
+            if (args.length >= 2 && "creativemanager".equalsIgnoreCase(args[0])) {
+                return creativeManage.complete(sender, Arrays.copyOfRange(args, 1, args.length));
             }
             return Collections.emptyList();
         }
@@ -652,6 +674,13 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("hide".equalsIgnoreCase(args[0])) {
             return hide.handleAdmin(sender, Arrays.copyOfRange(args, 1, args.length));
         }
+        if ("creativemanager".equalsIgnoreCase(args[0])) {
+            if (commandManager.isDisabled("creativemanager") || commandManager.isModuleDisabled("creativemanager")) {
+                messageManager.send(sender, "error.module-disabled", "{prefix} &cThis feature is currently disabled.");
+                return true;
+            }
+            return creativeManage.execute(sender, "/allium creativemanager", Arrays.copyOfRange(args, 1, args.length));
+        }
         if ("escalate".equalsIgnoreCase(args[0])) {
             if (!(sender instanceof ConsoleCommandSender)) {
                 messageManager.send(sender, "error.console-only", "{prefix} &cThis command can only be used from the console.");
@@ -686,6 +715,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             playerInfo.reload();
             chat.reload();
             hide.reload();
+            creativeManager.reload();
             text.reload();
             autorestart.reload();
             messageManager.send(sender, "core.reload-success", "{prefix} &aConfiguration reloaded.");

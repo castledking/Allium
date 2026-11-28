@@ -5,6 +5,7 @@ import codes.castled.allium.brigadier.NativePlatform;
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.NativeEconomy;
+import codes.castled.allium.portable.NativePlayerInfo;
 import codes.castled.allium.portable.TeleportRequests;
 import codes.castled.allium.portable.UtilityMessages;
 import com.mojang.brigadier.CommandDispatcher;
@@ -41,12 +42,13 @@ public final class LegacyFabric implements DedicatedServerModInitializer {
     private static final TeleportRequests TELEPORTS = new TeleportRequests();
     private static final DirectMessages MESSAGES = new DirectMessages();
     private static final NativeEconomy.PendingConfirmations PAY_CONFIRMATIONS = new NativeEconomy.PendingConfirmations();
+    private static final NativePlayerInfo.SessionState PLAYER_SESSIONS = new NativePlayerInfo.SessionState();
 
     @Override
     public void onInitializeServer() {
         String version = FabricLoader.getInstance().getModContainer("allium").get().getMetadata().getVersion().getFriendlyString();
         CommandRegistry.INSTANCE.register(true, dispatcher -> {
-            NativeCommands.register(dispatcher, new Fabric114Platform(), TELEPORTS, MESSAGES, PAY_CONFIRMATIONS);
+            NativeCommands.register(dispatcher, new Fabric114Platform(), TELEPORTS, MESSAGES, PAY_CONFIRMATIONS, PLAYER_SESSIONS);
             register(dispatcher, CommandManager.literal("allium:allium")
                     .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
                     .then(CommandManager.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
@@ -174,6 +176,11 @@ public final class LegacyFabric implements DedicatedServerModInitializer {
         @Override
         public int seaLevel(ServerPlayerEntity player) {
             return player.world.getSeaLevel();
+        }
+
+        @Override
+        public int ping(ServerPlayerEntity player) {
+            return Math.max(0, player.field_13967);
         }
 
         @Override

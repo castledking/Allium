@@ -25,6 +25,7 @@ public final class MinecraftCommands {
                 ServerPlayer::level,
                 level -> level.dimension().identifier().toString(),
                 level -> level.getRespawnData().pos(),
+                player -> player.connection.latency(),
                 (player, level, point) -> player.teleportTo(level, point.x, point.y, point.z,
                         Collections.emptySet(), point.yaw, point.pitch, true));
         register(dispatcher, CoreCommandSpecs.ALLIUM, root -> root

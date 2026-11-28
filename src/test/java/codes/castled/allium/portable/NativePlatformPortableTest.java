@@ -26,7 +26,7 @@ class NativePlatformPortableTest {
                 Homes.class, Warps.class, Spawns.class, NativeSettings.class,
                 TeleportRequests.class, DirectMessages.class, UtilityMessages.class,
                 NativeEconomy.class, NativeEconomyBackend.class, EconomyCraftBridge.class,
-                AlliumEconomyApi.class, NativeWorth.class
+                AlliumEconomyApi.class, NativeWorth.class, NativePlayerInfo.class
         }) {
             String res = type.getName().replace('.', '/') + ".class";
             try (InputStream in = type.getClassLoader().getResourceAsStream(res)) {
@@ -330,5 +330,56 @@ class NativePlatformPortableTest {
         assertTrue(bridge.setBalance(bob, "Bob", new BigDecimal("50")));
         assertEquals(new BigDecimal("50.00"), bridge.balance(bob));
         assertEquals(NativeEconomy.ZERO, bridge.resetBalance(bob, "Bob"));
+    }
+
+    @Test
+    void nativePlayerInfoPersistsMetadataNicknamesPlaytimeAfkAndMail() {
+        AtomicLong clock = new AtomicLong(10_000L);
+        NativePlayerInfo.SessionState sessions = new NativePlayerInfo.SessionState(clock::get);
+        NativePlayerInfo info = new NativePlayerInfo(tempDir);
+        UUID alice = UUID.randomUUID();
+        Homes.Position pos = new Homes.Position("minecraft:overworld", 42.5, 65.0, -10.0, 0f, 0f);
+
+        sessions.touchSession(alice);
+        info.recordPresence(alice, "Alice", pos, clock.get());
+        clock.addAndGet(5_000L);
+        assertEquals(5_000L, sessions.currentSessionMillis(alice));
+        long sessionMs = sessions.finishSession(alice);
+        info.addPlaytime(alice, sessionMs);
+
+        NativePlayerInfo reloaded = new NativePlayerInfo(tempDir);
+        assertEquals(alice, reloaded.findKnownId("alice"));
+        assertEquals("Alice", reloaded.nameOf(alice));
+        assertEquals(10_000L, reloaded.lastSeenMillis(alice));
+        assertEquals(5_000L, reloaded.savedPlaytimeMillis(alice));
+        assertNotNull(reloaded.lastLocation(alice));
+        assertEquals(42.5, reloaded.lastLocation(alice).x, 1e-6);
+
+        // Nickname + color helpers
+        assertTrue(reloaded.setNickname(alice, "Alice", "&dAli"));
+        assertEquals("&dAli", new NativePlayerInfo(tempDir).nicknameOf(alice));
+        assertEquals("Ali", NativePlayerInfo.stripColorCodes("&dAli"));
+        assertEquals("\u00A7dAli", NativePlayerInfo.translateColorCodes("&dAli"));
+        assertTrue(reloaded.setNickname(alice, "Alice", null));
+        assertNull(new NativePlayerInfo(tempDir).nicknameOf(alice));
+
+        // AFK toggle
+        assertTrue(sessions.toggleAfk(alice, "brb"));
+        assertTrue(sessions.isAfk(alice));
+        assertEquals("brb", sessions.afkReason(alice));
+        assertFalse(sessions.toggleAfk(alice, null));
+        assertFalse(sessions.isAfk(alice));
+
+        // Mail
+        assertTrue(reloaded.sendMail(alice, "Bob", "Welcome back!"));
+        assertTrue(reloaded.sendMail(alice, "Console", "Server notice"));
+        List<String> mail = new NativePlayerInfo(tempDir).readMail(alice);
+        assertEquals(2, mail.size());
+        assertEquals("Bob: Welcome back!", mail.get(0));
+        assertEquals("Console: Server notice", mail.get(1));
+        assertEquals(2, reloaded.clearMail(alice));
+        assertTrue(new NativePlayerInfo(tempDir).readMail(alice).isEmpty());
+
+        assertEquals("1h 1m 5s", NativePlayerInfo.formatDuration(3_665_000L));
     }
 }

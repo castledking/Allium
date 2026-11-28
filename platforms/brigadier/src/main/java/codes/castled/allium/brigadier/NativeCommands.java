@@ -3,6 +3,7 @@ package codes.castled.allium.brigadier;
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.NativeEconomy;
+import codes.castled.allium.portable.NativePlayerInfo;
 import codes.castled.allium.portable.NativeSettings;
 import codes.castled.allium.portable.PlayerNameSearch;
 import codes.castled.allium.portable.Spawns;
@@ -36,17 +37,26 @@ public final class NativeCommands {
 
     public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform) {
         register(dispatcher, platform, new TeleportRequests(), new DirectMessages(),
-                new NativeEconomy.PendingConfirmations());
+                new NativeEconomy.PendingConfirmations(), new NativePlayerInfo.SessionState());
     }
 
     public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
                                        TeleportRequests teleports, DirectMessages messages) {
-        register(dispatcher, platform, teleports, messages, new NativeEconomy.PendingConfirmations());
+        register(dispatcher, platform, teleports, messages, new NativeEconomy.PendingConfirmations(),
+                new NativePlayerInfo.SessionState());
     }
 
     public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
                                        TeleportRequests teleports, DirectMessages messages,
                                        NativeEconomy.PendingConfirmations payConfirmations) {
+        register(dispatcher, platform, teleports, messages, payConfirmations,
+                new NativePlayerInfo.SessionState());
+    }
+
+    public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
+                                       TeleportRequests teleports, DirectMessages messages,
+                                       NativeEconomy.PendingConfirmations payConfirmations,
+                                       NativePlayerInfo.SessionState playerSessions) {
         SuggestionProvider<S> onlinePlayers = (ctx, builder) -> {
             String remaining = builder.getRemaining().toLowerCase(Locale.ROOT);
             List<String> names = new ArrayList<String>();
@@ -92,6 +102,7 @@ public final class NativeCommands {
         registerTeleports(dispatcher, platform, teleports, onlinePlayers, onOff);
         registerSocial(dispatcher, platform, messages, onlinePlayers, onOff);
         NativeEconomyCommands.register(dispatcher, platform, payConfirmations, onlinePlayers, onOff);
+        NativeInfoCommands.register(dispatcher, platform, playerSessions, onlinePlayers);
         registerUtilities(dispatcher, platform, onlinePlayers);
     }
 

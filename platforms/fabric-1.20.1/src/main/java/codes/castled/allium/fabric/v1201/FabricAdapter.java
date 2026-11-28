@@ -11,7 +11,7 @@ public final class FabricAdapter implements DedicatedServerModInitializer {
     @Override
     public void onInitializeServer() {
         FabricUtilityCommands.initialize(source -> source.hasPermission(2),
-                player -> UtilityMessages.ping(player.getScoreboardName(), player.latency), player -> {
+                player -> player.latency, player -> {
                     var pos = player.blockPosition();
                     return UtilityMessages.coordinates(player.getScoreboardName(), pos.getX(), pos.getY(), pos.getZ(),
                             player.serverLevel().dimension().location().toString());

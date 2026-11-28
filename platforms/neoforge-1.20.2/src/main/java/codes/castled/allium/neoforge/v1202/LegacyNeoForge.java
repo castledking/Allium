@@ -31,6 +31,7 @@ public final class LegacyNeoForge implements NeoForgeAdapter {
         var dispatcher = event.getDispatcher();
         MinecraftNativePlatform.register(dispatcher, source -> source.hasPermission(2), ServerPlayer::serverLevel,
                 level -> level.dimension().location().toString(), ServerLevel::getSharedSpawnPos,
+                player -> player.connection.latency(),
                 (player, level, point) -> player.teleportTo(level, point.x, point.y, point.z,
                         Collections.emptySet(), point.yaw, point.pitch));
         register(dispatcher, Commands.literal("allium:allium")

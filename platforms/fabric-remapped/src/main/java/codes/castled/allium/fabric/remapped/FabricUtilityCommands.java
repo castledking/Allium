@@ -17,11 +17,12 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 public final class FabricUtilityCommands {
     private FabricUtilityCommands() {}
 
-    public static void initialize(Predicate<CommandSourceStack> canInspect, Function<ServerPlayer, String> ping,
+    public static void initialize(Predicate<CommandSourceStack> canInspect, ToIntFunction<ServerPlayer> latencyOf,
                                   Function<ServerPlayer, String> coordinates,
                                   Function<ServerPlayer, ServerLevel> levelOf,
                                   Function<ServerLevel, String> worldId,
@@ -36,9 +37,10 @@ public final class FabricUtilityCommands {
                     .then(Commands.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
                     .then(Commands.literal("version").executes(ctx ->
                             reply(ctx.getSource(), UtilityMessages.version(version, "Fabric", game)))));
-            playerUtility(dispatcher, CoreCommandSpecs.PING, canInspect, ping);
+            playerUtility(dispatcher, CoreCommandSpecs.PING, canInspect,
+                    player -> UtilityMessages.ping(player.getScoreboardName(), latencyOf.applyAsInt(player)));
             playerUtility(dispatcher, CoreCommandSpecs.COORDS, canInspect, coordinates);
-            MinecraftNativePlatform.register(dispatcher, canInspect, levelOf, worldId, spawnPos, teleport);
+            MinecraftNativePlatform.register(dispatcher, canInspect, levelOf, worldId, spawnPos, latencyOf, teleport);
         });
     }
 

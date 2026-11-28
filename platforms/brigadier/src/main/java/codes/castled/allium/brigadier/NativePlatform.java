@@ -50,6 +50,8 @@ public interface NativePlatform<S, P> {
 
     int seaLevel(P player);
 
+    int ping(P player);
+
     boolean setTime(S source, long ticks);
 
     boolean setWeather(S source, String mode);

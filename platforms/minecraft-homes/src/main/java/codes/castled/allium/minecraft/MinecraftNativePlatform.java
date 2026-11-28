@@ -5,6 +5,7 @@ import codes.castled.allium.brigadier.NativePlatform;
 import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.NativeEconomy;
+import codes.castled.allium.portable.NativePlayerInfo;
 import codes.castled.allium.portable.TeleportRequests;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 /**
  * Shared Mojang-mapped {@link NativePlatform} implementation for Fabric 1.20.1/1.21.11/26.x
@@ -37,22 +39,26 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     private static final TeleportRequests TELEPORTS = new TeleportRequests();
     private static final DirectMessages MESSAGES = new DirectMessages();
     private static final NativeEconomy.PendingConfirmations PAY_CONFIRMATIONS = new NativeEconomy.PendingConfirmations();
+    private static final NativePlayerInfo.SessionState PLAYER_SESSIONS = new NativePlayerInfo.SessionState();
 
     private final Predicate<CommandSourceStack> gamemaster;
     private final Function<ServerPlayer, ServerLevel> levelOf;
     private final Function<ServerLevel, String> worldId;
     private final Function<ServerLevel, BlockPos> spawnPos;
+    private final ToIntFunction<ServerPlayer> latencyOf;
     private final MinecraftHomes.Teleport teleport;
 
     public MinecraftNativePlatform(Predicate<CommandSourceStack> gamemaster,
                                    Function<ServerPlayer, ServerLevel> levelOf,
                                    Function<ServerLevel, String> worldId,
                                    Function<ServerLevel, BlockPos> spawnPos,
+                                   ToIntFunction<ServerPlayer> latencyOf,
                                    MinecraftHomes.Teleport teleport) {
         this.gamemaster = gamemaster;
         this.levelOf = levelOf;
         this.worldId = worldId;
         this.spawnPos = spawnPos;
+        this.latencyOf = latencyOf;
         this.teleport = teleport;
     }
 
@@ -61,10 +67,11 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
                                 Function<ServerPlayer, ServerLevel> levelOf,
                                 Function<ServerLevel, String> worldId,
                                 Function<ServerLevel, BlockPos> spawnPos,
+                                ToIntFunction<ServerPlayer> latencyOf,
                                 MinecraftHomes.Teleport teleport) {
         NativeCommands.register(dispatcher,
-                new MinecraftNativePlatform(gamemaster, levelOf, worldId, spawnPos, teleport),
-                TELEPORTS, MESSAGES, PAY_CONFIRMATIONS);
+                new MinecraftNativePlatform(gamemaster, levelOf, worldId, spawnPos, latencyOf, teleport),
+                TELEPORTS, MESSAGES, PAY_CONFIRMATIONS, PLAYER_SESSIONS);
     }
 
     @Override
@@ -183,6 +190,11 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     @Override
     public int seaLevel(ServerPlayer player) {
         return levelOf.apply(player).getSeaLevel();
+    }
+
+    @Override
+    public int ping(ServerPlayer player) {
+        return Math.max(0, latencyOf.applyAsInt(player));
     }
 
     @Override

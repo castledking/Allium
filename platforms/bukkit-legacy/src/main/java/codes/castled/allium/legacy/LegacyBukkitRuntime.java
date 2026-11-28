@@ -103,6 +103,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
     private final LegacyXpBottle xpBottle;
     private final LegacyStaffReports staffReports;
     private final LegacyExplosiveCommands explosiveCommands;
+    private final LegacyPowerTools powerTools;
     private final LegacyUsageCards usageCards;
     private final Set<UUID> godPlayers = new HashSet<>();
     private ReplyTargets replyTargets = new ReplyTargets();
@@ -141,6 +142,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         this.economy.tax().mail = (player, text) -> playerInfo.systemMail(player, economy.taxSettings().account, text);
         this.staffReports = new LegacyStaffReports(plugin, configManager, messageManager, playerInfo, this::canSeeTeleportTarget);
         this.explosiveCommands = new LegacyExplosiveCommands(plugin, messageManager, this::canSeeTeleportTarget);
+        this.powerTools = new LegacyPowerTools(plugin, configManager, messageManager);
         this.flightProtection = new LegacyFlightProtection(plugin, settings, messageManager);
         this.flight = new LegacyTimedFlight(plugin, configManager, playerInfo, messageManager, flightProtection, this::canSeeTeleportTarget);
         this.experience = new LegacyExperienceCommand(plugin, messageManager, this::canSeeTeleportTarget);
@@ -179,6 +181,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         moderation.enable();
         playerInfo.enable();
         staffReports.reload();
+        powerTools.load();
         flight.enable();
         xpBottle.enable();
         chat.enable();
@@ -196,6 +199,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         pm.registerEvents(hide, plugin);
         pm.registerEvents(utilities, plugin);
         pm.registerEvents(explosiveCommands, plugin);
+        pm.registerEvents(powerTools, plugin);
         pm.registerEvents(text, plugin);
         pm.registerEvents(unlimited, plugin);
         pm.registerEvents(offlineTeleport, plugin);
@@ -250,6 +254,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         HandlerList.unregisterAll(playerInfo.editor());
         HandlerList.unregisterAll(playerInfo.alts());
         HandlerList.unregisterAll(explosiveCommands);
+        HandlerList.unregisterAll(powerTools);
         HandlerList.unregisterAll(text);
         HandlerList.unregisterAll(unlimited);
         HandlerList.unregisterAll(offlineTeleport);
@@ -452,6 +457,10 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
                 return explosiveCommands.cannon(sender, name, args);
             case "nuke":
                 return explosiveCommands.nuke(sender, args);
+            case "powertool":
+                return powerTools.powertool(sender, label, args);
+            case "voucher":
+                return powerTools.voucher(sender, label, args);
             case "god":
                 return handleGod(sender, args);
             case "gamemode":
@@ -517,6 +526,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
         if ("helpop".equals(name)) return Collections.emptyList();
         if ("beezooka".equals(name) || "kittycannon".equals(name)) return Collections.emptyList();
         if ("nuke".equals(name)) return explosiveCommands.completeNuke(sender, args, prefix);
+        if ("powertool".equals(name) || "voucher".equals(name)) return powerTools.complete(sender, name, args, prefix);
         if ("clearinventory".equals(name)) return inventoryClear.complete(sender, args, prefix);
         if ("clearinventoryconfirmtoggle".equals(name)) return Collections.emptyList();
         if ("clearchat".equals(name) && args.length == 1) return chatClear.complete(sender, prefix);
@@ -666,6 +676,7 @@ public final class LegacyBukkitRuntime implements AlliumRuntime, Listener {
             travel.reload();
             moderation.reload();
             staffReports.reload();
+            powerTools.load();
             playerInfo.reload();
             chat.reload();
             hide.reload();

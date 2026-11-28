@@ -7,6 +7,7 @@ public final class UtilityMessages {
             + "/setspawn, /spawn, /tpa, /tpahere, /tpaccept, /tpdeny, /tpacancel, /tphere, /back, "
             + "/tptoggle, /tpauto, /pm, /reply, /rtoggle, /msgtoggle, /ignore, /unignore, /ignorelist, "
             + "/mail, /seen, /whois, /playtime, /afk, /nick, /realname, /near, "
+            + "/info, /rules, /motd, /customtext, /inform, /broadcasts, "
             + "/bal, /pay, /paytoggle, /payconfirmtoggle, /eco, /baltop, /worth, /setworth, /sell, "
             + "/heal, /feed, /fly, /gmc, /gms, /gma, /gmsp, /day, /night, /sun, /rain, /storm, "
             + "/clearinventory, /broadcast";

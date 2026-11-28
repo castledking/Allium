@@ -5,6 +5,7 @@ import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.NativeEconomy;
 import codes.castled.allium.portable.NativePlayerInfo;
 import codes.castled.allium.portable.NativeSettings;
+import codes.castled.allium.portable.NativeTextPages;
 import codes.castled.allium.portable.PlayerNameSearch;
 import codes.castled.allium.portable.Spawns;
 import codes.castled.allium.portable.TeleportRequests;
@@ -57,6 +58,15 @@ public final class NativeCommands {
                                        TeleportRequests teleports, DirectMessages messages,
                                        NativeEconomy.PendingConfirmations payConfirmations,
                                        NativePlayerInfo.SessionState playerSessions) {
+        register(dispatcher, platform, teleports, messages, payConfirmations, playerSessions,
+                new NativeTextPages.BroadcastState());
+    }
+
+    public static <S, P> void register(CommandDispatcher<S> dispatcher, NativePlatform<S, P> platform,
+                                       TeleportRequests teleports, DirectMessages messages,
+                                       NativeEconomy.PendingConfirmations payConfirmations,
+                                       NativePlayerInfo.SessionState playerSessions,
+                                       NativeTextPages.BroadcastState broadcastState) {
         SuggestionProvider<S> onlinePlayers = (ctx, builder) -> {
             String remaining = builder.getRemaining().toLowerCase(Locale.ROOT);
             List<String> names = new ArrayList<String>();
@@ -103,6 +113,7 @@ public final class NativeCommands {
         registerSocial(dispatcher, platform, messages, onlinePlayers, onOff);
         NativeEconomyCommands.register(dispatcher, platform, payConfirmations, onlinePlayers, onOff);
         NativeInfoCommands.register(dispatcher, platform, playerSessions, onlinePlayers);
+        NativeTextCommands.register(dispatcher, platform, broadcastState, onlinePlayers);
         registerUtilities(dispatcher, platform, onlinePlayers);
     }
 

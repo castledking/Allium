@@ -26,7 +26,7 @@ class NativePlatformPortableTest {
                 Homes.class, Warps.class, Spawns.class, NativeSettings.class,
                 TeleportRequests.class, DirectMessages.class, UtilityMessages.class,
                 NativeEconomy.class, NativeEconomyBackend.class, EconomyCraftBridge.class,
-                AlliumEconomyApi.class, NativeWorth.class, NativePlayerInfo.class
+                AlliumEconomyApi.class, NativeWorth.class, NativePlayerInfo.class, NativeTextPages.class
         }) {
             String res = type.getName().replace('.', '/') + ".class";
             try (InputStream in = type.getClassLoader().getResourceAsStream(res)) {
@@ -381,5 +381,54 @@ class NativePlatformPortableTest {
         assertTrue(new NativePlayerInfo(tempDir).readMail(alice).isEmpty());
 
         assertEquals("1h 1m 5s", NativePlayerInfo.formatDuration(3_665_000L));
+    }
+
+    @Test
+    void nativeTextPagesParseSectionsOverridesPaginationAndPlaceholders() throws Exception {
+        NativeTextPages pages = new NativeTextPages(tempDir);
+
+        // Default starter files are created lazily on first read
+        NativeTextPages.Document defaultRules = pages.read("rules.txt", "Steve");
+        assertNotNull(defaultRules);
+        assertFalse(defaultRules.index().isEmpty());
+
+        // Custom info.txt with comments, sections, aliases, and >9 lines for pagination
+        StringBuilder sb = new StringBuilder();
+        sb.append("## comment ignored\n");
+        sb.append("Index line for {player}\n");
+        sb.append("#vote,voting\n");
+        for (int i = 1; i <= 11; i++) {
+            sb.append("&aLine ").append(i).append("\n");
+        }
+        sb.append("\n");
+        java.nio.file.Files.writeString(tempDir.resolve("info.txt"), sb.toString());
+        java.nio.file.Files.writeString(tempDir.resolve("info_steve.txt"), "Personal page for {displayname} on {server} ({online}/{max})\n");
+
+        NativeTextPages.Document genericDoc = pages.read("info.txt", "Alex");
+        assertNotNull(genericDoc);
+        assertEquals(List.of("Index line for {player}"), genericDoc.index());
+        assertEquals("vote", genericDoc.primaryName("voting"));
+        assertEquals(11, genericDoc.section("voting").size());
+
+        NativeTextPages.Page p1 = NativeTextPages.paginate(genericDoc.section("vote"), 1);
+        NativeTextPages.Page p2 = NativeTextPages.paginate(genericDoc.section("vote"), 2);
+        assertEquals(2, p1.pages);
+        assertEquals(9, p1.lines.size());
+        assertEquals(2, p2.lines.size());
+
+        // Player-specific override for Steve
+        NativeTextPages.Document steveDoc = pages.read("info.txt", "Steve");
+        assertNotNull(steveDoc);
+        String rendered = NativeTextPages.renderLine(
+                "<hover:show_text:'hi'>" + steveDoc.index().get(0) + "</hover>",
+                "Steve", "&dStevie", 5, 20, "Fabric");
+        assertEquals("Personal page for \u00A7dStevie on Fabric (5/20)", rendered);
+
+        // Broadcast rotation
+        NativeTextPages.BroadcastState state = new NativeTextPages.BroadcastState();
+        List<String> names = List.of("tip1", "tip2");
+        assertEquals("tip1", state.next(names));
+        assertEquals("tip2", state.next(names));
+        assertEquals("tip1", state.next(names));
     }
 }

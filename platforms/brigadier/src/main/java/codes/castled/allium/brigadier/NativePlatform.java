@@ -68,6 +68,10 @@ public interface NativePlatform<S, P> {
 
     Object serverHandle(S source);
 
+    int maxPlayers(S source);
+
+    String serverName(S source);
+
     default NativeEconomyBackend economyBackend(S source) {
         NativeEconomy local = new NativeEconomy(dataDirectory(source));
         NativeEconomyBackend external = EconomyCraftBridge.tryConnect(serverHandle(source), local);

@@ -6,6 +6,7 @@ import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.NativeEconomy;
 import codes.castled.allium.portable.NativePlayerInfo;
+import codes.castled.allium.portable.NativeTextPages;
 import codes.castled.allium.portable.TeleportRequests;
 import codes.castled.allium.portable.UtilityMessages;
 import com.mojang.brigadier.CommandDispatcher;
@@ -43,12 +44,14 @@ public final class LegacyFabric implements DedicatedServerModInitializer {
     private static final DirectMessages MESSAGES = new DirectMessages();
     private static final NativeEconomy.PendingConfirmations PAY_CONFIRMATIONS = new NativeEconomy.PendingConfirmations();
     private static final NativePlayerInfo.SessionState PLAYER_SESSIONS = new NativePlayerInfo.SessionState();
+    private static final NativeTextPages.BroadcastState BROADCASTS = new NativeTextPages.BroadcastState();
 
     @Override
     public void onInitializeServer() {
         String version = FabricLoader.getInstance().getModContainer("allium").get().getMetadata().getVersion().getFriendlyString();
         CommandRegistry.INSTANCE.register(true, dispatcher -> {
-            NativeCommands.register(dispatcher, new Fabric114Platform(), TELEPORTS, MESSAGES, PAY_CONFIRMATIONS, PLAYER_SESSIONS);
+            NativeCommands.register(dispatcher, new Fabric114Platform(), TELEPORTS, MESSAGES,
+                    PAY_CONFIRMATIONS, PLAYER_SESSIONS, BROADCASTS);
             register(dispatcher, CommandManager.literal("allium:allium")
                     .executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS))
                     .then(CommandManager.literal("help").executes(ctx -> reply(ctx.getSource(), UtilityMessages.COMMANDS)))
@@ -249,6 +252,16 @@ public final class LegacyFabric implements DedicatedServerModInitializer {
         @Override
         public Object serverHandle(ServerCommandSource source) {
             return source.getMinecraftServer();
+        }
+
+        @Override
+        public int maxPlayers(ServerCommandSource source) {
+            return source.getMinecraftServer().getMaxPlayerCount();
+        }
+
+        @Override
+        public String serverName(ServerCommandSource source) {
+            return source.getMinecraftServer().getServerModName();
         }
     }
 

@@ -6,6 +6,7 @@ import codes.castled.allium.portable.DirectMessages;
 import codes.castled.allium.portable.Homes;
 import codes.castled.allium.portable.NativeEconomy;
 import codes.castled.allium.portable.NativePlayerInfo;
+import codes.castled.allium.portable.NativeTextPages;
 import codes.castled.allium.portable.TeleportRequests;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
@@ -40,6 +41,7 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     private static final DirectMessages MESSAGES = new DirectMessages();
     private static final NativeEconomy.PendingConfirmations PAY_CONFIRMATIONS = new NativeEconomy.PendingConfirmations();
     private static final NativePlayerInfo.SessionState PLAYER_SESSIONS = new NativePlayerInfo.SessionState();
+    private static final NativeTextPages.BroadcastState BROADCASTS = new NativeTextPages.BroadcastState();
 
     private final Predicate<CommandSourceStack> gamemaster;
     private final Function<ServerPlayer, ServerLevel> levelOf;
@@ -71,7 +73,7 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
                                 MinecraftHomes.Teleport teleport) {
         NativeCommands.register(dispatcher,
                 new MinecraftNativePlatform(gamemaster, levelOf, worldId, spawnPos, latencyOf, teleport),
-                TELEPORTS, MESSAGES, PAY_CONFIRMATIONS, PLAYER_SESSIONS);
+                TELEPORTS, MESSAGES, PAY_CONFIRMATIONS, PLAYER_SESSIONS, BROADCASTS);
     }
 
     @Override
@@ -264,5 +266,15 @@ public final class MinecraftNativePlatform implements NativePlatform<CommandSour
     @Override
     public Object serverHandle(CommandSourceStack source) {
         return source.getServer();
+    }
+
+    @Override
+    public int maxPlayers(CommandSourceStack source) {
+        return source.getServer().getPlayerList().getMaxPlayers();
+    }
+
+    @Override
+    public String serverName(CommandSourceStack source) {
+        return source.getServer().getServerModName();
     }
 }
